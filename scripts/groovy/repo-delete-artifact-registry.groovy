@@ -1,14 +1,40 @@
 def call() {
-    def envVars = readFile('infra.env').trim().split('\n').collectEntries { line ->
-        def parts = line.split('=', 2)
-        parts.length == 2 ? [(parts[0]): parts[1]] : [:]
+    def envMap = [:]
+    if (fileExists('infra.env')) {
+        readFile('infra.env').trim().split('\n').each { line ->
+            def parts = line.split('=', 2)
+            if (parts.length == 2) envMap[parts[0]] = parts[1]
+        }
     }
 
-    def tfDir     = envVars['TF_DIR'] ?: 'infra/terraform/gcp/gke'
-    def projectId = sh(script: "cd ${tfDir} && terraform output -raw project_id", returnStdout: true).trim()
-    def region    = sh(script: "cd ${tfDir} && terraform output -raw region",     returnStdout: true).trim()
-    def repoId    = 'shopos'
+    // Prefer values saved by create step, then fall back to gcloud config
+    def projectId = envMap['ARTIFACT_REGISTRY_PROJECT'] ?: sh(
+        script: "gcloud config get-value project 2>/dev/null || echo ''",
+        returnStdout: true
+    ).trim()
+    if (!projectId) {
+        projectId = sh(
+            script: """curl -sf -H 'Metadata-Flavor: Google' \
+                http://metadata.google.internal/computeMetadata/v1/project/project-id 2>/dev/null || echo ''""",
+            returnStdout: true
+        ).trim()
+    }
+    if (!projectId) error "Cannot determine GCP project ID"
 
+    def region = envMap['ARTIFACT_REGISTRY_REGION'] ?: sh(
+        script: "gcloud config get-value compute/region 2>/dev/null || echo ''",
+        returnStdout: true
+    ).trim()
+    if (!region) {
+        def zone = sh(
+            script: "gcloud config get-value compute/zone 2>/dev/null || echo ''",
+            returnStdout: true
+        ).trim()
+        if (zone) region = zone.replaceAll(/-[a-z]\$/, '')
+    }
+    if (!region) region = 'us-central1'
+
+    def repoId = 'shopos'
     sh """
         gcloud artifacts repositories delete ${repoId} \
             --location=${region} \

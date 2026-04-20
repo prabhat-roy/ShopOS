@@ -93,9 +93,8 @@ pipeline {
             when { expression { params.ACTION == 'CREATE_CLOUD_REGISTRY' } }
             steps {
                 script {
-                    def cloud = readFile('infra.env').trim()
-                        .split('\n').find { it.startsWith('CLOUD_PROVIDER=') }?.split('=', 2)?.last()
-
+                    def cloud = env.CLOUD_PROVIDER
+                    echo "Creating cloud registry for: ${cloud}"
                     if (cloud == 'AWS') {
                         def s = load 'scripts/groovy/repo-create-ecr.groovy';             s()
                     } else if (cloud == 'GCP') {
@@ -103,7 +102,7 @@ pipeline {
                     } else if (cloud == 'AZURE') {
                         def s = load 'scripts/groovy/repo-create-acr.groovy';             s()
                     } else {
-                        error "Unsupported cloud provider: ${cloud}"
+                        error "Unsupported cloud provider: ${cloud}. Auto-detection failed — check cloud metadata service."
                     }
                 }
             }
@@ -113,9 +112,8 @@ pipeline {
             when { expression { params.ACTION == 'DESTROY_CLOUD_REGISTRY' } }
             steps {
                 script {
-                    def cloud = readFile('infra.env').trim()
-                        .split('\n').find { it.startsWith('CLOUD_PROVIDER=') }?.split('=', 2)?.last()
-
+                    def cloud = env.CLOUD_PROVIDER
+                    echo "Destroying cloud registry for: ${cloud}"
                     if (cloud == 'AWS') {
                         def s = load 'scripts/groovy/repo-delete-ecr.groovy';             s()
                     } else if (cloud == 'GCP') {
@@ -123,7 +121,7 @@ pipeline {
                     } else if (cloud == 'AZURE') {
                         def s = load 'scripts/groovy/repo-delete-acr.groovy';             s()
                     } else {
-                        error "Unsupported cloud provider: ${cloud}"
+                        error "Unsupported cloud provider: ${cloud}. Auto-detection failed — check cloud metadata service."
                     }
                 }
             }
@@ -133,9 +131,17 @@ pipeline {
             when { expression { params.ACTION == 'INSTALL_K8S_REPOS' } }
             steps {
                 script {
-                    def kubeconfigContent = readFile('infra.env').trim()
-                        .split('\n').find { it.startsWith('KUBECONFIG_CONTENT=') }?.split('=', 2)?.last()
-                    sh "echo '${kubeconfigContent}' | base64 -d > ${env.WORKSPACE}/kubeconfig"
+                    def kubeconfigContent = ''
+                    if (fileExists('infra.env')) {
+                        kubeconfigContent = readFile('infra.env').trim()
+                            .split('\n').find { it.startsWith('KUBECONFIG_CONTENT=') }?.split('=', 2)?.last() ?: ''
+                    }
+                    if (!kubeconfigContent) {
+                        error "KUBECONFIG_CONTENT not found in infra.env — run the k8s pipeline first to provision a cluster"
+                    }
+                    writeFile file: "${env.WORKSPACE}/kubeconfig-b64", text: kubeconfigContent
+                    sh "base64 -d ${env.WORKSPACE}/kubeconfig-b64 > ${env.WORKSPACE}/kubeconfig"
+                    sh "rm -f ${env.WORKSPACE}/kubeconfig-b64"
                     env.KUBECONFIG = "${env.WORKSPACE}/kubeconfig"
                 }
             }

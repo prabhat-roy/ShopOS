@@ -1,12 +1,40 @@
 def call() {
-    def envVars = readFile('infra.env').trim().split('\n').collectEntries { line ->
-        def parts = line.split('=', 2)
-        parts.length == 2 ? [(parts[0]): parts[1]] : [:]
+    // Resolve project_id: gcloud config → GCE metadata → error
+    def projectId = sh(
+        script: "gcloud config get-value project 2>/dev/null || echo ''",
+        returnStdout: true
+    ).trim()
+    if (!projectId) {
+        projectId = sh(
+            script: """curl -sf -H 'Metadata-Flavor: Google' \
+                http://metadata.google.internal/computeMetadata/v1/project/project-id 2>/dev/null || echo ''""",
+            returnStdout: true
+        ).trim()
     }
+    if (!projectId) error "Cannot determine GCP project ID — set gcloud config or run on GCE"
 
-    def tfDir = envVars['TF_DIR'] ?: 'infra/terraform/gcp/gke'
-    def projectId = sh(script: "cd ${tfDir} && terraform output -raw project_id", returnStdout: true).trim()
-    def region    = sh(script: "cd ${tfDir} && terraform output -raw region",     returnStdout: true).trim()
+    // Resolve region: gcloud config → zone-based → GCE metadata zone-based → default
+    def region = sh(
+        script: "gcloud config get-value compute/region 2>/dev/null || echo ''",
+        returnStdout: true
+    ).trim()
+    if (!region) {
+        def zone = sh(
+            script: "gcloud config get-value compute/zone 2>/dev/null || echo ''",
+            returnStdout: true
+        ).trim()
+        if (zone) region = zone.replaceAll(/-[a-z]\$/, '')
+    }
+    if (!region) {
+        def zone = sh(
+            script: """curl -sf -H 'Metadata-Flavor: Google' \
+                http://metadata.google.internal/computeMetadata/v1/instance/zone 2>/dev/null | \
+                awk -F/ '{print \$NF}' || echo ''""",
+            returnStdout: true
+        ).trim()
+        if (zone) region = zone.replaceAll(/-[a-z]\$/, '')
+    }
+    if (!region) region = 'us-central1'
 
     def repoId = 'shopos'
 
