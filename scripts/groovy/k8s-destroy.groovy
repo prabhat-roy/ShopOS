@@ -1,10 +1,68 @@
 #!/usr/bin/env groovy
 
 def call(String tfDir) {
-    sh """
-        cd ${tfDir}
-        terraform destroy -auto-approve -input=false
-    """
+    def cloud = ''
+    if (fileExists('infra.env')) {
+        cloud = readFile('infra.env').trim().split('\n').find { it.startsWith('CLOUD_PROVIDER=') }?.split('=', 2)?.last() ?: ''
+    }
+
+    if (cloud == 'GCP') {
+        def projectId = sh(
+            script: "gcloud config get-value project 2>/dev/null || echo ''",
+            returnStdout: true
+        ).trim()
+        if (!projectId) {
+            projectId = sh(
+                script: """curl -sf -H 'Metadata-Flavor: Google' \
+                    http://metadata.google.internal/computeMetadata/v1/project/project-id 2>/dev/null || echo ''""",
+                returnStdout: true
+            ).trim()
+        }
+        if (!projectId) error "Cannot determine GCP project ID for destroy"
+
+        def region = sh(
+            script: "gcloud config get-value compute/region 2>/dev/null || echo ''",
+            returnStdout: true
+        ).trim()
+        if (!region) {
+            def zone = sh(
+                script: """curl -sf -H 'Metadata-Flavor: Google' \
+                    'http://metadata.google.internal/computeMetadata/v1/instance/zone' 2>/dev/null | \
+                    awk -F/ '{print \$NF}'""",
+                returnStdout: true
+            ).trim()
+            if (zone && zone.contains('-')) region = zone.substring(0, zone.lastIndexOf('-'))
+        }
+        if (!region) region = 'us-central1'
+
+        sh """
+            cd ${tfDir}
+            terraform destroy \
+                -var project_id=${projectId} \
+                -var region=${region} \
+                -auto-approve -input=false
+        """
+
+    } else if (cloud == 'AZURE') {
+        def subscriptionId = sh(
+            script: "az account show --query id -o tsv 2>/dev/null || echo ''",
+            returnStdout: true
+        ).trim()
+        if (!subscriptionId) error "Cannot determine Azure subscription ID for destroy"
+
+        sh """
+            cd ${tfDir}
+            terraform destroy \
+                -var subscription_id=${subscriptionId} \
+                -auto-approve -input=false
+        """
+
+    } else {
+        sh """
+            cd ${tfDir}
+            terraform destroy -auto-approve -input=false
+        """
+    }
 }
 
 return this

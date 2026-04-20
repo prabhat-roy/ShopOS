@@ -15,14 +15,9 @@ pipeline {
             description: 'Create or destroy the Kubernetes cluster infrastructure'
         )
         choice(
-            name: 'CLOUD_PROVIDER',
-            choices: ['AUTO', 'GCP', 'AWS', 'AZURE'],
-            description: 'Cloud provider. AUTO = detect from instance metadata. Override when running Jenkins outside the target cloud.'
-        )
-        choice(
             name: 'ENVIRONMENT',
             choices: ['dev', 'staging', 'prod'],
-            description: 'Target environment — selects the matching terraform workspace / tfvars'
+            description: 'Target environment — passed to Terraform as var.environment'
         )
     }
 
@@ -36,21 +31,8 @@ pipeline {
         stage('Detect Cloud Provider') {
             steps {
                 script {
-                    if (params.CLOUD_PROVIDER == 'AUTO') {
-                        def detectCloud = load 'scripts/groovy/k8s-detect-cloud.groovy'
-                        detectCloud()
-                    } else {
-                        // Manual override — write directly to infra.env
-                        def tfDirMap = [AWS: 'infra/terraform/aws/eks', GCP: 'infra/terraform/gcp/gke', AZURE: 'infra/terraform/azure/aks']
-                        def tfDir = tfDirMap[params.CLOUD_PROVIDER]
-                        sh """
-                            sed -i '/^CLOUD_PROVIDER=/d' infra.env 2>/dev/null || true
-                            sed -i '/^TF_DIR=/d' infra.env 2>/dev/null || true
-                            echo 'CLOUD_PROVIDER=${params.CLOUD_PROVIDER}' >> infra.env
-                            echo 'TF_DIR=${tfDir}' >> infra.env
-                        """
-                        env.CLOUD_PROVIDER = params.CLOUD_PROVIDER
-                    }
+                    def detectCloud = load 'scripts/groovy/k8s-detect-cloud.groovy'
+                    detectCloud()
                     env.TF_DIR = readFile('infra.env').trim()
                         .split('\n').find { it.startsWith('TF_DIR=') }?.split('=', 2)?.last()
                     env.CLOUD_PROVIDER = readFile('infra.env').trim()
@@ -144,7 +126,7 @@ pipeline {
             steps {
                 script {
                     def cluster = load 'scripts/groovy/k8s-cluster.groovy'
-                    cluster(env.TF_DIR)
+                    cluster(env.TF_DIR, params.ENVIRONMENT)
                 }
             }
         }
