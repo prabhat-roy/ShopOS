@@ -14,6 +14,16 @@ pipeline {
             choices: ['CREATE', 'DESTROY'],
             description: 'Create or destroy the Kubernetes cluster infrastructure'
         )
+        choice(
+            name: 'CLOUD_PROVIDER',
+            choices: ['AUTO', 'GCP', 'AWS', 'AZURE'],
+            description: 'Cloud provider. AUTO = detect from instance metadata. Override when running Jenkins outside the target cloud.'
+        )
+        choice(
+            name: 'ENVIRONMENT',
+            choices: ['dev', 'staging', 'prod'],
+            description: 'Target environment — selects the matching terraform workspace / tfvars'
+        )
     }
 
     stages {
@@ -26,12 +36,26 @@ pipeline {
         stage('Detect Cloud Provider') {
             steps {
                 script {
-                    def detectCloud = load 'scripts/groovy/k8s-detect-cloud.groovy'
-                    detectCloud()
-                    // Cache TF_DIR in env so all subsequent stages reuse without re-reading the file
+                    if (params.CLOUD_PROVIDER == 'AUTO') {
+                        def detectCloud = load 'scripts/groovy/k8s-detect-cloud.groovy'
+                        detectCloud()
+                    } else {
+                        // Manual override — write directly to infra.env
+                        def tfDirMap = [AWS: 'infra/terraform/aws/eks', GCP: 'infra/terraform/gcp/gke', AZURE: 'infra/terraform/azure/aks']
+                        def tfDir = tfDirMap[params.CLOUD_PROVIDER]
+                        sh """
+                            sed -i '/^CLOUD_PROVIDER=/d' infra.env 2>/dev/null || true
+                            sed -i '/^TF_DIR=/d' infra.env 2>/dev/null || true
+                            echo 'CLOUD_PROVIDER=${params.CLOUD_PROVIDER}' >> infra.env
+                            echo 'TF_DIR=${tfDir}' >> infra.env
+                        """
+                        env.CLOUD_PROVIDER = params.CLOUD_PROVIDER
+                    }
                     env.TF_DIR = readFile('infra.env').trim()
                         .split('\n').find { it.startsWith('TF_DIR=') }?.split('=', 2)?.last()
-                    echo "TF_DIR=${env.TF_DIR}"
+                    env.CLOUD_PROVIDER = readFile('infra.env').trim()
+                        .split('\n').find { it.startsWith('CLOUD_PROVIDER=') }?.split('=', 2)?.last()
+                    echo "CLOUD_PROVIDER=${env.CLOUD_PROVIDER}  TF_DIR=${env.TF_DIR}"
                 }
             }
         }
@@ -46,7 +70,7 @@ pipeline {
         }
 
         stage('VPC') {
-            when { expression { params.ACTION == 'CREATE' } }
+            when { expression { params.ACTION == 'CREATE' && env.CLOUD_PROVIDER == 'AWS' } }
             steps {
                 script {
                     def vpc = load 'scripts/groovy/k8s-vpc.groovy'
@@ -56,7 +80,7 @@ pipeline {
         }
 
         stage('Subnets') {
-            when { expression { params.ACTION == 'CREATE' } }
+            when { expression { params.ACTION == 'CREATE' && env.CLOUD_PROVIDER == 'AWS' } }
             steps {
                 script {
                     def subnets = load 'scripts/groovy/k8s-subnets.groovy'
@@ -66,7 +90,7 @@ pipeline {
         }
 
         stage('Internet Gateway') {
-            when { expression { params.ACTION == 'CREATE' } }
+            when { expression { params.ACTION == 'CREATE' && env.CLOUD_PROVIDER == 'AWS' } }
             steps {
                 script {
                     def igw = load 'scripts/groovy/k8s-igw.groovy'
@@ -76,7 +100,7 @@ pipeline {
         }
 
         stage('NAT Gateway') {
-            when { expression { params.ACTION == 'CREATE' } }
+            when { expression { params.ACTION == 'CREATE' && env.CLOUD_PROVIDER == 'AWS' } }
             steps {
                 script {
                     def nat = load 'scripts/groovy/k8s-nat-gateway.groovy'
@@ -86,7 +110,7 @@ pipeline {
         }
 
         stage('Route Tables') {
-            when { expression { params.ACTION == 'CREATE' } }
+            when { expression { params.ACTION == 'CREATE' && env.CLOUD_PROVIDER == 'AWS' } }
             steps {
                 script {
                     def rt = load 'scripts/groovy/k8s-route-tables.groovy'
@@ -96,7 +120,7 @@ pipeline {
         }
 
         stage('Security Groups') {
-            when { expression { params.ACTION == 'CREATE' } }
+            when { expression { params.ACTION == 'CREATE' && env.CLOUD_PROVIDER == 'AWS' } }
             steps {
                 script {
                     def sg = load 'scripts/groovy/k8s-security-groups.groovy'
@@ -106,7 +130,7 @@ pipeline {
         }
 
         stage('IAM Roles') {
-            when { expression { params.ACTION == 'CREATE' } }
+            when { expression { params.ACTION == 'CREATE' && env.CLOUD_PROVIDER == 'AWS' } }
             steps {
                 script {
                     def iam = load 'scripts/groovy/k8s-iam.groovy'
