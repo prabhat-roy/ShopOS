@@ -3,7 +3,9 @@
 def call() {
     sh '''
         if ! command -v node >/dev/null 2>&1; then
-            curl -fsSL https://deb.nodesource.com/setup_22.x | sudo -E bash -
+            curl -fsSL https://deb.nodesource.com/setup_22.x -o /tmp/nodesource-setup.sh
+            sudo -E bash /tmp/nodesource-setup.sh
+            rm -f /tmp/nodesource-setup.sh
             sudo apt-get install -y nodejs
         fi
 

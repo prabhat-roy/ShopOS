@@ -7,10 +7,11 @@ def call() {
         else
             TERRAFORM_VERSION=$(curl -s https://checkpoint-api.hashicorp.com/v1/check/terraform \
                 | python3 -c 'import sys,json; print(json.load(sys.stdin)["current_version"])')
-            curl -sLO "https://releases.hashicorp.com/terraform/${TERRAFORM_VERSION}/terraform_${TERRAFORM_VERSION}_linux_amd64.zip"
-            sudo unzip -q "terraform_${TERRAFORM_VERSION}_linux_amd64.zip" -d /usr/local/bin/
+            curl -sL "https://releases.hashicorp.com/terraform/${TERRAFORM_VERSION}/terraform_${TERRAFORM_VERSION}_linux_amd64.zip" \
+                -o /tmp/terraform.zip
+            sudo unzip -oq /tmp/terraform.zip -d /usr/local/bin/
             sudo chmod +x /usr/local/bin/terraform
-            rm -f "terraform_${TERRAFORM_VERSION}_linux_amd64.zip"
+            rm -f /tmp/terraform.zip
             echo "Terraform installed: $(terraform version | head -1)"
         fi
     '''

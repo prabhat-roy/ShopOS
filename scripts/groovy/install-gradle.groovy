@@ -6,10 +6,11 @@ def call() {
         GRADLE_HOME="/opt/gradle/gradle-${GRADLE_VERSION}"
 
         if ! command -v gradle >/dev/null 2>&1; then
-            curl -sLO "https://services.gradle.org/distributions/gradle-${GRADLE_VERSION}-bin.zip"
-            sudo unzip -q -d /opt/gradle "gradle-${GRADLE_VERSION}-bin.zip"
+            curl -sL "https://services.gradle.org/distributions/gradle-${GRADLE_VERSION}-bin.zip" \
+                -o /tmp/gradle.zip
+            sudo unzip -oq /tmp/gradle.zip -d /opt/gradle
             sudo ln -sf ${GRADLE_HOME}/bin/gradle /usr/local/bin/gradle
-            rm -f "gradle-${GRADLE_VERSION}-bin.zip"
+            rm -f /tmp/gradle.zip
         fi
 
         sudo tee /etc/profile.d/gradle.sh > /dev/null << EOF

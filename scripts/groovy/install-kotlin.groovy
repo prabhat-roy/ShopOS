@@ -6,11 +6,12 @@ def call() {
         KOTLIN_HOME="/opt/kotlin/kotlinc"
 
         if ! command -v kotlinc >/dev/null 2>&1; then
-            curl -sLO "https://github.com/JetBrains/kotlin/releases/download/v${KOTLIN_VERSION}/kotlin-compiler-${KOTLIN_VERSION}.zip"
-            sudo unzip -q -d /opt/kotlin "kotlin-compiler-${KOTLIN_VERSION}.zip"
+            curl -sL "https://github.com/JetBrains/kotlin/releases/download/v${KOTLIN_VERSION}/kotlin-compiler-${KOTLIN_VERSION}.zip" \
+                -o /tmp/kotlin-compiler.zip
+            sudo unzip -oq /tmp/kotlin-compiler.zip -d /opt/kotlin
             sudo ln -sf ${KOTLIN_HOME}/bin/kotlinc /usr/local/bin/kotlinc
             sudo ln -sf ${KOTLIN_HOME}/bin/kotlin   /usr/local/bin/kotlin
-            rm -f "kotlin-compiler-${KOTLIN_VERSION}.zip"
+            rm -f /tmp/kotlin-compiler.zip
         fi
 
         sudo tee /etc/profile.d/kotlin.sh > /dev/null << EOF

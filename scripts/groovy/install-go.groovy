@@ -6,10 +6,10 @@ def call() {
         GOROOT="/usr/local/go"
 
         if ! /usr/local/go/bin/go version >/dev/null 2>&1 && ! command -v go >/dev/null 2>&1; then
-            curl -sLO "https://go.dev/dl/go${GO_VERSION}.linux-amd64.tar.gz"
+            curl -sL "https://go.dev/dl/go${GO_VERSION}.linux-amd64.tar.gz" -o /tmp/go.tar.gz
             sudo rm -rf /usr/local/go
-            sudo tar -C /usr/local -xzf "go${GO_VERSION}.linux-amd64.tar.gz"
-            rm -f "go${GO_VERSION}.linux-amd64.tar.gz"
+            sudo tar -C /usr/local -xzf /tmp/go.tar.gz
+            rm -f /tmp/go.tar.gz
         fi
 
         sudo tee /etc/profile.d/go.sh > /dev/null << EOF
