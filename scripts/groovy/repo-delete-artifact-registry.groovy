@@ -27,10 +27,14 @@ def call() {
     ).trim()
     if (!region) {
         def zone = sh(
-            script: "gcloud config get-value compute/zone 2>/dev/null || echo ''",
+            script: """curl -sf -H 'Metadata-Flavor: Google' \
+                'http://metadata.google.internal/computeMetadata/v1/instance/zone' 2>/dev/null | \
+                awk -F/ '{print \$NF}'""",
             returnStdout: true
         ).trim()
-        if (zone) region = zone.replaceAll(/-[a-z]\$/, '')
+        if (zone && zone.contains('-')) {
+            region = zone.substring(0, zone.lastIndexOf('-'))
+        }
     }
     if (!region) region = 'us-central1'
 
