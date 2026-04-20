@@ -43,7 +43,6 @@ ci/
 │   ├── networking.Jenkinsfile
 │   ├── registry.Jenkinsfile
 │   ├── install-tools.Jenkinsfile
-│   ├── ansible.Jenkinsfile
 │   └── cluster-bootstrap.Jenkinsfile
 │
 ├── drone/                            ← Drone CI (same 12 pipelines, *.drone.yml)
@@ -111,7 +110,6 @@ ci/
 
 | Pipeline | Trigger | Est. Duration | Purpose |
 |---|---|---|---|
-| **ci** | push, pull_request | ~15 min | Tests + secret scan + SAST on every commit |
 | **deploy** | manual | ~25 min | Build → scan → sign → push → Helm deploy |
 | **post-deploy** | manual | ~45 min | Smoke, load tests, ZAP DAST, SLO validation |
 | **k8s-infra** | manual | ~90 min | Provision / destroy EKS / GKE / AKS via Terraform |
@@ -120,7 +118,7 @@ ci/
 | **observability** | manual | ~30 min | Install Prometheus, Grafana, Loki, Jaeger, OTel |
 | **messaging** | manual | ~20 min | Install Kafka, RabbitMQ, NATS + create 20 topics |
 | **networking** | manual | ~25 min | Install Istio, Traefik, Cilium, Consul |
-| **registry** | manual | ~20 min | Install Harbor, MinIO, Nexus + provision buckets |
+| **registry** | manual | ~20 min | Install Harbor, Nexus + provision cloud registry |
 | **install-tools** | manual | ~30 min | Bootstrap agent with runtimes, CLIs, scanners |
 | **cluster-bootstrap** | manual | ~4 hrs | 6-phase full cluster bring-up (phases 1–6) |
 
