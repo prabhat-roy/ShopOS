@@ -29,8 +29,16 @@ def call(String envFile = 'infra.env') {
         def clusterName = tfOutput('cluster_name')
         def region      = tfOutput('region')
         def project     = tfOutput('project_id')
+        // gke-gcloud-auth-plugin is required by kubectl >= 1.26 to auth with GKE
         sh """
-            KUBECONFIG=${kubeconfigPath} gcloud container clusters get-credentials \
+            if ! command -v gke-gcloud-auth-plugin >/dev/null 2>&1; then
+                gcloud components install gke-gcloud-auth-plugin --quiet 2>/dev/null || \
+                sudo apt-get install -y google-cloud-cli-gke-gcloud-auth-plugin 2>/dev/null || \
+                sudo yum install -y google-cloud-cli-gke-gcloud-auth-plugin 2>/dev/null || true
+            fi
+            KUBECONFIG=${kubeconfigPath} \
+            USE_GKE_GCLOUD_AUTH_PLUGIN=True \
+            gcloud container clusters get-credentials \
                 ${clusterName} \
                 --region ${region} \
                 --project ${project}
@@ -49,7 +57,7 @@ def call(String envFile = 'infra.env') {
         error "Unsupported cloud provider for kubeconfig update: ${cloud}"
     }
 
-    sh "kubectl --kubeconfig=${kubeconfigPath} cluster-info"
+    sh "USE_GKE_GCLOUD_AUTH_PLUGIN=True kubectl --kubeconfig=${kubeconfigPath} cluster-info"
 
     def kubeconfigContent = sh(
         script: "base64 -w 0 ${kubeconfigPath}",

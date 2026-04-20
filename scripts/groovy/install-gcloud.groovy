@@ -17,6 +17,13 @@ def call() {
         sudo ln -sf /usr/local/google-cloud-sdk/bin/gsutil /usr/local/bin/gsutil 2>/dev/null || true
 
         gcloud --version | head -1 || echo "  Warning: gcloud install may have failed"
+
+        # Install gke-gcloud-auth-plugin (required for kubectl to auth with GKE since k8s 1.26)
+        gcloud components install gke-gcloud-auth-plugin --quiet 2>/dev/null || \
+            sudo apt-get install -y google-cloud-cli-gke-gcloud-auth-plugin 2>/dev/null || \
+            sudo yum install -y google-cloud-cli-gke-gcloud-auth-plugin 2>/dev/null || \
+            echo "  Warning: gke-gcloud-auth-plugin install failed — kubectl will not work with GKE"
+
         echo "gcloud CLI installation complete."
     '''
 }
