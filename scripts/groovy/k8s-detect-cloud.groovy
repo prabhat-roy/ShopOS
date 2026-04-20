@@ -17,7 +17,7 @@ def call() {
         error "Unsupported or unknown cloud provider: ${cloud}"
     }
 
-    def lines = readFile('infra.env').readLines()
+    def lines = fileExists('infra.env') ? readFile('infra.env').readLines() : []
     def hasTfDir = lines.any { it.startsWith('TF_DIR=') }
 
     if (hasTfDir) {

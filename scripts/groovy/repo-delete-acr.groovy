@@ -1,7 +1,10 @@
 def call() {
-    def envVars = readFile('infra.env').trim().split('\n').collectEntries { line ->
-        def parts = line.split('=', 2)
-        parts.length == 2 ? [(parts[0]): parts[1]] : [:]
+    def envVars = [:]
+    if (fileExists('infra.env')) {
+        envVars = readFile('infra.env').trim().split('\n').collectEntries { line ->
+            def parts = line.split('=', 2)
+            parts.length == 2 ? [(parts[0]): parts[1]] : [:]
+        }
     }
 
     def acrName       = 'shopos'

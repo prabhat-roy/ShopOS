@@ -1,6 +1,7 @@
 #!/usr/bin/env groovy
 
 def call(String envFile = 'infra.env') {
+    if (!fileExists(envFile)) error "infra.env not found — run Detect Cloud Provider stage first"
     def props = readFile(envFile).trim().split('\n').collectEntries { line ->
         def parts = line.split('=', 2)
         parts.length == 2 ? [(parts[0]): parts[1]] : [:]
