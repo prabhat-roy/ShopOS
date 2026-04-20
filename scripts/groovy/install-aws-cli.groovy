@@ -8,9 +8,9 @@ def call() {
         fi
 
         curl -sf "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o /tmp/awscliv2.zip
-        unzip -q /tmp/awscliv2.zip -d /tmp/awscli-install
-        /tmp/awscli-install/aws/install --update
-        rm -rf /tmp/awscliv2.zip /tmp/awscli-install
+        sudo unzip -q /tmp/awscliv2.zip -d /tmp/awscli-install
+        sudo /tmp/awscli-install/aws/install --update
+        sudo rm -rf /tmp/awscliv2.zip /tmp/awscli-install
 
         aws --version
         echo "AWS CLI installed."

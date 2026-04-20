@@ -8,11 +8,13 @@ def call() {
         fi
 
         # Install via Microsoft's install script
-        curl -sfL https://aka.ms/InstallAzureCLIDeb | bash 2>/dev/null || true
+        curl -sfL https://aka.ms/InstallAzureCLIDeb -o /tmp/install-az.sh
+        sudo bash /tmp/install-az.sh 2>/dev/null || true
+        rm -f /tmp/install-az.sh
 
         # Fallback: pip install
         if ! command -v az >/dev/null 2>&1; then
-            pip3 install azure-cli 2>/dev/null || true
+            sudo pip3 install azure-cli 2>/dev/null || true
         fi
 
         az --version | head -1 || echo "  Warning: az install may have failed"
