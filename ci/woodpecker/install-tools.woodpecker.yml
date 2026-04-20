@@ -1,0 +1,57 @@
+# Install CI Tools — Woodpecker CI
+when:
+  event: [custom, manual]
+
+steps:
+  kubectl-helm:
+    image: alpine:latest
+    commands:
+      - apk add --no-cache curl bash
+      - curl -fsSL "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl" -o /usr/local/bin/kubectl && chmod +x /usr/local/bin/kubectl
+      - curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
+      - kubectl version --client && helm version --short
+
+  terraform:
+    image: hashicorp/terraform:1.9.0
+    commands: [terraform version]
+
+  golang:
+    image: golang:1.23
+    commands: [go version]
+
+  java:
+    image: eclipse-temurin:21
+    commands: [java -version]
+
+  nodejs:
+    image: node:22
+    commands: [node --version, npm --version]
+
+  python:
+    image: python:3.13
+    commands: [python --version]
+
+  dotnet:
+    image: mcr.microsoft.com/dotnet/sdk:8.0
+    commands: [dotnet --version]
+
+  rust:
+    image: rust:latest
+    commands: [rustc --version]
+
+  security-tools:
+    image: ubuntu:24.04
+    commands:
+      - apt-get update -qq && apt-get install -y curl --quiet
+      - curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh -s -- -b /usr/local/bin
+      - curl -sSfL https://raw.githubusercontent.com/anchore/grype/main/install.sh | sh -s -- -b /usr/local/bin
+      - curl -sSfL https://raw.githubusercontent.com/anchore/syft/main/install.sh | sh -s -- -b /usr/local/bin
+      - curl -fsSL "https://github.com/sigstore/cosign/releases/download/v2.4.0/cosign-linux-amd64" -o /usr/local/bin/cosign && chmod +x /usr/local/bin/cosign
+      - curl -fsSL "https://github.com/gitleaks/gitleaks/releases/download/v8.21.0/gitleaks_8.21.0_linux_x64.tar.gz" | tar -xz -C /usr/local/bin gitleaks
+      - pip3 install semgrep checkov ansible --quiet
+      - trivy --version | head -1
+      - grype version | head -1
+      - syft --version
+      - cosign version
+      - gitleaks version
+      - semgrep --version

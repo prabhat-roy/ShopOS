@@ -1,0 +1,6 @@
+apiVersion: v2
+name: kyverno
+description: Kyverno - Kubernetes-native policy engine
+type: application
+version: 1.0.0
+appVersion: "v1.13.0"

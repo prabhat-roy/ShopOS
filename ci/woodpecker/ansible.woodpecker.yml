@@ -1,0 +1,40 @@
+# Ansible Playbooks — Woodpecker CI
+# Secrets: ansible_ssh_private_key, ansible_ssh_user, aws_access_key_id, aws_secret_access_key
+# Env vars: PLAYBOOK, INVENTORY, LIMIT, EXTRA_VARS, CHECK_MODE
+
+when:
+  event: [custom, manual]
+
+steps:
+  ansible-lint:
+    image: python:3.13
+    commands:
+      - pip install ansible ansible-lint --quiet
+      - ansible-lint "infra/ansible/playbooks/$PLAYBOOK.yml" -c "infra/ansible/.ansible-lint" || true
+
+  run-playbook:
+    image: python:3.13
+    environment:
+      ANSIBLE_SSH_PRIVATE_KEY: { from_secret: ansible_ssh_private_key }
+      ANSIBLE_SSH_USER: { from_secret: ansible_ssh_user }
+      AWS_ACCESS_KEY_ID: { from_secret: aws_access_key_id }
+      AWS_SECRET_ACCESS_KEY: { from_secret: aws_secret_access_key }
+      ANSIBLE_FORCE_COLOR: "1"
+      ANSIBLE_HOST_KEY_CHECKING: "False"
+      ANSIBLE_STDOUT_CALLBACK: yaml
+    commands:
+      - pip install ansible boto3 botocore google-auth msrest msrestazure --quiet
+      - ansible-galaxy collection install amazon.aws google.cloud azure.azcollection community.kubernetes --quiet
+      - echo "$ANSIBLE_SSH_PRIVATE_KEY" > /tmp/ansible_key && chmod 600 /tmp/ansible_key
+      - |
+        LIMIT_ARG="" && [ -n "$LIMIT" ] && LIMIT_ARG="--limit $LIMIT"
+        EXTRA_VARS_ARG="" && [ -n "$EXTRA_VARS" ] && EXTRA_VARS_ARG="--extra-vars '$EXTRA_VARS'"
+        CHECK_ARG="" && [ "$CHECK_MODE" = "true" ] && CHECK_ARG="--check --diff"
+        eval ansible-playbook \
+          -i "infra/ansible/inventories/$INVENTORY/hosts.yml" \
+          "infra/ansible/playbooks/$PLAYBOOK.yml" \
+          --private-key /tmp/ansible_key \
+          --user "$ANSIBLE_SSH_USER" \
+          $LIMIT_ARG $EXTRA_VARS_ARG $CHECK_ARG -v
+      - rm -f /tmp/ansible_key
+    depends_on: [ansible-lint]

@@ -1,0 +1,27 @@
+apiVersion: helm.cattle.io/v1
+kind: HelmChart
+metadata:
+  name: keda
+  namespace: keda
+spec:
+  repo: https://kedacore.github.io/charts
+  chart: keda
+  version: 2.15.1
+  targetNamespace: keda
+  valuesContent: |-
+    watchNamespace: ""
+    resources:
+      operator:
+        requests:
+          cpu: 100m
+          memory: 100Mi
+        limits:
+          cpu: 500m
+          memory: 500Mi
+      metricServer:
+        requests:
+          cpu: 100m
+          memory: 100Mi
+        limits:
+          cpu: 500m
+          memory: 500Mi

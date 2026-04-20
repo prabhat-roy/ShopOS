@@ -1,0 +1,55 @@
+{
+  "realm": "shopos",
+  "displayName": "ShopOS Enterprise",
+  "enabled": true,
+  "sslRequired": "external",
+  "registrationAllowed": false,
+  "loginWithEmailAllowed": true,
+  "duplicateEmailsAllowed": false,
+  "resetPasswordAllowed": true,
+  "editUsernameAllowed": false,
+  "bruteForceProtected": true,
+  "permanentLockout": false,
+  "maxFailureWaitSeconds": 900,
+  "minimumQuickLoginWaitSeconds": 60,
+  "waitIncrementSeconds": 60,
+  "quickLoginCheckMilliSeconds": 1000,
+  "maxDeltaTimeSeconds": 43200,
+  "failureFactor": 30,
+  "accessTokenLifespan": 300,
+  "refreshTokenMaxReuse": 0,
+  "revokeRefreshToken": true,
+  "clients": [
+    {
+      "clientId": "shopos-api",
+      "name": "ShopOS API",
+      "enabled": true,
+      "clientAuthenticatorType": "client-secret",
+      "bearerOnly": false,
+      "standardFlowEnabled": true,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": true,
+      "protocol": "openid-connect",
+      "defaultScopes": ["openid", "profile", "email"]
+    },
+    {
+      "clientId": "shopos-admin-portal",
+      "name": "ShopOS Admin Portal",
+      "enabled": true,
+      "publicClient": true,
+      "standardFlowEnabled": true,
+      "redirectUris": ["https://admin.shopos.io/*"],
+      "webOrigins": ["https://admin.shopos.io"]
+    }
+  ],
+  "roles": {
+    "realm": [
+      { "name": "admin", "description": "Platform administrator" },
+      { "name": "commerce-manager", "description": "Commerce team manager" },
+      { "name": "catalog-editor", "description": "Can edit catalog items" },
+      { "name": "support-agent", "description": "Customer support agent" },
+      { "name": "viewer", "description": "Read-only access" }
+    ]
+  }
+}

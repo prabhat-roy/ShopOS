@@ -1,0 +1,56 @@
+{
+  "_comment": "Baseline SLO thresholds shared across k6 scripts. Override per-script as needed.",
+
+  "global": {
+    "http_req_failed":   ["rate<0.01"],
+    "http_req_duration": ["p(95)<2000", "p(99)<5000"],
+    "error_rate":        ["rate<0.01"]
+  },
+
+  "smoke": {
+    "http_req_failed":   ["rate<0.01"],
+    "http_req_duration": ["p(95)<2000"],
+    "error_rate":        ["rate<0.01"]
+  },
+
+  "load": {
+    "http_req_failed":   ["rate<0.05"],
+    "http_req_duration": ["p(95)<3000", "p(99)<5000"],
+    "checkout_duration": ["p(95)<5000"],
+    "payment_success_rate": ["rate>0.95"],
+    "error_rate":        ["rate<0.05"]
+  },
+
+  "browse": {
+    "http_req_failed":         ["rate<0.01"],
+    "http_req_duration":       ["p(95)<2000", "p(99)<3000"],
+    "catalog_page_duration":   ["p(95)<1500"],
+    "product_detail_duration": ["p(95)<1000"],
+    "error_rate":              ["rate<0.01"]
+  },
+
+  "search": {
+    "http_req_failed":       ["rate<0.01"],
+    "http_req_duration":     ["p(95)<2500", "p(99)<4000"],
+    "search_latency":        ["p(95)<2000", "p(99)<3000"],
+    "autocomplete_latency":  ["p(95)<300"],
+    "zero_results_rate":     ["rate<0.10"],
+    "error_rate":            ["rate<0.01"]
+  },
+
+  "spike": {
+    "http_req_failed":        ["rate<0.15"],
+    "http_req_duration":      ["p(95)<10000"],
+    "spike_request_duration": ["p(99)<15000"],
+    "recovery_rate":          ["rate>0.90"],
+    "error_rate":             ["rate<0.15"]
+  },
+
+  "soak": {
+    "http_req_failed":    ["rate<0.01"],
+    "http_req_duration":  ["p(95)<3000", "p(99)<5000"],
+    "soak_error_rate":    ["rate<0.01"],
+    "soak_p95_window":    ["p(95)<3000"],
+    "error_rate":         ["rate<0.01"]
+  }
+}

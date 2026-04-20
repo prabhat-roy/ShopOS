@@ -1,0 +1,230 @@
+name: GitOps Tools
+
+trigger: none
+
+parameters:
+  - name: environment
+    displayName: Target environment
+    type: string
+    default: dev
+    values: [dev, staging, prod]
+  - name: action
+    displayName: Action
+    type: string
+    default: INSTALL
+    values: [INSTALL, UPGRADE, UNINSTALL, CONFIGURE]
+  - name: argocd
+    type: boolean
+    default: true
+  - name: argo_rollouts
+    type: boolean
+    default: true
+  - name: argo_workflows
+    type: boolean
+    default: true
+  - name: argo_events
+    type: boolean
+    default: true
+  - name: fluxcd
+    type: boolean
+    default: false
+  - name: sealed_secrets
+    type: boolean
+    default: true
+  - name: external_secrets
+    type: boolean
+    default: true
+  - name: keda
+    type: boolean
+    default: true
+  - name: velero
+    type: boolean
+    default: true
+
+variables:
+  - group: shopos-secrets
+
+pool:
+  vmImage: ubuntu-latest
+
+jobs:
+  - job: GitOps
+    displayName: GitOps ${{ parameters.action }} on ${{ parameters.environment }}
+    timeoutInMinutes: 60
+    steps:
+      - task: KubectlInstaller@0
+
+      - script: |
+          curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
+        displayName: Install Helm
+
+      - script: |
+          mkdir -p ~/.kube
+          echo "$(KUBECONFIG_CONTENT)" | base64 -d > ~/.kube/config
+        displayName: Configure kubeconfig
+
+      # ── ArgoCD ────────────────────────────────────────────────────────────
+      - ${{ if and(eq(parameters.argocd, true), ne(parameters.action, 'CONFIGURE')) }}:
+        - script: |
+            helm repo add argo https://argoproj.github.io/argo-helm --force-update
+            if [ "${{ parameters.action }}" = "UNINSTALL" ]; then
+              helm uninstall argocd -n argocd 2>/dev/null || true
+            else
+              helm upgrade --install argocd argo/argo-cd \
+                --namespace argocd --create-namespace \
+                --set server.replicas=2 \
+                --set redis-ha.enabled=true \
+                --set controller.replicas=1 \
+                --set repoServer.replicas=2 \
+                --set applicationSet.replicas=2 \
+                --set configs.secret.argocdServerAdminPassword="$(ARGOCD_ADMIN_PASSWORD_HASH)" \
+                --set server.ingress.enabled=true \
+                --set server.ingress.ingressClassName=traefik \
+                --wait --timeout 10m
+            fi
+          displayName: ArgoCD
+
+      # ── Argo Rollouts ─────────────────────────────────────────────────────
+      - ${{ if and(eq(parameters.argo_rollouts, true), ne(parameters.action, 'CONFIGURE')) }}:
+        - script: |
+            helm repo add argo https://argoproj.github.io/argo-helm --force-update
+            if [ "${{ parameters.action }}" = "UNINSTALL" ]; then
+              helm uninstall argo-rollouts -n argo-rollouts 2>/dev/null || true
+            else
+              helm upgrade --install argo-rollouts argo/argo-rollouts \
+                --namespace argo-rollouts --create-namespace \
+                --set dashboard.enabled=true \
+                --wait --timeout 5m
+              kubectl apply -f gitops/argo-rollouts/ 2>/dev/null || true
+            fi
+          displayName: Argo Rollouts
+
+      # ── Argo Workflows ────────────────────────────────────────────────────
+      - ${{ if and(eq(parameters.argo_workflows, true), ne(parameters.action, 'CONFIGURE')) }}:
+        - script: |
+            helm repo add argo https://argoproj.github.io/argo-helm --force-update
+            if [ "${{ parameters.action }}" = "UNINSTALL" ]; then
+              helm uninstall argo-workflows -n argo 2>/dev/null || true
+            else
+              helm upgrade --install argo-workflows argo/argo-workflows \
+                --namespace argo --create-namespace \
+                --set server.authModes[0]=server \
+                --set workflow.serviceAccount.create=true \
+                --wait --timeout 5m
+              kubectl apply -f gitops/argo-workflows/ 2>/dev/null || true
+            fi
+          displayName: Argo Workflows
+
+      # ── Argo Events ───────────────────────────────────────────────────────
+      - ${{ if and(eq(parameters.argo_events, true), ne(parameters.action, 'CONFIGURE')) }}:
+        - script: |
+            helm repo add argo https://argoproj.github.io/argo-helm --force-update
+            if [ "${{ parameters.action }}" = "UNINSTALL" ]; then
+              helm uninstall argo-events -n argo-events 2>/dev/null || true
+            else
+              helm upgrade --install argo-events argo/argo-events \
+                --namespace argo-events --create-namespace \
+                --wait --timeout 5m
+              kubectl apply -f gitops/argo-events/ 2>/dev/null || true
+            fi
+          displayName: Argo Events
+
+      # ── Flux CD ───────────────────────────────────────────────────────────
+      - ${{ if and(eq(parameters.fluxcd, true), ne(parameters.action, 'CONFIGURE')) }}:
+        - script: |
+            curl -s https://fluxcd.io/install.sh | bash
+            if [ "${{ parameters.action }}" = "UNINSTALL" ]; then
+              flux uninstall --silent 2>/dev/null || true
+            else
+              flux install --namespace=flux-system
+              kubectl apply -f gitops/flux/ 2>/dev/null || true
+            fi
+          displayName: Flux CD
+
+      # ── Sealed Secrets ────────────────────────────────────────────────────
+      - ${{ if and(eq(parameters.sealed_secrets, true), ne(parameters.action, 'CONFIGURE')) }}:
+        - script: |
+            helm repo add sealed-secrets https://bitnami-labs.github.io/sealed-secrets --force-update
+            if [ "${{ parameters.action }}" = "UNINSTALL" ]; then
+              helm uninstall sealed-secrets -n kube-system 2>/dev/null || true
+            else
+              helm upgrade --install sealed-secrets sealed-secrets/sealed-secrets \
+                --namespace kube-system \
+                --wait --timeout 3m
+            fi
+          displayName: Sealed Secrets
+
+      # ── External Secrets Operator ─────────────────────────────────────────
+      - ${{ if and(eq(parameters.external_secrets, true), ne(parameters.action, 'CONFIGURE')) }}:
+        - script: |
+            helm repo add external-secrets https://charts.external-secrets.io --force-update
+            if [ "${{ parameters.action }}" = "UNINSTALL" ]; then
+              helm uninstall external-secrets -n external-secrets 2>/dev/null || true
+            else
+              helm upgrade --install external-secrets external-secrets/external-secrets \
+                --namespace external-secrets --create-namespace \
+                --set installCRDs=true \
+                --wait --timeout 5m
+            fi
+          displayName: External Secrets Operator
+
+      # ── KEDA ──────────────────────────────────────────────────────────────
+      - ${{ if and(eq(parameters.keda, true), ne(parameters.action, 'CONFIGURE')) }}:
+        - script: |
+            helm repo add kedacore https://kedacore.github.io/charts --force-update
+            if [ "${{ parameters.action }}" = "UNINSTALL" ]; then
+              helm uninstall keda -n keda 2>/dev/null || true
+            else
+              helm upgrade --install keda kedacore/keda \
+                --namespace keda --create-namespace \
+                --set metricsServer.replicaCount=2 \
+                --wait --timeout 5m
+              kubectl apply -f kubernetes/keda/ 2>/dev/null || true
+            fi
+          displayName: KEDA
+
+      # ── Velero ────────────────────────────────────────────────────────────
+      - ${{ if and(eq(parameters.velero, true), ne(parameters.action, 'CONFIGURE')) }}:
+        - script: |
+            helm repo add vmware-tanzu https://vmware-tanzu.github.io/helm-charts --force-update
+            if [ "${{ parameters.action }}" = "UNINSTALL" ]; then
+              helm uninstall velero -n velero 2>/dev/null || true
+            else
+              helm upgrade --install velero vmware-tanzu/velero \
+                --namespace velero --create-namespace \
+                --set configuration.backupStorageLocation[0].name=default \
+                --set configuration.backupStorageLocation[0].provider=aws \
+                --set configuration.backupStorageLocation[0].bucket=velero-backups \
+                --set configuration.backupStorageLocation[0].config.region=minio \
+                --set configuration.backupStorageLocation[0].config.s3ForcePathStyle=true \
+                --set "configuration.backupStorageLocation[0].config.s3Url=$(MINIO_ENDPOINT)" \
+                --set credentials.useSecret=true \
+                --set credentials.secretContents.cloud="[default]\naws_access_key_id=$(MINIO_ACCESS_KEY)\naws_secret_access_key=$(MINIO_SECRET_KEY)" \
+                --wait --timeout 5m
+              kubectl apply -f kubernetes/velero/ 2>/dev/null || true
+            fi
+          displayName: Velero
+
+      # ── CONFIGURE: Bootstrap ArgoCD App-of-Apps ───────────────────────────
+      - ${{ if eq(parameters.action, 'CONFIGURE') }}:
+        - script: |
+            # Wait for ArgoCD to be ready
+            kubectl wait --for=condition=available deployment/argocd-server \
+              -n argocd --timeout=120s
+
+            # Bootstrap the App-of-Apps
+            kubectl apply -f gitops/argocd/app-of-apps.yaml
+
+            # Apply ApplicationSets
+            kubectl apply -f gitops/argocd/applicationsets/ 2>/dev/null || true
+
+            # Wait for initial sync
+            sleep 30
+
+            # Check app status
+            if command -v argocd &>/dev/null; then
+              argocd app list --server argocd.$(kubectl get svc argocd-server -n argocd -o jsonpath='{.status.loadBalancer.ingress[0].hostname}') || true
+            fi
+
+            echo "ArgoCD App-of-Apps bootstrapped for ${{ parameters.environment }}"
+          displayName: Bootstrap ArgoCD App-of-Apps

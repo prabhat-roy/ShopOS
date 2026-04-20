@@ -1,0 +1,117 @@
+# GitOps Tools Pipeline — CircleCI
+# Context: shopos-kubernetes, shopos-argocd, shopos-minio
+version: 2.1
+
+executors:
+  helm-executor:
+    docker:
+      - image: alpine/helm:latest
+    resource_class: medium
+  kubectl-executor:
+    docker:
+      - image: bitnami/kubectl:latest
+    resource_class: medium
+
+jobs:
+  install-argocd:
+    executor: helm-executor
+    steps:
+      - run:
+          name: Setup kubeconfig
+          command: mkdir -p ~/.kube && echo "$KUBECONFIG_CONTENT" | base64 -d > ~/.kube/config
+      - run:
+          name: Install ArgoCD HA
+          command: |
+            helm repo add argo https://argoproj.github.io/argo-helm --force-update
+            helm upgrade --install argocd argo/argo-cd \
+              --namespace argocd --create-namespace \
+              --set server.replicas=2 --set redis-ha.enabled=true \
+              --set controller.replicas=1 --set repoServer.replicas=2 \
+              --set configs.secret.argocdServerAdminPassword="$ARGOCD_ADMIN_PASSWORD_HASH" \
+              --wait --timeout 10m
+
+  install-argo-rollouts:
+    executor: helm-executor
+    steps:
+      - run:
+          name: Setup kubeconfig
+          command: mkdir -p ~/.kube && echo "$KUBECONFIG_CONTENT" | base64 -d > ~/.kube/config
+      - run:
+          name: Install Argo Rollouts
+          command: |
+            helm repo add argo https://argoproj.github.io/argo-helm --force-update
+            helm upgrade --install argo-rollouts argo/argo-rollouts \
+              --namespace argo-rollouts --create-namespace \
+              --set dashboard.enabled=true --wait --timeout 5m
+
+  install-keda:
+    executor: helm-executor
+    steps:
+      - checkout
+      - run:
+          name: Setup kubeconfig
+          command: mkdir -p ~/.kube && echo "$KUBECONFIG_CONTENT" | base64 -d > ~/.kube/config
+      - run:
+          name: Install KEDA
+          command: |
+            helm repo add kedacore https://kedacore.github.io/charts --force-update
+            helm upgrade --install keda kedacore/keda \
+              --namespace keda --create-namespace \
+              --set metricsServer.replicaCount=2 --wait --timeout 5m
+            kubectl apply -f kubernetes/keda/ 2>/dev/null || true
+
+  install-velero:
+    executor: helm-executor
+    steps:
+      - run:
+          name: Setup kubeconfig
+          command: mkdir -p ~/.kube && echo "$KUBECONFIG_CONTENT" | base64 -d > ~/.kube/config
+      - run:
+          name: Install Velero
+          command: |
+            helm repo add vmware-tanzu https://vmware-tanzu.github.io/helm-charts --force-update
+            helm upgrade --install velero vmware-tanzu/velero \
+              --namespace velero --create-namespace \
+              --set configuration.backupStorageLocation[0].provider=aws \
+              --set configuration.backupStorageLocation[0].bucket=velero-backups \
+              --set "configuration.backupStorageLocation[0].config.s3Url=http://minio.registry.svc:9000" \
+              --set configuration.backupStorageLocation[0].config.s3ForcePathStyle=true \
+              --set "credentials.secretContents.cloud=[default]\naws_access_key_id=$MINIO_ACCESS_KEY\naws_secret_access_key=$MINIO_SECRET_KEY" \
+              --wait --timeout 5m
+
+  argocd-bootstrap:
+    executor: kubectl-executor
+    steps:
+      - checkout
+      - run:
+          name: Setup kubeconfig
+          command: mkdir -p ~/.kube && echo "$KUBECONFIG_CONTENT" | base64 -d > ~/.kube/config
+      - run:
+          name: Wait for ArgoCD
+          command: kubectl wait --for=condition=available deployment/argocd-server -n argocd --timeout=120s
+      - run:
+          name: Apply App-of-Apps
+          command: |
+            kubectl apply -f gitops/argocd/app-of-apps.yaml
+            kubectl apply -f gitops/argocd/applicationsets/ 2>/dev/null || true
+
+workflows:
+  gitops-workflow:
+    jobs:
+      - install-argocd:
+          context: [shopos-kubernetes, shopos-argocd]
+      - install-argo-rollouts:
+          requires: [install-argocd]
+          context: shopos-kubernetes
+      - install-keda:
+          requires: [install-argocd]
+          context: shopos-kubernetes
+      - install-velero:
+          requires: [install-argocd]
+          context: [shopos-kubernetes, shopos-minio]
+      - argocd-bootstrap:
+          requires: [install-argocd, install-keda, install-velero]
+          context: shopos-kubernetes
+          filters:
+            branches:
+              only: [main]

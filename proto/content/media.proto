@@ -1,0 +1,85 @@
+syntax = "proto3";
+package content.media.v1;
+option go_package = "github.com/shopos/proto/content/media/v1;mediav1";
+
+import "google/protobuf/timestamp.proto";
+
+service MediaAssetService {
+  rpc UploadAsset(UploadAssetRequest) returns (UploadAssetResponse);
+  rpc GetAsset(GetAssetRequest) returns (GetAssetResponse);
+  rpc DeleteAsset(DeleteAssetRequest) returns (DeleteAssetResponse);
+  rpc ListAssets(ListAssetsRequest) returns (ListAssetsResponse);
+  rpc GetUploadURL(GetUploadURLRequest) returns (GetUploadURLResponse);
+  rpc GetDownloadURL(GetDownloadURLRequest) returns (GetDownloadURLResponse);
+}
+
+enum AssetType {
+  ASSET_TYPE_UNSPECIFIED = 0;
+  ASSET_TYPE_IMAGE = 1;
+  ASSET_TYPE_VIDEO = 2;
+  ASSET_TYPE_DOCUMENT = 3;
+  ASSET_TYPE_AUDIO = 4;
+  ASSET_TYPE_OTHER = 5;
+}
+
+message MediaAsset {
+  string id = 1;
+  string filename = 2;
+  string content_type = 3;
+  AssetType asset_type = 4;
+  int64 size_bytes = 5;
+  string bucket = 6;
+  string object_key = 7;
+  string url = 8;
+  map<string, string> metadata = 9;
+  string uploaded_by = 10;
+  google.protobuf.Timestamp created_at = 11;
+}
+
+message UploadAssetRequest {
+  string filename = 1;
+  string content_type = 2;
+  bytes data = 3;
+  map<string, string> metadata = 4;
+  string uploaded_by = 5;
+}
+
+message UploadAssetResponse { MediaAsset asset = 1; }
+message GetAssetRequest { string id = 1; }
+message GetAssetResponse { MediaAsset asset = 1; }
+message DeleteAssetRequest { string id = 1; }
+message DeleteAssetResponse { bool success = 1; }
+
+message ListAssetsRequest {
+  AssetType asset_type = 1;
+  string uploaded_by = 2;
+  int32 page = 3;
+  int32 page_size = 4;
+}
+
+message ListAssetsResponse {
+  repeated MediaAsset assets = 1;
+  int32 total = 2;
+}
+
+message GetUploadURLRequest {
+  string filename = 1;
+  string content_type = 2;
+  int32 expires_in_seconds = 3;
+}
+
+message GetUploadURLResponse {
+  string upload_url = 1;
+  string object_key = 2;
+  google.protobuf.Timestamp expires_at = 3;
+}
+
+message GetDownloadURLRequest {
+  string id = 1;
+  int32 expires_in_seconds = 2;
+}
+
+message GetDownloadURLResponse {
+  string download_url = 1;
+  google.protobuf.Timestamp expires_at = 2;
+}

@@ -1,0 +1,156 @@
+# Messaging Infrastructure — GCP Cloud Build
+# Mirrors .github/workflows/messaging.yml
+# Substitutions: _ENVIRONMENT, _ACTION, _ZOOKEEPER, _KAFKA, _SCHEMA_REGISTRY,
+#   _KAFKA_CONNECT, _RABBITMQ, _NATS, _KAFKA_UI, _DEBEZIUM, _FLINK
+
+substitutions:
+  _ENVIRONMENT: dev
+  _ACTION: INSTALL
+  _ZOOKEEPER: "true"
+  _KAFKA: "true"
+  _SCHEMA_REGISTRY: "true"
+  _RABBITMQ: "true"
+  _NATS: "true"
+  _KAFKA_UI: "true"
+  _DEBEZIUM: "false"
+  _FLINK: "false"
+
+options:
+  logging: CLOUD_LOGGING_ONLY
+  machineType: E2_STANDARD_4
+
+availableSecrets:
+  secretManager:
+    - versionName: projects/$PROJECT_ID/secrets/kubeconfig-content/versions/latest
+      env: KUBECONFIG_CONTENT
+    - versionName: projects/$PROJECT_ID/secrets/rabbitmq-password/versions/latest
+      env: RABBITMQ_PASSWORD
+
+steps:
+  - name: alpine/helm
+    id: zookeeper
+    secretEnv: [KUBECONFIG_CONTENT]
+    entrypoint: bash
+    args:
+      - -c
+      - |
+        [ "$_ZOOKEEPER" = "true" ] && [ "$_ACTION" != "CONFIGURE" ] || exit 0
+        mkdir -p ~/.kube && echo "$$KUBECONFIG_CONTENT" | base64 -d > ~/.kube/config
+        helm repo add bitnami https://charts.bitnami.com/bitnami --force-update
+        if [ "$_ACTION" = "UNINSTALL" ]; then
+          helm uninstall zookeeper -n messaging 2>/dev/null || true
+        else
+          helm upgrade --install zookeeper bitnami/zookeeper \
+            --namespace messaging --create-namespace \
+            --set replicaCount=3 --set auth.enabled=false \
+            --wait --timeout 8m
+        fi
+
+  - name: alpine/helm
+    id: kafka
+    secretEnv: [KUBECONFIG_CONTENT]
+    entrypoint: bash
+    args:
+      - -c
+      - |
+        [ "$_KAFKA" = "true" ] && [ "$_ACTION" != "CONFIGURE" ] || exit 0
+        mkdir -p ~/.kube && echo "$$KUBECONFIG_CONTENT" | base64 -d > ~/.kube/config
+        helm repo add bitnami https://charts.bitnami.com/bitnami --force-update
+        if [ "$_ACTION" = "UNINSTALL" ]; then
+          helm uninstall kafka -n messaging 2>/dev/null || true
+        else
+          helm upgrade --install kafka bitnami/kafka \
+            --namespace messaging --create-namespace \
+            --set replicaCount=3 \
+            --set zookeeper.enabled=false \
+            --set externalZookeeper.servers=zookeeper.messaging.svc:2181 \
+            --set autoCreateTopicsEnable=false \
+            --set defaultReplicationFactor=3 \
+            --wait --timeout 10m
+        fi
+    waitFor: [zookeeper]
+
+  - name: alpine/helm
+    id: rabbitmq
+    secretEnv: [KUBECONFIG_CONTENT, RABBITMQ_PASSWORD]
+    entrypoint: bash
+    args:
+      - -c
+      - |
+        [ "$_RABBITMQ" = "true" ] && [ "$_ACTION" != "CONFIGURE" ] || exit 0
+        mkdir -p ~/.kube && echo "$$KUBECONFIG_CONTENT" | base64 -d > ~/.kube/config
+        helm repo add bitnami https://charts.bitnami.com/bitnami --force-update
+        if [ "$_ACTION" = "UNINSTALL" ]; then
+          helm uninstall rabbitmq -n messaging 2>/dev/null || true
+        else
+          helm upgrade --install rabbitmq bitnami/rabbitmq \
+            --namespace messaging --create-namespace \
+            --set replicaCount=3 \
+            --set auth.password="$$RABBITMQ_PASSWORD" \
+            --set clustering.enabled=true \
+            --set metrics.enabled=true \
+            --wait --timeout 8m
+        fi
+    waitFor: [kafka]
+
+  - name: alpine/helm
+    id: nats
+    secretEnv: [KUBECONFIG_CONTENT]
+    entrypoint: bash
+    args:
+      - -c
+      - |
+        [ "$_NATS" = "true" ] && [ "$_ACTION" != "CONFIGURE" ] || exit 0
+        mkdir -p ~/.kube && echo "$$KUBECONFIG_CONTENT" | base64 -d > ~/.kube/config
+        helm repo add nats https://nats-io.github.io/k8s/helm/charts --force-update
+        if [ "$_ACTION" = "UNINSTALL" ]; then
+          helm uninstall nats -n messaging 2>/dev/null || true
+        else
+          helm upgrade --install nats nats/nats \
+            --namespace messaging --create-namespace \
+            --set nats.jetstream.enabled=true \
+            --set cluster.enabled=true \
+            --set cluster.replicas=3 \
+            --wait --timeout 5m
+        fi
+    waitFor: [rabbitmq]
+
+  # Create Kafka Topics
+  - name: bitnami/kubectl
+    id: kafka-topics
+    secretEnv: [KUBECONFIG_CONTENT]
+    entrypoint: bash
+    args:
+      - -c
+      - |
+        [ "$_ACTION" = "CONFIGURE" ] || exit 0
+        mkdir -p ~/.kube && echo "$$KUBECONFIG_CONTENT" | base64 -d > ~/.kube/config
+        KAFKA_POD=$(kubectl get pod -n messaging -l app.kubernetes.io/name=kafka -o jsonpath='{.items[0].metadata.name}')
+        create_topic() {
+          kubectl exec -n messaging "$KAFKA_POD" -- \
+            kafka-topics.sh --create --if-not-exists \
+            --bootstrap-server kafka.messaging.svc:9092 \
+            --topic "$1" --partitions "$2" --replication-factor "$3" || true
+        }
+        create_topic identity.user.registered 6 3
+        create_topic identity.user.deleted 3 3
+        create_topic commerce.order.placed 12 3
+        create_topic commerce.order.cancelled 6 3
+        create_topic commerce.order.fulfilled 6 3
+        create_topic commerce.payment.processed 12 3
+        create_topic commerce.payment.failed 6 3
+        create_topic commerce.cart.abandoned 6 3
+        create_topic supplychain.shipment.created 6 3
+        create_topic supplychain.shipment.updated 6 3
+        create_topic supplychain.inventory.low 3 3
+        create_topic supplychain.inventory.restocked 3 3
+        create_topic notification.email.requested 6 3
+        create_topic notification.sms.requested 6 3
+        create_topic notification.push.requested 6 3
+        create_topic analytics.page.viewed 12 3
+        create_topic analytics.product.clicked 12 3
+        create_topic analytics.search.performed 6 3
+        create_topic security.fraud.detected 3 3
+        create_topic security.login.failed 6 3
+        echo "Kafka topics created"
+    waitFor: [nats]

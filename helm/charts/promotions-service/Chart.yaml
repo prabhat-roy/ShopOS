@@ -1,0 +1,19 @@
+apiVersion: v2
+name: promotions-service
+description: ShopOS Promotions Service — discount and coupon management
+type: application
+version: 0.1.0
+appVersion: "1.0.0"
+keywords:
+  - shopos
+  - promotions-service
+  - commerce
+home: https://github.com/your-org/shopos
+sources:
+  - https://github.com/your-org/shopos/tree/main/src/commerce/promotions-service
+maintainers:
+  - name: ShopOS Platform Team
+    email: platform@shopos.io
+annotations:
+  app.kubernetes.io/domain: commerce
+  app.kubernetes.io/language: Java

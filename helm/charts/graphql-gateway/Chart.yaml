@@ -1,0 +1,19 @@
+apiVersion: v2
+name: graphql-gateway
+description: ShopOS GraphQL Gateway — federated GraphQL API
+type: application
+version: 0.1.0
+appVersion: "1.0.0"
+keywords:
+  - shopos
+  - graphql-gateway
+  - platform
+home: https://github.com/your-org/shopos
+sources:
+  - https://github.com/your-org/shopos/tree/main/src/platform/graphql-gateway
+maintainers:
+  - name: ShopOS Platform Team
+    email: platform@shopos.io
+annotations:
+  app.kubernetes.io/domain: platform
+  app.kubernetes.io/language: Go

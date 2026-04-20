@@ -1,0 +1,34 @@
+replicaCount: 1
+
+image:
+  repository: grafana/loki
+  tag: "3.2.0"
+  pullPolicy: IfNotPresent
+
+service:
+  type: ClusterIP
+  port: 3100
+  targetPort: 3100
+
+persistence:
+  enabled: true
+  storageClass: ""
+  size: 10Gi
+  accessMode: ReadWriteOnce
+  mountPath: /var/lib/data
+
+resources:
+  requests:
+    cpu: 200m
+    memory: 512Mi
+  limits:
+    cpu: "2"
+    memory: 2Gi
+
+env: {}
+
+ingress:
+  enabled: false
+  className: ""
+  host: ""
+  tls: []

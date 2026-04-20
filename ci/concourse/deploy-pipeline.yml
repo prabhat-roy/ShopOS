@@ -1,0 +1,184 @@
+# Deploy Pipeline — Concourse CI
+# Credentials: harbor-credentials, sonarqube-credentials, kubeconfig, slack-webhook
+---
+resource_types:
+  - name: slack-notification
+    type: docker-image
+    source:
+      repository: cfcommunity/slack-notification-resource
+
+resources:
+  - name: source-code
+    type: git
+    source:
+      uri: ((git.uri))
+      branch: ((git.branch))
+      private_key: ((git.private_key))
+
+  - name: harbor-image
+    type: registry-image
+    source:
+      repository: ((harbor.registry))/shopos/((service_name))
+      username: ((harbor.username))
+      password: ((harbor.password))
+
+  - name: slack-alert
+    type: slack-notification
+    source:
+      url: ((slack.webhook_url))
+
+jobs:
+  - name: secret-scan
+    plan:
+      - get: source-code
+        trigger: true
+      - task: gitleaks
+        config:
+          platform: linux
+          image_resource:
+            type: registry-image
+            source: {repository: zricethezav/gitleaks}
+          inputs:
+            - name: source-code
+          run:
+            path: sh
+            args:
+              - -c
+              - |
+                gitleaks detect --source source-code --exit-code 1 || true
+
+  - name: sast
+    plan:
+      - get: source-code
+        passed: [secret-scan]
+        trigger: true
+      - task: semgrep
+        config:
+          platform: linux
+          image_resource:
+            type: registry-image
+            source: {repository: returntocorp/semgrep}
+          inputs:
+            - name: source-code
+          run:
+            path: sh
+            args:
+              - -c
+              - |
+                semgrep --config=auto --json --output=/tmp/semgrep.json \
+                  source-code/src/((service_name)) || true
+      - task: sonarqube
+        config:
+          platform: linux
+          image_resource:
+            type: registry-image
+            source: {repository: sonarsource/sonar-scanner-cli}
+          inputs:
+            - name: source-code
+          params:
+            SONAR_TOKEN: ((sonarqube.token))
+            SONAR_HOST_URL: ((sonarqube.host_url))
+          run:
+            path: sh
+            args:
+              - -c
+              - |
+                cd source-code/src/((service_name))
+                sonar-scanner \
+                  -Dsonar.projectKey=((service_name)) \
+                  -Dsonar.host.url=$SONAR_HOST_URL \
+                  -Dsonar.login=$SONAR_TOKEN \
+                  -Dsonar.qualitygate.wait=true || true
+
+  - name: docker-build-scan-push
+    plan:
+      - get: source-code
+        passed: [sast]
+        trigger: true
+      - task: build-image
+        privileged: true
+        config:
+          platform: linux
+          image_resource:
+            type: registry-image
+            source: {repository: concourse/oci-build-task}
+          inputs:
+            - name: source-code
+          outputs:
+            - name: image
+          params:
+            CONTEXT: source-code/src/((service_name))
+            DOCKERFILE: source-code/src/((service_name))/Dockerfile
+          run:
+            path: build
+      - task: trivy-scan
+        config:
+          platform: linux
+          image_resource:
+            type: registry-image
+            source: {repository: aquasec/trivy}
+          inputs:
+            - name: image
+          run:
+            path: sh
+            args:
+              - -c
+              - |
+                trivy image --exit-code 1 --severity CRITICAL --input image/image.tar || true
+                trivy image --format cyclonedx --output /tmp/sbom.json --input image/image.tar || true
+      - put: harbor-image
+        params:
+          image: image/image.tar
+          additional_tags: source-code/.git/short_ref
+      - task: cosign-sign
+        config:
+          platform: linux
+          image_resource:
+            type: registry-image
+            source: {repository: gcr.io/projectsigstore/cosign}
+          params:
+            COSIGN_EXPERIMENTAL: "1"
+          run:
+            path: sh
+            args:
+              - -c
+              - |
+                cosign sign --yes ((harbor.registry))/shopos/((service_name)):$(cat source-code/.git/short_ref)
+
+  - name: deploy
+    plan:
+      - get: source-code
+        passed: [docker-build-scan-push]
+        trigger: true
+      - task: helm-deploy
+        config:
+          platform: linux
+          image_resource:
+            type: registry-image
+            source: {repository: alpine/helm}
+          inputs:
+            - name: source-code
+          params:
+            KUBECONFIG_CONTENT: ((kubeconfig.content))
+          run:
+            path: sh
+            args:
+              - -c
+              - |
+                mkdir -p ~/.kube && echo "$KUBECONFIG_CONTENT" | base64 -d > ~/.kube/config
+                IMAGE_TAG=$(cat source-code/.git/short_ref)
+                helm upgrade --install ((service_name)) \
+                  source-code/helm/charts/((service_name)) \
+                  --namespace ((kubernetes.namespace)) --create-namespace \
+                  --set image.repository=((harbor.registry))/shopos/((service_name)) \
+                  --set image.tag=$IMAGE_TAG \
+                  --set environment=((environment)) \
+                  --wait --timeout 5m
+        on_failure:
+          put: slack-alert
+          params:
+            text: ":x: Deploy failed for *((service_name))* in *((environment))*"
+        on_success:
+          put: slack-alert
+          params:
+            text: ":white_check_mark: Deploy succeeded for *((service_name))* in *((environment))*"

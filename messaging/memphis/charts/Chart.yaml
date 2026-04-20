@@ -1,0 +1,6 @@
+apiVersion: v2
+name: memphis
+description: Memphis - cloud-native message broker for developers
+type: application
+version: 1.0.0
+appVersion: "1.4.3"

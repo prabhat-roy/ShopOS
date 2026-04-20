@@ -1,0 +1,19 @@
+apiVersion: v2
+name: commission-payout-service
+description: ShopOS commission-payout-service — Aggregates commissions, applies tax rules, and batches payouts
+type: application
+version: 0.1.0
+appVersion: "1.0.0"
+keywords:
+  - shopos
+  - commission-payout-service
+  - affiliate
+home: https://github.com/your-org/shopos
+sources:
+  - https://github.com/your-org/shopos/tree/main/src/affiliate/commission-payout-service
+maintainers:
+  - name: ShopOS Platform Team
+    email: platform@shopos.io
+annotations:
+  app.kubernetes.io/domain: affiliate
+  app.kubernetes.io/language: go

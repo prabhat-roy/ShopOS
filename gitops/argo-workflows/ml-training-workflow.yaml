@@ -1,0 +1,87 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Workflow
+metadata:
+  generateName: ml-training-
+  namespace: argo-workflows
+spec:
+  entrypoint: ml-pipeline
+  arguments:
+    parameters:
+      - name: model-name
+        value: recommendation-model
+      - name: data-date
+        value: "2024-01-01"
+  templates:
+    - name: ml-pipeline
+      dag:
+        tasks:
+          - name: extract-data
+            template: extract-data
+          - name: preprocess
+            dependencies: [extract-data]
+            template: preprocess
+          - name: train-model
+            dependencies: [preprocess]
+            template: train-model
+          - name: evaluate-model
+            dependencies: [train-model]
+            template: evaluate-model
+          - name: register-model
+            dependencies: [evaluate-model]
+            template: register-model
+
+    - name: extract-data
+      container:
+        image: shopos/data-pipeline-service:latest
+        command: [python, extract.py]
+        args: ["--date", "{{workflow.parameters.data-date}}"]
+        env:
+          - name: CASSANDRA_HOSTS
+            value: cassandra.cassandra.svc.cluster.local
+        resources:
+          requests:
+            cpu: 500m
+            memory: 1Gi
+
+    - name: preprocess
+      container:
+        image: shopos/ml-feature-store:latest
+        command: [python, preprocess.py]
+        args: ["--model", "{{workflow.parameters.model-name}}"]
+        resources:
+          requests:
+            cpu: 1000m
+            memory: 2Gi
+
+    - name: train-model
+      container:
+        image: shopos/recommendation-service:latest
+        command: [python, train.py]
+        args: ["--model", "{{workflow.parameters.model-name}}"]
+        resources:
+          requests:
+            cpu: 2000m
+            memory: 4Gi
+          limits:
+            cpu: 4000m
+            memory: 8Gi
+
+    - name: evaluate-model
+      container:
+        image: shopos/recommendation-service:latest
+        command: [python, evaluate.py]
+        args: ["--model", "{{workflow.parameters.model-name}}"]
+        resources:
+          requests:
+            cpu: 500m
+            memory: 1Gi
+
+    - name: register-model
+      container:
+        image: shopos/ml-feature-store:latest
+        command: [python, register.py]
+        args: ["--model", "{{workflow.parameters.model-name}}"]
+        resources:
+          requests:
+            cpu: 100m
+            memory: 256Mi

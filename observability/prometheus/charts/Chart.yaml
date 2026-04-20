@@ -1,0 +1,6 @@
+apiVersion: v2
+name: prometheus
+description: Prometheus — open source monitoring and alerting toolkit (CNCF)
+type: application
+version: 1.0.0
+appVersion: "v2.54.1"

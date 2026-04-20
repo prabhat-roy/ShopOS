@@ -1,0 +1,128 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Workflow
+metadata:
+  name: database-resilience-workflow
+  namespace: litmus
+  labels:
+    app.kubernetes.io/part-of: shopos-chaos
+    chaos.shopos.io/domain: data
+    subject: database-resilience_litmus
+spec:
+  entrypoint: argowf-chaos
+  serviceAccountName: argo-chaos
+  arguments:
+    parameters:
+      - name: adminModeNamespace
+        value: litmus
+  templates:
+    - name: argowf-chaos
+      steps:
+        - - name: install-chaos-experiments
+            template: install-chaos-experiments
+        - - name: postgres-pod-delete
+            template: postgres-pod-delete
+        - - name: wait-for-recovery
+            template: wait-for-recovery
+        - - name: redis-pod-delete
+            template: redis-pod-delete
+        - - name: cleanup
+            template: cleanup
+
+    - name: install-chaos-experiments
+      container:
+        image: litmuschaos/k8s:latest
+        command: [sh, -c]
+        args:
+          - kubectl apply -f https://hub.litmuschaos.io/api/chaos/3.0.0?file=charts/generic/pod-delete/experiment.yaml -n litmus || true
+
+    - name: postgres-pod-delete
+      inputs:
+        artifacts:
+          - name: engine
+            path: /tmp/engine.yaml
+            raw:
+              data: |
+                apiVersion: litmuschaos.io/v1alpha1
+                kind: ChaosEngine
+                metadata:
+                  name: postgres-primary-delete
+                  namespace: databases
+                spec:
+                  appinfo:
+                    appns: databases
+                    applabel: role=primary
+                    appkind: statefulset
+                  engineState: active
+                  chaosServiceAccount: litmus-admin
+                  experiments:
+                    - name: pod-delete
+                      spec:
+                        components:
+                          env:
+                            - name: TOTAL_CHAOS_DURATION
+                              value: "30"
+                            - name: CHAOS_INTERVAL
+                              value: "10"
+                            - name: FORCE
+                              value: "false"
+                            - name: PODS_AFFECTED_PERC
+                              value: "100"
+      container:
+        image: litmuschaos/litmus-checker:latest
+        command: [sh, -c]
+        args:
+          - kubectl apply -f /tmp/engine.yaml -n databases;
+            ./healthcheck -file=/home/litmus/monitor --timeout 3m
+
+    - name: wait-for-recovery
+      container:
+        image: bitnami/kubectl:latest
+        command: [sh, -c]
+        args:
+          - sleep 30;
+            kubectl rollout status statefulset/postgresql -n databases --timeout=2m || true
+
+    - name: redis-pod-delete
+      inputs:
+        artifacts:
+          - name: engine
+            path: /tmp/redis-engine.yaml
+            raw:
+              data: |
+                apiVersion: litmuschaos.io/v1alpha1
+                kind: ChaosEngine
+                metadata:
+                  name: redis-master-delete
+                  namespace: databases
+                spec:
+                  appinfo:
+                    appns: databases
+                    applabel: app.kubernetes.io/name=redis,role=master
+                    appkind: statefulset
+                  engineState: active
+                  chaosServiceAccount: litmus-admin
+                  experiments:
+                    - name: pod-delete
+                      spec:
+                        components:
+                          env:
+                            - name: TOTAL_CHAOS_DURATION
+                              value: "30"
+                            - name: FORCE
+                              value: "false"
+                            - name: PODS_AFFECTED_PERC
+                              value: "100"
+      container:
+        image: litmuschaos/litmus-checker:latest
+        command: [sh, -c]
+        args:
+          - kubectl apply -f /tmp/redis-engine.yaml -n databases;
+            ./healthcheck -file=/home/litmus/monitor --timeout 2m
+
+    - name: cleanup
+      container:
+        image: litmuschaos/k8s:latest
+        command: [sh, -c]
+        args:
+          - kubectl delete chaosengine --all -n databases --ignore-not-found;
+            echo "Database resilience workflow complete"

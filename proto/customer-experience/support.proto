@@ -1,0 +1,171 @@
+syntax = "proto3";
+
+package customerexperience;
+
+option go_package = "github.com/shopos/proto/customerexperience";
+
+// ---------------------------------------------------------------------------
+// Enums
+// ---------------------------------------------------------------------------
+
+enum TicketStatus {
+  TICKET_STATUS_UNSPECIFIED  = 0;
+  TICKET_STATUS_OPEN         = 1;
+  TICKET_STATUS_IN_PROGRESS  = 2;
+  TICKET_STATUS_PENDING_CUSTOMER = 3;
+  TICKET_STATUS_ESCALATED    = 4;
+  TICKET_STATUS_RESOLVED     = 5;
+  TICKET_STATUS_CLOSED       = 6;
+}
+
+enum TicketPriority {
+  TICKET_PRIORITY_UNSPECIFIED = 0;
+  TICKET_PRIORITY_LOW         = 1;
+  TICKET_PRIORITY_NORMAL      = 2;
+  TICKET_PRIORITY_HIGH        = 3;
+  TICKET_PRIORITY_URGENT      = 4;
+}
+
+enum TicketCategory {
+  TICKET_CATEGORY_UNSPECIFIED   = 0;
+  TICKET_CATEGORY_ORDER         = 1;
+  TICKET_CATEGORY_PAYMENT       = 2;
+  TICKET_CATEGORY_SHIPPING      = 3;
+  TICKET_CATEGORY_RETURN_REFUND = 4;
+  TICKET_CATEGORY_PRODUCT       = 5;
+  TICKET_CATEGORY_ACCOUNT       = 6;
+  TICKET_CATEGORY_TECHNICAL     = 7;
+  TICKET_CATEGORY_OTHER         = 8;
+}
+
+// Distinguishes whether a comment was authored by a customer or an agent.
+enum AuthorType {
+  AUTHOR_TYPE_UNSPECIFIED = 0;
+  AUTHOR_TYPE_CUSTOMER    = 1;
+  AUTHOR_TYPE_AGENT       = 2;
+  AUTHOR_TYPE_SYSTEM      = 3;
+}
+
+// ---------------------------------------------------------------------------
+// Messages
+// ---------------------------------------------------------------------------
+
+message Ticket {
+  string         id            = 1;
+  string         ticket_number = 2;
+  string         customer_id   = 3;
+  // Optional: links the ticket to a specific order.
+  string         order_id      = 4;
+  string         subject       = 5;
+  string         description   = 6;
+  TicketStatus   status        = 7;
+  TicketPriority priority      = 8;
+  TicketCategory category      = 9;
+  // Agent user-ID currently assigned to this ticket.
+  string         assigned_to   = 10;
+  // Unix epoch seconds.
+  int64          created_at    = 11;
+  int64          updated_at    = 12;
+}
+
+message TicketComment {
+  string     id          = 1;
+  string     ticket_id   = 2;
+  string     author_id   = 3;
+  AuthorType author_type = 4;
+  string     body        = 5;
+  // If true, the comment is only visible to support agents (not the customer).
+  bool       internal    = 6;
+  // Unix epoch seconds.
+  int64      created_at  = 7;
+}
+
+message CreateTicketRequest {
+  string         customer_id  = 1;
+  string         order_id     = 2;
+  string         subject      = 3;
+  string         description  = 4;
+  TicketPriority priority     = 5;
+  TicketCategory category     = 6;
+}
+
+message GetTicketRequest {
+  string ticket_id = 1;
+}
+
+message ListTicketsRequest {
+  string         customer_id = 1;
+  TicketStatus   status      = 2;
+  TicketPriority priority    = 3;
+  int32          page        = 4;
+  int32          page_size   = 5;
+}
+
+message ListTicketsResponse {
+  repeated Ticket tickets     = 1;
+  int32           total       = 2;
+  int32           total_pages = 3;
+}
+
+message UpdateStatusRequest {
+  string       ticket_id = 1;
+  TicketStatus status    = 2;
+}
+
+message AssignTicketRequest {
+  string ticket_id  = 1;
+  string agent_id   = 2;
+}
+
+message EscalateTicketRequest {
+  string ticket_id = 1;
+  string reason    = 2;
+}
+
+message AddCommentRequest {
+  string     ticket_id  = 1;
+  string     author_id  = 2;
+  AuthorType author_type = 3;
+  string     body       = 4;
+  bool       internal   = 5;
+}
+
+message GetCommentsRequest {
+  string ticket_id = 1;
+  // When true, internal (agent-only) comments are included in the response.
+  bool   include_internal = 2;
+}
+
+message GetCommentsResponse {
+  repeated TicketComment comments = 1;
+}
+
+// ---------------------------------------------------------------------------
+// Service
+// ---------------------------------------------------------------------------
+
+service SupportTicketService {
+  // Open a new support ticket on behalf of a customer.
+  rpc CreateTicket(CreateTicketRequest) returns (Ticket);
+
+  // Fetch a single ticket by its ID.
+  rpc GetTicket(GetTicketRequest) returns (Ticket);
+
+  // List tickets with optional filters for customer, status, and priority.
+  rpc ListTickets(ListTicketsRequest) returns (ListTicketsResponse);
+
+  // Update the status of a ticket (e.g. IN_PROGRESS -> RESOLVED).
+  rpc UpdateStatus(UpdateStatusRequest) returns (Ticket);
+
+  // Assign a ticket to a specific support agent.
+  rpc AssignTicket(AssignTicketRequest) returns (Ticket);
+
+  // Add a comment (public or internal) to an existing ticket.
+  rpc AddComment(AddCommentRequest) returns (TicketComment);
+
+  // Retrieve all comments for a ticket.
+  rpc GetComments(GetCommentsRequest) returns (GetCommentsResponse);
+
+  // Escalate a ticket to a higher support tier.
+  rpc Escalate(EscalateTicketRequest) returns (Ticket);
+}

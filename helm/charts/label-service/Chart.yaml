@@ -1,0 +1,19 @@
+apiVersion: v2
+name: label-service
+description: ShopOS Label Service — shipping label generation
+type: application
+version: 0.1.0
+appVersion: "1.0.0"
+keywords:
+  - shopos
+  - label-service
+  - supply-chain
+home: https://github.com/your-org/shopos
+sources:
+  - https://github.com/your-org/shopos/tree/main/src/supply-chain/label-service
+maintainers:
+  - name: ShopOS Platform Team
+    email: platform@shopos.io
+annotations:
+  app.kubernetes.io/domain: supply-chain
+  app.kubernetes.io/language: Python

@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: rate-limiter-service
+  namespace: platform
+  labels:
+    app: rate-limiter-service
+    domain: platform
+spec:
+  selector:
+    app: rate-limiter-service
+  type: ClusterIP
+  ports:
+    - name: grpc
+      port: 50053
+      targetPort: grpc
+      protocol: TCP

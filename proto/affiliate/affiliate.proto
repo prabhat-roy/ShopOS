@@ -1,0 +1,202 @@
+syntax = "proto3";
+
+package affiliate;
+
+import "common/common.proto";
+
+option go_package = "github.com/shopos/proto/affiliate";
+
+// ---------------------------------------------------------------------------
+// Affiliate Service
+// ---------------------------------------------------------------------------
+
+message Affiliate {
+  string    affiliate_id  = 1;
+  string    user_id       = 2;
+  string    code          = 3;
+  string    name          = 4;
+  string    email         = 5;
+  string    status        = 6; // active, suspended, pending
+  double    commission_rate = 7;
+  Timestamp created_at   = 8;
+}
+
+message CreateAffiliateRequest {
+  string user_id        = 1;
+  string name           = 2;
+  string email          = 3;
+  double commission_rate = 4;
+}
+
+message CreateAffiliateResponse {
+  Affiliate affiliate = 1;
+}
+
+message GetAffiliateRequest {
+  string affiliate_id = 1;
+}
+
+message GetAffiliateResponse {
+  Affiliate affiliate = 1;
+}
+
+message GetAffiliateByCodeRequest {
+  string code = 1;
+}
+
+message GetAffiliateByCodeResponse {
+  Affiliate affiliate = 1;
+}
+
+message ListAffiliatesRequest {
+  string status    = 1;
+  int32  page      = 2;
+  int32  page_size = 3;
+}
+
+message ListAffiliatesResponse {
+  repeated Affiliate affiliates = 1;
+  int32              total      = 2;
+}
+
+service AffiliateService {
+  rpc CreateAffiliate    (CreateAffiliateRequest)      returns (CreateAffiliateResponse);
+  rpc GetAffiliate       (GetAffiliateRequest)         returns (GetAffiliateResponse);
+  rpc GetAffiliateByCode (GetAffiliateByCodeRequest)   returns (GetAffiliateByCodeResponse);
+  rpc ListAffiliates     (ListAffiliatesRequest)       returns (ListAffiliatesResponse);
+}
+
+// ---------------------------------------------------------------------------
+// Referral Service
+// ---------------------------------------------------------------------------
+
+message Referral {
+  string    referral_id  = 1;
+  string    referrer_id  = 2;
+  string    referee_id   = 3;
+  string    code         = 4;
+  string    status       = 5; // pending, converted, expired
+  Money     reward       = 6;
+  Timestamp created_at   = 7;
+  Timestamp converted_at = 8;
+}
+
+message CreateReferralRequest {
+  string referrer_id = 1;
+  string code        = 2;
+}
+
+message CreateReferralResponse {
+  Referral referral = 1;
+}
+
+message ConvertReferralRequest {
+  string code       = 1;
+  string referee_id = 2;
+  string order_id   = 3;
+}
+
+message ConvertReferralResponse {
+  Referral referral = 1;
+  Money    reward   = 2;
+}
+
+message GetReferralRequest {
+  string referral_id = 1;
+}
+
+message GetReferralResponse {
+  Referral referral = 1;
+}
+
+service ReferralService {
+  rpc CreateReferral  (CreateReferralRequest)  returns (CreateReferralResponse);
+  rpc ConvertReferral (ConvertReferralRequest) returns (ConvertReferralResponse);
+  rpc GetReferral     (GetReferralRequest)     returns (GetReferralResponse);
+}
+
+// ---------------------------------------------------------------------------
+// Influencer Service
+// ---------------------------------------------------------------------------
+
+message Influencer {
+  string    influencer_id   = 1;
+  string    affiliate_id    = 2;
+  string    handle          = 3;
+  string    platform        = 4; // instagram, tiktok, youtube, twitter
+  int64     follower_count  = 5;
+  double    engagement_rate = 6;
+  string    tier            = 7; // nano, micro, macro, mega
+  Timestamp created_at      = 8;
+}
+
+message RegisterInfluencerRequest {
+  string affiliate_id    = 1;
+  string handle          = 2;
+  string platform        = 3;
+  int64  follower_count  = 4;
+  double engagement_rate = 5;
+}
+
+message RegisterInfluencerResponse {
+  Influencer influencer = 1;
+}
+
+message GetInfluencerRequest {
+  string influencer_id = 1;
+}
+
+message GetInfluencerResponse {
+  Influencer influencer = 1;
+}
+
+service InfluencerService {
+  rpc RegisterInfluencer (RegisterInfluencerRequest) returns (RegisterInfluencerResponse);
+  rpc GetInfluencer      (GetInfluencerRequest)      returns (GetInfluencerResponse);
+}
+
+// ---------------------------------------------------------------------------
+// Commission Payout Service
+// ---------------------------------------------------------------------------
+
+message Commission {
+  string    commission_id  = 1;
+  string    affiliate_id   = 2;
+  string    order_id       = 3;
+  Money     order_amount   = 4;
+  double    rate           = 5;
+  Money     commission_amt = 6;
+  string    status         = 7; // pending, approved, paid, rejected
+  Timestamp earned_at      = 8;
+  Timestamp paid_at        = 9;
+}
+
+message GetCommissionSummaryRequest {
+  string affiliate_id = 1;
+  string period       = 2; // YYYY-MM
+}
+
+message GetCommissionSummaryResponse {
+  string    affiliate_id      = 1;
+  string    period            = 2;
+  Money     total_earned      = 3;
+  Money     total_paid        = 4;
+  Money     pending_payout    = 5;
+  int32     conversion_count  = 6;
+}
+
+message InitiatePayoutRequest {
+  string affiliate_id = 1;
+  string period       = 2;
+}
+
+message InitiatePayoutResponse {
+  string payout_id = 1;
+  Money  amount    = 2;
+  string status    = 3;
+}
+
+service CommissionPayoutService {
+  rpc GetCommissionSummary (GetCommissionSummaryRequest) returns (GetCommissionSummaryResponse);
+  rpc InitiatePayout       (InitiatePayoutRequest)       returns (InitiatePayoutResponse);
+}

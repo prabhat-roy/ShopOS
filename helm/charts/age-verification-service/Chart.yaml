@@ -1,0 +1,19 @@
+apiVersion: v2
+name: age-verification-service
+description: ShopOS Age Verification Service — age gate enforcement
+type: application
+version: 0.1.0
+appVersion: "1.0.0"
+keywords:
+  - shopos
+  - age-verification-service
+  - customer-experience
+home: https://github.com/your-org/shopos
+sources:
+  - https://github.com/your-org/shopos/tree/main/src/customer-experience/age-verification-service
+maintainers:
+  - name: ShopOS Platform Team
+    email: platform@shopos.io
+annotations:
+  app.kubernetes.io/domain: customer-experience
+  app.kubernetes.io/language: Go

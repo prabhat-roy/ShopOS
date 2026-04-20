@@ -1,0 +1,142 @@
+version: 0.2
+
+# Post-Deploy Validation — CodeBuild buildspec
+# Mirrors .github/workflows/post-deploy.yml
+# Parameters via environment variables:
+#   ENVIRONMENT, RUN_LOAD_TEST, RUN_DAST, RUN_K8S_AUDIT
+
+env:
+  variables:
+    ENVIRONMENT: staging
+    RUN_LOAD_TEST: "true"
+    RUN_DAST: "false"
+    RUN_K8S_AUDIT: "true"
+  parameter-store:
+    SLACK_WEBHOOK: /shopos/slack/webhook
+  secrets-manager:
+    KUBECONFIG_CONTENT: shopos/kubeconfig:content
+
+phases:
+  install:
+    commands:
+      - curl -fsSL "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl" -o /usr/local/bin/kubectl && chmod +x /usr/local/bin/kubectl
+      # k6
+      - |
+        if [ "$RUN_LOAD_TEST" = "true" ]; then
+          sudo apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 \
+            --recv-keys C5AD17C747E3415A3642D57D77C6C491D6AC1D69
+          echo "deb https://dl.k6.io/deb stable main" | sudo tee /etc/apt/sources.list.d/k6.list
+          sudo apt-get update -qq && sudo apt-get install k6 -y -qq
+        fi
+
+  pre_build:
+    commands:
+      - mkdir -p ~/.kube reports reports/dast reports/k8s-audit
+      - echo "$KUBECONFIG_CONTENT" | base64 -d > ~/.kube/config
+      - echo "Post-Deploy Validation on $ENVIRONMENT"
+
+  build:
+    commands:
+      # ── Health Checks ──────────────────────────────────────────────────────
+      - |
+        echo "=== Health Checks ==="
+        HEALTH_FAILED=0
+        DOMAINS=(platform identity catalog commerce supply-chain financial customer-experience communications content analytics-ai b2b integrations affiliate)
+        for ns in "${DOMAINS[@]}"; do
+          echo "Checking namespace: $ns"
+          kubectl get deployments -n "$ns" --no-headers 2>/dev/null | while read -r name ready uptodate available age; do
+            if [[ "$available" == "0" ]]; then
+              echo "FAIL: $name in $ns has 0 available replicas"
+              HEALTH_FAILED=$((HEALTH_FAILED+1))
+            fi
+          done || true
+        done
+
+        INFRA_NS=(messaging networking istio-system vault keycloak argocd observability registry keda)
+        for ns in "${INFRA_NS[@]}"; do
+          kubectl rollout status deploy --namespace="$ns" --timeout=60s 2>/dev/null | tail -3 || true
+        done
+
+        kubectl port-forward svc/api-gateway 18080:8080 -n platform &
+        PF_PID=$!; sleep 5
+        HTTP_CODE=$(curl -sf -o /dev/null -w "%{http_code}" http://localhost:18080/healthz 2>/dev/null || echo "000")
+        kill $PF_PID 2>/dev/null || true
+        echo "API Gateway /healthz → $HTTP_CODE"
+
+        if [ "$HTTP_CODE" != "200" ]; then
+          echo "HEALTH_STATUS=FAILED" >> /tmp/validation-results.env
+          curl -sf -X POST "$SLACK_WEBHOOK" \
+            -H "Content-Type: application/json" \
+            -d "{\"text\":\"Post-deploy health check FAILED on *$ENVIRONMENT* — build #$CODEBUILD_BUILD_NUMBER\"}" || true
+        else
+          echo "HEALTH_STATUS=PASSED" >> /tmp/validation-results.env
+        fi
+
+      # ── k6 Smoke Test ──────────────────────────────────────────────────────
+      - |
+        if [ "$RUN_LOAD_TEST" = "true" ]; then
+          echo "=== k6 Smoke Test ==="
+          kubectl port-forward svc/api-gateway 18080:8080 -n platform &
+          PF_PID=$!; sleep 5
+          BASE_URL=http://localhost:18080 k6 run load-testing/k6/scripts/smoke.js \
+            --out json=reports/k6-smoke-$ENVIRONMENT.json || true
+          kill $PF_PID 2>/dev/null || true
+        fi
+
+      # ── DAST ───────────────────────────────────────────────────────────────
+      - |
+        if [ "$RUN_DAST" = "true" ]; then
+          echo "=== DAST: OWASP ZAP ==="
+          kubectl port-forward svc/api-gateway 18080:8080 -n platform &
+          PF_PID=$!; sleep 5
+          docker run --rm --network=host -v "$PWD/reports/dast:/zap/wrk" \
+            ghcr.io/zaproxy/zaproxy:stable \
+            zap-baseline.py -t http://localhost:18080 \
+            -J /zap/wrk/zap-$ENVIRONMENT.json \
+            -r /zap/wrk/zap-$ENVIRONMENT.html \
+            -I || true
+          kill $PF_PID 2>/dev/null || true
+
+          echo "=== DAST: Nuclei ==="
+          kubectl port-forward svc/api-gateway 18080:8080 -n platform &
+          PF_PID=$!; sleep 5
+          docker run --rm --network=host \
+            -v "$PWD/reports/dast:/output" \
+            projectdiscovery/nuclei:latest \
+            -target http://localhost:18080 \
+            -severity critical,high \
+            -json-export /output/nuclei-$ENVIRONMENT.json || true
+          kill $PF_PID 2>/dev/null || true
+        fi
+
+      # ── K8s Security Audit ─────────────────────────────────────────────────
+      - |
+        if [ "$RUN_K8S_AUDIT" = "true" ]; then
+          echo "=== kube-bench ==="
+          docker run --rm --pid=host \
+            -v /etc:/etc:ro -v /var:/var:ro \
+            -v ~/.kube:/root/.kube:ro \
+            aquasec/kube-bench:latest --json \
+            > reports/k8s-audit/kube-bench-$ENVIRONMENT.json || true
+
+          echo "=== Kubescape ==="
+          docker run --rm -v ~/.kube:/root/.kube \
+            quay.io/armosec/kubescape:latest scan \
+            framework nsa,mitre \
+            --format json \
+            --output reports/k8s-audit/kubescape-$ENVIRONMENT.json || true
+        fi
+
+  post_build:
+    commands:
+      - |
+        cat /tmp/validation-results.env 2>/dev/null || true
+        echo "Post-Deploy Validation complete for $ENVIRONMENT"
+        echo "Results:"
+        echo "  Reports: reports/"
+        ls -la reports/ 2>/dev/null || true
+
+artifacts:
+  files:
+    - reports/**/*
+  name: post-deploy-$ENVIRONMENT-$CODEBUILD_BUILD_NUMBER

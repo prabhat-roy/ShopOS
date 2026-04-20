@@ -1,0 +1,34 @@
+replicaCount: 1
+
+image:
+  repository: ghcr.io/helm/chartmuseum
+  tag: "v0.16.2"
+  pullPolicy: IfNotPresent
+
+service:
+  type: ClusterIP
+  port: 8080
+  targetPort: 8080
+
+persistence:
+  enabled: true
+  storageClass: ""
+  size: 10Gi
+  accessMode: ReadWriteOnce
+  mountPath: /charts
+
+resources:
+  requests:
+    cpu: 250m
+    memory: 128Mi
+  limits:
+    cpu: "1"
+    memory: 256Mi
+
+env: {}
+
+ingress:
+  enabled: false
+  className: ""
+  host: ""
+  tls: []

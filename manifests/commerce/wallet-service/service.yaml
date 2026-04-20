@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: wallet-service
+  namespace: commerce
+  labels:
+    app: wallet-service
+    domain: commerce
+spec:
+  selector:
+    app: wallet-service
+  type: ClusterIP
+  ports:
+    - name: grpc
+      port: 50092
+      targetPort: grpc
+      protocol: TCP

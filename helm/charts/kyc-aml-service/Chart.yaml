@@ -1,0 +1,19 @@
+apiVersion: v2
+name: kyc-aml-service
+description: ShopOS KYC/AML Service — identity verification and compliance
+type: application
+version: 0.1.0
+appVersion: "1.0.0"
+keywords:
+  - shopos
+  - kyc-aml-service
+  - financial
+home: https://github.com/your-org/shopos
+sources:
+  - https://github.com/your-org/shopos/tree/main/src/financial/kyc-aml-service
+maintainers:
+  - name: ShopOS Platform Team
+    email: platform@shopos.io
+annotations:
+  app.kubernetes.io/domain: financial
+  app.kubernetes.io/language: Java

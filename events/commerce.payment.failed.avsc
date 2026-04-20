@@ -1,0 +1,18 @@
+{
+  "type": "record",
+  "name": "PaymentFailed",
+  "namespace": "com.shopos.commerce.payment",
+  "doc": "Emitted when a payment attempt fails",
+  "fields": [
+    { "name": "event_id",      "type": "string" },
+    { "name": "payment_id",    "type": "string" },
+    { "name": "order_id",      "type": "string" },
+    { "name": "customer_id",   "type": "string" },
+    { "name": "amount",        "type": "string" },
+    { "name": "currency",      "type": "string" },
+    { "name": "gateway",       "type": "string" },
+    { "name": "error_code",    "type": "string" },
+    { "name": "error_message", "type": "string" },
+    { "name": "occurred_at",   "type": { "type": "long", "logicalType": "timestamp-millis" } }
+  ]
+}

@@ -1,0 +1,19 @@
+apiVersion: v2
+name: cache-warming-service
+description: ShopOS Cache Warming Service — proactive cache population via Kafka
+type: application
+version: 0.1.0
+appVersion: "1.0.0"
+keywords:
+  - shopos
+  - cache-warming-service
+  - platform
+home: https://github.com/your-org/shopos
+sources:
+  - https://github.com/your-org/shopos/tree/main/src/platform/cache-warming-service
+maintainers:
+  - name: ShopOS Platform Team
+    email: platform@shopos.io
+annotations:
+  app.kubernetes.io/domain: platform
+  app.kubernetes.io/language: Go

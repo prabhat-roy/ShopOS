@@ -1,0 +1,19 @@
+apiVersion: v2
+name: customs-duties-service
+description: ShopOS Customs & Duties Service — tariff calculation
+type: application
+version: 0.1.0
+appVersion: "1.0.0"
+keywords:
+  - shopos
+  - customs-duties-service
+  - supply-chain
+home: https://github.com/your-org/shopos
+sources:
+  - https://github.com/your-org/shopos/tree/main/src/supply-chain/customs-duties-service
+maintainers:
+  - name: ShopOS Platform Team
+    email: platform@shopos.io
+annotations:
+  app.kubernetes.io/domain: supply-chain
+  app.kubernetes.io/language: Go

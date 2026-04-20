@@ -1,0 +1,36 @@
+syntax = "proto3";
+package catalog.brand.v1;
+option go_package = "github.com/shopos/proto/catalog/brand/v1;brandv1";
+
+import "google/protobuf/timestamp.proto";
+
+service BrandService {
+  rpc CreateBrand(CreateBrandRequest) returns (CreateBrandResponse);
+  rpc GetBrand(GetBrandRequest)       returns (GetBrandResponse);
+  rpc UpdateBrand(UpdateBrandRequest) returns (UpdateBrandResponse);
+  rpc DeleteBrand(DeleteBrandRequest) returns (DeleteBrandResponse);
+  rpc ListBrands(ListBrandsRequest)   returns (ListBrandsResponse);
+}
+
+message Brand {
+  string id          = 1;
+  string name        = 2;
+  string slug        = 3;
+  string description = 4;
+  string logo_url    = 5;
+  string website_url = 6;
+  bool   active      = 7;
+  google.protobuf.Timestamp created_at = 8;
+  google.protobuf.Timestamp updated_at = 9;
+}
+
+message CreateBrandRequest  { string name = 1; string slug = 2; string description = 3; string logo_url = 4; string website_url = 5; }
+message CreateBrandResponse { Brand brand = 1; }
+message GetBrandRequest     { string id = 1; }
+message GetBrandResponse    { Brand brand = 1; }
+message UpdateBrandRequest  { string id = 1; string name = 2; string description = 3; string logo_url = 4; string website_url = 5; bool active = 6; }
+message UpdateBrandResponse { Brand brand = 1; }
+message DeleteBrandRequest  { string id = 1; }
+message DeleteBrandResponse { bool success = 1; }
+message ListBrandsRequest   { bool active_only = 1; int32 page = 2; int32 page_size = 3; }
+message ListBrandsResponse  { repeated Brand brands = 1; int32 total = 2; }

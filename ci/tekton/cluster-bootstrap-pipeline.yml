@@ -1,0 +1,312 @@
+# Cluster Bootstrap Pipeline — Tekton (6-phase ordered bootstrap)
+# Secrets: kubeconfig-secret, keycloak-credentials, grafana-credentials,
+#   rabbitmq-credentials, harbor-credentials, minio-credentials, argocd-credentials, slack-webhook
+---
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  name: bootstrap-phase1-networking
+  namespace: tekton-pipelines
+spec:
+  workspaces:
+    - name: kubeconfig
+      mountPath: /root/.kube
+  steps:
+    - name: install
+      image: alpine/helm:latest
+      script: |
+        helm repo add istio https://istio-release.storage.googleapis.com/charts \
+          traefik https://traefik.github.io/charts --force-update
+        helm upgrade --install istio-base istio/base \
+          --namespace istio-system --create-namespace --wait --timeout 3m
+        helm upgrade --install istiod istio/istiod \
+          --namespace istio-system --set telemetry.enabled=true --wait --timeout 5m
+        helm upgrade --install traefik traefik/traefik \
+          --namespace networking --create-namespace \
+          --set deployment.replicas=2 \
+          --set ingressClass.enabled=true --set ingressClass.isDefaultClass=true \
+          --wait --timeout 5m
+        echo "Phase 1 Networking — DONE"
+---
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  name: bootstrap-phase2-security
+  namespace: tekton-pipelines
+spec:
+  workspaces:
+    - name: kubeconfig
+      mountPath: /root/.kube
+  steps:
+    - name: install
+      image: alpine/helm:latest
+      env:
+        - name: KEYCLOAK_ADMIN_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: keycloak-credentials
+              key: admin-password
+        - name: SLACK_WEBHOOK
+          valueFrom:
+            secretKeyRef:
+              name: slack-webhook
+              key: url
+      script: |
+        helm repo add hashicorp https://helm.releases.hashicorp.com \
+          bitnami https://charts.bitnami.com/bitnami \
+          kyverno https://kyverno.github.io/kyverno \
+          falcosecurity https://falcosecurity.github.io/charts --force-update
+        helm upgrade --install vault hashicorp/vault \
+          --namespace vault --create-namespace \
+          --set server.ha.enabled=true --set server.ha.raft.enabled=true \
+          --set server.ha.replicas=3 --wait --timeout 10m
+        helm upgrade --install keycloak bitnami/keycloak \
+          --namespace keycloak --create-namespace \
+          --set replicaCount=2 \
+          --set auth.adminPassword="$KEYCLOAK_ADMIN_PASSWORD" \
+          --set postgresql.enabled=true --wait --timeout 10m
+        helm upgrade --install kyverno kyverno/kyverno \
+          --namespace kyverno --create-namespace \
+          --set replicaCount=2 --wait --timeout 5m
+        helm upgrade --install falco falcosecurity/falco \
+          --namespace falco --create-namespace \
+          --set driver.kind=ebpf \
+          --set falcosidekick.enabled=true \
+          --set falcosidekick.config.slack.webhookurl="$SLACK_WEBHOOK" \
+          --wait --timeout 8m
+        echo "Phase 2 Security — DONE"
+---
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  name: bootstrap-phase3-observability
+  namespace: tekton-pipelines
+spec:
+  workspaces:
+    - name: kubeconfig
+      mountPath: /root/.kube
+  steps:
+    - name: install
+      image: alpine/helm:latest
+      env:
+        - name: GRAFANA_ADMIN_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: grafana-credentials
+              key: admin-password
+      script: |
+        helm repo add prometheus-community https://prometheus-community.github.io/helm-charts \
+          grafana https://grafana.github.io/helm-charts --force-update
+        helm upgrade --install kube-prometheus-stack prometheus-community/kube-prometheus-stack \
+          --namespace observability --create-namespace \
+          --set prometheus.prometheusSpec.retention=30d \
+          --set grafana.enabled=false --wait --timeout 10m
+        helm upgrade --install grafana grafana/grafana \
+          --namespace observability \
+          --set adminPassword="$GRAFANA_ADMIN_PASSWORD" \
+          --set persistence.enabled=true --wait --timeout 5m
+        echo "Phase 3 Observability — DONE"
+---
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  name: bootstrap-phase4-messaging
+  namespace: tekton-pipelines
+spec:
+  workspaces:
+    - name: kubeconfig
+      mountPath: /root/.kube
+  steps:
+    - name: install
+      image: alpine/helm:latest
+      env:
+        - name: RABBITMQ_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: rabbitmq-credentials
+              key: password
+      script: |
+        helm repo add bitnami https://charts.bitnami.com/bitnami \
+          nats https://nats-io.github.io/k8s/helm/charts --force-update
+        helm upgrade --install zookeeper bitnami/zookeeper \
+          --namespace messaging --create-namespace \
+          --set replicaCount=3 --wait --timeout 8m
+        helm upgrade --install kafka bitnami/kafka \
+          --namespace messaging \
+          --set replicaCount=3 \
+          --set zookeeper.enabled=false \
+          --set externalZookeeper.servers=zookeeper.messaging.svc:2181 \
+          --set autoCreateTopicsEnable=false \
+          --set defaultReplicationFactor=3 --wait --timeout 10m
+        helm upgrade --install rabbitmq bitnami/rabbitmq \
+          --namespace messaging \
+          --set replicaCount=3 \
+          --set auth.password="$RABBITMQ_PASSWORD" \
+          --set clustering.enabled=true --wait --timeout 8m
+        helm upgrade --install nats nats/nats \
+          --namespace messaging \
+          --set nats.jetstream.enabled=true \
+          --set cluster.enabled=true --set cluster.replicas=3 --wait --timeout 5m
+        echo "Phase 4 Messaging — DONE"
+---
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  name: bootstrap-phase5-registry
+  namespace: tekton-pipelines
+spec:
+  workspaces:
+    - name: kubeconfig
+      mountPath: /root/.kube
+  steps:
+    - name: install
+      image: alpine/helm:latest
+      env:
+        - name: HARBOR_ADMIN_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: harbor-credentials
+              key: admin-password
+        - name: MINIO_ROOT_USER
+          valueFrom:
+            secretKeyRef:
+              name: minio-credentials
+              key: root-user
+        - name: MINIO_ROOT_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: minio-credentials
+              key: root-password
+      script: |
+        helm repo add harbor https://helm.goharbor.io \
+          minio https://charts.min.io --force-update
+        helm upgrade --install harbor harbor/harbor \
+          --namespace registry --create-namespace \
+          --set harborAdminPassword="$HARBOR_ADMIN_PASSWORD" \
+          --set trivy.enabled=true --set persistence.enabled=true \
+          --wait --timeout 10m
+        helm upgrade --install minio minio/minio \
+          --namespace registry \
+          --set rootUser="$MINIO_ROOT_USER" \
+          --set rootPassword="$MINIO_ROOT_PASSWORD" \
+          --set replicas=4 \
+          --set persistence.enabled=true --set persistence.size=100Gi \
+          --wait --timeout 8m
+        echo "Phase 5 Registry — DONE"
+---
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  name: bootstrap-phase6-gitops
+  namespace: tekton-pipelines
+spec:
+  workspaces:
+    - name: source
+    - name: kubeconfig
+      mountPath: /root/.kube
+  steps:
+    - name: install
+      image: alpine/helm:latest
+      env:
+        - name: ARGOCD_ADMIN_PASSWORD_HASH
+          valueFrom:
+            secretKeyRef:
+              name: argocd-credentials
+              key: admin-password-hash
+      script: |
+        helm repo add argo https://argoproj.github.io/argo-helm \
+          kedacore https://kedacore.github.io/charts --force-update
+        helm upgrade --install argocd argo/argo-cd \
+          --namespace argocd --create-namespace \
+          --set server.replicas=2 --set redis-ha.enabled=true \
+          --set configs.secret.argocdServerAdminPassword="$ARGOCD_ADMIN_PASSWORD_HASH" \
+          --wait --timeout 10m
+        helm upgrade --install keda kedacore/keda \
+          --namespace keda --create-namespace --wait --timeout 5m
+        echo "Phase 6 GitOps — DONE"
+    - name: bootstrap-argocd
+      image: bitnami/kubectl:latest
+      script: |
+        kubectl wait --for=condition=available deployment/argocd-server -n argocd --timeout=120s
+        kubectl apply -f /workspace/source/gitops/argocd/app-of-apps.yaml 2>/dev/null || true
+---
+apiVersion: tekton.dev/v1
+kind: Pipeline
+metadata:
+  name: cluster-bootstrap-pipeline
+  namespace: tekton-pipelines
+spec:
+  workspaces:
+    - name: source
+    - name: kubeconfig
+  tasks:
+    - name: phase1-networking
+      taskRef:
+        name: bootstrap-phase1-networking
+      workspaces:
+        - name: kubeconfig
+          workspace: kubeconfig
+
+    - name: phase2-security
+      taskRef:
+        name: bootstrap-phase2-security
+      workspaces:
+        - name: kubeconfig
+          workspace: kubeconfig
+      runAfter: [phase1-networking]
+
+    - name: phase3-observability
+      taskRef:
+        name: bootstrap-phase3-observability
+      workspaces:
+        - name: kubeconfig
+          workspace: kubeconfig
+      runAfter: [phase2-security]
+
+    - name: phase4-messaging
+      taskRef:
+        name: bootstrap-phase4-messaging
+      workspaces:
+        - name: kubeconfig
+          workspace: kubeconfig
+      runAfter: [phase3-observability]
+
+    - name: phase5-registry
+      taskRef:
+        name: bootstrap-phase5-registry
+      workspaces:
+        - name: kubeconfig
+          workspace: kubeconfig
+      runAfter: [phase2-security]
+
+    - name: phase6-gitops
+      taskRef:
+        name: bootstrap-phase6-gitops
+      workspaces:
+        - name: source
+          workspace: source
+        - name: kubeconfig
+          workspace: kubeconfig
+      runAfter: [phase4-messaging, phase5-registry]
+---
+apiVersion: tekton.dev/v1
+kind: PipelineRun
+metadata:
+  name: cluster-bootstrap-pipeline-run
+  namespace: tekton-pipelines
+  annotations:
+    description: "One-time full cluster bootstrap — runs all 6 phases in order"
+spec:
+  pipelineRef:
+    name: cluster-bootstrap-pipeline
+  workspaces:
+    - name: source
+      volumeClaimTemplate:
+        spec:
+          accessModes: [ReadWriteOnce]
+          resources:
+            requests:
+              storage: 512Mi
+    - name: kubeconfig
+      secret:
+        secretName: kubeconfig-secret

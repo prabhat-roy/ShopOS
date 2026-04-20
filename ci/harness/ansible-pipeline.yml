@@ -1,0 +1,80 @@
+# Ansible Playbooks Pipeline — Harness CI
+pipeline:
+  identifier: shopos_ansible
+  name: ShopOS Ansible
+  projectIdentifier: shopos
+  orgIdentifier: default
+
+  variables:
+    - name: PLAYBOOK
+      type: String
+      value: <+input>
+    - name: INVENTORY
+      type: String
+      value: production
+    - name: LIMIT
+      type: String
+      value: ""
+    - name: EXTRA_VARS
+      type: String
+      value: ""
+    - name: CHECK_MODE
+      type: String
+      value: "false"
+
+  stages:
+    - stage:
+        identifier: lint
+        name: Ansible Lint
+        type: CI
+        spec:
+          cloneCodebase: true
+          execution:
+            steps:
+              - step:
+                  identifier: ansible_lint
+                  name: ansible-lint
+                  type: Run
+                  spec:
+                    image: python:3.13
+                    command: |
+                      pip install ansible ansible-lint --quiet
+                      ansible-lint "infra/ansible/playbooks/<+pipeline.variables.PLAYBOOK>.yml" \
+                        -c infra/ansible/.ansible-lint || true
+
+    - stage:
+        identifier: run
+        name: Run Playbook
+        type: CI
+        spec:
+          cloneCodebase: true
+          execution:
+            steps:
+              - step:
+                  identifier: run_playbook
+                  name: ansible-playbook
+                  type: Run
+                  spec:
+                    image: python:3.13
+                    envVariables:
+                      ANSIBLE_SSH_PRIVATE_KEY: <+secrets.getValue("ansible_ssh_private_key")>
+                      ANSIBLE_SSH_USER: <+secrets.getValue("ansible_ssh_user")>
+                      AWS_ACCESS_KEY_ID: <+secrets.getValue("aws_access_key_id")>
+                      AWS_SECRET_ACCESS_KEY: <+secrets.getValue("aws_secret_access_key")>
+                      ANSIBLE_FORCE_COLOR: "1"
+                      ANSIBLE_HOST_KEY_CHECKING: "False"
+                      ANSIBLE_STDOUT_CALLBACK: yaml
+                    command: |
+                      pip install ansible boto3 botocore google-auth --quiet
+                      ansible-galaxy collection install amazon.aws google.cloud community.kubernetes --quiet
+                      echo "$ANSIBLE_SSH_PRIVATE_KEY" > /tmp/ansible_key && chmod 600 /tmp/ansible_key
+                      LIMIT_ARG="" && [ -n "<+pipeline.variables.LIMIT>" ] && LIMIT_ARG="--limit <+pipeline.variables.LIMIT>"
+                      EXTRA_ARGS="" && [ -n "<+pipeline.variables.EXTRA_VARS>" ] && EXTRA_ARGS="--extra-vars '<+pipeline.variables.EXTRA_VARS>'"
+                      CHECK_ARG="" && [ "<+pipeline.variables.CHECK_MODE>" = "true" ] && CHECK_ARG="--check --diff"
+                      eval ansible-playbook \
+                        -i "infra/ansible/inventories/<+pipeline.variables.INVENTORY>/hosts.yml" \
+                        "infra/ansible/playbooks/<+pipeline.variables.PLAYBOOK>.yml" \
+                        --private-key /tmp/ansible_key \
+                        --user "$ANSIBLE_SSH_USER" \
+                        $LIMIT_ARG $EXTRA_ARGS $CHECK_ARG -v
+                      rm -f /tmp/ansible_key

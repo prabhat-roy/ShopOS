@@ -1,0 +1,57 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Rollout
+metadata:
+  name: SERVICE_NAME
+  namespace: NAMESPACE
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: SERVICE_NAME
+  template:
+    metadata:
+      labels:
+        app: SERVICE_NAME
+    spec:
+      containers:
+        - name: SERVICE_NAME
+          image: shopos/SERVICE_NAME:IMAGE_TAG
+          ports:
+            - containerPort: HTTP_PORT
+          envFrom:
+            - secretRef:
+                name: SERVICE_NAME-secrets
+            - configMapRef:
+                name: SERVICE_NAME-config
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: HTTP_PORT
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+  strategy:
+    blueGreen:
+      activeService: SERVICE_NAME-active
+      previewService: SERVICE_NAME-preview
+      autoPromotionEnabled: false
+      scaleDownDelaySeconds: 30
+      previewReplicaCount: 1
+      prePromotionAnalysis:
+        templates:
+          - templateName: success-rate
+        args:
+          - name: service-name
+            value: SERVICE_NAME
+      postPromotionAnalysis:
+        templates:
+          - templateName: success-rate
+        args:
+          - name: service-name
+            value: SERVICE_NAME

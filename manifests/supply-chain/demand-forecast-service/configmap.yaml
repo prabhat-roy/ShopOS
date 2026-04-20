@@ -1,0 +1,21 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: demand-forecast-service
+  namespace: supply-chain
+  labels:
+    app: demand-forecast-service
+    domain: supply-chain
+data:
+  APP_ENV: production
+  LOG_LEVEL: info
+  LOG_FORMAT: json
+  SERVICE_NAME: demand-forecast-service
+  SERVICE_DOMAIN: supply-chain
+  HTTP_PORT: "8080"
+  METRICS_PORT: "9090"
+  HEALTH_PORT: "8080"
+  OTEL_SERVICE_NAME: demand-forecast-service
+  OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector.monitoring:4317
+  KAFKA_BROKERS: kafka.infra:9092
+  SCHEMA_REGISTRY_URL: http://schema-registry.infra:8081

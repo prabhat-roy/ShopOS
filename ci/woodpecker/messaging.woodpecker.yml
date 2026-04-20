@@ -1,0 +1,97 @@
+# Messaging Infrastructure — Woodpecker CI
+# Secrets: kubeconfig_content, rabbitmq_password
+# Env vars: ENVIRONMENT, ACTION (INSTALL|UPGRADE|UNINSTALL|CONFIGURE)
+
+when:
+  event: [custom, manual]
+
+steps:
+  zookeeper:
+    image: alpine/helm:latest
+    environment:
+      KUBECONFIG_CONTENT: { from_secret: kubeconfig_content }
+    commands:
+      - '[ "$ZOOKEEPER" = "true" ] && [ "$ACTION" != "CONFIGURE" ] || exit 0'
+      - mkdir -p ~/.kube && echo "$KUBECONFIG_CONTENT" | base64 -d > ~/.kube/config
+      - helm repo add bitnami https://charts.bitnami.com/bitnami --force-update
+      - |
+        [ "$ACTION" = "UNINSTALL" ] && helm uninstall zookeeper -n messaging 2>/dev/null || true
+        [ "$ACTION" != "UNINSTALL" ] && helm upgrade --install zookeeper bitnami/zookeeper \
+          --namespace messaging --create-namespace \
+          --set replicaCount=3 --set auth.enabled=false --wait --timeout 8m
+
+  kafka:
+    image: alpine/helm:latest
+    environment:
+      KUBECONFIG_CONTENT: { from_secret: kubeconfig_content }
+    commands:
+      - '[ "$KAFKA" = "true" ] && [ "$ACTION" != "CONFIGURE" ] || exit 0'
+      - mkdir -p ~/.kube && echo "$KUBECONFIG_CONTENT" | base64 -d > ~/.kube/config
+      - helm repo add bitnami https://charts.bitnami.com/bitnami --force-update
+      - |
+        [ "$ACTION" = "UNINSTALL" ] && helm uninstall kafka -n messaging 2>/dev/null || true
+        [ "$ACTION" != "UNINSTALL" ] && helm upgrade --install kafka bitnami/kafka \
+          --namespace messaging --create-namespace \
+          --set replicaCount=3 \
+          --set zookeeper.enabled=false \
+          --set externalZookeeper.servers=zookeeper.messaging.svc:2181 \
+          --set autoCreateTopicsEnable=false \
+          --set defaultReplicationFactor=3 --wait --timeout 10m
+    depends_on: [zookeeper]
+
+  rabbitmq:
+    image: alpine/helm:latest
+    environment:
+      KUBECONFIG_CONTENT: { from_secret: kubeconfig_content }
+      RABBITMQ_PASSWORD: { from_secret: rabbitmq_password }
+    commands:
+      - '[ "$RABBITMQ" = "true" ] && [ "$ACTION" != "CONFIGURE" ] || exit 0'
+      - mkdir -p ~/.kube && echo "$KUBECONFIG_CONTENT" | base64 -d > ~/.kube/config
+      - helm repo add bitnami https://charts.bitnami.com/bitnami --force-update
+      - |
+        [ "$ACTION" = "UNINSTALL" ] && helm uninstall rabbitmq -n messaging 2>/dev/null || true
+        [ "$ACTION" != "UNINSTALL" ] && helm upgrade --install rabbitmq bitnami/rabbitmq \
+          --namespace messaging --create-namespace \
+          --set replicaCount=3 --set auth.password="$RABBITMQ_PASSWORD" \
+          --set clustering.enabled=true --wait --timeout 8m
+    depends_on: [zookeeper]
+
+  nats:
+    image: alpine/helm:latest
+    environment:
+      KUBECONFIG_CONTENT: { from_secret: kubeconfig_content }
+    commands:
+      - '[ "$NATS" = "true" ] && [ "$ACTION" != "CONFIGURE" ] || exit 0'
+      - mkdir -p ~/.kube && echo "$KUBECONFIG_CONTENT" | base64 -d > ~/.kube/config
+      - helm repo add nats https://nats-io.github.io/k8s/helm/charts --force-update
+      - |
+        [ "$ACTION" = "UNINSTALL" ] && helm uninstall nats -n messaging 2>/dev/null || true
+        [ "$ACTION" != "UNINSTALL" ] && helm upgrade --install nats nats/nats \
+          --namespace messaging --create-namespace \
+          --set nats.jetstream.enabled=true \
+          --set cluster.enabled=true --set cluster.replicas=3 --wait --timeout 5m
+    depends_on: [zookeeper]
+
+  create-topics:
+    image: bitnami/kubectl:latest
+    environment:
+      KUBECONFIG_CONTENT: { from_secret: kubeconfig_content }
+    commands:
+      - '[ "$ACTION" = "CONFIGURE" ] || exit 0'
+      - mkdir -p ~/.kube && echo "$KUBECONFIG_CONTENT" | base64 -d > ~/.kube/config
+      - |
+        KAFKA_POD=$(kubectl get pod -n messaging -l app.kubernetes.io/name=kafka -o jsonpath='{.items[0].metadata.name}')
+        create_topic() {
+          kubectl exec -n messaging "$KAFKA_POD" -- \
+            kafka-topics.sh --create --if-not-exists \
+            --bootstrap-server kafka.messaging.svc:9092 \
+            --topic "$1" --partitions "$2" --replication-factor "$3" || true
+        }
+        create_topic commerce.order.placed 12 3
+        create_topic commerce.payment.processed 12 3
+        create_topic identity.user.registered 6 3
+        create_topic supplychain.shipment.created 6 3
+        create_topic analytics.page.viewed 12 3
+        create_topic notification.email.requested 6 3
+        create_topic security.fraud.detected 3 3
+    depends_on: [kafka, rabbitmq, nats]

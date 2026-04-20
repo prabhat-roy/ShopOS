@@ -1,0 +1,88 @@
+apiVersion: apiextensions.crossplane.io/v1
+kind: Composition
+metadata:
+  name: rds-postgres-shopos
+  labels:
+    provider: aws
+    db: postgres
+spec:
+  compositeTypeRef:
+    apiVersion: database.shopos.io/v1alpha1
+    kind: PostgreSQLInstance
+  resources:
+    - name: rds-instance
+      base:
+        apiVersion: rds.aws.upbound.io/v1beta1
+        kind: Instance
+        spec:
+          forProvider:
+            region: us-east-1
+            dbInstanceClass: db.t3.medium
+            engine: postgres
+            engineVersion: "16.3"
+            allocatedStorage: 20
+            storageType: gp3
+            storageEncrypted: true
+            multiAz: true
+            deletionProtection: true
+            backupRetentionPeriod: 7
+            skipFinalSnapshot: false
+            autoMinorVersionUpgrade: true
+            applyImmediately: false
+          writeConnectionSecretToRef:
+            namespace: crossplane-system
+      patches:
+        - fromFieldPath: spec.parameters.storageGB
+          toFieldPath: spec.forProvider.allocatedStorage
+        - fromFieldPath: spec.parameters.instanceClass
+          toFieldPath: spec.forProvider.dbInstanceClass
+        - fromFieldPath: metadata.name
+          toFieldPath: spec.forProvider.dbName
+        - fromFieldPath: metadata.name
+          toFieldPath: spec.writeConnectionSecretToRef.name
+          transforms:
+            - type: string
+              string:
+                fmt: "%s-db-conn"
+---
+apiVersion: apiextensions.crossplane.io/v1
+kind: CompositeResourceDefinition
+metadata:
+  name: postgresqlinstances.database.shopos.io
+spec:
+  group: database.shopos.io
+  names:
+    kind: PostgreSQLInstance
+    plural: postgresqlinstances
+  claimNames:
+    kind: PostgreSQLClaim
+    plural: postgresqlclaims
+  versions:
+    - name: v1alpha1
+      served: true
+      referenceable: true
+      schema:
+        openAPIV3Schema:
+          type: object
+          properties:
+            spec:
+              type: object
+              properties:
+                parameters:
+                  type: object
+                  properties:
+                    storageGB:
+                      type: integer
+                      default: 20
+                    instanceClass:
+                      type: string
+                      default: db.t3.medium
+                  required:
+                    - storageGB
+              required:
+                - parameters
+      connectionDetails:
+        - fromConnectionSecretKey: username
+        - fromConnectionSecretKey: password
+        - fromConnectionSecretKey: endpoint
+        - fromConnectionSecretKey: port

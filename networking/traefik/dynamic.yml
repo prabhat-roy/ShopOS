@@ -1,0 +1,53 @@
+http:
+  routers:
+    api-gateway:
+      rule: "PathPrefix(`/api`)"
+      service: api-gateway
+      tls: {}
+      middlewares:
+        - rate-limit
+        - security-headers
+
+    graphql:
+      rule: "PathPrefix(`/graphql`)"
+      service: graphql-gateway
+      tls: {}
+
+    admin:
+      rule: "PathPrefix(`/admin`)"
+      service: admin-portal
+      tls: {}
+      middlewares:
+        - auth-forward
+
+  services:
+    api-gateway:
+      loadBalancer:
+        servers:
+          - url: "http://api-gateway:8080"
+    graphql-gateway:
+      loadBalancer:
+        servers:
+          - url: "http://graphql-gateway:8086"
+    admin-portal:
+      loadBalancer:
+        servers:
+          - url: "http://admin-portal:8085"
+
+  middlewares:
+    rate-limit:
+      rateLimit:
+        average: 1000
+        burst: 2000
+    security-headers:
+      headers:
+        stsSeconds: 31536000
+        browserXssFilter: true
+        contentTypeNosniff: true
+        frameDeny: true
+        customResponseHeaders:
+          X-Powered-By: ""
+    auth-forward:
+      forwardAuth:
+        address: "http://auth-service:8098/validate"
+        trustForwardHeader: true

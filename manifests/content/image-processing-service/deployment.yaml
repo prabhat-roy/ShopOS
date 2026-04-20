@@ -1,0 +1,83 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: image-processing-service
+  namespace: content
+  labels:
+    app: image-processing-service
+    domain: content
+    version: v1
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: image-processing-service
+  template:
+    metadata:
+      labels:
+        app: image-processing-service
+        domain: content
+        version: v1
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "50141"
+    spec:
+      serviceAccountName: image-processing-service
+      terminationGracePeriodSeconds: 30
+      containers:
+        - name: image-processing-service
+          image: shopos/image-processing-service:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: grpc
+              containerPort: 50141
+              protocol: TCP
+          envFrom:
+            - configMapRef:
+                name: image-processing-service
+          env:
+            - name: POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            - name: POD_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+          resources:
+            requests:
+              cpu: 250m
+              memory: 256Mi
+            limits:
+              cpu: 1
+              memory: 1Gi
+          livenessProbe:
+            tcpSocket:
+              port: 50141
+            initialDelaySeconds: 15
+            periodSeconds: 20
+            failureThreshold: 3
+          readinessProbe:
+            tcpSocket:
+              port: 50141
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            failureThreshold: 3
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 1000
+            readOnlyRootFilesystem: true
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+      securityContext:
+        fsGroup: 2000
+        runAsNonRoot: true
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: kubernetes.io/hostname
+          whenUnsatisfiable: ScheduleAnyway
+          labelSelector:
+            matchLabels:
+              app: image-processing-service

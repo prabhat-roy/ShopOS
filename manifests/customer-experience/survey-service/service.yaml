@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: survey-service
+  namespace: customer-experience
+  labels:
+    app: survey-service
+    domain: customer-experience
+spec:
+  selector:
+    app: survey-service
+  type: ClusterIP
+  ports:
+    - name: grpc
+      port: 50129
+      targetPort: grpc
+      protocol: TCP

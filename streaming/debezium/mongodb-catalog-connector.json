@@ -1,0 +1,22 @@
+{
+  "name": "mongodb-catalog-connector",
+  "config": {
+    "connector.class": "io.debezium.connector.mongodb.MongoDbConnector",
+    "mongodb.connection.string": "mongodb://shopos:${file:/opt/kafka/external-configuration/connector-secrets/connector.properties:mongodb.password}@mongodb:27017",
+    "mongodb.name": "catalog",
+    "topic.prefix": "catalog",
+    "database.include.list": "shopos",
+    "collection.include.list": "shopos.products,shopos.categories,shopos.brands",
+    "key.converter": "io.confluent.kafka.serializers.KafkaAvroSerializer",
+    "value.converter": "io.confluent.kafka.serializers.KafkaAvroSerializer",
+    "key.converter.schema.registry.url": "http://schema-registry:8081",
+    "value.converter.schema.registry.url": "http://schema-registry:8081",
+    "transforms": "unwrap",
+    "transforms.unwrap.type": "io.debezium.connector.mongodb.transforms.ExtractNewDocumentState",
+    "transforms.unwrap.drop.tombstones": "false",
+    "transforms.unwrap.delete.handling.mode": "rewrite",
+    "errors.tolerance": "all",
+    "errors.deadletterqueue.topic.name": "debezium.errors.mongodb-catalog",
+    "errors.deadletterqueue.topic.replication.factor": "1"
+  }
+}

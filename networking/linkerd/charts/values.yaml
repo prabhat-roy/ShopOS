@@ -1,0 +1,34 @@
+replicaCount: 1
+
+image:
+  repository: ghcr.io/linkerd/controller
+  tag: "edge-24.9.1"
+  pullPolicy: IfNotPresent
+
+service:
+  type: ClusterIP
+  port: 8086
+  targetPort: 8086
+
+persistence:
+  enabled: false
+  storageClass: ""
+  size: 1Gi
+  accessMode: ReadWriteOnce
+  mountPath: /data
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 128Mi
+  limits:
+    cpu: "1"
+    memory: 512Mi
+
+env: {}
+
+ingress:
+  enabled: false
+  className: ""
+  host: ""
+  tls: []

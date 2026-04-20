@@ -1,0 +1,53 @@
+{
+  "name": "ShopOS Dev",
+  "image": "mcr.microsoft.com/devcontainers/base:ubuntu-24.04",
+  "features": {
+    "ghcr.io/devcontainers/features/go:1":          { "version": "1.24" },
+    "ghcr.io/devcontainers/features/java:1":        { "version": "21", "jdkDistro": "ms" },
+    "ghcr.io/devcontainers/features/node:1":        { "version": "22" },
+    "ghcr.io/devcontainers/features/python:1":      { "version": "3.12" },
+    "ghcr.io/devcontainers/features/rust:1":        { "version": "latest" },
+    "ghcr.io/devcontainers/features/dotnet:2":      { "version": "9.0" },
+    "ghcr.io/devcontainers/features/docker-in-docker:2": { "version": "latest" },
+    "ghcr.io/devcontainers/features/kubectl-helm-minikube:1": {
+      "version": "latest",
+      "helm": "latest",
+      "minikube": "none"
+    },
+    "ghcr.io/devcontainers/features/terraform:1":   { "version": "latest" },
+    "ghcr.io/devcontainers/features/github-cli:1":  { "version": "latest" }
+  },
+  "postCreateCommand": "bash .devcontainer/post-create.sh",
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "golang.go",
+        "vscjava.vscode-java-pack",
+        "ms-python.python",
+        "rust-lang.rust-analyzer",
+        "ms-dotnettools.csharp",
+        "hashicorp.terraform",
+        "redhat.vscode-yaml",
+        "ms-kubernetes-tools.vscode-kubernetes-tools",
+        "zxh404.vscode-proto3",
+        "grafana.vscode-jsonnet",
+        "dbaeumer.vscode-eslint",
+        "esbenp.prettier-vscode"
+      ],
+      "settings": {
+        "go.toolsManagement.autoUpdate": true,
+        "editor.formatOnSave": true,
+        "editor.defaultFormatter": "esbenp.prettier-vscode",
+        "[go]": { "editor.defaultFormatter": "golang.go" },
+        "[java]": { "editor.defaultFormatter": "redhat.java" },
+        "[python]": { "editor.defaultFormatter": "ms-python.python" },
+        "[rust]": { "editor.defaultFormatter": "rust-lang.rust-analyzer" }
+      }
+    }
+  },
+  "mounts": [
+    "source=${localWorkspaceFolder},target=/workspace,type=bind"
+  ],
+  "workspaceFolder": "/workspace",
+  "remoteUser": "vscode"
+}

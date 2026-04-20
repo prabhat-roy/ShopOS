@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: tax-provider-integration
+  namespace: integrations
+  labels:
+    app: tax-provider-integration
+    domain: integrations
+spec:
+  selector:
+    app: tax-provider-integration
+  type: ClusterIP
+  ports:
+    - name: grpc
+      port: 50175
+      targetPort: grpc
+      protocol: TCP

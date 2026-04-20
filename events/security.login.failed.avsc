@@ -1,0 +1,15 @@
+{
+  "type": "record",
+  "name": "LoginFailed",
+  "namespace": "com.shopos.security.login",
+  "doc": "Emitted when an authentication attempt fails",
+  "fields": [
+    { "name": "event_id",    "type": "string" },
+    { "name": "user_id",     "type": ["null", "string"], "default": null },
+    { "name": "email",       "type": "string" },
+    { "name": "ip_address",  "type": "string" },
+    { "name": "user_agent",  "type": "string", "default": "" },
+    { "name": "reason",      "type": "string" },
+    { "name": "occurred_at", "type": { "type": "long", "logicalType": "timestamp-millis" } }
+  ]
+}

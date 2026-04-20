@@ -1,0 +1,41 @@
+syntax = "proto3";
+package catalog.bundle.v1;
+option go_package = "github.com/shopos/proto/catalog/bundle/v1;bundlev1";
+
+import "google/protobuf/timestamp.proto";
+
+service BundleService {
+  rpc CreateBundle(CreateBundleRequest) returns (CreateBundleResponse);
+  rpc GetBundle(GetBundleRequest)       returns (GetBundleResponse);
+  rpc UpdateBundle(UpdateBundleRequest) returns (UpdateBundleResponse);
+  rpc DeleteBundle(DeleteBundleRequest) returns (DeleteBundleResponse);
+  rpc ListBundles(ListBundlesRequest)   returns (ListBundlesResponse);
+}
+
+message BundleItem {
+  string product_id = 1;
+  int32  quantity   = 2;
+}
+
+message Bundle {
+  string id             = 1;
+  string name           = 2;
+  string description    = 3;
+  repeated BundleItem items = 4;
+  string price_amount   = 5;
+  string price_currency = 6;
+  bool   active         = 7;
+  google.protobuf.Timestamp created_at = 8;
+  google.protobuf.Timestamp updated_at = 9;
+}
+
+message CreateBundleRequest  { string name = 1; string description = 2; repeated BundleItem items = 3; string price_amount = 4; string price_currency = 5; }
+message CreateBundleResponse { Bundle bundle = 1; }
+message GetBundleRequest     { string id = 1; }
+message GetBundleResponse    { Bundle bundle = 1; }
+message UpdateBundleRequest  { string id = 1; string name = 2; string description = 3; repeated BundleItem items = 4; string price_amount = 5; bool active = 6; }
+message UpdateBundleResponse { Bundle bundle = 1; }
+message DeleteBundleRequest  { string id = 1; }
+message DeleteBundleResponse { bool success = 1; }
+message ListBundlesRequest   { bool active_only = 1; int32 page = 2; int32 page_size = 3; }
+message ListBundlesResponse  { repeated Bundle bundles = 1; int32 total = 2; }

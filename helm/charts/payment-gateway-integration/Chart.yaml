@@ -1,0 +1,19 @@
+apiVersion: v2
+name: payment-gateway-integration
+description: ShopOS Payment Gateway Integration — Stripe/PayPal adapters
+type: application
+version: 0.1.0
+appVersion: "1.0.0"
+keywords:
+  - shopos
+  - payment-gateway-integration
+  - integrations
+home: https://github.com/your-org/shopos
+sources:
+  - https://github.com/your-org/shopos/tree/main/src/integrations/payment-gateway-integration
+maintainers:
+  - name: ShopOS Platform Team
+    email: platform@shopos.io
+annotations:
+  app.kubernetes.io/domain: integrations
+  app.kubernetes.io/language: Go

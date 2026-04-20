@@ -1,0 +1,19 @@
+apiVersion: v2
+name: marketplace-connector-service
+description: ShopOS Marketplace Connector — multi-marketplace sync
+type: application
+version: 0.1.0
+appVersion: "1.0.0"
+keywords:
+  - shopos
+  - marketplace-connector-service
+  - integrations
+home: https://github.com/your-org/shopos
+sources:
+  - https://github.com/your-org/shopos/tree/main/src/integrations/marketplace-connector-service
+maintainers:
+  - name: ShopOS Platform Team
+    email: platform@shopos.io
+annotations:
+  app.kubernetes.io/domain: integrations
+  app.kubernetes.io/language: Go

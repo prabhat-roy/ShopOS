@@ -1,0 +1,21 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: worker-job-queue
+  namespace: platform
+  labels:
+    app: worker-job-queue
+    domain: platform
+data:
+  APP_ENV: production
+  LOG_LEVEL: info
+  LOG_FORMAT: json
+  SERVICE_NAME: worker-job-queue
+  SERVICE_DOMAIN: platform
+  GRPC_PORT: "50057"
+  METRICS_PORT: "9090"
+  HEALTH_PORT: "50057"
+  OTEL_SERVICE_NAME: worker-job-queue
+  OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector.monitoring:4317
+  KAFKA_BROKERS: kafka.infra:9092
+  SCHEMA_REGISTRY_URL: http://schema-registry.infra:8081

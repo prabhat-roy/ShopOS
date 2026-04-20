@@ -1,0 +1,12 @@
+syntax = "proto3";
+package common.v1;
+option go_package = "github.com/shopos/proto/common/v1;commonv1";
+
+message Address {
+  string line1       = 1;
+  string line2       = 2;
+  string city        = 3;
+  string state       = 4;
+  string postal_code = 5;
+  string country     = 6;
+}

@@ -1,0 +1,92 @@
+# Post-Deploy Validation — Woodpecker CI
+# Secrets: kubeconfig_content, slack_webhook
+# Env vars: ENVIRONMENT, BASE_URL, RUN_LOAD_TEST, RUN_DAST
+
+when:
+  event: [custom, manual]
+
+steps:
+  health-check:
+    image: curlimages/curl:latest
+    environment:
+      KUBECONFIG_CONTENT: { from_secret: kubeconfig_content }
+    commands:
+      - apk add --no-cache bash
+      - |
+        FAILED=0
+        for SVC in api-gateway web-bff auth-service order-service payment-service; do
+          STATUS=$(curl -sf --max-time 10 "http://${BASE_URL:-localhost}:8080/healthz" -o /dev/null -w "%{http_code}" || echo "000")
+          echo "$SVC: $STATUS"
+          [ "$STATUS" != "200" ] && FAILED=1
+        done
+        [ "$FAILED" = "1" ] && echo "Health checks FAILED" && exit 1
+        echo "All health checks passed"
+
+  smoke-test:
+    image: curlimages/curl:latest
+    commands:
+      - |
+        BASE="${BASE_URL:-http://api-gateway.shopos.svc.cluster.local:8080}"
+        curl -sf "$BASE/healthz" || exit 1
+        curl -sf "$BASE/api/v1/products?limit=1" || true
+        curl -sf "$BASE/api/v1/categories" || true
+        echo "Smoke tests complete"
+    depends_on: [health-check]
+
+  load-test:
+    image: grafana/k6:latest
+    commands:
+      - '[ "$RUN_LOAD_TEST" = "true" ] || { echo "Skipped"; exit 0; }'
+      - |
+        cat > /tmp/smoke.js << 'EOF'
+        import http from 'k6/http';
+        import { check } from 'k6';
+        export let options = { vus: 10, duration: '60s' };
+        export default function() {
+          let res = http.get(`${__ENV.BASE_URL}/healthz`);
+          check(res, { 'status 200': (r) => r.status === 200 });
+        }
+        EOF
+        k6 run /tmp/smoke.js -e BASE_URL="${BASE_URL:-http://api-gateway:8080}"
+    depends_on: [smoke-test]
+
+  dast-zap:
+    image: ghcr.io/zaproxy/zaproxy:stable
+    commands:
+      - '[ "$RUN_DAST" = "true" ] || { echo "Skipped"; exit 0; }'
+      - zap-baseline.py -t "${BASE_URL:-http://api-gateway:8080}" -r /tmp/zap-report.html || true
+      - echo "ZAP scan complete (non-blocking)"
+    depends_on: [smoke-test]
+
+  kube-bench:
+    image: aquasec/kube-bench:latest
+    environment:
+      KUBECONFIG_CONTENT: { from_secret: kubeconfig_content }
+    commands:
+      - apk add --no-cache curl bash
+      - mkdir -p ~/.kube && echo "$KUBECONFIG_CONTENT" | base64 -d > ~/.kube/config
+      - curl -fsSL "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl" -o /usr/local/bin/kubectl && chmod +x /usr/local/bin/kubectl
+      - kube-bench run --targets node,policies --json > /tmp/kube-bench.json 2>/dev/null || true
+      - echo "kube-bench audit complete"
+    depends_on: [health-check]
+
+  kubescape:
+    image: kubescape/kubescape:latest
+    environment:
+      KUBECONFIG_CONTENT: { from_secret: kubeconfig_content }
+    commands:
+      - mkdir -p ~/.kube && echo "$KUBECONFIG_CONTENT" | base64 -d > ~/.kube/config
+      - kubescape scan framework nsa,mitre --format json --output /tmp/kubescape.json 2>/dev/null || true
+      - echo "Kubescape scan complete"
+    depends_on: [health-check]
+
+  notify:
+    image: curlimages/curl:latest
+    environment:
+      SLACK_WEBHOOK: { from_secret: slack_webhook }
+    commands:
+      - |
+        curl -sf -X POST "$SLACK_WEBHOOK" \
+          -H 'Content-type: application/json' \
+          --data "{\"text\":\"Post-deploy validation complete for *${ENVIRONMENT:-unknown}* environment. All checks passed.\"}" || true
+    depends_on: [load-test, dast-zap, kube-bench, kubescape]

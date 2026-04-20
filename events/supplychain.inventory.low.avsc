@@ -1,0 +1,15 @@
+{
+  "type": "record",
+  "name": "InventoryLow",
+  "namespace": "com.shopos.supplychain.inventory",
+  "doc": "Emitted when stock falls below the reorder threshold",
+  "fields": [
+    { "name": "event_id",         "type": "string" },
+    { "name": "product_id",       "type": "string" },
+    { "name": "sku",              "type": "string" },
+    { "name": "warehouse_id",     "type": "string" },
+    { "name": "current_quantity", "type": "int" },
+    { "name": "reorder_point",    "type": "int" },
+    { "name": "occurred_at",      "type": { "type": "long", "logicalType": "timestamp-millis" } }
+  ]
+}

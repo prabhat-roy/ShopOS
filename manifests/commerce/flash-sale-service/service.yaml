@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: flash-sale-service
+  namespace: commerce
+  labels:
+    app: flash-sale-service
+    domain: commerce
+spec:
+  selector:
+    app: flash-sale-service
+  type: ClusterIP
+  ports:
+    - name: grpc
+      port: 50184
+      targetPort: grpc
+      protocol: TCP

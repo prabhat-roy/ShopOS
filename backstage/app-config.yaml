@@ -1,0 +1,87 @@
+app:
+  title: ShopOS Developer Portal
+  baseUrl: http://localhost:3000
+
+organization:
+  name: ShopOS
+
+backend:
+  baseUrl: http://localhost:7007
+  listen:
+    port: 7007
+  csp:
+    connect-src: ["'self'", 'http:', 'https:']
+  cors:
+    origin: http://localhost:3000
+    methods: [GET, HEAD, PATCH, POST, PUT, DELETE]
+    credentials: true
+  database:
+    client: pg
+    connection:
+      host: ${POSTGRES_HOST}
+      port: ${POSTGRES_PORT}
+      user: ${POSTGRES_USER}
+      password: ${POSTGRES_PASSWORD}
+
+integrations:
+  github:
+    - host: github.com
+      token: ${GITHUB_TOKEN}
+
+techdocs:
+  builder: 'local'
+  generator:
+    runIn: 'docker'
+  publisher:
+    type: 'local'
+
+auth:
+  environment: development
+  providers:
+    github:
+      development:
+        clientId: ${AUTH_GITHUB_CLIENT_ID}
+        clientSecret: ${AUTH_GITHUB_CLIENT_SECRET}
+
+catalog:
+  import:
+    entityFilename: catalog-info.yaml
+    pullRequestBranchName: backstage-integration
+  rules:
+    - allow: [Component, System, API, Resource, Location, Group, User]
+  locations:
+    - type: file
+      target: ../../catalog-info.yaml
+      rules:
+        - allow: [Component, System, API, Resource, Location]
+    - type: url
+      target: https://github.com/your-org/shopos/blob/main/backstage/catalog-info.yaml
+      rules:
+        - allow: [Component, System, API, Resource, Location]
+
+kubernetes:
+  serviceLocatorMethod:
+    type: 'multiTenant'
+  clusterLocatorMethods:
+    - type: 'config'
+      clusters:
+        - url: ${K8S_URL}
+          name: shopos-production
+          authProvider: 'serviceAccount'
+          skipTLSVerify: false
+          serviceAccountToken: ${K8S_SA_TOKEN}
+
+sonarqube:
+  baseUrl: ${SONARQUBE_URL}
+  apiKey: ${SONARQUBE_API_KEY}
+
+proxy:
+  '/grafana/api':
+    target: ${GRAFANA_URL}
+    headers:
+      Authorization: Bearer ${GRAFANA_TOKEN}
+  '/argocd/api':
+    target: ${ARGOCD_URL}
+    changeOrigin: true
+    headers:
+      Cookie: ${ARGOCD_AUTH_TOKEN}

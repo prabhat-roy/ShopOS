@@ -1,0 +1,34 @@
+replicaCount: 1
+
+image:
+  repository: ghcr.io/gimlet-io/gimlet
+  tag: "v0.27.0"
+  pullPolicy: IfNotPresent
+
+service:
+  type: ClusterIP
+  port: 9000
+  targetPort: 9000
+
+persistence:
+  enabled: true
+  storageClass: ""
+  size: 5Gi
+  accessMode: ReadWriteOnce
+  mountPath: /data
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 256Mi
+  limits:
+    cpu: "1"
+    memory: 1Gi
+
+env: {}
+
+ingress:
+  enabled: false
+  className: ""
+  host: ""
+  tls: []

@@ -1,0 +1,98 @@
+syntax = "proto3";
+
+package catalog;
+
+import "common/common.proto";
+
+option go_package = "github.com/shopos/proto/catalog";
+
+// ---------------------------------------------------------------------------
+// Core domain messages
+// ---------------------------------------------------------------------------
+
+// TierPrice defines a quantity-break or segment-specific price adjustment.
+message TierPrice {
+  // Minimum quantity the buyer must purchase to qualify for this tier
+  int32        min_qty  = 1;
+  // Unit price when this tier applies
+  common.Money price    = 2;
+  // Optional customer segment name, e.g. "wholesale", "vip"; empty = all
+  string       segment  = 3;
+}
+
+// Price is the full pricing record for a single product.
+message Price {
+  // UUID of the parent product
+  string               product_id  = 1;
+  // Standard listed price
+  common.Money         base_price  = 2;
+  // Promotional/sale price (may be equal to base_price when no sale is active)
+  common.Money         sale_price  = 3;
+  // ISO 4217 currency code this price record applies to
+  string               currency    = 4;
+  // Ordered list of quantity-break / segment pricing rules
+  repeated TierPrice   tier_prices = 5;
+}
+
+// ---------------------------------------------------------------------------
+// Request / response messages
+// ---------------------------------------------------------------------------
+
+message GetPriceRequest {
+  string product_id  = 1;
+  // Optional: provide to apply customer-segment and contract pricing
+  string customer_id = 2;
+  // Quantity being purchased — used to select the appropriate tier
+  int32  quantity    = 3;
+  // Customer segment name, e.g. "retail", "wholesale"; empty = default
+  string segment     = 4;
+  // ISO 4217 currency code; falls back to product's default if empty
+  string currency    = 5;
+}
+
+message GetPriceResponse {
+  // Final resolved unit price after all rules are applied
+  common.Money price          = 1;
+  // Pre-discount unit price (equal to price when no discount applies)
+  common.Money original_price = 2;
+  // Discount percentage applied, e.g. 0.15 = 15 %
+  float        discount       = 3;
+}
+
+message GetBulkPricesRequest {
+  repeated GetPriceRequest requests = 1;
+}
+
+message GetBulkPricesResponse {
+  // Responses are in the same order as the input requests
+  repeated GetPriceResponse responses = 1;
+}
+
+message SetPriceRequest {
+  string       product_id = 1;
+  common.Money base_price = 2;
+  common.Money sale_price = 3;
+  string       currency   = 4;
+}
+
+message SetTierPriceRequest {
+  string     product_id = 1;
+  TierPrice  tier_price = 2;
+}
+
+// ---------------------------------------------------------------------------
+// PricingService — pricing-service (Java/Spring, port 50073)
+// ---------------------------------------------------------------------------
+service PricingService {
+  // Compute the final customer-specific unit price for a single product
+  rpc GetPrice(GetPriceRequest) returns (GetPriceResponse);
+
+  // Batch price resolution — more efficient than multiple GetPrice calls
+  rpc GetBulkPrices(GetBulkPricesRequest) returns (GetBulkPricesResponse);
+
+  // Create or replace the base/sale price for a product
+  rpc SetPrice(SetPriceRequest) returns (Price);
+
+  // Add or update a single tier-price entry for a product
+  rpc SetTierPrice(SetTierPriceRequest) returns (Price);
+}

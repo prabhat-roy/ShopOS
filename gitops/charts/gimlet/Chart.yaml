@@ -1,0 +1,6 @@
+apiVersion: v2
+name: gimlet
+description: Gimlet — developer-focused GitOps platform on top of Flux
+type: application
+version: 1.0.0
+appVersion: "v0.27.0"

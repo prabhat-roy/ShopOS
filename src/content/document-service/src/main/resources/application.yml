@@ -1,0 +1,5 @@
+# This file is intentionally left minimal — the service uses application.properties.
+# See src/main/resources/application.properties for full configuration.
+spring:
+  application:
+    name: document-service

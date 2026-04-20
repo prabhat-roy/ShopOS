@@ -1,0 +1,19 @@
+apiVersion: v2
+name: sitemap-service
+description: ShopOS Sitemap Service — XML sitemap generation
+type: application
+version: 0.1.0
+appVersion: "1.0.0"
+keywords:
+  - shopos
+  - sitemap-service
+  - content
+home: https://github.com/your-org/shopos
+sources:
+  - https://github.com/your-org/shopos/tree/main/src/content/sitemap-service
+maintainers:
+  - name: ShopOS Platform Team
+    email: platform@shopos.io
+annotations:
+  app.kubernetes.io/domain: content
+  app.kubernetes.io/language: Go

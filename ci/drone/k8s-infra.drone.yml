@@ -1,0 +1,174 @@
+kind: pipeline
+type: docker
+name: k8s-infra
+
+trigger:
+  event:
+    - custom
+
+# Secrets required:
+#   kubeconfig_b64, aws_access_key_id, aws_secret_access_key,
+#   gcp_credentials_json, azure_client_id, azure_client_secret,
+#   azure_tenant_id, azure_subscription_id
+
+# Variables (set via Drone UI / API):
+#   ACTION — CREATE | DESTROY
+
+steps:
+
+  - name: detect-cloud
+    image: alpine:3.21
+    commands:
+      - apk add --no-cache curl
+      - |
+        # Try AWS IMDS v2
+        TOKEN=$(curl -sf -X PUT -H "X-aws-ec2-metadata-token-ttl-seconds:21600" \
+          http://169.254.169.254/latest/api/token 2>/dev/null || echo "")
+        if [ -n "$TOKEN" ]; then
+          CLOUD="aws"
+        elif curl -sf -H "Metadata-Flavor: Google" \
+          http://metadata.google.internal/computeMetadata/v1/instance/zone &>/dev/null; then
+          CLOUD="gcp"
+        elif curl -sf -H "Metadata: true" \
+          "http://169.254.169.254/metadata/instance?api-version=2021-02-01" &>/dev/null; then
+          CLOUD="azure"
+        else
+          CLOUD="unknown"
+        fi
+        echo "CLOUD=$CLOUD" > /drone/src/.cloud.env
+        echo "Detected cloud: $CLOUD"
+
+  - name: terraform-init
+    image: hashicorp/terraform:1.9
+    environment:
+      AWS_ACCESS_KEY_ID:
+        from_secret: aws_access_key_id
+      AWS_SECRET_ACCESS_KEY:
+        from_secret: aws_secret_access_key
+    commands:
+      - source /drone/src/.cloud.env
+      - |
+        case $CLOUD in
+          aws)   TF_DIR="infra/terraform/aws/eks" ;;
+          gcp)   TF_DIR="infra/terraform/gcp/gke" ;;
+          azure) TF_DIR="infra/terraform/azure/aks" ;;
+          *)     TF_DIR="infra/terraform/aws/eks" ;;
+        esac
+        echo "TF_DIR=$TF_DIR" >> /drone/src/.cloud.env
+        terraform -chdir=$TF_DIR init -input=false
+
+  - name: create-vpc
+    image: hashicorp/terraform:1.9
+    environment:
+      AWS_ACCESS_KEY_ID:
+        from_secret: aws_access_key_id
+      AWS_SECRET_ACCESS_KEY:
+        from_secret: aws_secret_access_key
+    commands:
+      - source /drone/src/.cloud.env
+      - terraform -chdir=$TF_DIR apply -target=module.vpc -auto-approve -input=false
+    when:
+      branch: [main]
+
+  - name: create-subnets
+    image: hashicorp/terraform:1.9
+    environment:
+      AWS_ACCESS_KEY_ID:
+        from_secret: aws_access_key_id
+      AWS_SECRET_ACCESS_KEY:
+        from_secret: aws_secret_access_key
+    commands:
+      - source /drone/src/.cloud.env
+      - terraform -chdir=$TF_DIR apply -target=module.subnets -auto-approve -input=false
+    when:
+      branch: [main]
+
+  - name: create-nat-igw
+    image: hashicorp/terraform:1.9
+    environment:
+      AWS_ACCESS_KEY_ID:
+        from_secret: aws_access_key_id
+      AWS_SECRET_ACCESS_KEY:
+        from_secret: aws_secret_access_key
+    commands:
+      - source /drone/src/.cloud.env
+      - terraform -chdir=$TF_DIR apply -target=module.internet_gateway -target=module.nat_gateway -target=module.route_tables -auto-approve -input=false
+    when:
+      branch: [main]
+
+  - name: create-iam-sg
+    image: hashicorp/terraform:1.9
+    environment:
+      AWS_ACCESS_KEY_ID:
+        from_secret: aws_access_key_id
+      AWS_SECRET_ACCESS_KEY:
+        from_secret: aws_secret_access_key
+    commands:
+      - source /drone/src/.cloud.env
+      - terraform -chdir=$TF_DIR apply -target=module.iam -target=module.security_groups -auto-approve -input=false
+    when:
+      branch: [main]
+
+  - name: create-cluster
+    image: hashicorp/terraform:1.9
+    environment:
+      AWS_ACCESS_KEY_ID:
+        from_secret: aws_access_key_id
+      AWS_SECRET_ACCESS_KEY:
+        from_secret: aws_secret_access_key
+    commands:
+      - source /drone/src/.cloud.env
+      - terraform -chdir=$TF_DIR apply -auto-approve -input=false
+      - terraform -chdir=$TF_DIR output -json > /drone/src/.tf-outputs.json
+    when:
+      branch: [main]
+
+  - name: update-kubeconfig
+    image: amazon/aws-cli:latest
+    environment:
+      AWS_ACCESS_KEY_ID:
+        from_secret: aws_access_key_id
+      AWS_SECRET_ACCESS_KEY:
+        from_secret: aws_secret_access_key
+    commands:
+      - source /drone/src/.cloud.env
+      - |
+        if [ "$CLOUD" = "aws" ]; then
+          CLUSTER_NAME=$(grep -o '"cluster_name":"[^"]*"' /drone/src/.tf-outputs.json | cut -d'"' -f4 || echo "shopos-cluster")
+          REGION=$(grep -o '"region":"[^"]*"' /drone/src/.tf-outputs.json | cut -d'"' -f4 || echo "us-east-1")
+          aws eks update-kubeconfig --name $CLUSTER_NAME --region $REGION
+          KUBECONFIG_B64=$(cat ~/.kube/config | base64 -w0)
+          sed -i "/^KUBECONFIG_CONTENT=/d" infra.env || true
+          echo "KUBECONFIG_CONTENT=$KUBECONFIG_B64" >> infra.env
+          echo "Kubeconfig updated in infra.env"
+        fi
+    when:
+      branch: [main]
+
+  - name: destroy-infrastructure
+    image: hashicorp/terraform:1.9
+    environment:
+      AWS_ACCESS_KEY_ID:
+        from_secret: aws_access_key_id
+      AWS_SECRET_ACCESS_KEY:
+        from_secret: aws_secret_access_key
+    commands:
+      - source /drone/src/.cloud.env
+      - terraform -chdir=$TF_DIR destroy -auto-approve -input=false
+    when:
+      branch: [main]
+
+  - name: notify-slack
+    image: plugins/slack
+    settings:
+      webhook:
+        from_secret: slack_webhook
+      channel: "#infrastructure"
+      template: |
+        {{#success build.status}}
+        :white_check_mark: *K8s infra {{build.params.ACTION}} succeeded* — build {{build.number}}
+        {{else}}
+        :x: *K8s infra {{build.params.ACTION}} failed* — build {{build.number}}
+        {{/success}}
+    when:
+      status: [success, failure]

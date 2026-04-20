@@ -1,0 +1,97 @@
+# GitOps Tools Pipeline — GoCD
+format_version: 10
+
+pipelines:
+  shopos-gitops:
+    group: shopos-infra
+    label_template: "gitops-${COUNT}"
+    lock_behavior: unlockWhenFinished
+    materials:
+      git:
+        git: https://github.com/prabhat-roy/ShopOS.git
+        branch: main
+
+    stages:
+      - argocd:
+          jobs:
+            install:
+              elastic_profile_id: helm-agent
+              tasks:
+                - exec:
+                    command: /bin/sh
+                    arguments:
+                      - -c
+                      - |
+                        mkdir -p ~/.kube && echo "$KUBECONFIG_CONTENT" | base64 -d > ~/.kube/config
+                        helm repo add argo https://argoproj.github.io/argo-helm --force-update
+                        helm upgrade --install argocd argo/argo-cd \
+                          --namespace argocd --create-namespace \
+                          --set server.replicas=2 --set redis-ha.enabled=true \
+                          --set controller.replicas=1 --set repoServer.replicas=2 \
+                          --set configs.secret.argocdServerAdminPassword="$ARGOCD_ADMIN_PASSWORD_HASH" \
+                          --wait --timeout 10m
+
+      - gitops-tools:
+          jobs:
+            argo-rollouts:
+              elastic_profile_id: helm-agent
+              tasks:
+                - exec:
+                    command: /bin/sh
+                    arguments:
+                      - -c
+                      - |
+                        mkdir -p ~/.kube && echo "$KUBECONFIG_CONTENT" | base64 -d > ~/.kube/config
+                        helm repo add argo https://argoproj.github.io/argo-helm --force-update
+                        helm upgrade --install argo-rollouts argo/argo-rollouts \
+                          --namespace argo-rollouts --create-namespace \
+                          --set dashboard.enabled=true --wait --timeout 5m
+            keda:
+              elastic_profile_id: helm-agent
+              tasks:
+                - exec:
+                    command: /bin/sh
+                    arguments:
+                      - -c
+                      - |
+                        mkdir -p ~/.kube && echo "$KUBECONFIG_CONTENT" | base64 -d > ~/.kube/config
+                        helm repo add kedacore https://kedacore.github.io/charts --force-update
+                        helm upgrade --install keda kedacore/keda \
+                          --namespace keda --create-namespace \
+                          --set metricsServer.replicaCount=2 --wait --timeout 5m
+                        kubectl apply -f kubernetes/keda/ 2>/dev/null || true
+            velero:
+              elastic_profile_id: helm-agent
+              tasks:
+                - exec:
+                    command: /bin/sh
+                    arguments:
+                      - -c
+                      - |
+                        mkdir -p ~/.kube && echo "$KUBECONFIG_CONTENT" | base64 -d > ~/.kube/config
+                        helm repo add vmware-tanzu https://vmware-tanzu.github.io/helm-charts --force-update
+                        helm upgrade --install velero vmware-tanzu/velero \
+                          --namespace velero --create-namespace \
+                          --set configuration.backupStorageLocation[0].provider=aws \
+                          --set configuration.backupStorageLocation[0].bucket=velero-backups \
+                          --set "configuration.backupStorageLocation[0].config.s3Url=http://minio.registry.svc:9000" \
+                          --set configuration.backupStorageLocation[0].config.s3ForcePathStyle=true \
+                          --set "credentials.secretContents.cloud=[default]\naws_access_key_id=$MINIO_ACCESS_KEY\naws_secret_access_key=$MINIO_SECRET_KEY" \
+                          --wait --timeout 5m
+
+      - bootstrap:
+          approval:
+            type: manual
+          jobs:
+            app-of-apps:
+              elastic_profile_id: kubectl-agent
+              tasks:
+                - exec:
+                    command: /bin/sh
+                    arguments:
+                      - -c
+                      - |
+                        mkdir -p ~/.kube && echo "$KUBECONFIG_CONTENT" | base64 -d > ~/.kube/config
+                        kubectl wait --for=condition=available deployment/argocd-server -n argocd --timeout=120s
+                        kubectl apply -f gitops/argocd/app-of-apps.yaml
+                        kubectl apply -f gitops/argocd/applicationsets/ 2>/dev/null || true

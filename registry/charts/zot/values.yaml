@@ -1,0 +1,34 @@
+replicaCount: 1
+
+image:
+  repository: ghcr.io/project-zot/zot-linux-amd64
+  tag: "v2.1.0"
+  pullPolicy: IfNotPresent
+
+service:
+  type: ClusterIP
+  port: 5080
+  targetPort: 5080
+
+persistence:
+  enabled: true
+  storageClass: ""
+  size: 20Gi
+  accessMode: ReadWriteOnce
+  mountPath: /var/lib/registry
+
+resources:
+  requests:
+    cpu: 250m
+    memory: 256Mi
+  limits:
+    cpu: "1"
+    memory: 512Mi
+
+env: {}
+
+ingress:
+  enabled: false
+  className: ""
+  host: ""
+  tls: []

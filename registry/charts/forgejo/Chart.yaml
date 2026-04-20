@@ -1,0 +1,6 @@
+apiVersion: v2
+name: forgejo
+description: Forgejo — Gitea fork with community governance
+type: application
+version: 1.0.0
+appVersion: "8"

@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: kyc-aml-service
+  namespace: financial
+  labels:
+    app: kyc-aml-service
+    domain: financial
+spec:
+  selector:
+    app: kyc-aml-service
+  type: ClusterIP
+  ports:
+    - name: grpc
+      port: 50116
+      targetPort: grpc
+      protocol: TCP

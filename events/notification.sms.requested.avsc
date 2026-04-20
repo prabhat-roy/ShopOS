@@ -1,0 +1,13 @@
+{
+  "type": "record",
+  "name": "SmsRequested",
+  "namespace": "com.shopos.notification.sms",
+  "doc": "Emitted by notification-orchestrator to trigger SMS delivery",
+  "fields": [
+    { "name": "event_id",    "type": "string" },
+    { "name": "to_phone",    "type": "string" },
+    { "name": "template_id", "type": "string" },
+    { "name": "variables",   "type": { "type": "map", "values": "string" }, "default": {} },
+    { "name": "occurred_at", "type": { "type": "long", "logicalType": "timestamp-millis" } }
+  ]
+}

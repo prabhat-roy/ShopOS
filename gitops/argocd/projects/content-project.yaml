@@ -1,0 +1,35 @@
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: shopos-content
+  namespace: argocd
+spec:
+  description: ShopOS content domain services
+  sourceRepos:
+    - 'https://github.com/your-org/shopos.git'
+  destinations:
+    - namespace: shopos-content
+      server: https://kubernetes.default.svc
+  clusterResourceWhitelist:
+    - group: ''
+      kind: Namespace
+  namespaceResourceWhitelist:
+    - group: 'apps'
+      kind: Deployment
+    - group: ''
+      kind: Service
+    - group: ''
+      kind: ConfigMap
+    - group: ''
+      kind: Secret
+    - group: 'autoscaling'
+      kind: HorizontalPodAutoscaler
+    - group: 'networking.k8s.io'
+      kind: NetworkPolicy
+  roles:
+    - name: content-admin
+      description: content team full access
+      policies:
+        - p, proj:shopos-content:content-admin, applications, *, shopos-content/*, allow
+      groups:
+        - content-team

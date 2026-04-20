@@ -1,0 +1,157 @@
+# ShopOS — api-gateway Helm chart default values
+# Override per-environment with: helm upgrade -f values-prod.yaml api-gateway ./charts/api-gateway
+
+# ── Replica count (overridden by HPA when autoscaling.enabled=true) ──────────
+replicaCount: 2
+
+# ── Container image ───────────────────────────────────────────────────────────
+image:
+  repository: shopos/api-gateway
+  tag: latest
+  pullPolicy: IfNotPresent
+
+# ── Image pull secrets (for private registries) ───────────────────────────────
+imagePullSecrets: []
+# - name: harbor-registry-secret
+
+# ── Name overrides ────────────────────────────────────────────────────────────
+nameOverride: ""
+fullnameOverride: ""
+
+# ── Service account ───────────────────────────────────────────────────────────
+serviceAccount:
+  name: shopos-service-account
+  create: false   # pre-created by kubernetes/rbac/rbac.yaml
+  annotations: {}
+
+# ── Pod annotations ───────────────────────────────────────────────────────────
+podAnnotations:
+  prometheus.io/scrape: "true"
+  prometheus.io/port: "8080"
+  prometheus.io/path: "/metrics"
+
+# ── Pod security context ──────────────────────────────────────────────────────
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 1000
+  fsGroup: 2000
+
+# ── Container security context ────────────────────────────────────────────────
+securityContext:
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: true
+  capabilities:
+    drop:
+      - ALL
+
+# ── Service ───────────────────────────────────────────────────────────────────
+service:
+  type: ClusterIP
+  port: 8080
+  targetPort: 8080
+  protocol: TCP
+  annotations: {}
+
+# ── Ingress (disabled by default; enable for external exposure) ───────────────
+ingress:
+  enabled: false
+  className: nginx
+  annotations: {}
+  hosts:
+    - host: api.shopos.local
+      paths:
+        - path: /
+          pathType: Prefix
+  tls: []
+
+# ── Resource requests and limits ──────────────────────────────────────────────
+resources:
+  requests:
+    cpu: 100m
+    memory: 128Mi
+  limits:
+    cpu: 500m
+    memory: 512Mi
+
+# ── Horizontal Pod Autoscaler ─────────────────────────────────────────────────
+autoscaling:
+  enabled: true
+  minReplicas: 2
+  maxReplicas: 10
+  targetCPUUtilizationPercentage: 70
+  targetMemoryUtilizationPercentage: 80
+  behavior:
+    scaleDown:
+      stabilizationWindowSeconds: 300
+    scaleUp:
+      stabilizationWindowSeconds: 60
+
+# ── Liveness and readiness probes ────────────────────────────────────────────
+livenessProbe:
+  httpGet:
+    path: /healthz
+    port: 8080
+  initialDelaySeconds: 15
+  periodSeconds: 20
+  failureThreshold: 3
+  timeoutSeconds: 5
+
+readinessProbe:
+  httpGet:
+    path: /healthz
+    port: 8080
+  initialDelaySeconds: 5
+  periodSeconds: 10
+  failureThreshold: 3
+  timeoutSeconds: 3
+
+# ── Application environment configuration ────────────────────────────────────
+config:
+  kafkaBrokers: "kafka-0.kafka-headless.shopos-infra.svc.cluster.local:9092,kafka-1.kafka-headless.shopos-infra.svc.cluster.local:9092,kafka-2.kafka-headless.shopos-infra.svc.cluster.local:9092"
+  redisUrl: "redis://redis-master.shopos-infra.svc.cluster.local:6379"
+  environment: "production"
+  logLevel: "info"
+  logFormat: "json"
+  otelEnabled: "false"
+  otelEndpoint: "http://otel-collector.shopos-infra.svc.cluster.local:4317"
+
+# ── Secret reference names ────────────────────────────────────────────────────
+secrets:
+  dbCredentialsSecret: shopos-db-credentials
+
+# ── Extra environment variables ───────────────────────────────────────────────
+extraEnv: []
+# - name: MY_VAR
+#   value: "my-value"
+
+# ── Volume mounts (tmp is always needed for readOnlyRootFilesystem) ───────────
+extraVolumeMounts: []
+extraVolumes: []
+
+# ── Node selector, tolerations, and affinity ─────────────────────────────────
+nodeSelector: {}
+
+tolerations: []
+
+affinity:
+  podAntiAffinity:
+    preferredDuringSchedulingIgnoredDuringExecution:
+      - weight: 100
+        podAffinityTerm:
+          labelSelector:
+            matchLabels:
+              app.kubernetes.io/name: api-gateway
+          topologyKey: kubernetes.io/hostname
+
+# ── Deployment strategy ───────────────────────────────────────────────────────
+strategy:
+  type: RollingUpdate
+  rollingUpdate:
+    maxSurge: 1
+    maxUnavailable: 0
+
+# ── Termination grace period ──────────────────────────────────────────────────
+terminationGracePeriodSeconds: 30
+
+# ── Namespace override (defaults to Release.Namespace) ────────────────────────
+namespaceOverride: "shopos-platform"

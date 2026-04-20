@@ -1,0 +1,6 @@
+apiVersion: v2
+name: tracee
+description: Tracee - eBPF runtime security and forensics Aqua
+type: application
+version: 1.0.0
+appVersion: "v0.21.0"

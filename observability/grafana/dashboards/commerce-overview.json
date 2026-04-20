@@ -1,0 +1,50 @@
+{
+  "title": "ShopOS Commerce Overview",
+  "uid": "shopos-commerce",
+  "tags": ["shopos", "commerce"],
+  "refresh": "30s",
+  "time": { "from": "now-1h", "to": "now" },
+  "panels": [
+    {
+      "id": 1,
+      "type": "stat",
+      "title": "Orders / min",
+      "gridPos": { "x": 0, "y": 0, "w": 6, "h": 4 },
+      "targets": [
+        {
+          "expr": "sum(rate(orders_created_total[1m])) * 60",
+          "legendFormat": "Orders/min"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "type": "stat",
+      "title": "Payment Success Rate",
+      "gridPos": { "x": 6, "y": 0, "w": 6, "h": 4 },
+      "targets": [
+        {
+          "expr": "sum(rate(payments_total{status=\"success\"}[5m])) / sum(rate(payments_total[5m]))",
+          "legendFormat": "Success Rate"
+        }
+      ],
+      "fieldConfig": { "defaults": { "unit": "percentunit" } }
+    },
+    {
+      "id": 3,
+      "type": "timeseries",
+      "title": "Order Service Latency",
+      "gridPos": { "x": 0, "y": 4, "w": 12, "h": 8 },
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.50, rate(grpc_server_handling_seconds_bucket{service=\"order-service\"}[5m]))",
+          "legendFormat": "p50"
+        },
+        {
+          "expr": "histogram_quantile(0.99, rate(grpc_server_handling_seconds_bucket{service=\"order-service\"}[5m]))",
+          "legendFormat": "p99"
+        }
+      ]
+    }
+  ]
+}

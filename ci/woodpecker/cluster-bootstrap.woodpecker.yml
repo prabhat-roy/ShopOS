@@ -1,0 +1,109 @@
+# Cluster Bootstrap — Woodpecker CI
+# Secrets: kubeconfig_content, keycloak_admin_password, grafana_admin_password,
+#   rabbitmq_password, harbor_admin_password, minio_root_user, minio_root_password,
+#   argocd_admin_password_hash, slack_webhook, minio_secret_key
+# Env vars: ENVIRONMENT, SKIP_NETWORKING, SKIP_SECURITY, SKIP_OBSERVABILITY,
+#   SKIP_MESSAGING, SKIP_REGISTRY, SKIP_GITOPS
+
+when:
+  event: [custom, manual]
+
+steps:
+  phase1-networking:
+    image: alpine/helm:latest
+    environment:
+      KUBECONFIG_CONTENT: { from_secret: kubeconfig_content }
+    commands:
+      - '[ "$SKIP_NETWORKING" = "true" ] && echo "Skipped" && exit 0'
+      - mkdir -p ~/.kube && echo "$KUBECONFIG_CONTENT" | base64 -d > ~/.kube/config
+      - apk add --no-cache curl bash
+      - curl -fsSL "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl" -o /usr/local/bin/kubectl && chmod +x /usr/local/bin/kubectl
+      - helm repo add istio https://istio-release.storage.googleapis.com/charts --force-update
+      - helm upgrade --install istio-base istio/base --namespace istio-system --create-namespace --wait --timeout 3m
+      - helm upgrade --install istiod istio/istiod --namespace istio-system --set telemetry.enabled=true --wait --timeout 5m
+      - helm repo add traefik https://traefik.github.io/charts --force-update
+      - helm upgrade --install traefik traefik/traefik --namespace networking --create-namespace
+          --set deployment.replicas=2 --set ingressClass.enabled=true --set ingressClass.isDefaultClass=true
+          --wait --timeout 5m
+      - echo "Phase 1 Networking — DONE"
+
+  phase2-security:
+    image: alpine/helm:latest
+    environment:
+      KUBECONFIG_CONTENT: { from_secret: kubeconfig_content }
+      KEYCLOAK_ADMIN_PASSWORD: { from_secret: keycloak_admin_password }
+      SLACK_WEBHOOK: { from_secret: slack_webhook }
+    commands:
+      - '[ "$SKIP_SECURITY" = "true" ] && echo "Skipped" && exit 0'
+      - mkdir -p ~/.kube && echo "$KUBECONFIG_CONTENT" | base64 -d > ~/.kube/config
+      - helm repo add hashicorp https://helm.releases.hashicorp.com bitnami https://charts.bitnami.com/bitnami kyverno https://kyverno.github.io/kyverno falcosecurity https://falcosecurity.github.io/charts --force-update
+      - helm upgrade --install vault hashicorp/vault --namespace vault --create-namespace --set server.ha.enabled=true --set server.ha.raft.enabled=true --set server.ha.replicas=3 --wait --timeout 10m
+      - helm upgrade --install keycloak bitnami/keycloak --namespace keycloak --create-namespace --set replicaCount=2 --set auth.adminPassword="$KEYCLOAK_ADMIN_PASSWORD" --set postgresql.enabled=true --wait --timeout 10m
+      - helm upgrade --install kyverno kyverno/kyverno --namespace kyverno --create-namespace --set replicaCount=2 --wait --timeout 5m
+      - helm upgrade --install falco falcosecurity/falco --namespace falco --create-namespace --set driver.kind=ebpf --set falcosidekick.enabled=true --set falcosidekick.config.slack.webhookurl="$SLACK_WEBHOOK" --wait --timeout 8m
+      - echo "Phase 2 Security — DONE"
+    depends_on: [phase1-networking]
+
+  phase3-observability:
+    image: alpine/helm:latest
+    environment:
+      KUBECONFIG_CONTENT: { from_secret: kubeconfig_content }
+      GRAFANA_ADMIN_PASSWORD: { from_secret: grafana_admin_password }
+      MINIO_SECRET_KEY: { from_secret: minio_secret_key }
+    commands:
+      - '[ "$SKIP_OBSERVABILITY" = "true" ] && echo "Skipped" && exit 0'
+      - mkdir -p ~/.kube && echo "$KUBECONFIG_CONTENT" | base64 -d > ~/.kube/config
+      - helm repo add prometheus-community https://prometheus-community.github.io/helm-charts grafana https://grafana.github.io/helm-charts --force-update
+      - helm upgrade --install kube-prometheus-stack prometheus-community/kube-prometheus-stack --namespace observability --create-namespace --set prometheus.prometheusSpec.retention=30d --set grafana.enabled=false --wait --timeout 10m
+      - helm upgrade --install grafana grafana/grafana --namespace observability --set adminPassword="$GRAFANA_ADMIN_PASSWORD" --set persistence.enabled=true --wait --timeout 5m
+      - echo "Phase 3 Observability — DONE"
+    depends_on: [phase2-security]
+
+  phase4-messaging:
+    image: alpine/helm:latest
+    environment:
+      KUBECONFIG_CONTENT: { from_secret: kubeconfig_content }
+      RABBITMQ_PASSWORD: { from_secret: rabbitmq_password }
+    commands:
+      - '[ "$SKIP_MESSAGING" = "true" ] && echo "Skipped" && exit 0'
+      - mkdir -p ~/.kube && echo "$KUBECONFIG_CONTENT" | base64 -d > ~/.kube/config
+      - helm repo add bitnami https://charts.bitnami.com/bitnami nats https://nats-io.github.io/k8s/helm/charts --force-update
+      - helm upgrade --install zookeeper bitnami/zookeeper --namespace messaging --create-namespace --set replicaCount=3 --wait --timeout 8m
+      - helm upgrade --install kafka bitnami/kafka --namespace messaging --set replicaCount=3 --set zookeeper.enabled=false --set externalZookeeper.servers=zookeeper.messaging.svc:2181 --set autoCreateTopicsEnable=false --set defaultReplicationFactor=3 --wait --timeout 10m
+      - helm upgrade --install rabbitmq bitnami/rabbitmq --namespace messaging --set replicaCount=3 --set auth.password="$RABBITMQ_PASSWORD" --set clustering.enabled=true --wait --timeout 8m
+      - helm upgrade --install nats nats/nats --namespace messaging --set nats.jetstream.enabled=true --set cluster.enabled=true --set cluster.replicas=3 --wait --timeout 5m
+      - echo "Phase 4 Messaging — DONE"
+    depends_on: [phase3-observability]
+
+  phase5-registry:
+    image: alpine/helm:latest
+    environment:
+      KUBECONFIG_CONTENT: { from_secret: kubeconfig_content }
+      HARBOR_ADMIN_PASSWORD: { from_secret: harbor_admin_password }
+      MINIO_ROOT_USER: { from_secret: minio_root_user }
+      MINIO_ROOT_PASSWORD: { from_secret: minio_root_password }
+    commands:
+      - '[ "$SKIP_REGISTRY" = "true" ] && echo "Skipped" && exit 0'
+      - mkdir -p ~/.kube && echo "$KUBECONFIG_CONTENT" | base64 -d > ~/.kube/config
+      - helm repo add harbor https://helm.goharbor.io minio https://charts.min.io --force-update
+      - helm upgrade --install harbor harbor/harbor --namespace registry --create-namespace --set harborAdminPassword="$HARBOR_ADMIN_PASSWORD" --set trivy.enabled=true --set persistence.enabled=true --wait --timeout 10m
+      - helm upgrade --install minio minio/minio --namespace registry --set rootUser="$MINIO_ROOT_USER" --set rootPassword="$MINIO_ROOT_PASSWORD" --set replicas=4 --set persistence.enabled=true --set persistence.size=100Gi --wait --timeout 8m
+      - echo "Phase 5 Registry — DONE"
+    depends_on: [phase2-security]
+
+  phase6-gitops:
+    image: alpine/helm:latest
+    environment:
+      KUBECONFIG_CONTENT: { from_secret: kubeconfig_content }
+      ARGOCD_ADMIN_PASSWORD_HASH: { from_secret: argocd_admin_password_hash }
+    commands:
+      - '[ "$SKIP_GITOPS" = "true" ] && echo "Skipped" && exit 0'
+      - mkdir -p ~/.kube && echo "$KUBECONFIG_CONTENT" | base64 -d > ~/.kube/config
+      - apk add --no-cache curl && curl -fsSL "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl" -o /usr/local/bin/kubectl && chmod +x /usr/local/bin/kubectl
+      - helm repo add argo https://argoproj.github.io/argo-helm kedacore https://kedacore.github.io/charts --force-update
+      - helm upgrade --install argocd argo/argo-cd --namespace argocd --create-namespace --set server.replicas=2 --set redis-ha.enabled=true --set configs.secret.argocdServerAdminPassword="$ARGOCD_ADMIN_PASSWORD_HASH" --wait --timeout 10m
+      - helm upgrade --install keda kedacore/keda --namespace keda --create-namespace --wait --timeout 5m
+      - kubectl wait --for=condition=available deployment/argocd-server -n argocd --timeout=120s
+      - kubectl apply -f gitops/argocd/app-of-apps.yaml 2>/dev/null || true
+      - echo "Phase 6 GitOps — DONE"
+    depends_on: [phase4-messaging, phase5-registry]

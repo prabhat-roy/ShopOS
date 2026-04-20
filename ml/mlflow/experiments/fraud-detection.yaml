@@ -1,0 +1,7 @@
+name: fraud-detection
+artifact_location: s3://mlflow-artifacts/fraud-detection
+tags:
+  team: analytics-ai
+  service: fraud-detection-service
+  framework: scikit-learn
+  model_type: gradient_boosting

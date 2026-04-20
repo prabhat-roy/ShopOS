@@ -1,0 +1,15 @@
+{
+  "type": "record",
+  "name": "ProductClicked",
+  "namespace": "com.shopos.analytics.product",
+  "doc": "Emitted when a user clicks on a product listing",
+  "fields": [
+    { "name": "event_id",    "type": "string" },
+    { "name": "session_id",  "type": "string" },
+    { "name": "user_id",     "type": ["null", "string"], "default": null },
+    { "name": "product_id",  "type": "string" },
+    { "name": "source",      "type": "string", "default": "" },
+    { "name": "position",    "type": "int",    "default": 0 },
+    { "name": "occurred_at", "type": { "type": "long", "logicalType": "timestamp-millis" } }
+  ]
+}

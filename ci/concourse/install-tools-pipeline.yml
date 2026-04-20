@@ -1,0 +1,156 @@
+# Install CI Tools — Concourse CI
+# Verifies all required runtimes and security tools are available
+---
+resources:
+  - name: trigger-manual
+    type: time
+    source:
+      interval: 8760h
+
+jobs:
+  - name: verify-kubectl-helm
+    plan:
+      - get: trigger-manual
+        trigger: false
+      - task: verify
+        config:
+          platform: linux
+          image_resource:
+            type: registry-image
+            source: {repository: alpine/helm}
+          run:
+            path: sh
+            args:
+              - -c
+              - |
+                helm version --short
+                echo "kubectl: $(kubectl version --client --short 2>/dev/null || echo 'not in image')"
+
+  - name: verify-terraform
+    plan:
+      - get: trigger-manual
+        trigger: false
+      - task: verify
+        config:
+          platform: linux
+          image_resource:
+            type: registry-image
+            source: {repository: hashicorp/terraform, tag: "1.9.0"}
+          run:
+            path: terraform
+            args: [version]
+
+  - name: verify-golang
+    plan:
+      - get: trigger-manual
+        trigger: false
+      - task: verify
+        config:
+          platform: linux
+          image_resource:
+            type: registry-image
+            source: {repository: golang, tag: "1.23"}
+          run:
+            path: go
+            args: [version]
+
+  - name: verify-java
+    plan:
+      - get: trigger-manual
+        trigger: false
+      - task: verify
+        config:
+          platform: linux
+          image_resource:
+            type: registry-image
+            source: {repository: eclipse-temurin, tag: "21"}
+          run:
+            path: java
+            args: [-version]
+
+  - name: verify-nodejs
+    plan:
+      - get: trigger-manual
+        trigger: false
+      - task: verify
+        config:
+          platform: linux
+          image_resource:
+            type: registry-image
+            source: {repository: node, tag: "22"}
+          run:
+            path: sh
+            args:
+              - -c
+              - |
+                node --version
+                npm --version
+
+  - name: verify-python
+    plan:
+      - get: trigger-manual
+        trigger: false
+      - task: verify
+        config:
+          platform: linux
+          image_resource:
+            type: registry-image
+            source: {repository: python, tag: "3.13"}
+          run:
+            path: python
+            args: [--version]
+
+  - name: verify-dotnet
+    plan:
+      - get: trigger-manual
+        trigger: false
+      - task: verify
+        config:
+          platform: linux
+          image_resource:
+            type: registry-image
+            source: {repository: mcr.microsoft.com/dotnet/sdk, tag: "8.0"}
+          run:
+            path: dotnet
+            args: [--version]
+
+  - name: verify-rust
+    plan:
+      - get: trigger-manual
+        trigger: false
+      - task: verify
+        config:
+          platform: linux
+          image_resource:
+            type: registry-image
+            source: {repository: rust}
+          run:
+            path: rustc
+            args: [--version]
+
+  - name: verify-security-tools
+    plan:
+      - get: trigger-manual
+        trigger: false
+      - task: verify
+        config:
+          platform: linux
+          image_resource:
+            type: registry-image
+            source: {repository: ubuntu, tag: "24.04"}
+          run:
+            path: sh
+            args:
+              - -c
+              - |
+                apt-get update -qq && apt-get install -y curl --quiet
+                curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh -s -- -b /usr/local/bin
+                curl -sSfL https://raw.githubusercontent.com/anchore/grype/main/install.sh | sh -s -- -b /usr/local/bin
+                curl -sSfL https://raw.githubusercontent.com/anchore/syft/main/install.sh | sh -s -- -b /usr/local/bin
+                curl -fsSL "https://github.com/sigstore/cosign/releases/download/v2.4.0/cosign-linux-amd64" -o /usr/local/bin/cosign && chmod +x /usr/local/bin/cosign
+                pip3 install semgrep checkov --quiet
+                trivy --version | head -1
+                grype version | head -1
+                syft --version
+                cosign version
+                semgrep --version

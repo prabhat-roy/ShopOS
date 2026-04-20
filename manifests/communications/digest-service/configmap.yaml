@@ -1,0 +1,21 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: digest-service
+  namespace: communications
+  labels:
+    app: digest-service
+    domain: communications
+data:
+  APP_ENV: production
+  LOG_LEVEL: info
+  LOG_FORMAT: json
+  SERVICE_NAME: digest-service
+  SERVICE_DOMAIN: communications
+  HTTP_PORT: "8080"
+  METRICS_PORT: "9090"
+  HEALTH_PORT: "8080"
+  OTEL_SERVICE_NAME: digest-service
+  OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector.monitoring:4317
+  KAFKA_BROKERS: kafka.infra:9092
+  SCHEMA_REGISTRY_URL: http://schema-registry.infra:8081

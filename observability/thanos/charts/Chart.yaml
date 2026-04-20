@@ -1,0 +1,6 @@
+apiVersion: v2
+name: thanos
+description: Thanos — highly available Prometheus with long-term storage
+type: application
+version: 1.0.0
+appVersion: "v0.36.1"

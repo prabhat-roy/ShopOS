@@ -1,0 +1,60 @@
+syntax = "proto3";
+package integrations.crm.v1;
+option go_package = "github.com/shopos/proto/integrations/crm/v1;crmv1";
+
+import "google/protobuf/timestamp.proto";
+
+service CrmIntegrationService {
+  rpc SyncContact(SyncContactRequest) returns (SyncContactResponse);
+  rpc SyncDeal(SyncDealRequest) returns (SyncDealResponse);
+  rpc GetContactByCrm(GetContactByCrmRequest) returns (GetContactByCrmResponse);
+  rpc WebhookEvent(WebhookEventRequest) returns (WebhookEventResponse);
+}
+
+message CrmContact {
+  string id = 1;
+  string crm_id = 2;
+  string crm_system = 3;
+  string customer_id = 4;
+  string email = 5;
+  string first_name = 6;
+  string last_name = 7;
+  map<string, string> properties = 8;
+  google.protobuf.Timestamp synced_at = 9;
+}
+
+message SyncContactRequest {
+  string customer_id = 1;
+  string crm_system = 2;
+}
+
+message SyncContactResponse {
+  string crm_id = 1;
+  bool created = 2;
+  google.protobuf.Timestamp synced_at = 3;
+}
+
+message SyncDealRequest {
+  string order_id = 1;
+  string crm_system = 2;
+}
+
+message SyncDealResponse {
+  string crm_deal_id = 1;
+  bool created = 2;
+}
+
+message GetContactByCrmRequest {
+  string crm_id = 1;
+  string crm_system = 2;
+}
+
+message GetContactByCrmResponse { CrmContact contact = 1; }
+
+message WebhookEventRequest {
+  string crm_system = 1;
+  string event_type = 2;
+  bytes payload = 3;
+}
+
+message WebhookEventResponse { bool processed = 1; }

@@ -1,0 +1,95 @@
+apiVersion: chaos-mesh.org/v1alpha1
+kind: Workflow
+metadata:
+  name: commerce-resilience-workflow
+  namespace: chaos-mesh
+  labels:
+    app.kubernetes.io/part-of: shopos-chaos
+    chaos.shopos.io/domain: commerce
+spec:
+  entry: entry
+  templates:
+    - name: entry
+      templateType: Serial
+      deadline: 30m
+      children:
+        - baseline-pause
+        - fault-injection-parallel
+        - recovery-pause
+        - post-fault-parallel
+
+    - name: baseline-pause
+      templateType: Suspend
+      deadline: 2m
+
+    - name: fault-injection-parallel
+      templateType: Parallel
+      children:
+        - payment-network-delay
+        - checkout-cpu-stress
+
+    - name: payment-network-delay
+      templateType: NetworkChaos
+      deadline: 5m
+      networkChaos:
+        action: delay
+        mode: all
+        selector:
+          namespaces: [commerce]
+          labelSelectors:
+            app.kubernetes.io/name: payment-service
+        delay:
+          latency: 150ms
+          correlation: "50"
+          jitter: 25ms
+        direction: both
+
+    - name: checkout-cpu-stress
+      templateType: StressChaos
+      deadline: 5m
+      stressChaos:
+        mode: one
+        selector:
+          namespaces: [commerce]
+          labelSelectors:
+            app.kubernetes.io/name: checkout-service
+        stressors:
+          cpu:
+            workers: 1
+            load: 60
+
+    - name: recovery-pause
+      templateType: Suspend
+      deadline: 5m
+
+    - name: post-fault-parallel
+      templateType: Parallel
+      children:
+        - order-pod-kill
+        - fraud-network-loss
+
+    - name: order-pod-kill
+      templateType: PodChaos
+      deadline: 3m
+      podChaos:
+        action: pod-kill
+        mode: one
+        selector:
+          namespaces: [commerce]
+          labelSelectors:
+            app.kubernetes.io/name: order-service
+
+    - name: fraud-network-loss
+      templateType: NetworkChaos
+      deadline: 3m
+      networkChaos:
+        action: loss
+        mode: all
+        selector:
+          namespaces: [commerce]
+          labelSelectors:
+            app.kubernetes.io/name: fraud-detection-service
+        loss:
+          loss: "20"
+          correlation: "50"
+        direction: to

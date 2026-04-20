@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: pre-order-service
+  namespace: commerce
+  labels:
+    app: pre-order-service
+    domain: commerce
+spec:
+  selector:
+    app: pre-order-service
+  type: ClusterIP
+  ports:
+    - name: grpc
+      port: 50098
+      targetPort: grpc
+      protocol: TCP

@@ -1,0 +1,14 @@
+{
+  "monitors": [
+    {"name": "API Gateway", "type": "http", "url": "http://api-gateway:8080/healthz", "interval": 30},
+    {"name": "Auth Service", "type": "grpc-keyword", "url": "auth-service:50060", "interval": 60},
+    {"name": "Order Service", "type": "grpc-keyword", "url": "order-service:50082", "interval": 60},
+    {"name": "Payment Service", "type": "grpc-keyword", "url": "payment-service:50083", "interval": 30},
+    {"name": "PostgreSQL", "type": "port", "hostname": "postgres", "port": 5432, "interval": 60},
+    {"name": "Kafka", "type": "port", "hostname": "kafka", "port": 9092, "interval": 60},
+    {"name": "Redis", "type": "redis", "url": "redis://redis:6379", "interval": 30},
+    {"name": "Elasticsearch", "type": "http", "url": "http://elasticsearch:9200/_cluster/health", "interval": 60},
+    {"name": "RabbitMQ", "type": "http", "url": "http://rabbitmq:15672/api/healthchecks/node", "interval": 60},
+    {"name": "Temporal", "type": "port", "hostname": "temporal", "port": 7233, "interval": 60}
+  ]
+}

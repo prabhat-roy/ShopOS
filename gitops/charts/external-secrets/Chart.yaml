@@ -1,0 +1,6 @@
+apiVersion: v2
+name: external-secrets
+description: External Secrets Operator — sync secrets from Vault/AWS/GCP into K8s
+type: application
+version: 1.0.0
+appVersion: "v0.10.4"

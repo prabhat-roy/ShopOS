@@ -1,0 +1,89 @@
+# Networking Infrastructure Pipeline — GoCD
+format_version: 10
+
+pipelines:
+  shopos-networking:
+    group: shopos-infra
+    label_template: "networking-${COUNT}"
+    lock_behavior: unlockWhenFinished
+    materials:
+      git:
+        git: https://github.com/prabhat-roy/ShopOS.git
+        branch: main
+
+    stages:
+      - cni:
+          jobs:
+            cilium:
+              elastic_profile_id: helm-agent
+              tasks:
+                - exec:
+                    command: /bin/sh
+                    arguments:
+                      - -c
+                      - |
+                        mkdir -p ~/.kube && echo "$KUBECONFIG_CONTENT" | base64 -d > ~/.kube/config
+                        [ "$CILIUM" = "true" ] || { echo "Skipped"; exit 0; }
+                        helm repo add cilium https://helm.cilium.io --force-update
+                        helm upgrade --install cilium cilium/cilium \
+                          --namespace kube-system \
+                          --set hubble.enabled=true --set hubble.relay.enabled=true \
+                          --set hubble.ui.enabled=true --set prometheus.enabled=true \
+                          --wait --timeout 8m
+
+      - service-mesh:
+          jobs:
+            istio:
+              elastic_profile_id: helm-agent
+              tasks:
+                - exec:
+                    command: /bin/sh
+                    arguments:
+                      - -c
+                      - |
+                        mkdir -p ~/.kube && echo "$KUBECONFIG_CONTENT" | base64 -d > ~/.kube/config
+                        [ "$ISTIO" = "true" ] || { echo "Skipped"; exit 0; }
+                        helm repo add istio https://istio-release.storage.googleapis.com/charts --force-update
+                        helm upgrade --install istio-base istio/base \
+                          --namespace istio-system --create-namespace --wait --timeout 3m
+                        helm upgrade --install istiod istio/istiod \
+                          --namespace istio-system \
+                          --set telemetry.enabled=true --wait --timeout 5m
+                        helm upgrade --install istio-ingress istio/gateway \
+                          --namespace istio-ingress --create-namespace --wait --timeout 5m
+
+      - edge-routing:
+          jobs:
+            traefik:
+              elastic_profile_id: helm-agent
+              tasks:
+                - exec:
+                    command: /bin/sh
+                    arguments:
+                      - -c
+                      - |
+                        mkdir -p ~/.kube && echo "$KUBECONFIG_CONTENT" | base64 -d > ~/.kube/config
+                        helm repo add traefik https://traefik.github.io/charts --force-update
+                        helm upgrade --install traefik traefik/traefik \
+                          --namespace networking --create-namespace \
+                          --set deployment.replicas=2 \
+                          --set ingressClass.enabled=true --set ingressClass.isDefaultClass=true \
+                          --set metrics.prometheus.enabled=true \
+                          --wait --timeout 5m
+            consul:
+              elastic_profile_id: helm-agent
+              tasks:
+                - exec:
+                    command: /bin/sh
+                    arguments:
+                      - -c
+                      - |
+                        mkdir -p ~/.kube && echo "$KUBECONFIG_CONTENT" | base64 -d > ~/.kube/config
+                        [ "$CONSUL" = "true" ] || { echo "Skipped"; exit 0; }
+                        helm repo add hashicorp https://helm.releases.hashicorp.com --force-update
+                        helm upgrade --install consul hashicorp/consul \
+                          --namespace consul --create-namespace \
+                          --set global.datacenter=shopos-dc1 \
+                          --set server.replicas=3 \
+                          --set connectInject.enabled=true \
+                          --wait --timeout 8m

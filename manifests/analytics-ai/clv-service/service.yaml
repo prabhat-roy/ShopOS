@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: clv-service
+  namespace: analytics-ai
+  labels:
+    app: clv-service
+    domain: analytics-ai
+spec:
+  selector:
+    app: clv-service
+  type: ClusterIP
+  ports:
+    - name: http
+      port: 8195
+      targetPort: http
+      protocol: TCP

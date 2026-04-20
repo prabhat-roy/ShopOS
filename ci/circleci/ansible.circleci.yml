@@ -1,0 +1,61 @@
+# Ansible Playbooks Pipeline — CircleCI
+# Context: shopos-ansible, shopos-aws
+version: 2.1
+
+jobs:
+  ansible-lint:
+    docker:
+      - image: python:3.13
+    steps:
+      - checkout
+      - run:
+          name: Install dependencies
+          command: pip install ansible ansible-lint --quiet
+      - run:
+          name: Lint playbook
+          command: |
+            ansible-lint "infra/ansible/playbooks/$PLAYBOOK.yml" \
+              -c infra/ansible/.ansible-lint || true
+
+  run-playbook:
+    docker:
+      - image: python:3.13
+    steps:
+      - checkout
+      - run:
+          name: Install Ansible + cloud collections
+          command: |
+            pip install ansible boto3 botocore google-auth msrest msrestazure --quiet
+            ansible-galaxy collection install amazon.aws google.cloud azure.azcollection community.kubernetes --quiet
+      - run:
+          name: Write SSH key
+          command: echo "$ANSIBLE_SSH_PRIVATE_KEY" > /tmp/ansible_key && chmod 600 /tmp/ansible_key
+      - run:
+          name: Run playbook
+          environment:
+            ANSIBLE_FORCE_COLOR: "1"
+            ANSIBLE_HOST_KEY_CHECKING: "False"
+            ANSIBLE_STDOUT_CALLBACK: yaml
+          command: |
+            LIMIT_ARG="" && [ -n "$LIMIT" ] && LIMIT_ARG="--limit $LIMIT"
+            EXTRA_ARGS="" && [ -n "$EXTRA_VARS" ] && EXTRA_ARGS="--extra-vars '$EXTRA_VARS'"
+            CHECK_ARG="" && [ "$CHECK_MODE" = "true" ] && CHECK_ARG="--check --diff"
+            eval ansible-playbook \
+              -i "infra/ansible/inventories/$INVENTORY/hosts.yml" \
+              "infra/ansible/playbooks/$PLAYBOOK.yml" \
+              --private-key /tmp/ansible_key \
+              --user "$ANSIBLE_SSH_USER" \
+              $LIMIT_ARG $EXTRA_ARGS $CHECK_ARG -v
+      - run:
+          name: Cleanup SSH key
+          command: rm -f /tmp/ansible_key
+          when: always
+
+workflows:
+  ansible-workflow:
+    jobs:
+      - ansible-lint:
+          context: shopos-ansible
+      - run-playbook:
+          requires: [ansible-lint]
+          context: [shopos-ansible, shopos-aws]

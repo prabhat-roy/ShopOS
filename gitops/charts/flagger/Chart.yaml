@@ -1,0 +1,6 @@
+apiVersion: v2
+name: flagger
+description: Flagger — progressive delivery operator for Istio/Nginx/Traefik
+type: application
+version: 1.0.0
+appVersion: "1.38.0"

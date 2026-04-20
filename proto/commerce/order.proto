@@ -1,0 +1,111 @@
+syntax = "proto3";
+
+package commerce;
+
+import "common/common.proto";
+
+option go_package = "github.com/shopos/proto/commerce";
+
+// ---------------------------------------------------------------------------
+// Enums
+// ---------------------------------------------------------------------------
+
+enum OrderStatus {
+  ORDER_STATUS_UNSPECIFIED = 0;
+  ORDER_STATUS_PENDING     = 1;
+  ORDER_STATUS_CONFIRMED   = 2;
+  ORDER_STATUS_PROCESSING  = 3;
+  ORDER_STATUS_SHIPPED     = 4;
+  ORDER_STATUS_DELIVERED   = 5;
+  ORDER_STATUS_CANCELLED   = 6;
+  ORDER_STATUS_REFUNDED    = 7;
+  ORDER_STATUS_ON_HOLD     = 8;
+}
+
+// ---------------------------------------------------------------------------
+// Messages
+// ---------------------------------------------------------------------------
+
+message OrderItem {
+  string product_id = 1;
+  string sku        = 2;
+  string name       = 3;
+  int32  quantity   = 4;
+  Money  unit_price = 5;
+  Money  total      = 6;
+}
+
+message Order {
+  string            id               = 1;
+  string            customer_id      = 2;
+  OrderStatus       status           = 3;
+  repeated OrderItem items           = 4;
+  Money             subtotal         = 5;
+  Money             tax              = 6;
+  Money             shipping         = 7;
+  Money             total            = 8;
+  string            currency         = 9;
+  Address           shipping_address = 10;
+  string            notes            = 11;
+  Timestamp         created_at       = 12;
+  Timestamp         updated_at       = 13;
+}
+
+message CreateOrderRequest {
+  string             customer_id      = 1;
+  repeated OrderItem items            = 2;
+  Address            shipping_address = 3;
+  string             currency         = 4;
+  string             coupon_code      = 5;
+  string             notes            = 6;
+}
+
+message GetOrderRequest {
+  string order_id = 1;
+}
+
+message UpdateOrderStatusRequest {
+  string      order_id = 1;
+  OrderStatus status   = 2;
+}
+
+message CancelOrderRequest {
+  string order_id = 1;
+  string reason   = 2;
+}
+
+message ListOrdersRequest {
+  string      customer_id = 1;
+  OrderStatus status      = 2;
+  int32       page        = 3;
+  int32       page_size   = 4;
+}
+
+message ListOrdersResponse {
+  repeated Order orders     = 1;
+  Pagination     pagination = 2;
+}
+
+// ---------------------------------------------------------------------------
+// Service
+// ---------------------------------------------------------------------------
+
+service OrderService {
+  // Place a new order from the supplied items and shipping address.
+  rpc CreateOrder(CreateOrderRequest) returns (Order);
+
+  // Fetch a single order by its ID.
+  rpc GetOrder(GetOrderRequest) returns (Order);
+
+  // Transition an order to a new status (internal / ops use).
+  rpc UpdateOrderStatus(UpdateOrderStatusRequest) returns (Order);
+
+  // Cancel an order; allowed only in PENDING or CONFIRMED states.
+  rpc CancelOrder(CancelOrderRequest) returns (Order);
+
+  // List orders with optional status filter and pagination.
+  rpc ListOrders(ListOrdersRequest) returns (ListOrdersResponse);
+
+  // Convenience RPC — equivalent to ListOrders filtered by customer_id.
+  rpc ListOrdersByCustomer(ListOrdersRequest) returns (ListOrdersResponse);
+}

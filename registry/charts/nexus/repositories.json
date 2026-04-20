@@ -1,0 +1,31 @@
+{
+  "repositories": [
+    {"name": "maven-central",      "type": "proxy",  "format": "maven2",  "remoteUrl": "https://repo1.maven.org/maven2/"},
+    {"name": "maven-google",       "type": "proxy",  "format": "maven2",  "remoteUrl": "https://maven.google.com/"},
+    {"name": "maven-gradle-plugins","type": "proxy", "format": "maven2",  "remoteUrl": "https://plugins.gradle.org/m2/"},
+    {"name": "maven-spring",       "type": "proxy",  "format": "maven2",  "remoteUrl": "https://repo.spring.io/release/"},
+    {"name": "npm-registry",       "type": "proxy",  "format": "npm",     "remoteUrl": "https://registry.npmjs.org"},
+    {"name": "pypi-proxy",         "type": "proxy",  "format": "pypi",    "remoteUrl": "https://pypi.org"},
+    {"name": "go-proxy",           "type": "proxy",  "format": "go",      "remoteUrl": "https://goproxy.io"},
+    {"name": "nuget-proxy",        "type": "proxy",  "format": "nuget",   "remoteUrl": "https://api.nuget.org/v3/index.json"},
+    {"name": "rubygems-proxy",     "type": "proxy",  "format": "rubygems","remoteUrl": "https://rubygems.org"},
+    {"name": "docker-hub",         "type": "proxy",  "format": "docker",  "remoteUrl": "https://registry-1.docker.io", "httpPort": 5000},
+    {"name": "gcr-proxy",          "type": "proxy",  "format": "docker",  "remoteUrl": "https://gcr.io",               "httpPort": 5001},
+    {"name": "mcr-proxy",          "type": "proxy",  "format": "docker",  "remoteUrl": "https://mcr.microsoft.com",    "httpPort": 5002},
+    {"name": "shopos-releases",    "type": "hosted", "format": "maven2"},
+    {"name": "shopos-snapshots",   "type": "hosted", "format": "maven2"},
+    {"name": "shopos-npm",         "type": "hosted", "format": "npm"},
+    {"name": "shopos-pypi",        "type": "hosted", "format": "pypi"},
+    {"name": "shopos-docker",      "type": "hosted", "format": "docker",  "httpPort": 5003},
+    {"name": "shopos-go",          "type": "hosted", "format": "go"},
+    {"name": "shopos-nuget",       "type": "hosted", "format": "nuget"},
+    {"name": "maven-public",       "type": "group",  "format": "maven2",
+     "members": ["shopos-releases","shopos-snapshots","maven-central","maven-google","maven-gradle-plugins","maven-spring"]},
+    {"name": "npm-public",         "type": "group",  "format": "npm",
+     "members": ["shopos-npm","npm-registry"]},
+    {"name": "pypi-public",        "type": "group",  "format": "pypi",
+     "members": ["shopos-pypi","pypi-proxy"]},
+    {"name": "docker-public",      "type": "group",  "format": "docker",
+     "members": ["shopos-docker","docker-hub","gcr-proxy","mcr-proxy"], "httpPort": 5004}
+  ]
+}

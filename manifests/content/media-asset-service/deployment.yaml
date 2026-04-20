@@ -1,0 +1,83 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: media-asset-service
+  namespace: content
+  labels:
+    app: media-asset-service
+    domain: content
+    version: v1
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: media-asset-service
+  template:
+    metadata:
+      labels:
+        app: media-asset-service
+        domain: content
+        version: v1
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "50140"
+    spec:
+      serviceAccountName: media-asset-service
+      terminationGracePeriodSeconds: 30
+      containers:
+        - name: media-asset-service
+          image: shopos/media-asset-service:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: grpc
+              containerPort: 50140
+              protocol: TCP
+          envFrom:
+            - configMapRef:
+                name: media-asset-service
+          env:
+            - name: POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            - name: POD_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+          resources:
+            requests:
+              cpu: 500m
+              memory: 512Mi
+            limits:
+              cpu: 2
+              memory: 2Gi
+          livenessProbe:
+            tcpSocket:
+              port: 50140
+            initialDelaySeconds: 15
+            periodSeconds: 20
+            failureThreshold: 3
+          readinessProbe:
+            tcpSocket:
+              port: 50140
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            failureThreshold: 3
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 1000
+            readOnlyRootFilesystem: true
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+      securityContext:
+        fsGroup: 2000
+        runAsNonRoot: true
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: kubernetes.io/hostname
+          whenUnsatisfiable: ScheduleAnyway
+          labelSelector:
+            matchLabels:
+              app: media-asset-service

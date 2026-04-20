@@ -1,0 +1,113 @@
+syntax = "proto3";
+
+package identity;
+
+option go_package = "github.com/shopos/proto/identity";
+
+// ---------------------------------------------------------------------------
+// Shared enums
+// ---------------------------------------------------------------------------
+
+enum UserStatus {
+  USER_STATUS_UNSPECIFIED = 0;
+  USER_STATUS_ACTIVE      = 1;
+  USER_STATUS_INACTIVE    = 2;
+  USER_STATUS_SUSPENDED   = 3;
+  USER_STATUS_DELETED     = 4;
+}
+
+// ---------------------------------------------------------------------------
+// Core domain messages
+// ---------------------------------------------------------------------------
+
+message User {
+  // UUID
+  string          id         = 1;
+  string          email      = 2;
+  string          first_name = 3;
+  string          last_name  = 4;
+  string          phone      = 5;
+  UserStatus      status     = 6;
+  // Role names assigned to this user, e.g. ["customer", "admin"]
+  repeated string roles      = 7;
+  // Unix seconds UTC
+  int64           created_at = 8;
+  int64           updated_at = 9;
+}
+
+// ---------------------------------------------------------------------------
+// Request / response messages
+// ---------------------------------------------------------------------------
+
+message CreateUserRequest {
+  string          email      = 1;
+  // Plain-text password — service is responsible for hashing
+  string          password   = 2;
+  string          first_name = 3;
+  string          last_name  = 4;
+  string          phone      = 5;
+  repeated string roles      = 6;
+}
+
+message UpdateUserRequest {
+  string     id         = 1;
+  string     first_name = 2;
+  string     last_name  = 3;
+  string     phone      = 4;
+  UserStatus status     = 5;
+}
+
+message GetUserRequest {
+  string id = 1;
+}
+
+message GetUserByEmailRequest {
+  string email = 1;
+}
+
+message DeleteUserRequest {
+  string id = 1;
+}
+
+message DeleteUserResponse {
+  bool   success = 1;
+  string message = 2;
+}
+
+message ListUsersRequest {
+  // Filter; USER_STATUS_UNSPECIFIED means return all
+  UserStatus status    = 1;
+  int32      page      = 2;
+  int32      page_size = 3;
+}
+
+message ListUsersResponse {
+  repeated User users       = 1;
+  int32         page        = 2;
+  int32         page_size   = 3;
+  int32         total       = 4;
+  int32         total_pages = 5;
+}
+
+// ---------------------------------------------------------------------------
+// UserService — user-service (Java/Spring, port 50061)
+// ---------------------------------------------------------------------------
+service UserService {
+  // Create a new user account
+  rpc CreateUser(CreateUserRequest) returns (User);
+
+  // Retrieve a user by internal UUID
+  rpc GetUser(GetUserRequest) returns (User);
+
+  // Update mutable profile fields
+  rpc UpdateUser(UpdateUserRequest) returns (User);
+
+  // Soft-delete a user (sets status to USER_STATUS_DELETED)
+  rpc DeleteUser(DeleteUserRequest) returns (DeleteUserResponse);
+
+  // List users with optional status filter and pagination
+  rpc ListUsers(ListUsersRequest) returns (ListUsersResponse);
+
+  // Look up a user by their email address (used during login)
+  rpc GetUserByEmail(GetUserByEmailRequest) returns (User);
+}

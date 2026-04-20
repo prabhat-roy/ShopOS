@@ -1,0 +1,259 @@
+name: Observability Stack
+
+trigger: none
+
+parameters:
+  - name: environment
+    displayName: Target environment
+    type: string
+    default: dev
+    values: [dev, staging, prod]
+  - name: action
+    displayName: Action
+    type: string
+    default: INSTALL
+    values: [INSTALL, UPGRADE, UNINSTALL]
+  - name: prometheus
+    type: boolean
+    default: true
+  - name: grafana
+    type: boolean
+    default: true
+  - name: loki
+    type: boolean
+    default: true
+  - name: jaeger
+    type: boolean
+    default: true
+  - name: tempo
+    type: boolean
+    default: true
+  - name: otel_collector
+    type: boolean
+    default: true
+  - name: thanos
+    type: boolean
+    default: false
+  - name: pyroscope
+    type: boolean
+    default: false
+  - name: opensearch
+    type: boolean
+    default: false
+  - name: fluent_bit
+    type: boolean
+    default: true
+  - name: metrics_server
+    type: boolean
+    default: true
+
+variables:
+  - group: shopos-secrets
+
+pool:
+  vmImage: ubuntu-latest
+
+jobs:
+  - job: Observability
+    displayName: Observability ${{ parameters.action }} on ${{ parameters.environment }}
+    timeoutInMinutes: 90
+    steps:
+      - task: KubectlInstaller@0
+
+      - script: |
+          curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
+        displayName: Install Helm
+
+      - script: |
+          mkdir -p ~/.kube
+          echo "$(KUBECONFIG_CONTENT)" | base64 -d > ~/.kube/config
+        displayName: Configure kubeconfig
+
+      # ── Metrics Server ────────────────────────────────────────────────────
+      - ${{ if eq(parameters.metrics_server, true) }}:
+        - script: |
+            helm repo add metrics-server https://kubernetes-sigs.github.io/metrics-server --force-update
+            if [ "${{ parameters.action }}" = "UNINSTALL" ]; then
+              helm uninstall metrics-server -n kube-system 2>/dev/null || true
+            else
+              helm upgrade --install metrics-server metrics-server/metrics-server \
+                --namespace kube-system \
+                --set args[0]=--kubelet-insecure-tls \
+                --wait --timeout 3m
+            fi
+          displayName: Metrics Server
+
+      # ── kube-prometheus-stack ─────────────────────────────────────────────
+      - ${{ if eq(parameters.prometheus, true) }}:
+        - script: |
+            helm repo add prometheus-community https://prometheus-community.github.io/helm-charts --force-update
+            if [ "${{ parameters.action }}" = "UNINSTALL" ]; then
+              helm uninstall kube-prometheus-stack -n observability 2>/dev/null || true
+            else
+              helm upgrade --install kube-prometheus-stack prometheus-community/kube-prometheus-stack \
+                --namespace observability --create-namespace \
+                --set prometheus.prometheusSpec.retention=30d \
+                --set prometheus.prometheusSpec.storageSpec.volumeClaimTemplate.spec.resources.requests.storage=50Gi \
+                --set alertmanager.alertmanagerSpec.replicas=2 \
+                --set grafana.enabled=false \
+                --set prometheus.prometheusSpec.serviceMonitorSelectorNilUsesHelmValues=false \
+                --wait --timeout 10m
+              kubectl apply -f observability/prometheus/ 2>/dev/null || true
+            fi
+          displayName: Prometheus Stack
+
+      # ── Grafana ───────────────────────────────────────────────────────────
+      - ${{ if eq(parameters.grafana, true) }}:
+        - script: |
+            helm repo add grafana https://grafana.github.io/helm-charts --force-update
+            if [ "${{ parameters.action }}" = "UNINSTALL" ]; then
+              helm uninstall grafana -n observability 2>/dev/null || true
+            else
+              helm upgrade --install grafana grafana/grafana \
+                --namespace observability --create-namespace \
+                --set adminPassword="$(GRAFANA_ADMIN_PASSWORD)" \
+                --set persistence.enabled=true \
+                --set persistence.size=10Gi \
+                --set sidecar.dashboards.enabled=true \
+                --set sidecar.datasources.enabled=true \
+                --wait --timeout 5m
+              kubectl apply -f observability/grafana/ 2>/dev/null || true
+            fi
+          displayName: Grafana
+
+      # ── Loki ──────────────────────────────────────────────────────────────
+      - ${{ if eq(parameters.loki, true) }}:
+        - script: |
+            helm repo add grafana https://grafana.github.io/helm-charts --force-update
+            if [ "${{ parameters.action }}" = "UNINSTALL" ]; then
+              helm uninstall loki -n observability 2>/dev/null || true
+            else
+              helm upgrade --install loki grafana/loki \
+                --namespace observability --create-namespace \
+                --set loki.auth_enabled=false \
+                --set loki.storage.type=s3 \
+                --set loki.storage.s3.endpoint="$(MINIO_ENDPOINT)" \
+                --set loki.storage.s3.bucketnames=loki-chunks \
+                --set loki.storage.s3.access_key_id="$(MINIO_ACCESS_KEY)" \
+                --set loki.storage.s3.secret_access_key="$(MINIO_SECRET_KEY)" \
+                --set loki.storage.s3.s3ForcePathStyle=true \
+                --wait --timeout 8m
+              kubectl apply -f observability/loki/ 2>/dev/null || true
+            fi
+          displayName: Loki
+
+      # ── Fluent Bit ────────────────────────────────────────────────────────
+      - ${{ if eq(parameters.fluent_bit, true) }}:
+        - script: |
+            helm repo add fluent https://fluent.github.io/helm-charts --force-update
+            if [ "${{ parameters.action }}" = "UNINSTALL" ]; then
+              helm uninstall fluent-bit -n observability 2>/dev/null || true
+            else
+              helm upgrade --install fluent-bit fluent/fluent-bit \
+                --namespace observability --create-namespace \
+                --set config.outputs="[OUTPUT]\n    Name loki\n    Match *\n    Host loki.observability.svc\n    Port 3100\n    Labels job=fluentbit" \
+                --wait --timeout 5m
+              kubectl apply -f observability/fluent-bit/ 2>/dev/null || true
+            fi
+          displayName: Fluent Bit
+
+      # ── Jaeger ────────────────────────────────────────────────────────────
+      - ${{ if eq(parameters.jaeger, true) }}:
+        - script: |
+            helm repo add jaegertracing https://jaegertracing.github.io/helm-charts --force-update
+            if [ "${{ parameters.action }}" = "UNINSTALL" ]; then
+              helm uninstall jaeger -n observability 2>/dev/null || true
+            else
+              helm upgrade --install jaeger jaegertracing/jaeger \
+                --namespace observability --create-namespace \
+                --set provisionDataStore.cassandra=false \
+                --set allInOne.enabled=false \
+                --set storage.type=elasticsearch \
+                --set storage.elasticsearch.host=elasticsearch.observability \
+                --wait --timeout 8m
+              kubectl apply -f observability/jaeger/ 2>/dev/null || true
+            fi
+          displayName: Jaeger
+
+      # ── Tempo ─────────────────────────────────────────────────────────────
+      - ${{ if eq(parameters.tempo, true) }}:
+        - script: |
+            helm repo add grafana https://grafana.github.io/helm-charts --force-update
+            if [ "${{ parameters.action }}" = "UNINSTALL" ]; then
+              helm uninstall tempo-distributed -n observability 2>/dev/null || true
+            else
+              helm upgrade --install tempo-distributed grafana/tempo-distributed \
+                --namespace observability --create-namespace \
+                --set storage.trace.backend=s3 \
+                --set storage.trace.s3.endpoint="$(MINIO_ENDPOINT)" \
+                --set storage.trace.s3.bucket=tempo-traces \
+                --set storage.trace.s3.access_key="$(MINIO_ACCESS_KEY)" \
+                --set storage.trace.s3.secret_key="$(MINIO_SECRET_KEY)" \
+                --set storage.trace.s3.insecure=true \
+                --wait --timeout 8m
+              kubectl apply -f observability/tempo/ 2>/dev/null || true
+            fi
+          displayName: Grafana Tempo
+
+      # ── OpenTelemetry Collector ───────────────────────────────────────────
+      - ${{ if eq(parameters.otel_collector, true) }}:
+        - script: |
+            helm repo add open-telemetry https://open-telemetry.github.io/opentelemetry-helm-charts --force-update
+            if [ "${{ parameters.action }}" = "UNINSTALL" ]; then
+              helm uninstall otel-collector -n observability 2>/dev/null || true
+            else
+              helm upgrade --install otel-collector open-telemetry/opentelemetry-collector \
+                --namespace observability --create-namespace \
+                --set mode=deployment \
+                --set replicaCount=2 \
+                -f observability/otel-collector/values.yaml \
+                --wait --timeout 5m
+            fi
+          displayName: OpenTelemetry Collector
+
+      # ── Thanos ────────────────────────────────────────────────────────────
+      - ${{ if eq(parameters.thanos, true) }}:
+        - script: |
+            helm repo add bitnami https://charts.bitnami.com/bitnami --force-update
+            if [ "${{ parameters.action }}" = "UNINSTALL" ]; then
+              helm uninstall thanos -n observability 2>/dev/null || true
+            else
+              helm upgrade --install thanos bitnami/thanos \
+                --namespace observability --create-namespace \
+                --set objstoreConfig="type: S3\nconfig:\n  bucket: thanos\n  endpoint: $(MINIO_ENDPOINT)\n  access_key: $(MINIO_ACCESS_KEY)\n  secret_key: $(MINIO_SECRET_KEY)\n  insecure: true" \
+                --wait --timeout 8m
+            fi
+          displayName: Thanos
+
+      # ── Pyroscope ─────────────────────────────────────────────────────────
+      - ${{ if eq(parameters.pyroscope, true) }}:
+        - script: |
+            helm repo add grafana https://grafana.github.io/helm-charts --force-update
+            if [ "${{ parameters.action }}" = "UNINSTALL" ]; then
+              helm uninstall pyroscope -n observability 2>/dev/null || true
+            else
+              helm upgrade --install pyroscope grafana/pyroscope \
+                --namespace observability --create-namespace \
+                --wait --timeout 5m
+            fi
+          displayName: Pyroscope
+
+      # ── OpenSearch ────────────────────────────────────────────────────────
+      - ${{ if eq(parameters.opensearch, true) }}:
+        - script: |
+            helm repo add opensearch https://opensearch-project.github.io/helm-charts --force-update
+            if [ "${{ parameters.action }}" = "UNINSTALL" ]; then
+              helm uninstall opensearch -n observability 2>/dev/null || true
+              helm uninstall opensearch-dashboards -n observability 2>/dev/null || true
+            else
+              helm upgrade --install opensearch opensearch/opensearch \
+                --namespace observability --create-namespace \
+                --set replicas=2 \
+                --set minimumMasterNodes=1 \
+                --wait --timeout 10m
+              helm upgrade --install opensearch-dashboards opensearch/opensearch-dashboards \
+                --namespace observability \
+                --wait --timeout 5m
+              kubectl apply -f databases/opensearch/ 2>/dev/null || true
+            fi
+          displayName: OpenSearch

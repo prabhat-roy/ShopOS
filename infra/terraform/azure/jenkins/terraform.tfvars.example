@@ -1,0 +1,11 @@
+subscription_id  = "your-azure-subscription-id"
+location         = "East US"
+environment      = "dev"
+name             = "jenkins"
+address_space    = "10.0.0.0/16"
+subnet_prefix    = "10.0.1.0/24"
+vm_size          = "Standard_D4s_v3"
+disk_size_gb     = 200
+admin_username   = "ubuntu"
+ssh_pub_key_path = "/path/to/your-key.pub"
+private_key_path = "/path/to/your-key"

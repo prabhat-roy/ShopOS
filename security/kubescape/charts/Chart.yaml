@@ -1,0 +1,6 @@
+apiVersion: v2
+name: kubescape
+description: Kubescape - K8s risk and compliance scanning NSA/MITRE
+type: application
+version: 1.0.0
+appVersion: "v3.0.17"

@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: bundle-service
+  namespace: catalog
+  labels:
+    app: bundle-service
+    domain: catalog
+spec:
+  selector:
+    app: bundle-service
+  type: ClusterIP
+  ports:
+    - name: grpc
+      port: 50075
+      targetPort: grpc
+      protocol: TCP

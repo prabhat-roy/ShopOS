@@ -1,0 +1,6 @@
+apiVersion: v2
+name: sloth
+description: Sloth — SLO generator for Prometheus using simple specs
+type: application
+version: 1.0.0
+appVersion: "v0.11.0"

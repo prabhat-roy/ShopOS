@@ -1,0 +1,95 @@
+# Registry Tools Pipeline — CircleCI
+# Context: shopos-kubernetes, shopos-harbor, shopos-minio
+version: 2.1
+
+executors:
+  helm-executor:
+    docker:
+      - image: alpine/helm:latest
+    resource_class: medium
+  minio-executor:
+    docker:
+      - image: minio/mc:latest
+    resource_class: small
+
+jobs:
+  install-harbor:
+    executor: helm-executor
+    steps:
+      - run:
+          name: Setup kubeconfig
+          command: mkdir -p ~/.kube && echo "$KUBECONFIG_CONTENT" | base64 -d > ~/.kube/config
+      - run:
+          name: Install Harbor
+          command: |
+            helm repo add harbor https://helm.goharbor.io --force-update
+            helm upgrade --install harbor harbor/harbor \
+              --namespace registry --create-namespace \
+              --set expose.type=ingress \
+              --set expose.ingress.className=traefik \
+              --set expose.ingress.hosts.core=harbor.shopos.internal \
+              --set externalURL=https://harbor.shopos.internal \
+              --set harborAdminPassword="$HARBOR_ADMIN_PASSWORD" \
+              --set trivy.enabled=true --set persistence.enabled=true \
+              --wait --timeout 10m
+
+  install-minio:
+    executor: helm-executor
+    steps:
+      - run:
+          name: Setup kubeconfig
+          command: mkdir -p ~/.kube && echo "$KUBECONFIG_CONTENT" | base64 -d > ~/.kube/config
+      - run:
+          name: Install MinIO
+          command: |
+            helm repo add minio https://charts.min.io --force-update
+            helm upgrade --install minio minio/minio \
+              --namespace registry \
+              --set rootUser="$MINIO_ROOT_USER" \
+              --set rootPassword="$MINIO_ROOT_PASSWORD" \
+              --set replicas=4 \
+              --set persistence.enabled=true --set persistence.size=100Gi \
+              --wait --timeout 8m
+
+  install-nexus:
+    executor: helm-executor
+    steps:
+      - run:
+          name: Setup kubeconfig
+          command: mkdir -p ~/.kube && echo "$KUBECONFIG_CONTENT" | base64 -d > ~/.kube/config
+      - run:
+          name: Install Nexus
+          command: |
+            [ "$NEXUS" = "true" ] || { echo "Skipped"; exit 0; }
+            helm repo add sonatype https://sonatype.github.io/helm3-charts --force-update
+            helm upgrade --install nexus sonatype/nexus-repository-manager \
+              --namespace registry \
+              --set persistence.enabled=true --set persistence.storageSize=200Gi \
+              --wait --timeout 8m
+
+  configure-buckets:
+    executor: minio-executor
+    steps:
+      - run:
+          name: Create MinIO buckets
+          command: |
+            mc alias set shopos http://minio.registry.svc:9000 "$MINIO_ROOT_USER" "$MINIO_ROOT_PASSWORD"
+            for BUCKET in harbor-registry velero-backups loki-chunks tempo-traces thanos mlflow artifacts media-assets; do
+              mc mb --ignore-existing "shopos/$BUCKET" || true
+            done
+
+workflows:
+  registry-workflow:
+    jobs:
+      - install-harbor:
+          context: [shopos-kubernetes, shopos-harbor]
+      - install-minio:
+          context: [shopos-kubernetes, shopos-minio]
+      - install-nexus:
+          context: shopos-kubernetes
+      - configure-buckets:
+          requires: [install-harbor, install-minio]
+          context: shopos-minio
+          filters:
+            branches:
+              only: [main]

@@ -1,0 +1,41 @@
+{
+  "name": "ShopOS Quality Gate",
+  "conditions": [
+    {
+      "metric": "new_reliability_rating",
+      "op": "GT",
+      "error": "1",
+      "description": "No new bugs"
+    },
+    {
+      "metric": "new_security_rating",
+      "op": "GT",
+      "error": "1",
+      "description": "No new vulnerabilities"
+    },
+    {
+      "metric": "new_maintainability_rating",
+      "op": "GT",
+      "error": "2",
+      "description": "Maintainability rating B or better"
+    },
+    {
+      "metric": "new_coverage",
+      "op": "LT",
+      "error": "60",
+      "description": "At least 60% coverage on new code"
+    },
+    {
+      "metric": "new_duplicated_lines_density",
+      "op": "GT",
+      "error": "5",
+      "description": "Less than 5% duplication on new code"
+    },
+    {
+      "metric": "new_security_hotspots_reviewed",
+      "op": "LT",
+      "error": "100",
+      "description": "All new security hotspots reviewed"
+    }
+  ]
+}

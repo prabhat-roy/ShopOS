@@ -1,0 +1,19 @@
+apiVersion: chaos-mesh.org/v1alpha1
+kind: PodChaos
+metadata:
+  name: postgres-pod-kill
+  namespace: chaos-mesh
+  labels:
+    app.kubernetes.io/part-of: shopos-chaos
+    chaos.shopos.io/tier: data
+spec:
+  action: pod-kill
+  mode: one
+  selector:
+    namespaces:
+      - databases
+    labelSelectors:
+      app.kubernetes.io/name: postgresql
+      role: primary
+  gracePeriod: 0
+  duration: 2m

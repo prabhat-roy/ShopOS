@@ -1,0 +1,289 @@
+name: Cluster Bootstrap
+
+trigger: none
+
+parameters:
+  - name: environment
+    displayName: Target cluster environment
+    type: string
+    default: dev
+    values: [dev, staging, prod]
+  - name: skip_networking
+    displayName: Skip networking (CNI + Ingress + Mesh)
+    type: boolean
+    default: false
+  - name: skip_security
+    displayName: Skip security (Vault + Keycloak + Kyverno + Falco)
+    type: boolean
+    default: false
+  - name: skip_observability
+    displayName: Skip observability stack
+    type: boolean
+    default: false
+  - name: skip_messaging
+    displayName: Skip messaging (Kafka + RabbitMQ + NATS)
+    type: boolean
+    default: false
+  - name: skip_gitops
+    displayName: Skip GitOps tools (ArgoCD + KEDA)
+    type: boolean
+    default: false
+  - name: skip_registry
+    displayName: Skip registry (Harbor + MinIO)
+    type: boolean
+    default: false
+
+variables:
+  - group: shopos-secrets
+
+pool:
+  vmImage: ubuntu-latest
+
+stages:
+  # ── Step 1: Networking ────────────────────────────────────────────────────
+  - stage: Networking_CNI
+    displayName: "1/6 — Networking: CNI"
+    condition: eq('${{ parameters.skip_networking }}', 'False')
+    jobs:
+      - template: networking.yml
+        parameters:
+          environment: ${{ parameters.environment }}
+          action: INSTALL
+          cilium: true
+
+  - stage: Networking_Ingress_Mesh
+    displayName: "1/6 — Networking: Ingress + Mesh"
+    dependsOn: [Networking_CNI, Security_CertManager]
+    condition: |
+      and(
+        eq('${{ parameters.skip_networking }}', 'False'),
+        in(dependencies.Networking_CNI.result, 'Succeeded', 'Skipped'),
+        in(dependencies.Security_CertManager.result, 'Succeeded', 'Skipped')
+      )
+    jobs:
+      - template: networking.yml
+        parameters:
+          environment: ${{ parameters.environment }}
+          action: INSTALL
+          istio: true
+          traefik: true
+          consul: true
+          external_dns: true
+
+  # ── Step 2: Security ──────────────────────────────────────────────────────
+  - stage: Security_CertManager
+    displayName: "2/6 — Security: cert-manager"
+    dependsOn: Networking_CNI
+    condition: |
+      and(
+        eq('${{ parameters.skip_security }}', 'False'),
+        in(dependencies.Networking_CNI.result, 'Succeeded', 'Skipped')
+      )
+    jobs:
+      - template: security.yml
+        parameters:
+          environment: ${{ parameters.environment }}
+          action: INSTALL
+          cert_manager: true
+
+  - stage: Security_Core
+    displayName: "2/6 — Security: Vault + Keycloak + Policy + Runtime"
+    dependsOn: Security_CertManager
+    condition: |
+      and(
+        eq('${{ parameters.skip_security }}', 'False'),
+        in(dependencies.Security_CertManager.result, 'Succeeded', 'Skipped')
+      )
+    jobs:
+      - template: security.yml
+        parameters:
+          environment: ${{ parameters.environment }}
+          action: INSTALL
+          vault: true
+          keycloak: true
+          spire: true
+          opa: true
+          kyverno: true
+          kubewarden: true
+          falco: true
+          tetragon: true
+          rekor: true
+          fulcio: true
+          trivy_operator: true
+          kubescape: true
+          wazuh: true
+
+  # ── Step 3: Observability ─────────────────────────────────────────────────
+  - stage: Observability
+    displayName: "3/6 — Observability Stack"
+    dependsOn: Security_Core
+    condition: |
+      and(
+        eq('${{ parameters.skip_observability }}', 'False'),
+        in(dependencies.Security_Core.result, 'Succeeded', 'Skipped')
+      )
+    jobs:
+      - template: observability.yml
+        parameters:
+          environment: ${{ parameters.environment }}
+          action: INSTALL
+          prometheus: true
+          grafana: true
+          loki: true
+          jaeger: true
+          tempo: true
+          otel_collector: true
+          thanos: true
+          pyroscope: true
+          opensearch: true
+          fluent_bit: true
+          metrics_server: true
+
+  # ── Step 4: Messaging ─────────────────────────────────────────────────────
+  - stage: Messaging
+    displayName: "4/6 — Messaging: Kafka + RabbitMQ + NATS"
+    dependsOn: Observability
+    condition: |
+      and(
+        eq('${{ parameters.skip_messaging }}', 'False'),
+        in(dependencies.Observability.result, 'Succeeded', 'Skipped')
+      )
+    jobs:
+      - template: messaging.yml
+        parameters:
+          environment: ${{ parameters.environment }}
+          action: INSTALL
+          zookeeper: true
+          kafka: true
+          schema_registry: true
+          kafka_connect: true
+          rabbitmq: true
+          nats: true
+          kafka_ui: true
+          debezium: true
+          flink: true
+
+  - stage: Messaging_Configure
+    displayName: "4/6 — Messaging: Create Kafka Topics"
+    dependsOn: Messaging
+    condition: |
+      and(
+        eq('${{ parameters.skip_messaging }}', 'False'),
+        succeeded('Messaging')
+      )
+    jobs:
+      - template: messaging.yml
+        parameters:
+          environment: ${{ parameters.environment }}
+          action: CONFIGURE
+          kafka: true
+
+  # ── Step 5: Registry ──────────────────────────────────────────────────────
+  - stage: Registry
+    displayName: "5/6 — Registry: Harbor + MinIO + Gitea"
+    dependsOn: Security_Core
+    condition: |
+      and(
+        eq('${{ parameters.skip_registry }}', 'False'),
+        in(dependencies.Security_Core.result, 'Succeeded', 'Skipped')
+      )
+    jobs:
+      - template: registry.yml
+        parameters:
+          environment: ${{ parameters.environment }}
+          action: INSTALL
+          harbor: true
+          nexus: true
+          gitea: true
+          minio: true
+
+  - stage: Registry_Configure
+    displayName: "5/6 — Registry: Configure Harbor + MinIO"
+    dependsOn: Registry
+    condition: |
+      and(
+        eq('${{ parameters.skip_registry }}', 'False'),
+        succeeded('Registry')
+      )
+    jobs:
+      - template: registry.yml
+        parameters:
+          environment: ${{ parameters.environment }}
+          action: CONFIGURE
+          harbor: true
+          minio: true
+
+  # ── Step 6: GitOps ────────────────────────────────────────────────────────
+  - stage: GitOps
+    displayName: "6/6 — GitOps: ArgoCD + KEDA + Velero + ESO"
+    dependsOn: [Messaging_Configure, Registry_Configure]
+    condition: |
+      and(
+        eq('${{ parameters.skip_gitops }}', 'False'),
+        in(dependencies.Messaging_Configure.result, 'Succeeded', 'Skipped'),
+        in(dependencies.Registry_Configure.result, 'Succeeded', 'Skipped')
+      )
+    jobs:
+      - template: gitops.yml
+        parameters:
+          environment: ${{ parameters.environment }}
+          action: INSTALL
+          argocd: true
+          argo_rollouts: true
+          argo_workflows: true
+          argo_events: true
+          fluxcd: true
+          sealed_secrets: true
+          external_secrets: true
+          keda: true
+          velero: true
+
+  - stage: GitOps_Configure
+    displayName: "6/6 — GitOps: Bootstrap ArgoCD App-of-Apps"
+    dependsOn: GitOps
+    condition: |
+      and(
+        eq('${{ parameters.skip_gitops }}', 'False'),
+        succeeded('GitOps')
+      )
+    jobs:
+      - template: gitops.yml
+        parameters:
+          environment: ${{ parameters.environment }}
+          action: CONFIGURE
+          argocd: true
+
+  # ── Summary ───────────────────────────────────────────────────────────────
+  - stage: BootstrapSummary
+    displayName: Bootstrap Complete
+    dependsOn:
+      - Networking_Ingress_Mesh
+      - Security_Core
+      - Observability
+      - Messaging_Configure
+      - Registry_Configure
+      - GitOps_Configure
+    condition: always()
+    jobs:
+      - job: Summary
+        displayName: Bootstrap Summary
+        steps:
+          - script: |
+              echo "ShopOS Cluster Bootstrap Complete — ${{ parameters.environment }}"
+              echo ""
+              echo "Phase                                | Result"
+              echo "-------------------------------------|--------"
+              echo "1. Networking (Cilium + Istio)       | $(NETWORKING_INGRESS_MESH_RESULT)"
+              echo "2. Security (Vault + Keycloak)        | $(SECURITY_CORE_RESULT)"
+              echo "3. Observability (Prometheus + Loki)  | $(OBSERVABILITY_RESULT)"
+              echo "4. Messaging (Kafka + RabbitMQ)       | $(MESSAGING_CONFIGURE_RESULT)"
+              echo "5. Registry (Harbor + MinIO)          | $(REGISTRY_CONFIGURE_RESULT)"
+              echo "6. GitOps (ArgoCD + KEDA + Velero)    | $(GITOPS_CONFIGURE_RESULT)"
+            displayName: Print Bootstrap Summary
+            env:
+              NETWORKING_INGRESS_MESH_RESULT: $[ stageDependencies.Networking_Ingress_Mesh.Networking.result ]
+              SECURITY_CORE_RESULT: $[ stageDependencies.Security_Core.Security.result ]
+              OBSERVABILITY_RESULT: $[ stageDependencies.Observability.Observability.result ]
+              MESSAGING_CONFIGURE_RESULT: $[ stageDependencies.Messaging_Configure.Messaging.result ]
+              REGISTRY_CONFIGURE_RESULT: $[ stageDependencies.Registry_Configure.Registry.result ]
+              GITOPS_CONFIGURE_RESULT: $[ stageDependencies.GitOps_Configure.GitOps.result ]

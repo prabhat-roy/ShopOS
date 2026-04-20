@@ -1,0 +1,18 @@
+apiVersion: chaos-mesh.org/v1alpha1
+kind: PodChaos
+metadata:
+  name: order-service-pod-kill
+  namespace: chaos-mesh
+  labels:
+    app.kubernetes.io/part-of: shopos-chaos
+    chaos.shopos.io/tier: commerce
+spec:
+  action: pod-kill
+  mode: one
+  selector:
+    namespaces:
+      - commerce
+    labelSelectors:
+      app.kubernetes.io/name: order-service
+  gracePeriod: 0
+  duration: 2m

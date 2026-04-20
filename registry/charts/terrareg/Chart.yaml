@@ -1,0 +1,6 @@
+apiVersion: v2
+name: terrareg
+description: Terrareg — Terraform module registry
+type: application
+version: 1.0.0
+appVersion: "3.45"

@@ -1,0 +1,174 @@
+# Messaging Infrastructure — GitLab CI
+# Variables: ENVIRONMENT, ACTION (INSTALL|UPGRADE|UNINSTALL|CONFIGURE)
+#   ZOOKEEPER, KAFKA, SCHEMA_REGISTRY, RABBITMQ, NATS, KAFKA_UI, DEBEZIUM, FLINK
+
+variables:
+  ENVIRONMENT: dev
+  ACTION: INSTALL
+  ZOOKEEPER: "true"
+  KAFKA: "true"
+  SCHEMA_REGISTRY: "true"
+  RABBITMQ: "true"
+  NATS: "true"
+  KAFKA_UI: "true"
+  DEBEZIUM: "false"
+  FLINK: "false"
+
+workflow:
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "web"
+    - if: $CI_PIPELINE_SOURCE == "trigger"
+
+stages:
+  - coordination
+  - brokers
+  - ui-tools
+  - configure
+
+default:
+  image: alpine/helm:latest
+  before_script:
+    - apk add --no-cache curl bash
+    - curl -fsSL "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl" -o /usr/local/bin/kubectl && chmod +x /usr/local/bin/kubectl
+    - mkdir -p ~/.kube && echo "$KUBECONFIG_CONTENT" | base64 -d > ~/.kube/config
+
+zookeeper:
+  stage: coordination
+  script:
+    - '[ "$ZOOKEEPER" = "true" ] && [ "$ACTION" != "CONFIGURE" ] || exit 0'
+    - helm repo add bitnami https://charts.bitnami.com/bitnami --force-update
+    - |
+      if [ "$ACTION" = "UNINSTALL" ]; then
+        helm uninstall zookeeper -n messaging 2>/dev/null || true
+      else
+        helm upgrade --install zookeeper bitnami/zookeeper \
+          --namespace messaging --create-namespace \
+          --set replicaCount=3 --set auth.enabled=false \
+          --wait --timeout 8m
+      fi
+
+kafka:
+  stage: brokers
+  script:
+    - '[ "$KAFKA" = "true" ] && [ "$ACTION" != "CONFIGURE" ] || exit 0'
+    - helm repo add bitnami https://charts.bitnami.com/bitnami --force-update
+    - |
+      if [ "$ACTION" = "UNINSTALL" ]; then
+        helm uninstall kafka -n messaging 2>/dev/null || true
+      else
+        helm upgrade --install kafka bitnami/kafka \
+          --namespace messaging --create-namespace \
+          --set replicaCount=3 \
+          --set zookeeper.enabled=false \
+          --set externalZookeeper.servers=zookeeper.messaging.svc:2181 \
+          --set autoCreateTopicsEnable=false \
+          --set defaultReplicationFactor=3 \
+          --wait --timeout 10m
+      fi
+  needs: [zookeeper]
+
+rabbitmq:
+  stage: brokers
+  script:
+    - '[ "$RABBITMQ" = "true" ] && [ "$ACTION" != "CONFIGURE" ] || exit 0'
+    - helm repo add bitnami https://charts.bitnami.com/bitnami --force-update
+    - |
+      if [ "$ACTION" = "UNINSTALL" ]; then
+        helm uninstall rabbitmq -n messaging 2>/dev/null || true
+      else
+        helm upgrade --install rabbitmq bitnami/rabbitmq \
+          --namespace messaging --create-namespace \
+          --set replicaCount=3 \
+          --set auth.password="$RABBITMQ_PASSWORD" \
+          --set clustering.enabled=true \
+          --set metrics.enabled=true \
+          --wait --timeout 8m
+      fi
+  needs: [zookeeper]
+
+nats:
+  stage: brokers
+  script:
+    - '[ "$NATS" = "true" ] && [ "$ACTION" != "CONFIGURE" ] || exit 0'
+    - helm repo add nats https://nats-io.github.io/k8s/helm/charts --force-update
+    - |
+      if [ "$ACTION" = "UNINSTALL" ]; then
+        helm uninstall nats -n messaging 2>/dev/null || true
+      else
+        helm upgrade --install nats nats/nats \
+          --namespace messaging --create-namespace \
+          --set nats.jetstream.enabled=true \
+          --set cluster.enabled=true --set cluster.replicas=3 \
+          --wait --timeout 5m
+      fi
+  needs: [zookeeper]
+
+schema-registry:
+  stage: ui-tools
+  script:
+    - '[ "$SCHEMA_REGISTRY" = "true" ] && [ "$ACTION" != "CONFIGURE" ] || exit 0'
+    - helm repo add bitnami https://charts.bitnami.com/bitnami --force-update
+    - |
+      if [ "$ACTION" = "UNINSTALL" ]; then
+        helm uninstall schema-registry -n messaging 2>/dev/null || true
+      else
+        helm upgrade --install schema-registry bitnami/schema-registry \
+          --namespace messaging --create-namespace \
+          --set kafka.enabled=false \
+          --set externalKafka.brokers=kafka.messaging.svc:9092 \
+          --set replicaCount=2 --wait --timeout 5m
+      fi
+  needs: [kafka]
+
+kafka-ui:
+  stage: ui-tools
+  script:
+    - '[ "$KAFKA_UI" = "true" ] && [ "$ACTION" != "CONFIGURE" ] || exit 0'
+    - helm repo add kafka-ui https://provectus.github.io/kafka-ui-charts --force-update
+    - |
+      if [ "$ACTION" = "UNINSTALL" ]; then
+        helm uninstall kafka-ui -n messaging 2>/dev/null || true
+      else
+        helm upgrade --install kafka-ui kafka-ui/kafka-ui \
+          --namespace messaging --create-namespace \
+          --set yamlApplicationConfig.kafka.clusters[0].name=shopos \
+          --set "yamlApplicationConfig.kafka.clusters[0].bootstrapServers=kafka.messaging.svc:9092" \
+          --wait --timeout 3m
+      fi
+  needs: [kafka]
+
+create-topics:
+  stage: configure
+  script:
+    - '[ "$ACTION" = "CONFIGURE" ] || exit 0'
+    - |
+      KAFKA_POD=$(kubectl get pod -n messaging -l app.kubernetes.io/name=kafka -o jsonpath='{.items[0].metadata.name}')
+      create_topic() {
+        kubectl exec -n messaging "$KAFKA_POD" -- \
+          kafka-topics.sh --create --if-not-exists \
+          --bootstrap-server kafka.messaging.svc:9092 \
+          --topic "$1" --partitions "$2" --replication-factor "$3" || true
+      }
+      create_topic identity.user.registered 6 3
+      create_topic identity.user.deleted 3 3
+      create_topic commerce.order.placed 12 3
+      create_topic commerce.order.cancelled 6 3
+      create_topic commerce.order.fulfilled 6 3
+      create_topic commerce.payment.processed 12 3
+      create_topic commerce.payment.failed 6 3
+      create_topic commerce.cart.abandoned 6 3
+      create_topic supplychain.shipment.created 6 3
+      create_topic supplychain.shipment.updated 6 3
+      create_topic supplychain.inventory.low 3 3
+      create_topic supplychain.inventory.restocked 3 3
+      create_topic notification.email.requested 6 3
+      create_topic notification.sms.requested 6 3
+      create_topic notification.push.requested 6 3
+      create_topic analytics.page.viewed 12 3
+      create_topic analytics.product.clicked 12 3
+      create_topic analytics.search.performed 6 3
+      create_topic security.fraud.detected 3 3
+      create_topic security.login.failed 6 3
+      echo "=== Kafka topics created ==="
+      kubectl exec -n messaging "$KAFKA_POD" -- \
+        kafka-topics.sh --list --bootstrap-server kafka.messaging.svc:9092

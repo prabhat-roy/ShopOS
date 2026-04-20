@@ -1,0 +1,14 @@
+{
+  "type": "record",
+  "name": "PushRequested",
+  "namespace": "com.shopos.notification.push",
+  "doc": "Emitted by notification-orchestrator to trigger push notification delivery",
+  "fields": [
+    { "name": "event_id",    "type": "string" },
+    { "name": "user_id",     "type": "string" },
+    { "name": "title",       "type": "string" },
+    { "name": "body",        "type": "string" },
+    { "name": "data",        "type": { "type": "map", "values": "string" }, "default": {} },
+    { "name": "occurred_at", "type": { "type": "long", "logicalType": "timestamp-millis" } }
+  ]
+}

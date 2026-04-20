@@ -1,0 +1,37 @@
+syntax = "proto3";
+package customerexperience.wishlist.v1;
+option go_package = "github.com/shopos/proto/customerexperience/wishlist/v1;wishlistv1";
+
+import "google/protobuf/timestamp.proto";
+
+service WishlistService {
+  rpc AddItem(AddItemRequest)         returns (AddItemResponse);
+  rpc RemoveItem(RemoveItemRequest)   returns (RemoveItemResponse);
+  rpc GetWishlist(GetWishlistRequest) returns (GetWishlistResponse);
+  rpc ClearWishlist(ClearWishlistRequest) returns (ClearWishlistResponse);
+  rpc MoveToCart(MoveToCartRequest)   returns (MoveToCartResponse);
+}
+
+message WishlistItem {
+  string product_id = 1;
+  string sku        = 2;
+  google.protobuf.Timestamp added_at = 3;
+}
+
+message Wishlist {
+  string customer_id = 1;
+  repeated WishlistItem items = 2;
+  int32  total_items  = 3;
+  google.protobuf.Timestamp updated_at = 4;
+}
+
+message AddItemRequest      { string customer_id = 1; string product_id = 2; string sku = 3; }
+message AddItemResponse     { Wishlist wishlist = 1; }
+message RemoveItemRequest   { string customer_id = 1; string product_id = 2; }
+message RemoveItemResponse  { Wishlist wishlist = 1; }
+message GetWishlistRequest  { string customer_id = 1; }
+message GetWishlistResponse { Wishlist wishlist = 1; }
+message ClearWishlistRequest  { string customer_id = 1; }
+message ClearWishlistResponse { bool success = 1; }
+message MoveToCartRequest   { string customer_id = 1; string product_id = 2; string cart_id = 3; }
+message MoveToCartResponse  { bool success = 1; }

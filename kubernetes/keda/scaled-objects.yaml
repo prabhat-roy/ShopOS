@@ -1,0 +1,120 @@
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: order-service-kafka-scaler
+  namespace: commerce
+spec:
+  scaleTargetRef:
+    name: order-service
+  minReplicaCount: 2
+  maxReplicaCount: 20
+  cooldownPeriod: 60
+  triggers:
+    - type: kafka
+      metadata:
+        bootstrapServers: kafka.infra:9092
+        consumerGroup: order-service
+        topic: commerce.order.placed
+        lagThreshold: "100"
+        offsetResetPolicy: latest
+---
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: notification-orchestrator-kafka-scaler
+  namespace: communications
+spec:
+  scaleTargetRef:
+    name: notification-orchestrator
+  minReplicaCount: 1
+  maxReplicaCount: 10
+  triggers:
+    - type: kafka
+      metadata:
+        bootstrapServers: kafka.infra:9092
+        consumerGroup: notification-orchestrator
+        topic: notification.email.requested
+        lagThreshold: "200"
+    - type: kafka
+      metadata:
+        bootstrapServers: kafka.infra:9092
+        consumerGroup: notification-orchestrator
+        topic: notification.sms.requested
+        lagThreshold: "200"
+---
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: fraud-detection-service-kafka-scaler
+  namespace: commerce
+spec:
+  scaleTargetRef:
+    name: fraud-detection-service
+  minReplicaCount: 2
+  maxReplicaCount: 15
+  triggers:
+    - type: kafka
+      metadata:
+        bootstrapServers: kafka.infra:9092
+        consumerGroup: fraud-detection-service
+        topic: commerce.order.placed
+        lagThreshold: "50"
+---
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: email-service-kafka-scaler
+  namespace: communications
+spec:
+  scaleTargetRef:
+    name: email-service
+  minReplicaCount: 1
+  maxReplicaCount: 8
+  triggers:
+    - type: kafka
+      metadata:
+        bootstrapServers: kafka.infra:9092
+        consumerGroup: email-service
+        topic: notification.email.requested
+        lagThreshold: "500"
+---
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: analytics-service-kafka-scaler
+  namespace: analytics-ai
+spec:
+  scaleTargetRef:
+    name: analytics-service
+  minReplicaCount: 1
+  maxReplicaCount: 12
+  triggers:
+    - type: kafka
+      metadata:
+        bootstrapServers: kafka.infra:9092
+        consumerGroup: analytics-service
+        topic: analytics.page.viewed
+        lagThreshold: "1000"
+    - type: kafka
+      metadata:
+        bootstrapServers: kafka.infra:9092
+        consumerGroup: analytics-service
+        topic: analytics.product.clicked
+        lagThreshold: "1000"
+---
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: worker-job-queue-redis-scaler
+  namespace: platform
+spec:
+  scaleTargetRef:
+    name: worker-job-queue
+  minReplicaCount: 1
+  maxReplicaCount: 20
+  triggers:
+    - type: redis
+      metadata:
+        address: redis.infra:6379
+        listName: job-queue
+        listLength: "10"

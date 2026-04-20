@@ -1,0 +1,82 @@
+apiVersion: chaos-mesh.org/v1alpha1
+kind: Schedule
+metadata:
+  name: weekly-game-day
+  namespace: chaos-mesh
+  labels:
+    app.kubernetes.io/part-of: shopos-chaos
+spec:
+  # Every Saturday at 02:00 UTC
+  schedule: "0 2 * * 6"
+  historyLimit: 5
+  concurrencyPolicy: Forbid
+  type: Workflow
+  workflow:
+    templates:
+      - name: entry
+        templateType: Serial
+        deadline: 2h
+        children:
+          - pod-kill-phase
+          - network-delay-phase
+          - stress-phase
+          - recovery-check
+
+      - name: pod-kill-phase
+        templateType: Parallel
+        children:
+          - kill-api-gateway
+          - kill-order-service
+
+      - name: kill-api-gateway
+        templateType: PodChaos
+        deadline: 5m
+        podChaos:
+          action: pod-kill
+          mode: one
+          selector:
+            namespaces: [platform]
+            labelSelectors:
+              app.kubernetes.io/name: api-gateway
+
+      - name: kill-order-service
+        templateType: PodChaos
+        deadline: 5m
+        podChaos:
+          action: pod-kill
+          mode: one
+          selector:
+            namespaces: [commerce]
+            labelSelectors:
+              app.kubernetes.io/name: order-service
+
+      - name: network-delay-phase
+        templateType: NetworkChaos
+        deadline: 5m
+        networkChaos:
+          action: delay
+          mode: all
+          selector:
+            namespaces: [commerce]
+          delay:
+            latency: 200ms
+            jitter: 50ms
+          direction: to
+
+      - name: stress-phase
+        templateType: StressChaos
+        deadline: 5m
+        stressChaos:
+          mode: one
+          selector:
+            namespaces: [commerce]
+            labelSelectors:
+              app.kubernetes.io/name: checkout-service
+          stressors:
+            cpu:
+              workers: 2
+              load: 80
+
+      - name: recovery-check
+        templateType: Suspend
+        deadline: 10m

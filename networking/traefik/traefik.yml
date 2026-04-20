@@ -1,0 +1,38 @@
+api:
+  dashboard: true
+  insecure: true
+
+entryPoints:
+  web:
+    address: ":80"
+    http:
+      redirections:
+        entryPoint:
+          to: websecure
+          scheme: https
+  websecure:
+    address: ":443"
+
+providers:
+  docker:
+    exposedByDefault: false
+    network: shopos
+  file:
+    filename: /etc/traefik/dynamic.yml
+    watch: true
+
+metrics:
+  prometheus:
+    addEntryPointsLabels: true
+    addServicesLabels: true
+
+tracing:
+  jaeger:
+    samplingServerURL: http://jaeger:5778/sampling
+    localAgentHostPort: jaeger:6831
+
+log:
+  level: INFO
+
+accessLog:
+  format: json

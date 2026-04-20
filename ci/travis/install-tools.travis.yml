@@ -1,0 +1,62 @@
+# Install CI Tools — Travis CI
+language: minimal
+
+jobs:
+  include:
+    - name: kubectl + helm
+      script:
+        - curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
+        - curl -fsSL "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl" -o /usr/local/bin/kubectl && chmod +x /usr/local/bin/kubectl
+        - helm version --short
+        - kubectl version --client
+
+    - name: terraform
+      install: skip
+      script:
+        - docker run --rm hashicorp/terraform:1.9.0 version
+
+    - name: golang
+      language: go
+      go: "1.23"
+      script: go version
+
+    - name: java
+      language: java
+      jdk: openjdk21
+      script: java -version
+
+    - name: nodejs
+      language: node_js
+      node_js: "22"
+      script: node --version && npm --version
+
+    - name: python
+      language: python
+      python: "3.13"
+      script: python --version
+
+    - name: dotnet
+      install: skip
+      script: docker run --rm mcr.microsoft.com/dotnet/sdk:8.0 dotnet --version
+
+    - name: rust
+      language: rust
+      rust: stable
+      script: rustc --version && cargo --version
+
+    - name: security-tools
+      language: python
+      python: "3.13"
+      install:
+        - pip install semgrep checkov --quiet
+        - curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh -s -- -b /usr/local/bin
+        - curl -sSfL https://raw.githubusercontent.com/anchore/grype/main/install.sh | sh -s -- -b /usr/local/bin
+        - curl -sSfL https://raw.githubusercontent.com/anchore/syft/main/install.sh | sh -s -- -b /usr/local/bin
+        - curl -fsSL "https://github.com/sigstore/cosign/releases/download/v2.4.0/cosign-linux-amd64" -o /usr/local/bin/cosign && chmod +x /usr/local/bin/cosign
+      script:
+        - trivy --version | head -1
+        - grype version | head -1
+        - syft --version
+        - cosign version
+        - semgrep --version
+        - checkov --version

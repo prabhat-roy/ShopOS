@@ -1,0 +1,31 @@
+syntax = "proto3";
+package identity.mfa.v1;
+option go_package = "github.com/shopos/proto/identity/mfa/v1;mfav1";
+
+import "google/protobuf/timestamp.proto";
+
+service MfaService {
+  rpc SetupTOTP(SetupTOTPRequest)                         returns (SetupTOTPResponse);
+  rpc VerifyTOTP(VerifyTOTPRequest)                       returns (VerifyTOTPResponse);
+  rpc DisableMfa(DisableMfaRequest)                       returns (DisableMfaResponse);
+  rpc GetMfaStatus(GetMfaStatusRequest)                   returns (GetMfaStatusResponse);
+  rpc GenerateBackupCodes(GenerateBackupCodesRequest)     returns (GenerateBackupCodesResponse);
+}
+
+message MfaStatus {
+  string user_id = 1;
+  bool   enabled = 2;
+  string method  = 3;
+  google.protobuf.Timestamp enabled_at = 4;
+}
+
+message SetupTOTPRequest              { string user_id = 1; }
+message SetupTOTPResponse             { string secret = 1; string qr_code_url = 2; }
+message VerifyTOTPRequest             { string user_id = 1; string code = 2; }
+message VerifyTOTPResponse            { bool verified = 1; }
+message DisableMfaRequest             { string user_id = 1; string code = 2; }
+message DisableMfaResponse            { bool success = 1; }
+message GetMfaStatusRequest           { string user_id = 1; }
+message GetMfaStatusResponse          { MfaStatus status = 1; }
+message GenerateBackupCodesRequest    { string user_id = 1; }
+message GenerateBackupCodesResponse   { repeated string codes = 1; }

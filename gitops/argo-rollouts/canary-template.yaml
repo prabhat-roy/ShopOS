@@ -1,0 +1,83 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Rollout
+metadata:
+  name: SERVICE_NAME
+  namespace: NAMESPACE
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: SERVICE_NAME
+  template:
+    metadata:
+      labels:
+        app: SERVICE_NAME
+    spec:
+      containers:
+        - name: SERVICE_NAME
+          image: shopos/SERVICE_NAME:IMAGE_TAG
+          ports:
+            - containerPort: HTTP_PORT
+          env:
+            - name: ENV
+              value: production
+          envFrom:
+            - secretRef:
+                name: SERVICE_NAME-secrets
+            - configMapRef:
+                name: SERVICE_NAME-config
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: HTTP_PORT
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: HTTP_PORT
+            initialDelaySeconds: 15
+            periodSeconds: 20
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+  strategy:
+    canary:
+      steps:
+        - setWeight: 10
+        - pause:
+            duration: 5m
+        - setWeight: 25
+        - pause:
+            duration: 5m
+        - setWeight: 50
+        - pause:
+            duration: 10m
+        - setWeight: 75
+        - pause:
+            duration: 5m
+      canaryMetadata:
+        labels:
+          deployment: canary
+      stableMetadata:
+        labels:
+          deployment: stable
+      trafficRouting:
+        istio:
+          virtualService:
+            name: SERVICE_NAME-vsvc
+          destinationRule:
+            name: SERVICE_NAME-destrule
+            canarySubsetName: canary
+            stableSubsetName: stable
+      analysis:
+        templates:
+          - templateName: success-rate
+        startingStep: 2
+        args:
+          - name: service-name
+            value: SERVICE_NAME

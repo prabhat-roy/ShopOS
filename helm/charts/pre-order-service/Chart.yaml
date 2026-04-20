@@ -1,0 +1,19 @@
+apiVersion: v2
+name: pre-order-service
+description: ShopOS pre-order-service — Pre-order capture, deposits, and release scheduling
+type: application
+version: 0.1.0
+appVersion: "1.0.0"
+keywords:
+  - shopos
+  - pre-order-service
+  - commerce
+home: https://github.com/your-org/shopos
+sources:
+  - https://github.com/your-org/shopos/tree/main/src/commerce/pre-order-service
+maintainers:
+  - name: ShopOS Platform Team
+    email: platform@shopos.io
+annotations:
+  app.kubernetes.io/domain: commerce
+  app.kubernetes.io/language: go

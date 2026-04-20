@@ -1,0 +1,6 @@
+apiVersion: v2
+name: authelia
+description: Authelia - open source authentication and authorization server with SSO and 2FA
+type: application
+version: 1.0.0
+appVersion: "4.38.0"

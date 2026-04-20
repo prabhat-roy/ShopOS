@@ -1,0 +1,20 @@
+plugin: amazon.aws.aws_ec2
+regions:
+  - us-east-1
+  - us-west-2
+filters:
+  instance-state-name: running
+  tag:Project: shopos
+keyed_groups:
+  - key: tags.Role
+    prefix: role
+  - key: tags.Environment
+    prefix: env
+  - key: placement.region
+    prefix: region
+hostnames:
+  - public-ip-address
+  - private-ip-address
+compose:
+  ansible_host: public_ip_address
+  ansible_user: "'ubuntu'"

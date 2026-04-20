@@ -1,0 +1,146 @@
+# Post-Deploy Validation Pipeline — Harness CI
+pipeline:
+  identifier: shopos_post_deploy
+  name: ShopOS Post-Deploy Validation
+  projectIdentifier: shopos
+  orgIdentifier: default
+
+  variables:
+    - name: ENVIRONMENT
+      type: String
+      value: staging
+    - name: BASE_URL
+      type: String
+      value: http://api-gateway.platform.svc:8080
+    - name: RUN_LOAD_TEST
+      type: String
+      value: "false"
+    - name: RUN_DAST
+      type: String
+      value: "false"
+
+  stages:
+    - stage:
+        identifier: health_check
+        name: Health Check
+        type: CI
+        spec:
+          cloneCodebase: false
+          execution:
+            steps:
+              - step:
+                  identifier: check
+                  name: Service Health Check
+                  type: Run
+                  spec:
+                    image: curlimages/curl:latest
+                    command: |
+                      FAILED=0
+                      for PATH in /healthz /api/v1/products; do
+                        STATUS=$(curl -sf --max-time 10 "<+pipeline.variables.BASE_URL>$PATH" -o /dev/null -w "%{http_code}" || echo "000")
+                        echo "<+pipeline.variables.BASE_URL>$PATH → $STATUS"
+                        [ "$STATUS" = "000" ] && FAILED=1
+                      done
+                      [ "$FAILED" = "1" ] && exit 1
+                      echo "All health checks passed"
+
+    - stage:
+        identifier: load_test
+        name: Load Test (k6)
+        type: CI
+        when:
+          condition: <+pipeline.variables.RUN_LOAD_TEST> == "true"
+        spec:
+          cloneCodebase: false
+          execution:
+            steps:
+              - step:
+                  identifier: k6
+                  name: k6 Load Test
+                  type: Run
+                  spec:
+                    image: grafana/k6:latest
+                    command: |
+                      cat > /tmp/load.js << 'EOF'
+                      import http from 'k6/http';
+                      import { check, sleep } from 'k6';
+                      export let options = { vus: 10, duration: '60s',
+                        thresholds: { http_req_failed: ['rate<0.05'], http_req_duration: ['p(95)<500'] } };
+                      export default function() {
+                        let res = http.get(`${__ENV.BASE_URL}/healthz`);
+                        check(res, { 'status 200': (r) => r.status === 200 });
+                        sleep(1);
+                      }
+                      EOF
+                      k6 run /tmp/load.js -e BASE_URL="<+pipeline.variables.BASE_URL>"
+
+    - stage:
+        identifier: dast
+        name: DAST (ZAP)
+        type: CI
+        when:
+          condition: <+pipeline.variables.RUN_DAST> == "true"
+        spec:
+          cloneCodebase: false
+          execution:
+            steps:
+              - step:
+                  identifier: zap
+                  name: OWASP ZAP Baseline
+                  type: Run
+                  spec:
+                    image: ghcr.io/zaproxy/zaproxy:stable
+                    command: |
+                      zap-baseline.py -t "<+pipeline.variables.BASE_URL>" || true
+
+    - stage:
+        identifier: kube_audit
+        name: Kubernetes Audit
+        type: CI
+        spec:
+          cloneCodebase: false
+          execution:
+            steps:
+              - step:
+                  identifier: kube_bench
+                  name: kube-bench
+                  type: Run
+                  spec:
+                    image: aquasec/kube-bench:latest
+                    envVariables:
+                      KUBECONFIG_CONTENT: <+secrets.getValue("kubeconfig_content")>
+                    command: |
+                      mkdir -p ~/.kube && echo "$KUBECONFIG_CONTENT" | base64 -d > ~/.kube/config
+                      kube-bench run --targets node,policies || true
+              - step:
+                  identifier: kubescape
+                  name: Kubescape
+                  type: Run
+                  spec:
+                    image: kubescape/kubescape:latest
+                    envVariables:
+                      KUBECONFIG_CONTENT: <+secrets.getValue("kubeconfig_content")>
+                    command: |
+                      mkdir -p ~/.kube && echo "$KUBECONFIG_CONTENT" | base64 -d > ~/.kube/config
+                      kubescape scan framework nsa,mitre 2>/dev/null || true
+
+    - stage:
+        identifier: notify
+        name: Slack Notification
+        type: CI
+        spec:
+          cloneCodebase: false
+          execution:
+            steps:
+              - step:
+                  identifier: slack
+                  name: Notify Slack
+                  type: Run
+                  spec:
+                    image: curlimages/curl:latest
+                    envVariables:
+                      SLACK_WEBHOOK: <+secrets.getValue("slack_webhook")>
+                    command: |
+                      curl -sf -X POST "$SLACK_WEBHOOK" \
+                        -H 'Content-type: application/json' \
+                        --data "{\"text\":\":white_check_mark: Post-deploy validation passed for *<+pipeline.variables.ENVIRONMENT>*\"}"

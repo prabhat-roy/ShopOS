@@ -1,0 +1,153 @@
+version: 0.2
+
+# K8s Infrastructure (Terraform) — CodeBuild buildspec
+# Mirrors .github/workflows/k8s-infra.yml
+# Parameters via environment variables:
+#   ENVIRONMENT, CLOUD (aws|gcp|azure|all), ACTION (PLAN|APPLY|DESTROY), TF_VERSION
+
+env:
+  variables:
+    ENVIRONMENT: dev
+    CLOUD: aws
+    ACTION: PLAN
+    TF_VERSION: "1.9.0"
+    TF_IN_AUTOMATION: "true"
+    TF_CLI_ARGS: "-no-color"
+  parameter-store:
+    AWS_REGION_PARAM: /shopos/aws/region
+    TF_STATE_BUCKET: /shopos/terraform/state-bucket
+    GCS_TF_STATE_BUCKET: /shopos/gcp/tf-state-bucket
+    GCP_PROJECT_ID: /shopos/gcp/project-id
+    GCP_REGION: /shopos/gcp/region
+    AZURE_TF_RG: /shopos/azure/tf-resource-group
+    AZURE_TF_SA: /shopos/azure/tf-storage-account
+    AZURE_LOCATION: /shopos/azure/location
+  secrets-manager:
+    GCP_SERVICE_ACCOUNT_KEY: shopos/gcp:service-account-key
+
+phases:
+  install:
+    commands:
+      - |
+        TF_VER=${TF_VERSION:-1.9.0}
+        curl -fsSL "https://releases.hashicorp.com/terraform/${TF_VER}/terraform_${TF_VER}_linux_amd64.zip" -o /tmp/tf.zip
+        unzip -o /tmp/tf.zip -d /usr/local/bin/
+        terraform version
+
+  pre_build:
+    commands:
+      - echo "Terraform $ACTION on $CLOUD / $ENVIRONMENT"
+      # GCP auth if needed
+      - |
+        if [ "$CLOUD" = "gcp" ] || [ "$CLOUD" = "all" ]; then
+          echo "$GCP_SERVICE_ACCOUNT_KEY" | base64 -d > /tmp/gcp-key.json
+          export GOOGLE_APPLICATION_CREDENTIALS=/tmp/gcp-key.json
+        fi
+
+  build:
+    commands:
+      # ── AWS / EKS ──────────────────────────────────────────────────────────
+      - |
+        if [ "$CLOUD" = "aws" ] || [ "$CLOUD" = "all" ]; then
+          echo "=== Terraform: AWS EKS ==="
+          cd infra/terraform/aws/eks
+
+          terraform init \
+            -backend-config="bucket=$TF_STATE_BUCKET" \
+            -backend-config="key=$ENVIRONMENT/eks/terraform.tfstate" \
+            -backend-config="region=$AWS_REGION_PARAM"
+          terraform validate
+
+          terraform plan \
+            -var="environment=$ENVIRONMENT" \
+            -var="region=$AWS_REGION_PARAM" \
+            -out=tfplan-aws.bin
+          terraform show -no-color tfplan-aws.bin > "$CODEBUILD_SRC_DIR/tfplan-aws.txt"
+
+          if [ "$ACTION" = "APPLY" ]; then
+            terraform apply -auto-approve tfplan-aws.bin
+            terraform output -json > "$CODEBUILD_SRC_DIR/tf-outputs-aws.json"
+            echo "EKS Cluster: $(terraform output -raw cluster_name 2>/dev/null || true)"
+          fi
+
+          if [ "$ACTION" = "DESTROY" ]; then
+            terraform destroy -auto-approve \
+              -var="environment=$ENVIRONMENT" \
+              -var="region=$AWS_REGION_PARAM"
+          fi
+
+          cd "$CODEBUILD_SRC_DIR"
+        fi
+
+      # ── GCP / GKE ──────────────────────────────────────────────────────────
+      - |
+        if [ "$CLOUD" = "gcp" ] || [ "$CLOUD" = "all" ]; then
+          echo "=== Terraform: GCP GKE ==="
+          cd infra/terraform/gcp/gke
+
+          terraform init \
+            -backend-config="bucket=$GCS_TF_STATE_BUCKET" \
+            -backend-config="prefix=$ENVIRONMENT/gke"
+
+          terraform plan \
+            -var="environment=$ENVIRONMENT" \
+            -var="project=$GCP_PROJECT_ID" \
+            -var="region=$GCP_REGION" \
+            -out=tfplan-gcp.bin
+          terraform show -no-color tfplan-gcp.bin > "$CODEBUILD_SRC_DIR/tfplan-gcp.txt"
+
+          if [ "$ACTION" = "APPLY" ]; then
+            terraform apply -auto-approve tfplan-gcp.bin
+          fi
+
+          if [ "$ACTION" = "DESTROY" ]; then
+            terraform destroy -auto-approve \
+              -var="environment=$ENVIRONMENT" \
+              -var="project=$GCP_PROJECT_ID"
+          fi
+
+          cd "$CODEBUILD_SRC_DIR"
+        fi
+
+      # ── Azure / AKS ────────────────────────────────────────────────────────
+      - |
+        if [ "$CLOUD" = "azure" ] || [ "$CLOUD" = "all" ]; then
+          echo "=== Terraform: Azure AKS ==="
+          cd infra/terraform/azure/aks
+
+          terraform init \
+            -backend-config="resource_group_name=$AZURE_TF_RG" \
+            -backend-config="storage_account_name=$AZURE_TF_SA" \
+            -backend-config="container_name=tfstate" \
+            -backend-config="key=$ENVIRONMENT/aks/terraform.tfstate"
+
+          terraform plan \
+            -var="environment=$ENVIRONMENT" \
+            -var="subscription_id=$ARM_SUBSCRIPTION_ID" \
+            -var="location=$AZURE_LOCATION" \
+            -out=tfplan-azure.bin
+          terraform show -no-color tfplan-azure.bin > "$CODEBUILD_SRC_DIR/tfplan-azure.txt"
+
+          if [ "$ACTION" = "APPLY" ]; then
+            terraform apply -auto-approve tfplan-azure.bin
+          fi
+
+          if [ "$ACTION" = "DESTROY" ]; then
+            terraform destroy -auto-approve \
+              -var="environment=$ENVIRONMENT"
+          fi
+
+          cd "$CODEBUILD_SRC_DIR"
+        fi
+
+  post_build:
+    commands:
+      - rm -f /tmp/gcp-key.json
+      - echo "Terraform $ACTION complete for $CLOUD / $ENVIRONMENT"
+
+artifacts:
+  files:
+    - tfplan-*.txt
+    - tf-outputs-*.json
+  discard-paths: yes
+  name: tf-plans-$ENVIRONMENT-$CODEBUILD_BUILD_NUMBER

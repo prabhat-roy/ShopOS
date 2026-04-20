@@ -1,0 +1,171 @@
+# Install CI Tools — Tekton
+# Verifies all required runtimes and security tools are available
+---
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  name: verify-kubectl-helm
+  namespace: tekton-pipelines
+spec:
+  steps:
+    - name: kubectl
+      image: bitnami/kubectl:latest
+      script: kubectl version --client
+    - name: helm
+      image: alpine/helm:latest
+      script: helm version --short
+---
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  name: verify-terraform
+  namespace: tekton-pipelines
+spec:
+  steps:
+    - name: version
+      image: hashicorp/terraform:1.9.0
+      script: terraform version
+---
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  name: verify-golang
+  namespace: tekton-pipelines
+spec:
+  steps:
+    - name: version
+      image: golang:1.23
+      script: go version
+---
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  name: verify-java
+  namespace: tekton-pipelines
+spec:
+  steps:
+    - name: version
+      image: eclipse-temurin:21
+      script: java -version
+---
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  name: verify-nodejs
+  namespace: tekton-pipelines
+spec:
+  steps:
+    - name: version
+      image: node:22
+      script: |
+        node --version
+        npm --version
+---
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  name: verify-python
+  namespace: tekton-pipelines
+spec:
+  steps:
+    - name: version
+      image: python:3.13
+      script: python --version
+---
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  name: verify-dotnet
+  namespace: tekton-pipelines
+spec:
+  steps:
+    - name: version
+      image: mcr.microsoft.com/dotnet/sdk:8.0
+      script: dotnet --version
+---
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  name: verify-rust
+  namespace: tekton-pipelines
+spec:
+  steps:
+    - name: version
+      image: rust:latest
+      script: rustc --version
+---
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  name: verify-security-tools
+  namespace: tekton-pipelines
+spec:
+  steps:
+    - name: install-and-verify
+      image: ubuntu:24.04
+      script: |
+        apt-get update -qq && apt-get install -y curl --quiet
+        curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh -s -- -b /usr/local/bin
+        curl -sSfL https://raw.githubusercontent.com/anchore/grype/main/install.sh | sh -s -- -b /usr/local/bin
+        curl -sSfL https://raw.githubusercontent.com/anchore/syft/main/install.sh | sh -s -- -b /usr/local/bin
+        curl -fsSL "https://github.com/sigstore/cosign/releases/download/v2.4.0/cosign-linux-amd64" -o /usr/local/bin/cosign && chmod +x /usr/local/bin/cosign
+        curl -fsSL "https://github.com/gitleaks/gitleaks/releases/download/v8.21.0/gitleaks_8.21.0_linux_x64.tar.gz" | tar -xz -C /usr/local/bin gitleaks
+        pip3 install semgrep checkov --quiet
+        trivy --version | head -1
+        grype version | head -1
+        syft --version
+        cosign version
+        gitleaks version
+        semgrep --version
+---
+apiVersion: tekton.dev/v1
+kind: Pipeline
+metadata:
+  name: install-tools-pipeline
+  namespace: tekton-pipelines
+spec:
+  tasks:
+    - name: kubectl-helm
+      taskRef:
+        name: verify-kubectl-helm
+
+    - name: terraform
+      taskRef:
+        name: verify-terraform
+
+    - name: golang
+      taskRef:
+        name: verify-golang
+
+    - name: java
+      taskRef:
+        name: verify-java
+
+    - name: nodejs
+      taskRef:
+        name: verify-nodejs
+
+    - name: python
+      taskRef:
+        name: verify-python
+
+    - name: dotnet
+      taskRef:
+        name: verify-dotnet
+
+    - name: rust
+      taskRef:
+        name: verify-rust
+
+    - name: security-tools
+      taskRef:
+        name: verify-security-tools
+---
+apiVersion: tekton.dev/v1
+kind: PipelineRun
+metadata:
+  name: install-tools-pipeline-run
+  namespace: tekton-pipelines
+spec:
+  pipelineRef:
+    name: install-tools-pipeline

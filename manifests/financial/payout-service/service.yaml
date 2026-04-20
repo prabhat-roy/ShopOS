@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: payout-service
+  namespace: financial
+  labels:
+    app: payout-service
+    domain: financial
+spec:
+  selector:
+    app: payout-service
+  type: ClusterIP
+  ports:
+    - name: grpc
+      port: 50112
+      targetPort: grpc
+      protocol: TCP

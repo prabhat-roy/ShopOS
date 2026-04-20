@@ -1,0 +1,25 @@
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: require-labels
+  annotations:
+    policies.kyverno.io/title: Require Labels
+    policies.kyverno.io/severity: medium
+spec:
+  validationFailureAction: Warn
+  background: true
+  rules:
+    - name: require-app-labels
+      match:
+        any:
+          - resources:
+              kinds: [Deployment, StatefulSet]
+              namespaces:
+                - "shopos-*"
+      validate:
+        message: "Deployments must have app.kubernetes.io/name and app.kubernetes.io/domain labels"
+        pattern:
+          metadata:
+            labels:
+              app.kubernetes.io/name: "?*"
+              app.kubernetes.io/domain: "?*"

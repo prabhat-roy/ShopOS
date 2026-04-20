@@ -1,0 +1,21 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: live-chat-service
+  namespace: customer-experience
+  labels:
+    app: live-chat-service
+    domain: customer-experience
+data:
+  APP_ENV: production
+  LOG_LEVEL: info
+  LOG_FORMAT: json
+  SERVICE_NAME: live-chat-service
+  SERVICE_DOMAIN: customer-experience
+  GRPC_PORT: "50126"
+  METRICS_PORT: "9090"
+  HEALTH_PORT: "50126"
+  OTEL_SERVICE_NAME: live-chat-service
+  OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector.monitoring:4317
+  KAFKA_BROKERS: kafka.infra:9092
+  SCHEMA_REGISTRY_URL: http://schema-registry.infra:8081

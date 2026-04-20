@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: logistics-provider-integration
+  namespace: integrations
+  labels:
+    app: logistics-provider-integration
+    domain: integrations
+spec:
+  selector:
+    app: logistics-provider-integration
+  type: ClusterIP
+  ports:
+    - name: grpc
+      port: 50174
+      targetPort: grpc
+      protocol: TCP

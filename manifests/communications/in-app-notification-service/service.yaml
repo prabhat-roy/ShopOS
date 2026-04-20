@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: in-app-notification-service
+  namespace: communications
+  labels:
+    app: in-app-notification-service
+    domain: communications
+spec:
+  selector:
+    app: in-app-notification-service
+  type: ClusterIP
+  ports:
+    - name: grpc
+      port: 50132
+      targetPort: grpc
+      protocol: TCP

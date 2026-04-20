@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: dead-letter-service
+  namespace: platform
+  labels:
+    app: dead-letter-service
+    domain: platform
+spec:
+  selector:
+    app: dead-letter-service
+  type: ClusterIP
+  ports:
+    - name: http
+      port: 8080
+      targetPort: http
+      protocol: TCP

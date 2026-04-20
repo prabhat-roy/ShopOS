@@ -1,0 +1,18 @@
+---
+common_packages:
+  - curl
+  - wget
+  - git
+  - vim
+  - unzip
+  - zip
+  - jq
+  - net-tools
+  - ca-certificates
+  - gnupg2
+  - apt-transport-https
+  - software-properties-common
+  - python3
+  - python3-pip
+
+timezone: UTC

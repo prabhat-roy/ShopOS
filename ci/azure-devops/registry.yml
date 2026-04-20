@@ -1,0 +1,179 @@
+name: Registry Tools
+
+trigger: none
+
+parameters:
+  - name: environment
+    displayName: Target environment
+    type: string
+    default: dev
+    values: [dev, staging, prod]
+  - name: action
+    displayName: Action
+    type: string
+    default: INSTALL
+    values: [INSTALL, UPGRADE, UNINSTALL, CONFIGURE]
+  - name: harbor
+    type: boolean
+    default: true
+  - name: nexus
+    type: boolean
+    default: true
+  - name: gitea
+    type: boolean
+    default: true
+  - name: minio
+    type: boolean
+    default: true
+
+variables:
+  - group: shopos-secrets
+
+pool:
+  vmImage: ubuntu-latest
+
+jobs:
+  - job: Registry
+    displayName: Registry ${{ parameters.action }} on ${{ parameters.environment }}
+    timeoutInMinutes: 60
+    steps:
+      - task: KubectlInstaller@0
+
+      - script: |
+          curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
+        displayName: Install Helm
+
+      - script: |
+          mkdir -p ~/.kube
+          echo "$(KUBECONFIG_CONTENT)" | base64 -d > ~/.kube/config
+        displayName: Configure kubeconfig
+
+      # ── Harbor ────────────────────────────────────────────────────────────
+      - ${{ if and(eq(parameters.harbor, true), ne(parameters.action, 'CONFIGURE')) }}:
+        - script: |
+            helm repo add harbor https://helm.goharbor.io --force-update
+            if [ "${{ parameters.action }}" = "UNINSTALL" ]; then
+              helm uninstall harbor -n registry 2>/dev/null || true
+            else
+              helm upgrade --install harbor harbor/harbor \
+                --namespace registry --create-namespace \
+                --set expose.type=ingress \
+                --set expose.ingress.className=traefik \
+                --set expose.ingress.hosts.core=harbor.shopos.internal \
+                --set externalURL=https://harbor.shopos.internal \
+                --set harborAdminPassword="$(HARBOR_ADMIN_PASSWORD)" \
+                --set trivy.enabled=true \
+                --set notary.enabled=true \
+                --set chartmuseum.enabled=true \
+                --set persistence.enabled=true \
+                --wait --timeout 10m
+            fi
+          displayName: Harbor Container Registry
+
+      # ── Nexus ─────────────────────────────────────────────────────────────
+      - ${{ if and(eq(parameters.nexus, true), ne(parameters.action, 'CONFIGURE')) }}:
+        - script: |
+            helm repo add sonatype https://sonatype.github.io/helm3-charts --force-update
+            if [ "${{ parameters.action }}" = "UNINSTALL" ]; then
+              helm uninstall nexus -n registry 2>/dev/null || true
+            else
+              helm upgrade --install nexus sonatype/nexus-repository-manager \
+                --namespace registry --create-namespace \
+                --set nexus.resources.requests.memory=2Gi \
+                --set nexus.resources.limits.memory=4Gi \
+                --set persistence.enabled=true \
+                --set persistence.storageSize=50Gi \
+                --wait --timeout 10m
+            fi
+          displayName: Nexus Repository Manager
+
+      # ── Gitea ─────────────────────────────────────────────────────────────
+      - ${{ if and(eq(parameters.gitea, true), ne(parameters.action, 'CONFIGURE')) }}:
+        - script: |
+            helm repo add gitea-charts https://dl.gitea.io/charts --force-update
+            if [ "${{ parameters.action }}" = "UNINSTALL" ]; then
+              helm uninstall gitea -n registry 2>/dev/null || true
+            else
+              helm upgrade --install gitea gitea-charts/gitea \
+                --namespace registry --create-namespace \
+                --set gitea.admin.username=gitea-admin \
+                --set gitea.admin.password="$(GITEA_ADMIN_PASSWORD)" \
+                --set gitea.admin.email=admin@shopos.internal \
+                --set persistence.enabled=true \
+                --set persistence.size=20Gi \
+                --set postgresql.enabled=true \
+                --wait --timeout 8m
+            fi
+          displayName: Gitea
+
+      # ── MinIO ─────────────────────────────────────────────────────────────
+      - ${{ if and(eq(parameters.minio, true), ne(parameters.action, 'CONFIGURE')) }}:
+        - script: |
+            helm repo add minio https://charts.min.io --force-update
+            if [ "${{ parameters.action }}" = "UNINSTALL" ]; then
+              helm uninstall minio -n registry 2>/dev/null || true
+            else
+              helm upgrade --install minio minio/minio \
+                --namespace registry --create-namespace \
+                --set rootUser="$(MINIO_ROOT_USER)" \
+                --set rootPassword="$(MINIO_ROOT_PASSWORD)" \
+                --set replicas=4 \
+                --set persistence.enabled=true \
+                --set persistence.size=100Gi \
+                --set resources.requests.memory=1Gi \
+                --set ingress.enabled=true \
+                --set ingress.ingressClassName=traefik \
+                --set ingress.hosts[0]=minio.shopos.internal \
+                --wait --timeout 8m
+            fi
+          displayName: MinIO
+
+      # ── CONFIGURE: Create MinIO buckets + Harbor settings ─────────────────
+      - ${{ if eq(parameters.action, 'CONFIGURE') }}:
+        - script: |
+            # Install mc (MinIO client)
+            curl -fsSL https://dl.min.io/client/mc/release/linux-amd64/mc -o /usr/local/bin/mc
+            chmod +x /usr/local/bin/mc
+
+            # Port-forward MinIO
+            kubectl port-forward svc/minio 9000:9000 -n registry &
+            PF_PID=$!; sleep 5
+
+            mc alias set shopos http://localhost:9000 "$(MINIO_ROOT_USER)" "$(MINIO_ROOT_PASSWORD)"
+
+            BUCKETS=(harbor-registry velero-backups loki-chunks tempo-traces thanos mlflow artifacts backups media-assets)
+            for BUCKET in "${BUCKETS[@]}"; do
+              mc mb --ignore-existing "shopos/$BUCKET" || true
+              echo "Created bucket: $BUCKET"
+            done
+
+            # Set lifecycle policies
+            mc ilm import shopos/loki-chunks <<'EOF'
+            {"Rules":[{"Expiration":{"Days":30},"ID":"expire-chunks","Status":"Enabled","Filter":{"Prefix":""}}]}
+            EOF
+
+            kill $PF_PID 2>/dev/null || true
+          displayName: Configure MinIO Buckets
+
+        - script: |
+            # Port-forward Harbor
+            kubectl port-forward svc/harbor-core 18080:80 -n registry &
+            PF_PID=$!; sleep 5
+
+            HARBOR_URL=http://localhost:18080
+            HARBOR_AUTH="admin:$(HARBOR_ADMIN_PASSWORD)"
+
+            # Create projects
+            for PROJECT in platform identity catalog commerce supply-chain financial; do
+              curl -sf -u "$HARBOR_AUTH" -X POST "$HARBOR_URL/api/v2.0/projects" \
+                -H "Content-Type: application/json" \
+                -d "{\"project_name\":\"$PROJECT\",\"public\":false,\"metadata\":{\"auto_scan\":\"true\",\"prevent_vul\":\"true\",\"severity\":\"high\"}}" || true
+            done
+
+            # Enable content trust (Cosign/Notary)
+            curl -sf -u "$HARBOR_AUTH" -X PUT "$HARBOR_URL/api/v2.0/configurations" \
+              -H "Content-Type: application/json" \
+              -d '{"content_trust_enabled":true}' || true
+
+            kill $PF_PID 2>/dev/null || true
+          displayName: Configure Harbor Projects

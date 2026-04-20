@@ -1,0 +1,45 @@
+syntax = "proto3";
+package catalog.category.v1;
+option go_package = "github.com/shopos/proto/catalog/category/v1;categoryv1";
+
+import "google/protobuf/timestamp.proto";
+
+service CategoryService {
+  rpc CreateCategory(CreateCategoryRequest)     returns (CreateCategoryResponse);
+  rpc GetCategory(GetCategoryRequest)           returns (GetCategoryResponse);
+  rpc UpdateCategory(UpdateCategoryRequest)     returns (UpdateCategoryResponse);
+  rpc DeleteCategory(DeleteCategoryRequest)     returns (DeleteCategoryResponse);
+  rpc ListCategories(ListCategoriesRequest)     returns (ListCategoriesResponse);
+  rpc GetCategoryTree(GetCategoryTreeRequest)   returns (GetCategoryTreeResponse);
+}
+
+message Category {
+  string id          = 1;
+  string name        = 2;
+  string slug        = 3;
+  string description = 4;
+  string parent_id   = 5;
+  int32  position    = 6;
+  bool   active      = 7;
+  string image_url   = 8;
+  google.protobuf.Timestamp created_at = 9;
+  google.protobuf.Timestamp updated_at = 10;
+}
+
+message CategoryTreeNode {
+  Category category = 1;
+  repeated CategoryTreeNode children = 2;
+}
+
+message CreateCategoryRequest  { string name = 1; string slug = 2; string description = 3; string parent_id = 4; int32 position = 5; }
+message CreateCategoryResponse { Category category = 1; }
+message GetCategoryRequest     { string id = 1; }
+message GetCategoryResponse    { Category category = 1; }
+message UpdateCategoryRequest  { string id = 1; string name = 2; string description = 3; int32 position = 4; bool active = 5; }
+message UpdateCategoryResponse { Category category = 1; }
+message DeleteCategoryRequest  { string id = 1; }
+message DeleteCategoryResponse { bool success = 1; }
+message ListCategoriesRequest  { string parent_id = 1; bool active_only = 2; int32 page = 3; int32 page_size = 4; }
+message ListCategoriesResponse { repeated Category categories = 1; int32 total = 2; }
+message GetCategoryTreeRequest  { string root_id = 1; }
+message GetCategoryTreeResponse { repeated CategoryTreeNode roots = 1; }

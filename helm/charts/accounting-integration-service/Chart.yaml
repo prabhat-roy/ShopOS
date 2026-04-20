@@ -1,0 +1,19 @@
+apiVersion: v2
+name: accounting-integration-service
+description: ShopOS accounting-integration-service — Pushes financial transactions to external accounting systems
+type: application
+version: 0.1.0
+appVersion: "1.0.0"
+keywords:
+  - shopos
+  - accounting-integration-service
+  - integrations
+home: https://github.com/your-org/shopos
+sources:
+  - https://github.com/your-org/shopos/tree/main/src/integrations/accounting-integration-service
+maintainers:
+  - name: ShopOS Platform Team
+    email: platform@shopos.io
+annotations:
+  app.kubernetes.io/domain: integrations
+  app.kubernetes.io/language: java

@@ -1,0 +1,24 @@
+apiVersion: chaos-mesh.org/v1alpha1
+kind: StressChaos
+metadata:
+  name: memory-stress-recommendation
+  namespace: chaos-mesh
+  labels:
+    app.kubernetes.io/part-of: shopos-chaos
+    chaos.shopos.io/tier: analytics-ai
+spec:
+  mode: one
+  selector:
+    namespaces:
+      - analytics-ai
+    labelSelectors:
+      app.kubernetes.io/name: recommendation-service
+  stressors:
+    memory:
+      workers: 2
+      size: 256MB
+      options:
+        - --vm-hang=0
+  duration: 5m
+  containerNames:
+    - recommendation-service

@@ -1,0 +1,124 @@
+# Networking Infrastructure — GitLab CI
+# Variables: ENVIRONMENT, ACTION, CILIUM, ISTIO, TRAEFIK, CONSUL, EXTERNAL_DNS
+
+variables:
+  ENVIRONMENT: dev
+  ACTION: INSTALL
+  CILIUM: "false"
+  ISTIO: "true"
+  TRAEFIK: "true"
+  CONSUL: "true"
+  EXTERNAL_DNS: "true"
+
+workflow:
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "web"
+    - if: $CI_PIPELINE_SOURCE == "trigger"
+
+stages:
+  - cni
+  - mesh
+  - edge
+  - discovery
+
+default:
+  image: alpine/helm:latest
+  before_script:
+    - apk add --no-cache curl bash
+    - curl -fsSL "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl" -o /usr/local/bin/kubectl && chmod +x /usr/local/bin/kubectl
+    - mkdir -p ~/.kube && echo "$KUBECONFIG_CONTENT" | base64 -d > ~/.kube/config
+
+cilium:
+  stage: cni
+  script:
+    - '[ "$CILIUM" = "true" ] || exit 0'
+    - helm repo add cilium https://helm.cilium.io --force-update
+    - |
+      if [ "$ACTION" = "UNINSTALL" ]; then
+        helm uninstall cilium -n kube-system 2>/dev/null || true
+      else
+        helm upgrade --install cilium cilium/cilium \
+          --namespace kube-system \
+          --set kubeProxyReplacement=true \
+          --set hubble.relay.enabled=true \
+          --set hubble.ui.enabled=true \
+          --set loadBalancer.algorithm=maglev \
+          --wait --timeout 8m
+      fi
+
+istio:
+  stage: mesh
+  script:
+    - '[ "$ISTIO" = "true" ] || exit 0'
+    - helm repo add istio https://istio-release.storage.googleapis.com/charts --force-update
+    - |
+      if [ "$ACTION" = "UNINSTALL" ]; then
+        helm uninstall istio-ingressgateway -n istio-system 2>/dev/null || true
+        helm uninstall istiod -n istio-system 2>/dev/null || true
+        helm uninstall istio-base -n istio-system 2>/dev/null || true
+      else
+        helm upgrade --install istio-base istio/base \
+          --namespace istio-system --create-namespace --wait --timeout 3m
+        helm upgrade --install istiod istio/istiod \
+          --namespace istio-system \
+          --set telemetry.enabled=true --set pilot.traceSampling=1.0 \
+          --wait --timeout 5m
+        helm upgrade --install istio-ingressgateway istio/gateway \
+          --namespace istio-system --wait --timeout 3m
+        kubectl apply -f networking/istio/ 2>/dev/null || true
+      fi
+  needs: [cilium]
+
+traefik:
+  stage: edge
+  script:
+    - '[ "$TRAEFIK" = "true" ] || exit 0'
+    - helm repo add traefik https://traefik.github.io/charts --force-update
+    - |
+      if [ "$ACTION" = "UNINSTALL" ]; then
+        helm uninstall traefik -n networking 2>/dev/null || true
+      else
+        helm upgrade --install traefik traefik/traefik \
+          --namespace networking --create-namespace \
+          --set deployment.replicas=2 \
+          --set ports.websecure.tls.enabled=true \
+          --set ingressClass.enabled=true \
+          --set ingressClass.isDefaultClass=true \
+          --set metrics.prometheus.enabled=true \
+          --wait --timeout 5m
+        kubectl apply -f networking/traefik/ 2>/dev/null || true
+      fi
+  needs: [istio]
+
+consul:
+  stage: discovery
+  script:
+    - '[ "$CONSUL" = "true" ] || exit 0'
+    - helm repo add hashicorp https://helm.releases.hashicorp.com --force-update
+    - |
+      if [ "$ACTION" = "UNINSTALL" ]; then
+        helm uninstall consul -n consul 2>/dev/null || true
+      else
+        helm upgrade --install consul hashicorp/consul \
+          --namespace consul --create-namespace \
+          --set server.replicas=3 --set server.bootstrapExpect=3 \
+          --set connectInject.enabled=true --set ui.enabled=true \
+          --wait --timeout 8m
+      fi
+  needs: [traefik]
+
+external-dns:
+  stage: discovery
+  script:
+    - '[ "$EXTERNAL_DNS" = "true" ] || exit 0'
+    - helm repo add external-dns https://kubernetes-sigs.github.io/external-dns --force-update
+    - |
+      if [ "$ACTION" = "UNINSTALL" ]; then
+        helm uninstall external-dns -n networking 2>/dev/null || true
+      else
+        helm upgrade --install external-dns external-dns/external-dns \
+          --namespace networking --create-namespace \
+          --set policy=sync --set txtOwnerId=shopos \
+          --wait --timeout 3m
+      fi
+  needs: [traefik]

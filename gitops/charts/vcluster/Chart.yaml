@@ -1,0 +1,6 @@
+apiVersion: v2
+name: vcluster
+description: vCluster — virtual Kubernetes clusters inside a namespace
+type: application
+version: 1.0.0
+appVersion: "0.20.0"

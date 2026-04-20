@@ -1,0 +1,6 @@
+apiVersion: v2
+name: fluxcd
+description: Flux CD — GitOps operator for Kubernetes (CNCF graduated)
+type: application
+version: 1.0.0
+appVersion: "v2.3.0"

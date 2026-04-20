@@ -1,0 +1,173 @@
+# Observability Stack — GitLab CI
+# Variables: ENVIRONMENT, ACTION, PROMETHEUS, GRAFANA, LOKI, JAEGER, TEMPO,
+#   OTEL_COLLECTOR, THANOS, FLUENT_BIT, METRICS_SERVER
+
+variables:
+  ENVIRONMENT: dev
+  ACTION: INSTALL
+  PROMETHEUS: "true"
+  GRAFANA: "true"
+  LOKI: "true"
+  JAEGER: "true"
+  TEMPO: "true"
+  OTEL_COLLECTOR: "true"
+  THANOS: "false"
+  FLUENT_BIT: "true"
+  METRICS_SERVER: "true"
+
+workflow:
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "web"
+    - if: $CI_PIPELINE_SOURCE == "trigger"
+
+stages:
+  - foundation
+  - metrics
+  - logs
+  - traces
+  - pipeline
+
+default:
+  image: alpine/helm:latest
+  before_script:
+    - apk add --no-cache curl bash
+    - curl -fsSL "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl" -o /usr/local/bin/kubectl && chmod +x /usr/local/bin/kubectl
+    - mkdir -p ~/.kube && echo "$KUBECONFIG_CONTENT" | base64 -d > ~/.kube/config
+
+metrics-server:
+  stage: foundation
+  script:
+    - '[ "$METRICS_SERVER" = "true" ] || exit 0'
+    - helm repo add metrics-server https://kubernetes-sigs.github.io/metrics-server --force-update
+    - helm upgrade --install metrics-server metrics-server/metrics-server \
+        --namespace kube-system --set args[0]=--kubelet-insecure-tls --wait --timeout 3m
+
+prometheus:
+  stage: metrics
+  script:
+    - '[ "$PROMETHEUS" = "true" ] || exit 0'
+    - helm repo add prometheus-community https://prometheus-community.github.io/helm-charts --force-update
+    - |
+      if [ "$ACTION" = "UNINSTALL" ]; then
+        helm uninstall kube-prometheus-stack -n observability 2>/dev/null || true
+      else
+        helm upgrade --install kube-prometheus-stack prometheus-community/kube-prometheus-stack \
+          --namespace observability --create-namespace \
+          --set prometheus.prometheusSpec.retention=30d \
+          --set alertmanager.alertmanagerSpec.replicas=2 \
+          --set grafana.enabled=false \
+          --set prometheus.prometheusSpec.serviceMonitorSelectorNilUsesHelmValues=false \
+          --wait --timeout 10m
+        kubectl apply -f observability/prometheus/ 2>/dev/null || true
+      fi
+  needs: [metrics-server]
+
+grafana:
+  stage: metrics
+  script:
+    - '[ "$GRAFANA" = "true" ] || exit 0'
+    - helm repo add grafana https://grafana.github.io/helm-charts --force-update
+    - |
+      if [ "$ACTION" = "UNINSTALL" ]; then
+        helm uninstall grafana -n observability 2>/dev/null || true
+      else
+        helm upgrade --install grafana grafana/grafana \
+          --namespace observability --create-namespace \
+          --set adminPassword="$GRAFANA_ADMIN_PASSWORD" \
+          --set persistence.enabled=true \
+          --set sidecar.dashboards.enabled=true \
+          --set sidecar.datasources.enabled=true \
+          --wait --timeout 5m
+      fi
+  needs: [metrics-server]
+
+loki:
+  stage: logs
+  script:
+    - '[ "$LOKI" = "true" ] || exit 0'
+    - helm repo add grafana https://grafana.github.io/helm-charts --force-update
+    - |
+      if [ "$ACTION" = "UNINSTALL" ]; then
+        helm uninstall loki -n observability 2>/dev/null || true
+      else
+        helm upgrade --install loki grafana/loki \
+          --namespace observability --create-namespace \
+          --set loki.auth_enabled=false \
+          --set loki.storage.type=s3 \
+          --set loki.storage.s3.endpoint="$MINIO_ENDPOINT" \
+          --set loki.storage.s3.bucketnames=loki-chunks \
+          --set loki.storage.s3.access_key_id="$MINIO_ACCESS_KEY" \
+          --set loki.storage.s3.secret_access_key="$MINIO_SECRET_KEY" \
+          --set loki.storage.s3.s3ForcePathStyle=true \
+          --wait --timeout 8m
+      fi
+  needs: [prometheus, grafana]
+
+fluent-bit:
+  stage: logs
+  script:
+    - '[ "$FLUENT_BIT" = "true" ] || exit 0'
+    - helm repo add fluent https://fluent.github.io/helm-charts --force-update
+    - |
+      if [ "$ACTION" = "UNINSTALL" ]; then
+        helm uninstall fluent-bit -n observability 2>/dev/null || true
+      else
+        helm upgrade --install fluent-bit fluent/fluent-bit \
+          --namespace observability --create-namespace --wait --timeout 5m
+      fi
+  needs: [loki]
+
+jaeger:
+  stage: traces
+  script:
+    - '[ "$JAEGER" = "true" ] || exit 0'
+    - helm repo add jaegertracing https://jaegertracing.github.io/helm-charts --force-update
+    - |
+      if [ "$ACTION" = "UNINSTALL" ]; then
+        helm uninstall jaeger -n observability 2>/dev/null || true
+      else
+        helm upgrade --install jaeger jaegertracing/jaeger \
+          --namespace observability --create-namespace \
+          --set provisionDataStore.cassandra=false \
+          --set storage.type=elasticsearch \
+          --wait --timeout 8m
+      fi
+  needs: [prometheus, grafana]
+
+tempo:
+  stage: traces
+  script:
+    - '[ "$TEMPO" = "true" ] || exit 0'
+    - helm repo add grafana https://grafana.github.io/helm-charts --force-update
+    - |
+      if [ "$ACTION" = "UNINSTALL" ]; then
+        helm uninstall tempo-distributed -n observability 2>/dev/null || true
+      else
+        helm upgrade --install tempo-distributed grafana/tempo-distributed \
+          --namespace observability --create-namespace \
+          --set storage.trace.backend=s3 \
+          --set storage.trace.s3.endpoint="$MINIO_ENDPOINT" \
+          --set storage.trace.s3.bucket=tempo-traces \
+          --set storage.trace.s3.access_key="$MINIO_ACCESS_KEY" \
+          --set storage.trace.s3.secret_key="$MINIO_SECRET_KEY" \
+          --set storage.trace.s3.insecure=true \
+          --wait --timeout 8m
+      fi
+  needs: [prometheus, grafana]
+
+otel-collector:
+  stage: pipeline
+  script:
+    - '[ "$OTEL_COLLECTOR" = "true" ] || exit 0'
+    - helm repo add open-telemetry https://open-telemetry.github.io/opentelemetry-helm-charts --force-update
+    - |
+      if [ "$ACTION" = "UNINSTALL" ]; then
+        helm uninstall otel-collector -n observability 2>/dev/null || true
+      else
+        helm upgrade --install otel-collector open-telemetry/opentelemetry-collector \
+          --namespace observability --create-namespace \
+          --set mode=deployment --set replicaCount=2 \
+          -f observability/otel-collector/values.yaml \
+          --wait --timeout 5m
+      fi
+  needs: [jaeger, tempo, fluent-bit]

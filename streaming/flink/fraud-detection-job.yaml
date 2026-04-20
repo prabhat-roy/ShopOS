@@ -1,0 +1,42 @@
+apiVersion: flink.apache.org/v1beta1
+kind: FlinkDeployment
+metadata:
+  name: fraud-detection-job
+  namespace: analytics-ai
+spec:
+  image: shopos/flink-fraud-detection:latest
+  flinkVersion: v1_20
+  flinkConfiguration:
+    taskmanager.numberOfTaskSlots: "2"
+    state.backend: rocksdb
+    state.checkpoints.dir: s3://shopos-flink/checkpoints
+    state.savepoints.dir: s3://shopos-flink/savepoints
+    execution.checkpointing.interval: 30s
+    execution.checkpointing.mode: EXACTLY_ONCE
+    restart-strategy: exponential-delay
+    restart-strategy.exponential-delay.initial-backoff: 1s
+    restart-strategy.exponential-delay.max-backoff: 5min
+  serviceAccount: flink
+  jobManager:
+    resource:
+      memory: 1024m
+      cpu: 0.5
+    replicas: 1
+  taskManager:
+    resource:
+      memory: 2048m
+      cpu: 1
+    replicas: 2
+  job:
+    jarURI: local:///opt/flink/usrlib/fraud-detection.jar
+    entryClass: com.shopos.flink.FraudDetectionJob
+    args:
+      - --kafka-brokers=kafka:9092
+      - --input-topic=commerce.order.placed
+      - --output-topic=security.fraud.detected
+      - --schema-registry=http://schema-registry:8081
+      - --window-size=5min
+      - --fraud-threshold=0.85
+    parallelism: 4
+    upgradeMode: stateful
+    state: running

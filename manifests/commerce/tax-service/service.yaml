@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: tax-service
+  namespace: commerce
+  labels:
+    app: tax-service
+    domain: commerce
+spec:
+  selector:
+    app: tax-service
+  type: ClusterIP
+  ports:
+    - name: grpc
+      port: 50086
+      targetPort: grpc
+      protocol: TCP

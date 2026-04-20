@@ -1,0 +1,102 @@
+syntax = "proto3";
+
+package commerce;
+
+import "common/common.proto";
+
+option go_package = "github.com/shopos/proto/commerce";
+
+// ---------------------------------------------------------------------------
+// Enums
+// ---------------------------------------------------------------------------
+
+enum ShipmentStatus {
+  SHIPMENT_STATUS_UNSPECIFIED      = 0;
+  SHIPMENT_STATUS_PENDING          = 1;
+  SHIPMENT_STATUS_LABEL_CREATED    = 2;
+  SHIPMENT_STATUS_PICKED_UP        = 3;
+  SHIPMENT_STATUS_IN_TRANSIT       = 4;
+  SHIPMENT_STATUS_OUT_FOR_DELIVERY = 5;
+  SHIPMENT_STATUS_DELIVERED        = 6;
+  SHIPMENT_STATUS_FAILED           = 7;
+  SHIPMENT_STATUS_RETURNED         = 8;
+  SHIPMENT_STATUS_CANCELLED        = 9;
+}
+
+// ---------------------------------------------------------------------------
+// Messages
+// ---------------------------------------------------------------------------
+
+message TrackingEvent {
+  Timestamp timestamp   = 1;
+  string    location    = 2;
+  string    description = 3;
+  string    status      = 4;
+}
+
+message Shipment {
+  string         id              = 1;
+  string         order_id        = 2;
+  ShipmentStatus status          = 3;
+  string         tracking_number = 4;
+  string         carrier         = 5;
+  Address        from_address    = 6;
+  Address        to_address      = 7;
+  Timestamp      shipped_at      = 8;
+  Timestamp      delivered_at    = 9;
+}
+
+message CreateShipmentRequest {
+  string  order_id     = 1;
+  string  carrier      = 2;
+  Address from_address = 3;
+  Address to_address   = 4;
+}
+
+message GetShipmentRequest {
+  string shipment_id = 1;
+}
+
+message UpdateShipmentStatusRequest {
+  string         shipment_id = 1;
+  ShipmentStatus status      = 2;
+}
+
+message TrackShipmentRequest {
+  string tracking_number = 1;
+}
+
+message TrackShipmentResponse {
+  string                 tracking_number = 1;
+  string                 status          = 2;
+  repeated TrackingEvent events          = 3;
+}
+
+message ListShipmentsByOrderRequest {
+  string order_id = 1;
+}
+
+message ListShipmentsByOrderResponse {
+  repeated Shipment shipments = 1;
+}
+
+// ---------------------------------------------------------------------------
+// Service
+// ---------------------------------------------------------------------------
+
+service ShippingService {
+  // Create a new shipment record (and optionally generate a carrier label).
+  rpc CreateShipment(CreateShipmentRequest) returns (Shipment);
+
+  // Retrieve a shipment record by its internal ID.
+  rpc GetShipment(GetShipmentRequest) returns (Shipment);
+
+  // Update the status of a shipment (e.g. IN_TRANSIT -> DELIVERED).
+  rpc UpdateShipmentStatus(UpdateShipmentStatusRequest) returns (Shipment);
+
+  // Live-track a shipment using its carrier tracking number.
+  rpc TrackShipment(TrackShipmentRequest) returns (TrackShipmentResponse);
+
+  // Retrieve all shipments belonging to an order.
+  rpc ListShipmentsByOrder(ListShipmentsByOrderRequest) returns (ListShipmentsByOrderResponse);
+}

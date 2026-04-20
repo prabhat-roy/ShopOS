@@ -1,0 +1,32 @@
+# ---- build stage ------------------------------------------------------------
+FROM golang:1.24-alpine AS builder
+
+WORKDIR /app
+
+# Cache dependency downloads separately from source compilation.
+
+
+COPY go.mod go.sum* ./
+RUN --mount=type=cache,target=/go/pkg/mod,sharing=locked \
+    rm -f go.sum && GONOSUMDB=* go mod download
+
+COPY . .
+
+RUN --mount=type=cache,target=/go/pkg/mod,sharing=locked \
+    --mount=type=cache,target=/root/.cache/go-build \
+    rm -f go.sum && GONOSUMDB=* go mod tidy
+
+RUN CGO_ENABLED=0 GOOS=linux go build -ldflags="-s -w" -o /app/event-replay-service .
+
+# ---- runtime stage ----------------------------------------------------------
+FROM gcr.io/distroless/static-debian12:nonroot
+
+WORKDIR /app
+
+COPY --from=builder /app/event-replay-service /app/event-replay-service
+
+EXPOSE 8094
+
+USER nonroot:nonroot
+
+ENTRYPOINT ["/app/event-replay-service"]

@@ -1,0 +1,53 @@
+controllerManager:
+  replicaCount: 3
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+chaosDaemon:
+  runtime: containerd
+  socketPath: /run/containerd/containerd.sock
+  resources:
+    requests:
+      cpu: 250m
+      memory: 512Mi
+    limits:
+      cpu: 1000m
+      memory: 1Gi
+
+dashboard:
+  enabled: true
+  replicaCount: 1
+  resources:
+    requests:
+      cpu: 50m
+      memory: 256Mi
+
+dnsServer:
+  enabled: true
+  resources:
+    requests:
+      cpu: 100m
+      memory: 70Mi
+
+enableCtrlServer: true
+enableFilterNamespace: false
+
+timezone: "UTC"
+
+prometheus:
+  enabled: true
+  serviceMonitor:
+    enabled: false
+
+rbac:
+  create: true
+
+bpfki:
+  enabled: false
+
+clusterScoped: true

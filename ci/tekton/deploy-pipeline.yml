@@ -1,0 +1,297 @@
+# Deploy Pipeline — Tekton
+# Secrets: harbor-credentials, sonarqube-token, kubeconfig
+---
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  name: secret-scan
+  namespace: tekton-pipelines
+spec:
+  params:
+    - name: source-dir
+      default: /workspace/source
+  workspaces:
+    - name: source
+  steps:
+    - name: gitleaks
+      image: zricethezav/gitleaks:latest
+      script: |
+        gitleaks detect --source $(params.source-dir) --exit-code 1 || true
+---
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  name: semgrep-sast
+  namespace: tekton-pipelines
+spec:
+  params:
+    - name: service-name
+  workspaces:
+    - name: source
+  steps:
+    - name: semgrep
+      image: returntocorp/semgrep:latest
+      script: |
+        cd /workspace/source/src
+        semgrep --config=auto --json --output=/tmp/semgrep.json . || true
+        echo "SAST complete for $(params.service-name)"
+---
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  name: sonarqube-scan
+  namespace: tekton-pipelines
+spec:
+  params:
+    - name: service-name
+    - name: sonar-host-url
+      default: "http://sonarqube.observability.svc:9000"
+  workspaces:
+    - name: source
+  steps:
+    - name: sonar-scan
+      image: sonarsource/sonar-scanner-cli:latest
+      env:
+        - name: SONAR_TOKEN
+          valueFrom:
+            secretKeyRef:
+              name: sonarqube-credentials
+              key: token
+      script: |
+        cd /workspace/source/src/$(params.service-name)
+        sonar-scanner \
+          -Dsonar.projectKey=$(params.service-name) \
+          -Dsonar.host.url=$(params.sonar-host-url) \
+          -Dsonar.login=$SONAR_TOKEN \
+          -Dsonar.qualitygate.wait=true || true
+---
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  name: docker-build-push
+  namespace: tekton-pipelines
+spec:
+  params:
+    - name: service-name
+    - name: image-tag
+    - name: registry
+      default: harbor.shopos.internal
+    - name: dockerfile-path
+      default: Dockerfile
+  workspaces:
+    - name: source
+    - name: dockerconfig
+      mountPath: /kaniko/.docker
+  steps:
+    - name: build-push
+      image: gcr.io/kaniko-project/executor:latest
+      args:
+        - --dockerfile=/workspace/source/src/$(params.service-name)/$(params.dockerfile-path)
+        - --context=/workspace/source/src/$(params.service-name)
+        - --destination=$(params.registry)/shopos/$(params.service-name):$(params.image-tag)
+        - --destination=$(params.registry)/shopos/$(params.service-name):latest
+        - --cache=true
+        - --cache-repo=$(params.registry)/shopos/cache
+---
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  name: trivy-scan
+  namespace: tekton-pipelines
+spec:
+  params:
+    - name: image-ref
+  steps:
+    - name: trivy
+      image: aquasec/trivy:latest
+      script: |
+        trivy image --exit-code 1 --severity CRITICAL --no-progress $(params.image-ref) || true
+        trivy image --format cyclonedx --output /tmp/sbom.json $(params.image-ref) || true
+        echo "Trivy scan complete"
+---
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  name: cosign-sign
+  namespace: tekton-pipelines
+spec:
+  params:
+    - name: image-ref
+  steps:
+    - name: sign
+      image: gcr.io/projectsigstore/cosign:latest
+      env:
+        - name: COSIGN_EXPERIMENTAL
+          value: "1"
+      script: |
+        cosign sign --yes $(params.image-ref)
+        echo "Image signed: $(params.image-ref)"
+---
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  name: helm-deploy
+  namespace: tekton-pipelines
+spec:
+  params:
+    - name: service-name
+    - name: image-tag
+    - name: namespace
+      default: default
+    - name: environment
+      default: staging
+    - name: registry
+      default: harbor.shopos.internal
+  workspaces:
+    - name: source
+    - name: kubeconfig
+      mountPath: /root/.kube
+  steps:
+    - name: helm-upgrade
+      image: alpine/helm:latest
+      script: |
+        helm upgrade --install $(params.service-name) \
+          /workspace/source/helm/charts/$(params.service-name) \
+          --namespace $(params.namespace) --create-namespace \
+          --set image.repository=$(params.registry)/shopos/$(params.service-name) \
+          --set image.tag=$(params.image-tag) \
+          --set environment=$(params.environment) \
+          --wait --timeout 5m
+        echo "Deployed $(params.service-name):$(params.image-tag) to $(params.namespace)"
+---
+apiVersion: tekton.dev/v1
+kind: Pipeline
+metadata:
+  name: deploy-pipeline
+  namespace: tekton-pipelines
+spec:
+  params:
+    - name: service-name
+    - name: image-tag
+    - name: namespace
+      default: default
+    - name: environment
+      default: staging
+    - name: registry
+      default: harbor.shopos.internal
+  workspaces:
+    - name: source
+    - name: dockerconfig
+    - name: kubeconfig
+  tasks:
+    - name: secret-scan
+      taskRef:
+        name: secret-scan
+      workspaces:
+        - name: source
+          workspace: source
+
+    - name: sast
+      taskRef:
+        name: semgrep-sast
+      params:
+        - name: service-name
+          value: $(params.service-name)
+      workspaces:
+        - name: source
+          workspace: source
+      runAfter: [secret-scan]
+
+    - name: sonarqube
+      taskRef:
+        name: sonarqube-scan
+      params:
+        - name: service-name
+          value: $(params.service-name)
+      workspaces:
+        - name: source
+          workspace: source
+      runAfter: [sast]
+
+    - name: docker-build
+      taskRef:
+        name: docker-build-push
+      params:
+        - name: service-name
+          value: $(params.service-name)
+        - name: image-tag
+          value: $(params.image-tag)
+        - name: registry
+          value: $(params.registry)
+      workspaces:
+        - name: source
+          workspace: source
+        - name: dockerconfig
+          workspace: dockerconfig
+      runAfter: [sonarqube]
+
+    - name: scan-image
+      taskRef:
+        name: trivy-scan
+      params:
+        - name: image-ref
+          value: $(params.registry)/shopos/$(params.service-name):$(params.image-tag)
+      runAfter: [docker-build]
+
+    - name: sign-image
+      taskRef:
+        name: cosign-sign
+      params:
+        - name: image-ref
+          value: $(params.registry)/shopos/$(params.service-name):$(params.image-tag)
+      runAfter: [scan-image]
+
+    - name: deploy
+      taskRef:
+        name: helm-deploy
+      params:
+        - name: service-name
+          value: $(params.service-name)
+        - name: image-tag
+          value: $(params.image-tag)
+        - name: namespace
+          value: $(params.namespace)
+        - name: environment
+          value: $(params.environment)
+        - name: registry
+          value: $(params.registry)
+      workspaces:
+        - name: source
+          workspace: source
+        - name: kubeconfig
+          workspace: kubeconfig
+      runAfter: [sign-image]
+---
+apiVersion: tekton.dev/v1
+kind: PipelineRun
+metadata:
+  name: deploy-pipeline-run
+  namespace: tekton-pipelines
+  annotations:
+    description: "Example PipelineRun — update params before running"
+spec:
+  pipelineRef:
+    name: deploy-pipeline
+  params:
+    - name: service-name
+      value: order-service
+    - name: image-tag
+      value: "v1.0.0"
+    - name: namespace
+      value: commerce
+    - name: environment
+      value: staging
+  workspaces:
+    - name: source
+      volumeClaimTemplate:
+        spec:
+          accessModes: [ReadWriteOnce]
+          resources:
+            requests:
+              storage: 1Gi
+    - name: dockerconfig
+      secret:
+        secretName: harbor-credentials
+    - name: kubeconfig
+      secret:
+        secretName: kubeconfig-secret

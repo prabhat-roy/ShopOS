@@ -1,0 +1,118 @@
+# Observability Stack — Woodpecker CI
+# Secrets: kubeconfig_content, grafana_admin_password, minio_secret_key
+# Env vars: ENVIRONMENT, ACTION, PROMETHEUS, GRAFANA, LOKI, JAEGER, TEMPO, OTEL_COLLECTOR, FLUENT_BIT
+
+when:
+  event: [custom, manual]
+
+steps:
+  prometheus:
+    image: alpine/helm:latest
+    environment:
+      KUBECONFIG_CONTENT: { from_secret: kubeconfig_content }
+    commands:
+      - '[ "$PROMETHEUS" = "true" ] || exit 0'
+      - mkdir -p ~/.kube && echo "$KUBECONFIG_CONTENT" | base64 -d > ~/.kube/config
+      - helm repo add prometheus-community https://prometheus-community.github.io/helm-charts --force-update
+      - |
+        [ "$ACTION" = "UNINSTALL" ] && helm uninstall kube-prometheus-stack -n observability 2>/dev/null || true
+        [ "$ACTION" != "UNINSTALL" ] && helm upgrade --install kube-prometheus-stack \
+          prometheus-community/kube-prometheus-stack \
+          --namespace observability --create-namespace \
+          --set prometheus.prometheusSpec.retention=30d \
+          --set grafana.enabled=false \
+          --set prometheus.prometheusSpec.serviceMonitorSelectorNilUsesHelmValues=false \
+          --wait --timeout 10m
+
+  grafana:
+    image: alpine/helm:latest
+    environment:
+      KUBECONFIG_CONTENT: { from_secret: kubeconfig_content }
+      GRAFANA_ADMIN_PASSWORD: { from_secret: grafana_admin_password }
+    commands:
+      - '[ "$GRAFANA" = "true" ] || exit 0'
+      - mkdir -p ~/.kube && echo "$KUBECONFIG_CONTENT" | base64 -d > ~/.kube/config
+      - helm repo add grafana https://grafana.github.io/helm-charts --force-update
+      - |
+        [ "$ACTION" = "UNINSTALL" ] && helm uninstall grafana -n observability 2>/dev/null || true
+        [ "$ACTION" != "UNINSTALL" ] && helm upgrade --install grafana grafana/grafana \
+          --namespace observability --create-namespace \
+          --set adminPassword="$GRAFANA_ADMIN_PASSWORD" \
+          --set persistence.enabled=true \
+          --set sidecar.dashboards.enabled=true --wait --timeout 5m
+    depends_on: [prometheus]
+
+  loki:
+    image: alpine/helm:latest
+    environment:
+      KUBECONFIG_CONTENT: { from_secret: kubeconfig_content }
+      MINIO_SECRET_KEY: { from_secret: minio_secret_key }
+    commands:
+      - '[ "$LOKI" = "true" ] || exit 0'
+      - mkdir -p ~/.kube && echo "$KUBECONFIG_CONTENT" | base64 -d > ~/.kube/config
+      - helm repo add grafana https://grafana.github.io/helm-charts --force-update
+      - |
+        [ "$ACTION" = "UNINSTALL" ] && helm uninstall loki -n observability 2>/dev/null || true
+        [ "$ACTION" != "UNINSTALL" ] && helm upgrade --install loki grafana/loki \
+          --namespace observability --create-namespace \
+          --set loki.auth_enabled=false \
+          --set loki.storage.type=s3 \
+          --set loki.storage.s3.endpoint="$MINIO_ENDPOINT" \
+          --set loki.storage.s3.bucketnames=loki-chunks \
+          --set loki.storage.s3.access_key_id="$MINIO_ACCESS_KEY" \
+          --set loki.storage.s3.secret_access_key="$MINIO_SECRET_KEY" \
+          --set loki.storage.s3.s3ForcePathStyle=true --wait --timeout 8m
+    depends_on: [grafana]
+
+  jaeger:
+    image: alpine/helm:latest
+    environment:
+      KUBECONFIG_CONTENT: { from_secret: kubeconfig_content }
+    commands:
+      - '[ "$JAEGER" = "true" ] || exit 0'
+      - mkdir -p ~/.kube && echo "$KUBECONFIG_CONTENT" | base64 -d > ~/.kube/config
+      - helm repo add jaegertracing https://jaegertracing.github.io/helm-charts --force-update
+      - |
+        [ "$ACTION" = "UNINSTALL" ] && helm uninstall jaeger -n observability 2>/dev/null || true
+        [ "$ACTION" != "UNINSTALL" ] && helm upgrade --install jaeger jaegertracing/jaeger \
+          --namespace observability --create-namespace \
+          --set provisionDataStore.cassandra=false \
+          --set storage.type=elasticsearch --wait --timeout 8m
+    depends_on: [prometheus]
+
+  tempo:
+    image: alpine/helm:latest
+    environment:
+      KUBECONFIG_CONTENT: { from_secret: kubeconfig_content }
+    commands:
+      - '[ "$TEMPO" = "true" ] || exit 0'
+      - mkdir -p ~/.kube && echo "$KUBECONFIG_CONTENT" | base64 -d > ~/.kube/config
+      - helm repo add grafana https://grafana.github.io/helm-charts --force-update
+      - |
+        [ "$ACTION" = "UNINSTALL" ] && helm uninstall tempo-distributed -n observability 2>/dev/null || true
+        [ "$ACTION" != "UNINSTALL" ] && helm upgrade --install tempo-distributed grafana/tempo-distributed \
+          --namespace observability --create-namespace \
+          --set storage.trace.backend=s3 \
+          --set storage.trace.s3.endpoint="$MINIO_ENDPOINT" \
+          --set storage.trace.s3.bucket=tempo-traces \
+          --set storage.trace.s3.access_key="$MINIO_ACCESS_KEY" \
+          --set storage.trace.s3.secret_key="$MINIO_SECRET_KEY" \
+          --set storage.trace.s3.insecure=true --wait --timeout 8m
+    depends_on: [prometheus]
+
+  otel-collector:
+    image: alpine/helm:latest
+    environment:
+      KUBECONFIG_CONTENT: { from_secret: kubeconfig_content }
+    commands:
+      - '[ "$OTEL_COLLECTOR" = "true" ] || exit 0'
+      - mkdir -p ~/.kube && echo "$KUBECONFIG_CONTENT" | base64 -d > ~/.kube/config
+      - helm repo add open-telemetry https://open-telemetry.github.io/opentelemetry-helm-charts --force-update
+      - |
+        [ "$ACTION" = "UNINSTALL" ] && helm uninstall otel-collector -n observability 2>/dev/null || true
+        [ "$ACTION" != "UNINSTALL" ] && helm upgrade --install otel-collector \
+          open-telemetry/opentelemetry-collector \
+          --namespace observability --create-namespace \
+          --set mode=deployment --set replicaCount=2 \
+          -f observability/otel-collector/values.yaml --wait --timeout 5m
+    depends_on: [jaeger, tempo, loki]

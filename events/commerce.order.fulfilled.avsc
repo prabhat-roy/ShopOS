@@ -1,0 +1,14 @@
+{
+  "type": "record",
+  "name": "OrderFulfilled",
+  "namespace": "com.shopos.commerce.order",
+  "doc": "Emitted when all items in an order have been shipped",
+  "fields": [
+    { "name": "event_id",         "type": "string" },
+    { "name": "order_id",         "type": "string" },
+    { "name": "customer_id",      "type": "string" },
+    { "name": "tracking_numbers", "type": { "type": "array", "items": "string" }, "default": [] },
+    { "name": "carrier",          "type": "string", "default": "" },
+    { "name": "occurred_at",      "type": { "type": "long", "logicalType": "timestamp-millis" } }
+  ]
+}

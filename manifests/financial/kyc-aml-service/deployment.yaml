@@ -1,0 +1,83 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: kyc-aml-service
+  namespace: financial
+  labels:
+    app: kyc-aml-service
+    domain: financial
+    version: v1
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: kyc-aml-service
+  template:
+    metadata:
+      labels:
+        app: kyc-aml-service
+        domain: financial
+        version: v1
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "50116"
+    spec:
+      serviceAccountName: kyc-aml-service
+      terminationGracePeriodSeconds: 30
+      containers:
+        - name: kyc-aml-service
+          image: shopos/kyc-aml-service:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: grpc
+              containerPort: 50116
+              protocol: TCP
+          envFrom:
+            - configMapRef:
+                name: kyc-aml-service
+          env:
+            - name: POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            - name: POD_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+          resources:
+            requests:
+              cpu: 500m
+              memory: 512Mi
+            limits:
+              cpu: 2
+              memory: 2Gi
+          livenessProbe:
+            tcpSocket:
+              port: 50116
+            initialDelaySeconds: 15
+            periodSeconds: 20
+            failureThreshold: 3
+          readinessProbe:
+            tcpSocket:
+              port: 50116
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            failureThreshold: 3
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 1000
+            readOnlyRootFilesystem: true
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+      securityContext:
+        fsGroup: 2000
+        runAsNonRoot: true
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: kubernetes.io/hostname
+          whenUnsatisfiable: ScheduleAnyway
+          labelSelector:
+            matchLabels:
+              app: kyc-aml-service

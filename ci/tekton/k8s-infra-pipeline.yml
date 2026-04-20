@@ -1,0 +1,221 @@
+# Kubernetes Infrastructure (Terraform) Pipeline — Tekton
+# Secrets: kubeconfig-secret, aws-credentials, gcp-sa-key, azure-credentials
+---
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  name: terraform-eks
+  namespace: tekton-pipelines
+spec:
+  params:
+    - name: action
+      default: PLAN
+    - name: tf-dir
+      default: infra/terraform/aws/eks
+  workspaces:
+    - name: source
+    - name: terraform-cache
+      mountPath: /root/.terraform.d
+  steps:
+    - name: terraform
+      image: hashicorp/terraform:1.9.0
+      env:
+        - name: AWS_ACCESS_KEY_ID
+          valueFrom:
+            secretKeyRef:
+              name: aws-credentials
+              key: access-key-id
+        - name: AWS_SECRET_ACCESS_KEY
+          valueFrom:
+            secretKeyRef:
+              name: aws-credentials
+              key: secret-access-key
+        - name: AWS_DEFAULT_REGION
+          value: us-east-1
+      script: |
+        cd /workspace/source/$(params.tf-dir)
+        terraform init -backend-config="bucket=shopos-tfstate" \
+          -backend-config="key=$(params.tf-dir)/terraform.tfstate" \
+          -backend-config="region=$AWS_DEFAULT_REGION"
+        if [ "$(params.action)" = "PLAN" ]; then
+          terraform plan -out=tfplan
+        elif [ "$(params.action)" = "APPLY" ]; then
+          terraform plan -out=tfplan && terraform apply -auto-approve tfplan
+        elif [ "$(params.action)" = "DESTROY" ]; then
+          terraform destroy -auto-approve
+        fi
+---
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  name: terraform-gke
+  namespace: tekton-pipelines
+spec:
+  params:
+    - name: action
+      default: PLAN
+    - name: tf-dir
+      default: infra/opentofu/gcp/gke
+  workspaces:
+    - name: source
+  steps:
+    - name: terraform
+      image: hashicorp/terraform:1.9.0
+      env:
+        - name: GOOGLE_CREDENTIALS
+          valueFrom:
+            secretKeyRef:
+              name: gcp-sa-key
+              key: key.json
+      script: |
+        echo "$GOOGLE_CREDENTIALS" > /tmp/gcp-key.json
+        export GOOGLE_APPLICATION_CREDENTIALS=/tmp/gcp-key.json
+        cd /workspace/source/$(params.tf-dir)
+        terraform init \
+          -backend-config="bucket=shopos-tfstate-gcp" \
+          -backend-config="prefix=$(params.tf-dir)"
+        if [ "$(params.action)" = "PLAN" ]; then
+          terraform plan
+        elif [ "$(params.action)" = "APPLY" ]; then
+          terraform apply -auto-approve
+        elif [ "$(params.action)" = "DESTROY" ]; then
+          terraform destroy -auto-approve
+        fi
+        rm -f /tmp/gcp-key.json
+---
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  name: terraform-aks
+  namespace: tekton-pipelines
+spec:
+  params:
+    - name: action
+      default: PLAN
+    - name: tf-dir
+      default: infra/opentofu/azure/aks
+  workspaces:
+    - name: source
+  steps:
+    - name: terraform
+      image: hashicorp/terraform:1.9.0
+      env:
+        - name: ARM_CLIENT_ID
+          valueFrom:
+            secretKeyRef:
+              name: azure-credentials
+              key: client-id
+        - name: ARM_CLIENT_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: azure-credentials
+              key: client-secret
+        - name: ARM_SUBSCRIPTION_ID
+          valueFrom:
+            secretKeyRef:
+              name: azure-credentials
+              key: subscription-id
+        - name: ARM_TENANT_ID
+          valueFrom:
+            secretKeyRef:
+              name: azure-credentials
+              key: tenant-id
+      script: |
+        cd /workspace/source/$(params.tf-dir)
+        terraform init \
+          -backend-config="resource_group_name=shopos-tfstate-rg" \
+          -backend-config="storage_account_name=shoposterraform" \
+          -backend-config="container_name=tfstate" \
+          -backend-config="key=$(params.tf-dir)/terraform.tfstate"
+        if [ "$(params.action)" = "PLAN" ]; then
+          terraform plan
+        elif [ "$(params.action)" = "APPLY" ]; then
+          terraform apply -auto-approve
+        elif [ "$(params.action)" = "DESTROY" ]; then
+          terraform destroy -auto-approve
+        fi
+---
+apiVersion: tekton.dev/v1
+kind: Pipeline
+metadata:
+  name: k8s-infra-pipeline
+  namespace: tekton-pipelines
+spec:
+  params:
+    - name: action
+      default: PLAN
+    - name: cloud
+      default: aws
+  workspaces:
+    - name: source
+    - name: terraform-cache
+  tasks:
+    - name: eks
+      taskRef:
+        name: terraform-eks
+      params:
+        - name: action
+          value: $(params.action)
+      workspaces:
+        - name: source
+          workspace: source
+        - name: terraform-cache
+          workspace: terraform-cache
+      when:
+        - input: $(params.cloud)
+          operator: in
+          values: ["aws", "all"]
+
+    - name: gke
+      taskRef:
+        name: terraform-gke
+      params:
+        - name: action
+          value: $(params.action)
+      workspaces:
+        - name: source
+          workspace: source
+      when:
+        - input: $(params.cloud)
+          operator: in
+          values: ["gcp", "all"]
+
+    - name: aks
+      taskRef:
+        name: terraform-aks
+      params:
+        - name: action
+          value: $(params.action)
+      workspaces:
+        - name: source
+          workspace: source
+      when:
+        - input: $(params.cloud)
+          operator: in
+          values: ["azure", "all"]
+---
+apiVersion: tekton.dev/v1
+kind: PipelineRun
+metadata:
+  name: k8s-infra-pipeline-run
+  namespace: tekton-pipelines
+  annotations:
+    description: "Example PipelineRun — update params before running"
+spec:
+  pipelineRef:
+    name: k8s-infra-pipeline
+  params:
+    - name: action
+      value: PLAN
+    - name: cloud
+      value: aws
+  workspaces:
+    - name: source
+      volumeClaimTemplate:
+        spec:
+          accessModes: [ReadWriteOnce]
+          resources:
+            requests:
+              storage: 1Gi
+    - name: terraform-cache
+      emptyDir: {}

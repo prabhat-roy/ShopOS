@@ -1,0 +1,260 @@
+kind: pipeline
+type: docker
+name: cluster-bootstrap
+
+trigger:
+  event:
+    - custom
+
+# Variables (set via Drone UI / API when triggering):
+#   ENVIRONMENT       — dev | staging | prod
+#   SKIP_NETWORKING   — true | false (default false)
+#   SKIP_SECURITY     — true | false (default false)
+#   SKIP_OBSERVABILITY— true | false (default false)
+#   SKIP_MESSAGING    — true | false (default false)
+#
+# Secrets required:
+#   kubeconfig_b64    — base64-encoded kubeconfig
+
+# ── helpers ────────────────────────────────────────────────────────────────────
+x-kubeconfig: &kubeconfig
+  name: load-kubeconfig
+  image: alpine:3.21
+  environment:
+    KUBECONFIG_B64:
+      from_secret: kubeconfig_b64
+  commands:
+    - echo "$KUBECONFIG_B64" | base64 -d > /tmp/kubeconfig
+    - export KUBECONFIG=/tmp/kubeconfig
+
+x-trigger-pipeline: &trigger
+  image: drone/cli:2
+  environment:
+    DRONE_SERVER:
+      from_secret: drone_server
+    DRONE_TOKEN:
+      from_secret: drone_token
+
+steps:
+
+  # ── NETWORKING ───────────────────────────────────────────────────────────────
+
+  - name: networking-install-cni
+    <<: *trigger
+    commands:
+      - |
+        [ "$SKIP_NETWORKING" = "true" ] && exit 0
+        drone build create \
+          --param ACTION=INSTALL \
+          --param CILIUM=true \
+          --wait \
+          $DRONE_REPO networking
+    environment:
+      SKIP_NETWORKING: $${SKIP_NETWORKING:-false}
+    when:
+      status: [ success ]
+
+  - name: security-install-cert-manager
+    <<: *trigger
+    commands:
+      - |
+        [ "$SKIP_SECURITY" = "true" ] && exit 0
+        drone build create \
+          --param ACTION=INSTALL \
+          --param CERT_MANAGER=true \
+          --wait \
+          $DRONE_REPO security
+    environment:
+      SKIP_SECURITY: $${SKIP_SECURITY:-false}
+    when:
+      status: [ success ]
+
+  - name: networking-install-ingress-mesh
+    <<: *trigger
+    commands:
+      - |
+        [ "$SKIP_NETWORKING" = "true" ] && exit 0
+        drone build create \
+          --param ACTION=INSTALL \
+          --param TRAEFIK=true \
+          --param ISTIO=true \
+          --param EXTERNAL_DNS=true \
+          --wait \
+          $DRONE_REPO networking
+    environment:
+      SKIP_NETWORKING: $${SKIP_NETWORKING:-false}
+    when:
+      status: [ success ]
+
+  - name: security-install-secrets-identity-policy
+    <<: *trigger
+    commands:
+      - |
+        [ "$SKIP_SECURITY" = "true" ] && exit 0
+        drone build create \
+          --param ACTION=INSTALL \
+          --param VAULT=true \
+          --param KEYCLOAK=true \
+          --param EXTERNAL_SECRETS=true \
+          --param KYVERNO=true \
+          --param OPA=true \
+          --param SPIRE=true \
+          --wait \
+          $DRONE_REPO security
+    environment:
+      SKIP_SECURITY: $${SKIP_SECURITY:-false}
+    when:
+      status: [ success ]
+
+  - name: security-configure
+    <<: *trigger
+    commands:
+      - |
+        [ "$SKIP_SECURITY" = "true" ] && exit 0
+        drone build create \
+          --param ACTION=CONFIGURE \
+          --param VAULT=true \
+          --param KEYCLOAK=true \
+          --param EXTERNAL_SECRETS=true \
+          --param OPA=true \
+          --param KYVERNO=true \
+          --wait \
+          $DRONE_REPO security
+    environment:
+      SKIP_SECURITY: $${SKIP_SECURITY:-false}
+    when:
+      status: [ success ]
+
+  - name: networking-configure
+    <<: *trigger
+    commands:
+      - |
+        [ "$SKIP_NETWORKING" = "true" ] && exit 0
+        drone build create \
+          --param ACTION=CONFIGURE \
+          --param ISTIO=true \
+          --param TRAEFIK=true \
+          --param EXTERNAL_DNS=true \
+          --wait \
+          $DRONE_REPO networking
+    environment:
+      SKIP_NETWORKING: $${SKIP_NETWORKING:-false}
+    when:
+      status: [ success ]
+
+  - name: security-install-runtime
+    <<: *trigger
+    commands:
+      - |
+        [ "$SKIP_SECURITY" = "true" ] && exit 0
+        drone build create \
+          --param ACTION=INSTALL \
+          --param FALCO=true \
+          --param TETRAGON=true \
+          --wait \
+          $DRONE_REPO security
+    environment:
+      SKIP_SECURITY: $${SKIP_SECURITY:-false}
+    when:
+      status: [ success ]
+
+  # ── OBSERVABILITY ─────────────────────────────────────────────────────────────
+
+  - name: observability-install
+    <<: *trigger
+    commands:
+      - |
+        [ "$SKIP_OBSERVABILITY" = "true" ] && exit 0
+        drone build create \
+          --param ACTION=INSTALL \
+          --param PROMETHEUS=true \
+          --param GRAFANA=true \
+          --param ALERTMANAGER=true \
+          --param LOKI=true \
+          --param JAEGER=true \
+          --param OTEL_COLLECTOR=true \
+          --param FLUENT_BIT=true \
+          --param KUBE_STATE_METRICS=true \
+          --param NODE_EXPORTER=true \
+          --wait \
+          $DRONE_REPO observability
+    environment:
+      SKIP_OBSERVABILITY: $${SKIP_OBSERVABILITY:-false}
+    when:
+      status: [ success ]
+
+  - name: observability-configure
+    <<: *trigger
+    commands:
+      - |
+        [ "$SKIP_OBSERVABILITY" = "true" ] && exit 0
+        drone build create \
+          --param ACTION=CONFIGURE \
+          --param PROMETHEUS=true \
+          --param GRAFANA=true \
+          --param ALERTMANAGER=true \
+          --param LOKI=true \
+          --param JAEGER=true \
+          --param OTEL_COLLECTOR=true \
+          --param FLUENT_BIT=true \
+          --wait \
+          $DRONE_REPO observability
+    environment:
+      SKIP_OBSERVABILITY: $${SKIP_OBSERVABILITY:-false}
+    when:
+      status: [ success ]
+
+  # ── MESSAGING ─────────────────────────────────────────────────────────────────
+
+  - name: messaging-install
+    <<: *trigger
+    commands:
+      - |
+        [ "$SKIP_MESSAGING" = "true" ] && exit 0
+        drone build create \
+          --param ACTION=INSTALL \
+          --param KAFKA=true \
+          --param ZOOKEEPER=true \
+          --param SCHEMA_REGISTRY=true \
+          --param RABBITMQ=true \
+          --param NATS=true \
+          --param AKHQ=true \
+          --wait \
+          $DRONE_REPO messaging
+    environment:
+      SKIP_MESSAGING: $${SKIP_MESSAGING:-false}
+    when:
+      status: [ success ]
+
+  - name: messaging-configure
+    <<: *trigger
+    commands:
+      - |
+        [ "$SKIP_MESSAGING" = "true" ] && exit 0
+        drone build create \
+          --param ACTION=CONFIGURE \
+          --param KAFKA=true \
+          --param SCHEMA_REGISTRY=true \
+          --param RABBITMQ=true \
+          --param NATS=true \
+          --wait \
+          $DRONE_REPO messaging
+    environment:
+      SKIP_MESSAGING: $${SKIP_MESSAGING:-false}
+    when:
+      status: [ success ]
+
+  - name: summary
+    image: alpine:3.21
+    commands:
+      - |
+        echo "=================================================="
+        echo "  Bootstrap complete — ${ENVIRONMENT:-dev}"
+        echo "  CNI: Cilium | Ingress: Traefik | Mesh: Istio"
+        echo "  Secrets: Vault+ESO | IAM: Keycloak"
+        echo "  Policy: Kyverno+OPA | Runtime: Falco+Tetragon"
+        echo "  Observability + Messaging ready"
+        echo "  Next: trigger deploy pipeline for services"
+        echo "=================================================="
+    when:
+      status: [ success ]

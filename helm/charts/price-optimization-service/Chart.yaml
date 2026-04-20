@@ -1,0 +1,19 @@
+apiVersion: v2
+name: price-optimization-service
+description: ShopOS Price Optimization Service — ML-based pricing
+type: application
+version: 0.1.0
+appVersion: "1.0.0"
+keywords:
+  - shopos
+  - price-optimization-service
+  - analytics-ai
+home: https://github.com/your-org/shopos
+sources:
+  - https://github.com/your-org/shopos/tree/main/src/analytics-ai/price-optimization-service
+maintainers:
+  - name: ShopOS Platform Team
+    email: platform@shopos.io
+annotations:
+  app.kubernetes.io/domain: analytics-ai
+  app.kubernetes.io/language: Python

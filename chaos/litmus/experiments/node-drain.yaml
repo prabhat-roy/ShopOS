@@ -1,0 +1,42 @@
+apiVersion: litmuschaos.io/v1alpha1
+kind: ChaosEngine
+metadata:
+  name: node-drain-experiment
+  namespace: litmus
+  labels:
+    app.kubernetes.io/part-of: shopos-chaos
+spec:
+  engineState: active
+  chaosServiceAccount: litmus-admin
+  experiments:
+    - name: node-drain
+      spec:
+        components:
+          env:
+            - name: TOTAL_CHAOS_DURATION
+              value: "180"
+            - name: APP_NODE
+              value: ""
+            - name: TARGET_NODE
+              value: ""
+            - name: NODE_LABEL
+              value: "node-role=worker"
+            - name: RAMP_TIME
+              value: "30"
+        probe:
+          - name: cluster-available-probe
+            type: k8sProbe
+            mode: Continuous
+            runProperties:
+              probeTimeout: 10000
+              interval: 15
+              retry: 3
+              stopOnFailure: false
+            k8sProbe/inputs:
+              group: apps
+              version: v1
+              resource: deployments
+              namespace: commerce
+              fieldSelector: metadata.name=order-service
+              labelSelector: ""
+              operation: present

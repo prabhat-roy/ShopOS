@@ -1,0 +1,6 @@
+apiVersion: v2
+name: dragonfly
+description: Dragonfly — CNCF P2P image distribution accelerator
+type: application
+version: 1.0.0
+appVersion: "v2.1.0"

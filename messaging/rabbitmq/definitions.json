@@ -1,0 +1,329 @@
+{
+  "_comment": "RabbitMQ Definitions — ShopOS Enterprise Platform. Loaded at startup via management.load_definitions.",
+  "rabbit_version": "3.12.0",
+  "rabbitmq_version": "3.12.0",
+  "product_name": "RabbitMQ",
+  "product_version": "3.12.0",
+
+  "users": [
+    {
+      "name": "shopos",
+      "password_hash": "shopos",
+      "hashing_algorithm": "rabbit_password_hashing_sha256",
+      "tags": "administrator",
+      "limits": {}
+    },
+    {
+      "name": "shopos-app",
+      "password_hash": "shopos-app",
+      "hashing_algorithm": "rabbit_password_hashing_sha256",
+      "tags": "",
+      "limits": {}
+    }
+  ],
+
+  "vhosts": [
+    { "name": "/" },
+    { "name": "shopos" }
+  ],
+
+  "permissions": [
+    {
+      "user": "shopos",
+      "vhost": "/",
+      "configure": ".*",
+      "write": ".*",
+      "read": ".*"
+    },
+    {
+      "user": "shopos",
+      "vhost": "shopos",
+      "configure": ".*",
+      "write": ".*",
+      "read": ".*"
+    },
+    {
+      "user": "shopos-app",
+      "vhost": "shopos",
+      "configure": "^(order|payment|notification|worker|dead-letter).*",
+      "write": ".*",
+      "read": ".*"
+    }
+  ],
+
+  "topic_permissions": [],
+
+  "parameters": [],
+
+  "global_parameters": [
+    {
+      "name": "cluster_name",
+      "value": "shopos-rabbitmq"
+    }
+  ],
+
+  "policies": [
+    {
+      "vhost": "shopos",
+      "name": "ha-all",
+      "pattern": "^(order|payment|notification|worker).*",
+      "apply-to": "queues",
+      "definition": {
+        "ha-mode": "all",
+        "ha-sync-mode": "automatic",
+        "message-ttl": 86400000
+      },
+      "priority": 10
+    },
+    {
+      "vhost": "shopos",
+      "name": "dead-letter-policy",
+      "pattern": "^(order|payment|notification|worker).*",
+      "apply-to": "queues",
+      "definition": {
+        "dead-letter-exchange": "dead-letter",
+        "dead-letter-routing-key": "dead-letter.queue"
+      },
+      "priority": 5
+    },
+    {
+      "vhost": "shopos",
+      "name": "ttl-transient",
+      "pattern": "^transient.*",
+      "apply-to": "queues",
+      "definition": {
+        "message-ttl": 300000,
+        "expires": 600000
+      },
+      "priority": 1
+    }
+  ],
+
+  "exchanges": [
+    {
+      "name": "commerce.orders",
+      "vhost": "shopos",
+      "type": "topic",
+      "durable": true,
+      "auto_delete": false,
+      "internal": false,
+      "arguments": {},
+      "_comment": "Handles all order lifecycle events: placed, confirmed, cancelled, fulfilled"
+    },
+    {
+      "name": "commerce.payments",
+      "vhost": "shopos",
+      "type": "topic",
+      "durable": true,
+      "auto_delete": false,
+      "internal": false,
+      "arguments": {},
+      "_comment": "Handles payment events: initiated, processed, failed, refunded"
+    },
+    {
+      "name": "notifications",
+      "vhost": "shopos",
+      "type": "fanout",
+      "durable": true,
+      "auto_delete": false,
+      "internal": false,
+      "arguments": {},
+      "_comment": "Fan-out to all notification channel queues: email, sms, push"
+    },
+    {
+      "name": "dead-letter",
+      "vhost": "shopos",
+      "type": "direct",
+      "durable": true,
+      "auto_delete": false,
+      "internal": false,
+      "arguments": {},
+      "_comment": "Receives messages that failed all retry attempts for manual inspection"
+    },
+    {
+      "name": "commerce.orders.delayed",
+      "vhost": "shopos",
+      "type": "x-delayed-message",
+      "durable": true,
+      "auto_delete": false,
+      "internal": false,
+      "arguments": {
+        "x-delayed-type": "topic"
+      },
+      "_comment": "Delayed order events (requires rabbitmq_delayed_message_exchange plugin)"
+    },
+    {
+      "name": "worker.tasks",
+      "vhost": "shopos",
+      "type": "direct",
+      "durable": true,
+      "auto_delete": false,
+      "internal": false,
+      "arguments": {},
+      "_comment": "Direct routing for background job dispatch to worker-job-queue service"
+    }
+  ],
+
+  "queues": [
+    {
+      "name": "order.processing",
+      "vhost": "shopos",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {
+        "x-message-ttl": 86400000,
+        "x-max-length": 100000,
+        "x-overflow": "reject-publish-dlx",
+        "x-dead-letter-exchange": "dead-letter",
+        "x-dead-letter-routing-key": "dead-letter.queue",
+        "x-queue-type": "classic"
+      },
+      "_comment": "Consumed by order-service; processes new orders from checkout-service"
+    },
+    {
+      "name": "payment.processing",
+      "vhost": "shopos",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {
+        "x-message-ttl": 3600000,
+        "x-max-length": 50000,
+        "x-overflow": "reject-publish-dlx",
+        "x-dead-letter-exchange": "dead-letter",
+        "x-dead-letter-routing-key": "dead-letter.queue",
+        "x-queue-type": "classic"
+      },
+      "_comment": "Consumed by payment-service; processes payment-related commands"
+    },
+    {
+      "name": "notification.email",
+      "vhost": "shopos",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {
+        "x-message-ttl": 86400000,
+        "x-max-length": 500000,
+        "x-dead-letter-exchange": "dead-letter",
+        "x-dead-letter-routing-key": "dead-letter.queue"
+      },
+      "_comment": "Consumed by email-service (Python); fanout from notifications exchange"
+    },
+    {
+      "name": "notification.sms",
+      "vhost": "shopos",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {
+        "x-message-ttl": 3600000,
+        "x-max-length": 100000,
+        "x-dead-letter-exchange": "dead-letter",
+        "x-dead-letter-routing-key": "dead-letter.queue"
+      },
+      "_comment": "Consumed by sms-service (Node.js); fanout from notifications exchange"
+    },
+    {
+      "name": "notification.push",
+      "vhost": "shopos",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {
+        "x-message-ttl": 3600000,
+        "x-max-length": 200000,
+        "x-dead-letter-exchange": "dead-letter",
+        "x-dead-letter-routing-key": "dead-letter.queue"
+      },
+      "_comment": "Consumed by push-notification-service (Go); fanout from notifications exchange"
+    },
+    {
+      "name": "worker.jobs",
+      "vhost": "shopos",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {
+        "x-message-ttl": 604800000,
+        "x-max-length": 1000000,
+        "x-dead-letter-exchange": "dead-letter",
+        "x-dead-letter-routing-key": "dead-letter.queue",
+        "x-max-priority": 10
+      },
+      "_comment": "Consumed by worker-job-queue service (Go); supports priority levels 0–10"
+    },
+    {
+      "name": "dead-letter.queue",
+      "vhost": "shopos",
+      "durable": true,
+      "auto_delete": false,
+      "arguments": {
+        "x-message-ttl": 2592000000,
+        "x-max-length": 100000
+      },
+      "_comment": "Stores failed messages for inspection, alerting, and manual replay"
+    }
+  ],
+
+  "bindings": [
+    {
+      "source": "commerce.orders",
+      "vhost": "shopos",
+      "destination": "order.processing",
+      "destination_type": "queue",
+      "routing_key": "order.#",
+      "arguments": {},
+      "_comment": "All order.* topic keys from commerce.orders → order.processing"
+    },
+    {
+      "source": "commerce.payments",
+      "vhost": "shopos",
+      "destination": "payment.processing",
+      "destination_type": "queue",
+      "routing_key": "payment.#",
+      "arguments": {},
+      "_comment": "All payment.* topic keys from commerce.payments → payment.processing"
+    },
+    {
+      "source": "notifications",
+      "vhost": "shopos",
+      "destination": "notification.email",
+      "destination_type": "queue",
+      "routing_key": "",
+      "arguments": {},
+      "_comment": "Fanout: notifications exchange → notification.email (no routing key needed)"
+    },
+    {
+      "source": "notifications",
+      "vhost": "shopos",
+      "destination": "notification.sms",
+      "destination_type": "queue",
+      "routing_key": "",
+      "arguments": {},
+      "_comment": "Fanout: notifications exchange → notification.sms"
+    },
+    {
+      "source": "notifications",
+      "vhost": "shopos",
+      "destination": "notification.push",
+      "destination_type": "queue",
+      "routing_key": "",
+      "arguments": {},
+      "_comment": "Fanout: notifications exchange → notification.push"
+    },
+    {
+      "source": "worker.tasks",
+      "vhost": "shopos",
+      "destination": "worker.jobs",
+      "destination_type": "queue",
+      "routing_key": "job",
+      "arguments": {},
+      "_comment": "Direct routing: worker.tasks exchange with key 'job' → worker.jobs queue"
+    },
+    {
+      "source": "dead-letter",
+      "vhost": "shopos",
+      "destination": "dead-letter.queue",
+      "destination_type": "queue",
+      "routing_key": "dead-letter.queue",
+      "arguments": {},
+      "_comment": "Dead-letter exchange routes rejected/expired messages to dead-letter.queue"
+    }
+  ]
+}

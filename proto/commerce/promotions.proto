@@ -1,0 +1,46 @@
+syntax = "proto3";
+package commerce.promotions.v1;
+option go_package = "github.com/shopos/proto/commerce/promotions/v1;promotionsv1";
+
+import "google/protobuf/timestamp.proto";
+
+service PromotionsService {
+  rpc CreatePromotion(CreatePromotionRequest)   returns (CreatePromotionResponse);
+  rpc GetPromotion(GetPromotionRequest)         returns (GetPromotionResponse);
+  rpc ValidateCoupon(ValidateCouponRequest)     returns (ValidateCouponResponse);
+  rpc ApplyPromotion(ApplyPromotionRequest)     returns (ApplyPromotionResponse);
+  rpc ListPromotions(ListPromotionsRequest)     returns (ListPromotionsResponse);
+}
+
+enum DiscountType {
+  DISCOUNT_TYPE_UNSPECIFIED   = 0;
+  DISCOUNT_TYPE_PERCENT       = 1;
+  DISCOUNT_TYPE_FIXED         = 2;
+  DISCOUNT_TYPE_FREE_SHIPPING = 3;
+}
+
+message Promotion {
+  string       id             = 1;
+  string       name           = 2;
+  string       code           = 3;
+  DiscountType discount_type  = 4;
+  string       discount_value = 5;
+  string       minimum_order  = 6;
+  int32        usage_limit    = 7;
+  int32        usage_count    = 8;
+  bool         active         = 9;
+  google.protobuf.Timestamp start_date  = 10;
+  google.protobuf.Timestamp end_date    = 11;
+  google.protobuf.Timestamp created_at  = 12;
+}
+
+message CreatePromotionRequest  { string name = 1; string code = 2; DiscountType discount_type = 3; string discount_value = 4; string minimum_order = 5; int32 usage_limit = 6; google.protobuf.Timestamp start_date = 7; google.protobuf.Timestamp end_date = 8; }
+message CreatePromotionResponse { Promotion promotion = 1; }
+message GetPromotionRequest     { string id = 1; }
+message GetPromotionResponse    { Promotion promotion = 1; }
+message ValidateCouponRequest   { string code = 1; string customer_id = 2; string order_total = 3; }
+message ValidateCouponResponse  { bool valid = 1; string reason = 2; Promotion promotion = 3; }
+message ApplyPromotionRequest   { string code = 1; string order_id = 2; string order_total = 3; }
+message ApplyPromotionResponse  { string discount_amount = 1; string new_total = 2; }
+message ListPromotionsRequest   { bool active_only = 1; int32 page = 2; int32 page_size = 3; }
+message ListPromotionsResponse  { repeated Promotion promotions = 1; int32 total = 2; }

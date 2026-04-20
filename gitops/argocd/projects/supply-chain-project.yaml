@@ -1,0 +1,35 @@
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: shopos-supply-chain
+  namespace: argocd
+spec:
+  description: ShopOS supply-chain domain services
+  sourceRepos:
+    - 'https://github.com/your-org/shopos.git'
+  destinations:
+    - namespace: shopos-supply-chain
+      server: https://kubernetes.default.svc
+  clusterResourceWhitelist:
+    - group: ''
+      kind: Namespace
+  namespaceResourceWhitelist:
+    - group: 'apps'
+      kind: Deployment
+    - group: ''
+      kind: Service
+    - group: ''
+      kind: ConfigMap
+    - group: ''
+      kind: Secret
+    - group: 'autoscaling'
+      kind: HorizontalPodAutoscaler
+    - group: 'networking.k8s.io'
+      kind: NetworkPolicy
+  roles:
+    - name: supply-chain-admin
+      description: supply-chain team full access
+      policies:
+        - p, proj:shopos-supply-chain:supply-chain-admin, applications, *, shopos-supply-chain/*, allow
+      groups:
+        - supplychain-team

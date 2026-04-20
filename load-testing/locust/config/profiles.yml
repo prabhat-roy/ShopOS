@@ -1,0 +1,46 @@
+# Named load profiles — use with: locust --config config/locust.conf --users $USERS --spawn-rate $RATE
+
+profiles:
+  light:
+    description: "CI gate — quick functional check"
+    users: 10
+    spawn_rate: 2
+    run_time: 5m
+    user_classes:
+      - BrowseUser
+
+  medium:
+    description: "Standard regression test"
+    users: 50
+    spawn_rate: 5
+    run_time: 15m
+    user_classes:
+      - BrowseUser
+      - ShopperUser
+
+  heavy:
+    description: "Pre-release load validation"
+    users: 200
+    spawn_rate: 10
+    run_time: 30m
+    user_classes:
+      - BrowseUser
+      - ShopperUser
+      - PowerUser
+
+  spike:
+    description: "Burst test — auto-scaling validation"
+    users: 500
+    spawn_rate: 100
+    run_time: 5m
+    user_classes:
+      - BrowseUser
+
+  soak:
+    description: "Overnight sustained load"
+    users: 30
+    spawn_rate: 3
+    run_time: 8h
+    user_classes:
+      - BrowseUser
+      - ShopperUser

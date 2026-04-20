@@ -1,0 +1,39 @@
+apiVersion: temporal.io/v1beta1
+kind: TemporalNamespace
+metadata:
+  name: shopos-commerce
+spec:
+  serverRef:
+    name: temporal
+  retentionPeriod: 720h  # 30 days
+  description: "Commerce domain workflows — checkout, orders, payments"
+---
+apiVersion: temporal.io/v1beta1
+kind: TemporalNamespace
+metadata:
+  name: shopos-supply-chain
+spec:
+  serverRef:
+    name: temporal
+  retentionPeriod: 720h
+  description: "Supply chain workflows — fulfillment, shipping, returns"
+---
+apiVersion: temporal.io/v1beta1
+kind: TemporalNamespace
+metadata:
+  name: shopos-financial
+spec:
+  serverRef:
+    name: temporal
+  retentionPeriod: 2160h  # 90 days — financial audit trail
+  description: "Financial workflows — payouts, reconciliation, KYC"
+---
+apiVersion: temporal.io/v1beta1
+kind: TemporalNamespace
+metadata:
+  name: shopos-communications
+spec:
+  serverRef:
+    name: temporal
+  retentionPeriod: 168h  # 7 days
+  description: "Communications workflows — notification delivery, digest scheduling"

@@ -1,0 +1,34 @@
+replicaCount: 1
+
+image:
+  repository: quay.io/artemiscloud/activemq-artemis-broker
+  tag: "1.0.25"
+  pullPolicy: IfNotPresent
+
+service:
+  type: ClusterIP
+  port: 61616
+  targetPort: 61616
+
+persistence:
+  enabled: true
+  storageClass: ""
+  size: 10Gi
+  accessMode: ReadWriteOnce
+  mountPath: /var/lib/data
+
+resources:
+  requests:
+    cpu: 200m
+    memory: 512Mi
+  limits:
+    cpu: "2"
+    memory: 2Gi
+
+env: {}
+
+ingress:
+  enabled: false
+  className: ""
+  host: ""
+  tls: []

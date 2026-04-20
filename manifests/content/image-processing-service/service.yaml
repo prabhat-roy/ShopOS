@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: image-processing-service
+  namespace: content
+  labels:
+    app: image-processing-service
+    domain: content
+spec:
+  selector:
+    app: image-processing-service
+  type: ClusterIP
+  ports:
+    - name: grpc
+      port: 50141
+      targetPort: grpc
+      protocol: TCP

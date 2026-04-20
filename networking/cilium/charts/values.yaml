@@ -1,0 +1,34 @@
+replicaCount: 1
+
+image:
+  repository: quay.io/cilium/cilium
+  tag: "v1.16.0"
+  pullPolicy: IfNotPresent
+
+service:
+  type: ClusterIP
+  port: 9962
+  targetPort: 9962
+
+persistence:
+  enabled: false
+  storageClass: ""
+  size: 1Gi
+  accessMode: ReadWriteOnce
+  mountPath: /data
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 128Mi
+  limits:
+    cpu: "1"
+    memory: 512Mi
+
+env: {}
+
+ingress:
+  enabled: false
+  className: ""
+  host: ""
+  tls: []

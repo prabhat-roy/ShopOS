@@ -1,0 +1,57 @@
+syntax = "proto3";
+package integrations.erp.v1;
+option go_package = "github.com/shopos/proto/integrations/erp/v1;erpv1";
+
+import "google/protobuf/timestamp.proto";
+
+service ErpIntegrationService {
+  rpc SyncOrder(SyncOrderRequest) returns (SyncOrderResponse);
+  rpc SyncInventory(SyncInventoryRequest) returns (SyncInventoryResponse);
+  rpc SyncCustomer(SyncCustomerRequest) returns (SyncCustomerResponse);
+  rpc GetSyncStatus(GetSyncStatusRequest) returns (GetSyncStatusResponse);
+  rpc ListSyncLogs(ListSyncLogsRequest) returns (ListSyncLogsResponse);
+}
+
+enum SyncStatus {
+  SYNC_STATUS_UNSPECIFIED = 0;
+  SYNC_STATUS_PENDING = 1;
+  SYNC_STATUS_IN_PROGRESS = 2;
+  SYNC_STATUS_SUCCESS = 3;
+  SYNC_STATUS_FAILED = 4;
+}
+
+message SyncLog {
+  string id = 1;
+  string entity_type = 2;
+  string entity_id = 3;
+  string erp_system = 4;
+  SyncStatus status = 5;
+  string error_message = 6;
+  google.protobuf.Timestamp started_at = 7;
+  google.protobuf.Timestamp finished_at = 8;
+}
+
+message SyncOrderRequest { string order_id = 1; string erp_system = 2; }
+message SyncOrderResponse { string sync_id = 1; SyncStatus status = 2; string erp_order_id = 3; }
+
+message SyncInventoryRequest { string product_id = 1; string erp_system = 2; }
+message SyncInventoryResponse { string sync_id = 1; SyncStatus status = 2; }
+
+message SyncCustomerRequest { string customer_id = 1; string erp_system = 2; }
+message SyncCustomerResponse { string sync_id = 1; SyncStatus status = 2; string erp_customer_id = 3; }
+
+message GetSyncStatusRequest { string sync_id = 1; }
+message GetSyncStatusResponse { SyncLog log = 1; }
+
+message ListSyncLogsRequest {
+  string entity_type = 1;
+  string entity_id = 2;
+  SyncStatus status = 3;
+  int32 page = 4;
+  int32 page_size = 5;
+}
+
+message ListSyncLogsResponse {
+  repeated SyncLog logs = 1;
+  int32 total = 2;
+}

@@ -1,0 +1,19 @@
+apiVersion: v2
+name: gift-card-service
+description: ShopOS Gift Card Service — gift card issuance and redemption
+type: application
+version: 0.1.0
+appVersion: "1.0.0"
+keywords:
+  - shopos
+  - gift-card-service
+  - commerce
+home: https://github.com/your-org/shopos
+sources:
+  - https://github.com/your-org/shopos/tree/main/src/commerce/gift-card-service
+maintainers:
+  - name: ShopOS Platform Team
+    email: platform@shopos.io
+annotations:
+  app.kubernetes.io/domain: commerce
+  app.kubernetes.io/language: Go

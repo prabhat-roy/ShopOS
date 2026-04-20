@@ -1,0 +1,88 @@
+syntax = "proto3";
+package b2b.quote.v1;
+option go_package = "github.com/shopos/proto/b2b/quote/v1;quotev1";
+
+import "google/protobuf/timestamp.proto";
+
+service QuoteService {
+  rpc CreateQuote(CreateQuoteRequest) returns (CreateQuoteResponse);
+  rpc GetQuote(GetQuoteRequest) returns (GetQuoteResponse);
+  rpc UpdateQuote(UpdateQuoteRequest) returns (UpdateQuoteResponse);
+  rpc ListQuotes(ListQuotesRequest) returns (ListQuotesResponse);
+  rpc SubmitQuote(SubmitQuoteRequest) returns (SubmitQuoteResponse);
+  rpc AcceptQuote(AcceptQuoteRequest) returns (AcceptQuoteResponse);
+  rpc RejectQuote(RejectQuoteRequest) returns (RejectQuoteResponse);
+}
+
+enum QuoteStatus {
+  QUOTE_STATUS_UNSPECIFIED = 0;
+  QUOTE_STATUS_DRAFT = 1;
+  QUOTE_STATUS_SUBMITTED = 2;
+  QUOTE_STATUS_UNDER_REVIEW = 3;
+  QUOTE_STATUS_ACCEPTED = 4;
+  QUOTE_STATUS_REJECTED = 5;
+  QUOTE_STATUS_EXPIRED = 6;
+}
+
+message QuoteLineItem {
+  string product_id = 1;
+  string sku = 2;
+  int32 quantity = 3;
+  double unit_price = 4;
+  double line_total = 5;
+}
+
+message Quote {
+  string id = 1;
+  string org_id = 2;
+  string requester_id = 3;
+  QuoteStatus status = 4;
+  repeated QuoteLineItem line_items = 5;
+  double subtotal = 6;
+  double discount = 7;
+  double total = 8;
+  string notes = 9;
+  google.protobuf.Timestamp valid_until = 10;
+  google.protobuf.Timestamp created_at = 11;
+  google.protobuf.Timestamp updated_at = 12;
+}
+
+message CreateQuoteRequest {
+  string org_id = 1;
+  string requester_id = 2;
+  repeated QuoteLineItem line_items = 3;
+  string notes = 4;
+}
+
+message CreateQuoteResponse { Quote quote = 1; }
+message GetQuoteRequest { string id = 1; }
+message GetQuoteResponse { Quote quote = 1; }
+
+message UpdateQuoteRequest {
+  string id = 1;
+  repeated QuoteLineItem line_items = 2;
+  string notes = 3;
+}
+
+message UpdateQuoteResponse { Quote quote = 1; }
+
+message ListQuotesRequest {
+  string org_id = 1;
+  QuoteStatus status = 2;
+  int32 page = 3;
+  int32 page_size = 4;
+}
+
+message ListQuotesResponse {
+  repeated Quote quotes = 1;
+  int32 total = 2;
+}
+
+message SubmitQuoteRequest { string id = 1; }
+message SubmitQuoteResponse { Quote quote = 1; }
+
+message AcceptQuoteRequest { string id = 1; string reviewer_id = 2; double final_discount = 3; }
+message AcceptQuoteResponse { Quote quote = 1; }
+
+message RejectQuoteRequest { string id = 1; string reviewer_id = 2; string reason = 3; }
+message RejectQuoteResponse { Quote quote = 1; }

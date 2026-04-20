@@ -1,0 +1,23 @@
+apiVersion: chaos-mesh.org/v1alpha1
+kind: IOChaos
+metadata:
+  name: io-fault-media-asset
+  namespace: chaos-mesh
+  labels:
+    app.kubernetes.io/part-of: shopos-chaos
+    chaos.shopos.io/tier: content
+spec:
+  action: fault
+  mode: one
+  selector:
+    namespaces:
+      - content
+    labelSelectors:
+      app.kubernetes.io/name: media-asset-service
+  volumePath: /data
+  path: /data/**
+  errno: 5
+  percent: 25
+  duration: 3m
+  containerNames:
+    - media-asset-service

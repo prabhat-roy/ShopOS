@@ -1,0 +1,47 @@
+apiVersion: litmuschaos.io/v1alpha1
+kind: ChaosEngine
+metadata:
+  name: payment-service-container-kill
+  namespace: commerce
+  labels:
+    app.kubernetes.io/part-of: shopos-chaos
+spec:
+  appinfo:
+    appns: commerce
+    applabel: app.kubernetes.io/name=payment-service
+    appkind: deployment
+  engineState: active
+  chaosServiceAccount: litmus-admin
+  experiments:
+    - name: container-kill
+      spec:
+        components:
+          env:
+            - name: TOTAL_CHAOS_DURATION
+              value: "60"
+            - name: RAMP_TIME
+              value: "10"
+            - name: TARGET_CONTAINER
+              value: payment-service
+            - name: CHAOS_INTERVAL
+              value: "20"
+            - name: SOCKET_PATH
+              value: /run/containerd/containerd.sock
+            - name: CONTAINER_RUNTIME
+              value: containerd
+        probe:
+          - name: payment-api-probe
+            type: httpProbe
+            mode: EOT
+            runProperties:
+              probeTimeout: 5000
+              interval: 5
+              retry: 3
+              stopOnFailure: true
+            httpProbe/inputs:
+              url: http://payment-service.commerce.svc.cluster.local:8080/healthz
+              insecureSkipVerify: false
+              method:
+                get:
+                  criteria: "=="
+                  responseCode: "200"

@@ -1,0 +1,18 @@
+apiVersion: chaos-mesh.org/v1alpha1
+kind: PodChaos
+metadata:
+  name: api-gateway-pod-kill
+  namespace: chaos-mesh
+  labels:
+    app.kubernetes.io/part-of: shopos-chaos
+    chaos.shopos.io/tier: platform
+spec:
+  action: pod-kill
+  mode: one
+  selector:
+    namespaces:
+      - platform
+    labelSelectors:
+      app.kubernetes.io/name: api-gateway
+  gracePeriod: 0
+  duration: 1m

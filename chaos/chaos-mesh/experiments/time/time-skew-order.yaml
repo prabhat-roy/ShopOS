@@ -1,0 +1,22 @@
+apiVersion: chaos-mesh.org/v1alpha1
+kind: TimeChaos
+metadata:
+  name: time-skew-order-service
+  namespace: chaos-mesh
+  labels:
+    app.kubernetes.io/part-of: shopos-chaos
+    chaos.shopos.io/tier: commerce
+spec:
+  mode: one
+  selector:
+    namespaces:
+      - commerce
+    labelSelectors:
+      app.kubernetes.io/name: order-service
+  timeOffset: "-10m"
+  clockIds:
+    - CLOCK_REALTIME
+    - CLOCK_MONOTONIC
+  duration: 5m
+  containerNames:
+    - order-service

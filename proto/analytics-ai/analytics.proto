@@ -1,0 +1,75 @@
+syntax = "proto3";
+package analyticsai.analytics.v1;
+option go_package = "github.com/shopos/proto/analyticsai/analytics/v1;analyticsv1";
+
+import "google/protobuf/timestamp.proto";
+
+service AnalyticsService {
+  rpc TrackEvent(TrackEventRequest) returns (TrackEventResponse);
+  rpc GetMetrics(GetMetricsRequest) returns (GetMetricsResponse);
+  rpc GetReport(GetReportRequest) returns (GetReportResponse);
+  rpc GetDashboard(GetDashboardRequest) returns (GetDashboardResponse);
+}
+
+message Event {
+  string id = 1;
+  string session_id = 2;
+  string user_id = 3;
+  string event_type = 4;
+  map<string, string> properties = 5;
+  string ip_address = 6;
+  string user_agent = 7;
+  google.protobuf.Timestamp occurred_at = 8;
+}
+
+message MetricDataPoint {
+  google.protobuf.Timestamp timestamp = 1;
+  double value = 2;
+}
+
+message Metric {
+  string name = 1;
+  string unit = 2;
+  repeated MetricDataPoint data_points = 3;
+}
+
+message TrackEventRequest {
+  string session_id = 1;
+  string user_id = 2;
+  string event_type = 3;
+  map<string, string> properties = 4;
+  string ip_address = 5;
+  string user_agent = 6;
+}
+
+message TrackEventResponse { string event_id = 1; }
+
+message GetMetricsRequest {
+  repeated string metric_names = 1;
+  google.protobuf.Timestamp start_time = 2;
+  google.protobuf.Timestamp end_time = 3;
+  string granularity = 4;
+}
+
+message GetMetricsResponse { repeated Metric metrics = 1; }
+
+message GetReportRequest {
+  string report_type = 1;
+  google.protobuf.Timestamp start_date = 2;
+  google.protobuf.Timestamp end_date = 3;
+  map<string, string> filters = 4;
+}
+
+message GetReportResponse {
+  string report_id = 1;
+  string report_type = 2;
+  repeated map<string, string> rows = 3;
+  google.protobuf.Timestamp generated_at = 4;
+}
+
+message GetDashboardRequest { string dashboard_id = 1; }
+message GetDashboardResponse {
+  string dashboard_id = 1;
+  repeated Metric metrics = 2;
+  google.protobuf.Timestamp refreshed_at = 3;
+}

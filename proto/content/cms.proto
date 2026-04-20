@@ -1,0 +1,77 @@
+syntax = "proto3";
+package content.cms.v1;
+option go_package = "github.com/shopos/proto/content/cms/v1;cmsv1";
+
+import "google/protobuf/timestamp.proto";
+
+service CmsService {
+  rpc CreatePage(CreatePageRequest) returns (CreatePageResponse);
+  rpc GetPage(GetPageRequest) returns (GetPageResponse);
+  rpc UpdatePage(UpdatePageRequest) returns (UpdatePageResponse);
+  rpc DeletePage(DeletePageRequest) returns (DeletePageResponse);
+  rpc ListPages(ListPagesRequest) returns (ListPagesResponse);
+  rpc PublishPage(PublishPageRequest) returns (PublishPageResponse);
+}
+
+enum PageStatus {
+  PAGE_STATUS_UNSPECIFIED = 0;
+  PAGE_STATUS_DRAFT = 1;
+  PAGE_STATUS_PUBLISHED = 2;
+  PAGE_STATUS_ARCHIVED = 3;
+}
+
+message Page {
+  string id = 1;
+  string slug = 2;
+  string title = 3;
+  string content_markdown = 4;
+  string content_html = 5;
+  PageStatus status = 6;
+  string author_id = 7;
+  repeated string tags = 8;
+  map<string, string> meta = 9;
+  google.protobuf.Timestamp published_at = 10;
+  google.protobuf.Timestamp created_at = 11;
+  google.protobuf.Timestamp updated_at = 12;
+}
+
+message CreatePageRequest {
+  string slug = 1;
+  string title = 2;
+  string content_markdown = 3;
+  string author_id = 4;
+  repeated string tags = 5;
+  map<string, string> meta = 6;
+}
+
+message CreatePageResponse { Page page = 1; }
+message GetPageRequest { string id = 1; }
+message GetPageResponse { Page page = 1; }
+
+message UpdatePageRequest {
+  string id = 1;
+  string title = 2;
+  string content_markdown = 3;
+  repeated string tags = 4;
+  map<string, string> meta = 5;
+}
+
+message UpdatePageResponse { Page page = 1; }
+message DeletePageRequest { string id = 1; }
+message DeletePageResponse { bool success = 1; }
+
+message ListPagesRequest {
+  PageStatus status = 1;
+  string author_id = 2;
+  string tag = 3;
+  int32 page = 4;
+  int32 page_size = 5;
+}
+
+message ListPagesResponse {
+  repeated Page pages = 1;
+  int32 total = 2;
+}
+
+message PublishPageRequest { string id = 1; }
+message PublishPageResponse { Page page = 1; }

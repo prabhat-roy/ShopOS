@@ -1,0 +1,125 @@
+apiVersion: argoproj.io/v1alpha1
+kind: WorkflowTemplate
+metadata:
+  name: shopos-ci-build
+  namespace: argo-workflows
+spec:
+  entrypoint: ci-pipeline
+  arguments:
+    parameters:
+      - name: repo-url
+        value: "https://github.com/your-org/shopos.git"
+      - name: revision
+        value: "main"
+      - name: service
+        value: "api-gateway"
+      - name: domain
+        value: "platform"
+      - name: registry
+        value: "harbor-harbor.harbor.svc.cluster.local:8080"
+
+  volumeClaimTemplates:
+    - metadata:
+        name: workspace
+      spec:
+        accessModes: [ReadWriteOnce]
+        resources:
+          requests:
+            storage: 2Gi
+
+  templates:
+    - name: ci-pipeline
+      dag:
+        tasks:
+          - name: clone
+            template: git-clone
+          - name: test
+            template: run-tests
+            dependencies: [clone]
+          - name: build
+            template: docker-build
+            dependencies: [test]
+          - name: scan
+            template: trivy-scan
+            dependencies: [build]
+          - name: push
+            template: docker-push
+            dependencies: [scan]
+          - name: update-image
+            template: update-gitops
+            dependencies: [push]
+
+    - name: git-clone
+      container:
+        image: alpine/git:latest
+        command: [sh, -c]
+        args:
+          - git clone --depth 1 --branch {{workflow.parameters.revision}} {{workflow.parameters.repo-url}} /workspace/src
+        volumeMounts:
+          - name: workspace
+            mountPath: /workspace
+
+    - name: run-tests
+      container:
+        image: golang:1.23-alpine
+        command: [sh, -c]
+        args:
+          - |
+            cd /workspace/src/src/{{workflow.parameters.domain}}/{{workflow.parameters.service}}
+            go test ./... -v -timeout 5m || true
+        volumeMounts:
+          - name: workspace
+            mountPath: /workspace
+
+    - name: docker-build
+      container:
+        image: gcr.io/kaniko-project/executor:latest
+        args:
+          - --context=/workspace/src/src/{{workflow.parameters.domain}}/{{workflow.parameters.service}}
+          - --dockerfile=/workspace/src/src/{{workflow.parameters.domain}}/{{workflow.parameters.service}}/Dockerfile
+          - --destination={{workflow.parameters.registry}}/shopos/{{workflow.parameters.service}}:{{workflow.parameters.revision}}
+          - --no-push
+          - --tarPath=/workspace/image.tar
+        volumeMounts:
+          - name: workspace
+            mountPath: /workspace
+
+    - name: trivy-scan
+      container:
+        image: aquasec/trivy:latest
+        command: [sh, -c]
+        args:
+          - trivy image --input /workspace/image.tar --exit-code 0 --severity HIGH,CRITICAL
+        volumeMounts:
+          - name: workspace
+            mountPath: /workspace
+
+    - name: docker-push
+      container:
+        image: gcr.io/kaniko-project/executor:latest
+        args:
+          - --context=/workspace/src/src/{{workflow.parameters.domain}}/{{workflow.parameters.service}}
+          - --dockerfile=/workspace/src/src/{{workflow.parameters.domain}}/{{workflow.parameters.service}}/Dockerfile
+          - --destination={{workflow.parameters.registry}}/shopos/{{workflow.parameters.service}}:{{workflow.parameters.revision}}
+        volumeMounts:
+          - name: workspace
+            mountPath: /workspace
+        env:
+          - name: DOCKER_CONFIG
+            value: /kaniko/.docker
+
+    - name: update-gitops
+      container:
+        image: alpine/git:latest
+        command: [sh, -c]
+        args:
+          - |
+            git config --global user.email "ci@shopos.io"
+            git config --global user.name "ShopOS CI"
+            git clone {{workflow.parameters.repo-url}} /tmp/gitops
+            cd /tmp/gitops
+            sed -i "s|tag:.*|tag: \"{{workflow.parameters.revision}}\"|" \
+              helm/charts/{{workflow.parameters.service}}/values.yaml
+            git add -A
+            git commit -m "ci: update {{workflow.parameters.service}} image to {{workflow.parameters.revision}}" || true
+            git push origin main || true

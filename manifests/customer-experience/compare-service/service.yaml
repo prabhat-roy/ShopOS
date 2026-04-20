@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: compare-service
+  namespace: customer-experience
+  labels:
+    app: compare-service
+    domain: customer-experience
+spec:
+  selector:
+    app: compare-service
+  type: ClusterIP
+  ports:
+    - name: grpc
+      port: 50123
+      targetPort: grpc
+      protocol: TCP

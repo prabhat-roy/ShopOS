@@ -1,0 +1,43 @@
+syntax = "proto3";
+package platform.featureflag.v1;
+option go_package = "github.com/shopos/proto/platform/featureflag/v1;featureflagv1";
+
+import "google/protobuf/timestamp.proto";
+
+service FeatureFlagService {
+  rpc GetFlag(GetFlagRequest)       returns (GetFlagResponse);
+  rpc SetFlag(SetFlagRequest)       returns (SetFlagResponse);
+  rpc DeleteFlag(DeleteFlagRequest) returns (DeleteFlagResponse);
+  rpc ListFlags(ListFlagsRequest)   returns (ListFlagsResponse);
+  rpc IsEnabled(IsEnabledRequest)   returns (IsEnabledResponse);
+}
+
+message FeatureFlag {
+  string id          = 1;
+  string name        = 2;
+  string description = 3;
+  bool   enabled     = 4;
+  repeated string allowed_user_ids = 5;
+  repeated string allowed_org_ids  = 6;
+  float  rollout_percent = 7;
+  google.protobuf.Timestamp created_at = 8;
+  google.protobuf.Timestamp updated_at = 9;
+}
+
+message GetFlagRequest    { string name = 1; }
+message GetFlagResponse   { FeatureFlag flag = 1; }
+
+message SetFlagRequest {
+  string name            = 1;
+  string description     = 2;
+  bool   enabled         = 3;
+  float  rollout_percent = 4;
+}
+
+message SetFlagResponse    { FeatureFlag flag = 1; }
+message DeleteFlagRequest  { string name = 1; }
+message DeleteFlagResponse { bool success = 1; }
+message ListFlagsRequest   { bool enabled_only = 1; int32 page = 2; int32 page_size = 3; }
+message ListFlagsResponse  { repeated FeatureFlag flags = 1; int32 total = 2; }
+message IsEnabledRequest   { string name = 1; string user_id = 2; string org_id = 3; }
+message IsEnabledResponse  { bool enabled = 1; }

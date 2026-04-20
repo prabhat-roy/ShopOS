@@ -1,0 +1,182 @@
+# Security Infrastructure Pipeline — Concourse CI
+# Credentials: kubeconfig, keycloak-credentials, slack-webhook
+---
+resource_types:
+  - name: slack-notification
+    type: docker-image
+    source:
+      repository: cfcommunity/slack-notification-resource
+
+resources:
+  - name: source-code
+    type: git
+    source:
+      uri: ((git.uri))
+      branch: ((git.branch))
+      private_key: ((git.private_key))
+
+  - name: slack-alert
+    type: slack-notification
+    source:
+      url: ((slack.webhook_url))
+
+  - name: trigger-manual
+    type: time
+    source:
+      interval: 8760h
+
+jobs:
+  - name: install-cert-manager
+    plan:
+      - get: trigger-manual
+        trigger: false
+      - task: helm-install
+        config:
+          platform: linux
+          image_resource:
+            type: registry-image
+            source: {repository: alpine/helm}
+          params:
+            KUBECONFIG_CONTENT: ((kubeconfig.content))
+            ACTION: ((action))
+          run:
+            path: sh
+            args:
+              - -c
+              - |
+                mkdir -p ~/.kube && echo "$KUBECONFIG_CONTENT" | base64 -d > ~/.kube/config
+                if [ "$ACTION" = "UNINSTALL" ]; then
+                  helm uninstall cert-manager -n cert-manager 2>/dev/null || true; exit 0
+                fi
+                helm repo add jetstack https://charts.jetstack.io --force-update
+                helm upgrade --install cert-manager jetstack/cert-manager \
+                  --namespace cert-manager --create-namespace \
+                  --set installCRDs=true --set replicaCount=2 --wait --timeout 5m
+
+  - name: install-vault
+    plan:
+      - get: trigger-manual
+        trigger: false
+        passed: [install-cert-manager]
+      - task: helm-install
+        config:
+          platform: linux
+          image_resource:
+            type: registry-image
+            source: {repository: alpine/helm}
+          params:
+            KUBECONFIG_CONTENT: ((kubeconfig.content))
+            ACTION: ((action))
+          run:
+            path: sh
+            args:
+              - -c
+              - |
+                mkdir -p ~/.kube && echo "$KUBECONFIG_CONTENT" | base64 -d > ~/.kube/config
+                if [ "$ACTION" = "UNINSTALL" ]; then
+                  helm uninstall vault -n vault 2>/dev/null || true; exit 0
+                fi
+                helm repo add hashicorp https://helm.releases.hashicorp.com --force-update
+                helm upgrade --install vault hashicorp/vault \
+                  --namespace vault --create-namespace \
+                  --set server.ha.enabled=true --set server.ha.raft.enabled=true \
+                  --set server.ha.replicas=3 --wait --timeout 10m
+
+  - name: install-keycloak
+    plan:
+      - get: trigger-manual
+        trigger: false
+        passed: [install-cert-manager]
+      - task: helm-install
+        config:
+          platform: linux
+          image_resource:
+            type: registry-image
+            source: {repository: alpine/helm}
+          params:
+            KUBECONFIG_CONTENT: ((kubeconfig.content))
+            KEYCLOAK_ADMIN_PASSWORD: ((keycloak.admin_password))
+            ACTION: ((action))
+          run:
+            path: sh
+            args:
+              - -c
+              - |
+                mkdir -p ~/.kube && echo "$KUBECONFIG_CONTENT" | base64 -d > ~/.kube/config
+                if [ "$ACTION" = "UNINSTALL" ]; then
+                  helm uninstall keycloak -n keycloak 2>/dev/null || true; exit 0
+                fi
+                helm repo add bitnami https://charts.bitnami.com/bitnami --force-update
+                helm upgrade --install keycloak bitnami/keycloak \
+                  --namespace keycloak --create-namespace \
+                  --set replicaCount=2 \
+                  --set auth.adminPassword="$KEYCLOAK_ADMIN_PASSWORD" \
+                  --set postgresql.enabled=true --wait --timeout 10m
+
+  - name: install-kyverno
+    plan:
+      - get: source-code
+      - get: trigger-manual
+        trigger: false
+        passed: [install-cert-manager]
+      - task: helm-install
+        config:
+          platform: linux
+          image_resource:
+            type: registry-image
+            source: {repository: alpine/helm}
+          inputs:
+            - name: source-code
+          params:
+            KUBECONFIG_CONTENT: ((kubeconfig.content))
+            ACTION: ((action))
+          run:
+            path: sh
+            args:
+              - -c
+              - |
+                mkdir -p ~/.kube && echo "$KUBECONFIG_CONTENT" | base64 -d > ~/.kube/config
+                if [ "$ACTION" = "UNINSTALL" ]; then
+                  helm uninstall kyverno -n kyverno 2>/dev/null || true; exit 0
+                fi
+                helm repo add kyverno https://kyverno.github.io/kyverno --force-update
+                helm upgrade --install kyverno kyverno/kyverno \
+                  --namespace kyverno --create-namespace \
+                  --set replicaCount=3 --wait --timeout 5m
+                kubectl apply -f source-code/security/kyverno/ 2>/dev/null || true
+
+  - name: install-falco
+    plan:
+      - get: trigger-manual
+        trigger: false
+        passed: [install-cert-manager]
+      - task: helm-install
+        config:
+          platform: linux
+          image_resource:
+            type: registry-image
+            source: {repository: alpine/helm}
+          params:
+            KUBECONFIG_CONTENT: ((kubeconfig.content))
+            SLACK_WEBHOOK: ((slack.webhook_url))
+            ACTION: ((action))
+          run:
+            path: sh
+            args:
+              - -c
+              - |
+                mkdir -p ~/.kube && echo "$KUBECONFIG_CONTENT" | base64 -d > ~/.kube/config
+                if [ "$ACTION" = "UNINSTALL" ]; then
+                  helm uninstall falco -n falco 2>/dev/null || true; exit 0
+                fi
+                helm repo add falcosecurity https://falcosecurity.github.io/charts --force-update
+                helm upgrade --install falco falcosecurity/falco \
+                  --namespace falco --create-namespace \
+                  --set driver.kind=ebpf \
+                  --set falcosidekick.enabled=true \
+                  --set falcosidekick.config.slack.webhookurl="$SLACK_WEBHOOK" \
+                  --wait --timeout 8m
+        on_success:
+          put: slack-alert
+          params:
+            text: ":lock: Security stack deployed successfully"

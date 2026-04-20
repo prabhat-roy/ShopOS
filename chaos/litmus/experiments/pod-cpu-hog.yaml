@@ -1,0 +1,44 @@
+apiVersion: litmuschaos.io/v1alpha1
+kind: ChaosEngine
+metadata:
+  name: checkout-pod-cpu-hog
+  namespace: commerce
+  labels:
+    app.kubernetes.io/part-of: shopos-chaos
+spec:
+  appinfo:
+    appns: commerce
+    applabel: app.kubernetes.io/name=checkout-service
+    appkind: deployment
+  engineState: active
+  chaosServiceAccount: litmus-admin
+  experiments:
+    - name: pod-cpu-hog
+      spec:
+        components:
+          env:
+            - name: TOTAL_CHAOS_DURATION
+              value: "300"
+            - name: CPU_CORES
+              value: "1"
+            - name: CPU_LOAD
+              value: "80"
+            - name: PODS_AFFECTED_PERC
+              value: "50"
+            - name: RAMP_TIME
+              value: "10"
+        probe:
+          - name: p95-latency-probe
+            type: promProbe
+            mode: Continuous
+            runProperties:
+              probeTimeout: 5000
+              interval: 15
+              retry: 3
+              stopOnFailure: false
+            promProbe/inputs:
+              endpoint: http://prometheus-server.prometheus.svc.cluster.local:9090
+              query: histogram_quantile(0.95, rate(http_request_duration_seconds_bucket{service="checkout-service"}[2m]))
+              comparator:
+                criteria: <=
+                value: "2"

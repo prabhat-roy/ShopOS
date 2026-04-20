@@ -1,0 +1,35 @@
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: shopos-analytics-ai
+  namespace: argocd
+spec:
+  description: ShopOS analytics-ai domain services
+  sourceRepos:
+    - 'https://github.com/your-org/shopos.git'
+  destinations:
+    - namespace: shopos-analytics-ai
+      server: https://kubernetes.default.svc
+  clusterResourceWhitelist:
+    - group: ''
+      kind: Namespace
+  namespaceResourceWhitelist:
+    - group: 'apps'
+      kind: Deployment
+    - group: ''
+      kind: Service
+    - group: ''
+      kind: ConfigMap
+    - group: ''
+      kind: Secret
+    - group: 'autoscaling'
+      kind: HorizontalPodAutoscaler
+    - group: 'networking.k8s.io'
+      kind: NetworkPolicy
+  roles:
+    - name: analytics-ai-admin
+      description: analytics-ai team full access
+      policies:
+        - p, proj:shopos-analytics-ai:analytics-ai-admin, applications, *, shopos-analytics-ai/*, allow
+      groups:
+        - analyticsai-team

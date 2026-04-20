@@ -1,0 +1,267 @@
+# Networking Infrastructure Pipeline — Tekton
+# Secrets: kubeconfig-secret
+---
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  name: install-cilium
+  namespace: tekton-pipelines
+spec:
+  params:
+    - name: action
+      default: INSTALL
+  workspaces:
+    - name: kubeconfig
+      mountPath: /root/.kube
+  steps:
+    - name: helm
+      image: alpine/helm:latest
+      script: |
+        if [ "$(params.action)" = "UNINSTALL" ]; then
+          helm uninstall cilium -n kube-system 2>/dev/null || true
+          exit 0
+        fi
+        helm repo add cilium https://helm.cilium.io --force-update
+        helm upgrade --install cilium cilium/cilium \
+          --namespace kube-system \
+          --set hubble.enabled=true --set hubble.relay.enabled=true \
+          --set hubble.ui.enabled=true \
+          --set prometheus.enabled=true \
+          --wait --timeout 8m
+---
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  name: install-istio
+  namespace: tekton-pipelines
+spec:
+  params:
+    - name: action
+      default: INSTALL
+  workspaces:
+    - name: kubeconfig
+      mountPath: /root/.kube
+  steps:
+    - name: helm
+      image: alpine/helm:latest
+      script: |
+        if [ "$(params.action)" = "UNINSTALL" ]; then
+          helm uninstall istio-ingress -n istio-ingress 2>/dev/null || true
+          helm uninstall istiod -n istio-system 2>/dev/null || true
+          helm uninstall istio-base -n istio-system 2>/dev/null || true
+          exit 0
+        fi
+        helm repo add istio https://istio-release.storage.googleapis.com/charts --force-update
+        helm upgrade --install istio-base istio/base \
+          --namespace istio-system --create-namespace --wait --timeout 3m
+        helm upgrade --install istiod istio/istiod \
+          --namespace istio-system \
+          --set telemetry.enabled=true --set pilot.traceSampling=1.0 \
+          --wait --timeout 5m
+        helm upgrade --install istio-ingress istio/gateway \
+          --namespace istio-ingress --create-namespace \
+          --wait --timeout 5m
+---
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  name: install-traefik
+  namespace: tekton-pipelines
+spec:
+  params:
+    - name: action
+      default: INSTALL
+  workspaces:
+    - name: kubeconfig
+      mountPath: /root/.kube
+  steps:
+    - name: helm
+      image: alpine/helm:latest
+      script: |
+        if [ "$(params.action)" = "UNINSTALL" ]; then
+          helm uninstall traefik -n networking 2>/dev/null || true
+          exit 0
+        fi
+        helm repo add traefik https://traefik.github.io/charts --force-update
+        helm upgrade --install traefik traefik/traefik \
+          --namespace networking --create-namespace \
+          --set deployment.replicas=2 \
+          --set ingressClass.enabled=true \
+          --set ingressClass.isDefaultClass=true \
+          --set metrics.prometheus.enabled=true \
+          --wait --timeout 5m
+---
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  name: install-consul
+  namespace: tekton-pipelines
+spec:
+  params:
+    - name: action
+      default: INSTALL
+  workspaces:
+    - name: kubeconfig
+      mountPath: /root/.kube
+  steps:
+    - name: helm
+      image: alpine/helm:latest
+      script: |
+        if [ "$(params.action)" = "UNINSTALL" ]; then
+          helm uninstall consul -n consul 2>/dev/null || true
+          exit 0
+        fi
+        helm repo add hashicorp https://helm.releases.hashicorp.com --force-update
+        helm upgrade --install consul hashicorp/consul \
+          --namespace consul --create-namespace \
+          --set global.datacenter=shopos-dc1 \
+          --set server.replicas=3 \
+          --set connectInject.enabled=true \
+          --wait --timeout 8m
+---
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  name: install-external-dns
+  namespace: tekton-pipelines
+spec:
+  params:
+    - name: action
+      default: INSTALL
+  workspaces:
+    - name: kubeconfig
+      mountPath: /root/.kube
+  steps:
+    - name: helm
+      image: alpine/helm:latest
+      script: |
+        if [ "$(params.action)" = "UNINSTALL" ]; then
+          helm uninstall external-dns -n networking 2>/dev/null || true
+          exit 0
+        fi
+        helm repo add external-dns https://kubernetes-sigs.github.io/external-dns --force-update
+        helm upgrade --install external-dns external-dns/external-dns \
+          --namespace networking --create-namespace \
+          --set provider=aws \
+          --set policy=upsert-only \
+          --wait --timeout 3m
+---
+apiVersion: tekton.dev/v1
+kind: Pipeline
+metadata:
+  name: networking-pipeline
+  namespace: tekton-pipelines
+spec:
+  params:
+    - name: action
+      default: INSTALL
+    - name: install-cilium
+      default: "true"
+    - name: install-istio
+      default: "true"
+    - name: install-traefik
+      default: "true"
+    - name: install-consul
+      default: "false"
+    - name: install-external-dns
+      default: "false"
+  workspaces:
+    - name: kubeconfig
+  tasks:
+    - name: cilium
+      taskRef:
+        name: install-cilium
+      params:
+        - name: action
+          value: $(params.action)
+      workspaces:
+        - name: kubeconfig
+          workspace: kubeconfig
+      when:
+        - input: $(params.install-cilium)
+          operator: in
+          values: ["true"]
+
+    - name: istio
+      taskRef:
+        name: install-istio
+      params:
+        - name: action
+          value: $(params.action)
+      workspaces:
+        - name: kubeconfig
+          workspace: kubeconfig
+      runAfter: [cilium]
+      when:
+        - input: $(params.install-istio)
+          operator: in
+          values: ["true"]
+
+    - name: traefik
+      taskRef:
+        name: install-traefik
+      params:
+        - name: action
+          value: $(params.action)
+      workspaces:
+        - name: kubeconfig
+          workspace: kubeconfig
+      runAfter: [cilium]
+      when:
+        - input: $(params.install-traefik)
+          operator: in
+          values: ["true"]
+
+    - name: consul
+      taskRef:
+        name: install-consul
+      params:
+        - name: action
+          value: $(params.action)
+      workspaces:
+        - name: kubeconfig
+          workspace: kubeconfig
+      runAfter: [istio, traefik]
+      when:
+        - input: $(params.install-consul)
+          operator: in
+          values: ["true"]
+
+    - name: external-dns
+      taskRef:
+        name: install-external-dns
+      params:
+        - name: action
+          value: $(params.action)
+      workspaces:
+        - name: kubeconfig
+          workspace: kubeconfig
+      runAfter: [traefik]
+      when:
+        - input: $(params.install-external-dns)
+          operator: in
+          values: ["true"]
+---
+apiVersion: tekton.dev/v1
+kind: PipelineRun
+metadata:
+  name: networking-pipeline-run
+  namespace: tekton-pipelines
+  annotations:
+    description: "Example PipelineRun — update params before running"
+spec:
+  pipelineRef:
+    name: networking-pipeline
+  params:
+    - name: action
+      value: INSTALL
+    - name: install-cilium
+      value: "true"
+    - name: install-istio
+      value: "true"
+    - name: install-traefik
+      value: "true"
+  workspaces:
+    - name: kubeconfig
+      secret:
+        secretName: kubeconfig-secret

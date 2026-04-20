@@ -1,0 +1,155 @@
+syntax = "proto3";
+
+package catalog;
+
+import "common/common.proto";
+
+option go_package = "github.com/shopos/proto/catalog";
+
+// ---------------------------------------------------------------------------
+// Shared enums
+// ---------------------------------------------------------------------------
+
+enum ProductStatus {
+  PRODUCT_STATUS_UNSPECIFIED = 0;
+  PRODUCT_STATUS_DRAFT       = 1;
+  PRODUCT_STATUS_ACTIVE      = 2;
+  PRODUCT_STATUS_ARCHIVED    = 3;
+  PRODUCT_STATUS_DELETED     = 4;
+}
+
+// ---------------------------------------------------------------------------
+// Core domain messages
+// ---------------------------------------------------------------------------
+
+// Product is the canonical catalog item representation.
+message Product {
+  // UUID
+  string               id          = 1;
+  string               name        = 2;
+  // URL-friendly identifier, e.g. "blue-running-shoe-v2"
+  string               slug        = 3;
+  string               description = 4;
+  string               category_id = 5;
+  string               brand_id    = 6;
+  ProductStatus        status      = 7;
+  // Base/display price; the pricing-service provides customer-specific prices
+  common.Money         price       = 8;
+  // Ordered list of image URLs / CDN keys
+  repeated string      images      = 9;
+  // Flexible attribute bag, e.g. {"color": "blue", "size": "M"}
+  map<string, string>  attributes  = 10;
+  repeated string      tags        = 11;
+  // Unix seconds UTC
+  int64                created_at  = 12;
+  int64                updated_at  = 13;
+}
+
+// ---------------------------------------------------------------------------
+// Request / response messages
+// ---------------------------------------------------------------------------
+
+message CreateProductRequest {
+  string               name        = 1;
+  string               slug        = 2;
+  string               description = 3;
+  string               category_id = 4;
+  string               brand_id    = 5;
+  common.Money         price       = 6;
+  repeated string      images      = 7;
+  map<string, string>  attributes  = 8;
+  repeated string      tags        = 9;
+}
+
+message UpdateProductRequest {
+  string               id          = 1;
+  string               name        = 2;
+  string               slug        = 3;
+  string               description = 4;
+  string               category_id = 5;
+  string               brand_id    = 6;
+  ProductStatus        status      = 7;
+  common.Money         price       = 8;
+  repeated string      images      = 9;
+  map<string, string>  attributes  = 10;
+  repeated string      tags        = 11;
+}
+
+message GetProductRequest {
+  // Provide either id or slug — service uses whichever is non-empty
+  string id   = 1;
+  string slug = 2;
+}
+
+message GetProductBySlugRequest {
+  string slug = 1;
+}
+
+message DeleteProductRequest {
+  string id = 1;
+}
+
+message DeleteProductResponse {
+  bool   success = 1;
+  string message = 2;
+}
+
+message SearchProductsRequest {
+  // Full-text search query string
+  string       query       = 1;
+  string       category_id = 2;
+  string       brand_id    = 3;
+  // Minimum price filter (inclusive); empty string = no lower bound
+  string       min_price   = 4;
+  // Maximum price filter (inclusive); empty string = no upper bound
+  string       max_price   = 5;
+  // ISO 4217 currency code used for min/max price comparison
+  string       currency    = 6;
+  ProductStatus status     = 7;
+  int32        page        = 8;
+  int32        page_size   = 9;
+}
+
+message SearchProductsResponse {
+  repeated Product    products    = 1;
+  common.Pagination   pagination  = 2;
+}
+
+message ListProductsRequest {
+  ProductStatus status    = 1;
+  string        category_id = 2;
+  string        brand_id    = 3;
+  int32         page        = 4;
+  int32         page_size   = 5;
+}
+
+message ListProductsResponse {
+  repeated Product   products   = 1;
+  common.Pagination  pagination = 2;
+}
+
+// ---------------------------------------------------------------------------
+// ProductService — product-catalog-service (Go / MongoDB, port 50070)
+// ---------------------------------------------------------------------------
+service ProductService {
+  // Create a new product (starts in DRAFT status)
+  rpc CreateProduct(CreateProductRequest) returns (Product);
+
+  // Retrieve a product by UUID or slug
+  rpc GetProduct(GetProductRequest) returns (Product);
+
+  // Update any mutable product field
+  rpc UpdateProduct(UpdateProductRequest) returns (Product);
+
+  // Soft-delete a product (sets status to PRODUCT_STATUS_DELETED)
+  rpc DeleteProduct(DeleteProductRequest) returns (DeleteProductResponse);
+
+  // Full-text + faceted product search backed by MongoDB Atlas / the search-service
+  rpc SearchProducts(SearchProductsRequest) returns (SearchProductsResponse);
+
+  // Paginated list of products with simple filters (no full-text)
+  rpc ListProducts(ListProductsRequest) returns (ListProductsResponse);
+
+  // Convenience lookup by slug — useful for SEO / storefront rendering
+  rpc GetProductBySlug(GetProductBySlugRequest) returns (Product);
+}

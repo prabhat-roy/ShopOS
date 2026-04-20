@@ -1,0 +1,6 @@
+apiVersion: v2
+name: pomerium
+description: Pomerium - identity-aware proxy and zero-trust access
+type: application
+version: 1.0.0
+appVersion: "v0.27.0"

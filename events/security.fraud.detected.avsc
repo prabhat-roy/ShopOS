@@ -1,0 +1,15 @@
+{
+  "type": "record",
+  "name": "FraudDetected",
+  "namespace": "com.shopos.security.fraud",
+  "doc": "Emitted when the fraud-detection service flags a transaction",
+  "fields": [
+    { "name": "event_id",         "type": "string" },
+    { "name": "order_id",         "type": "string" },
+    { "name": "customer_id",      "type": "string" },
+    { "name": "risk_score",       "type": "float" },
+    { "name": "risk_level",       "type": "string" },
+    { "name": "triggered_rules",  "type": { "type": "array", "items": "string" } },
+    { "name": "occurred_at",      "type": { "type": "long", "logicalType": "timestamp-millis" } }
+  ]
+}

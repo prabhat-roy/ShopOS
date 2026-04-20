@@ -1,0 +1,34 @@
+replicaCount: 1
+
+image:
+  repository: quay.io/projectquay/clair
+  tag: "4.7.4"
+  pullPolicy: IfNotPresent
+
+service:
+  type: ClusterIP
+  port: 6060
+  targetPort: 6060
+
+persistence:
+  enabled: true
+  storageClass: ""
+  size: 5Gi
+  accessMode: ReadWriteOnce
+  mountPath: /data
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 256Mi
+  limits:
+    cpu: "1"
+    memory: 1Gi
+
+env: {}
+
+ingress:
+  enabled: false
+  className: ""
+  host: ""
+  tls: []

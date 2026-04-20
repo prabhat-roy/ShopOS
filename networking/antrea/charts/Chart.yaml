@@ -1,0 +1,6 @@
+apiVersion: v2
+name: antrea
+description: Antrea — OVS-based CNI for Kubernetes
+type: application
+version: 1.0.0
+appVersion: "v2.1.0"

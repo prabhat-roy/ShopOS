@@ -1,0 +1,35 @@
+replicaCount: 1
+
+image:
+  repository: docker.elastic.co/elasticsearch/elasticsearch
+  tag: "8.15.3"
+  pullPolicy: IfNotPresent
+
+service:
+  type: ClusterIP
+  httpPort: 9200
+  transportPort: 9300
+
+env:
+  - name: discovery.type
+    value: single-node
+  - name: xpack.security.enabled
+    value: "false"
+  - name: ES_JAVA_OPTS
+    value: "-Xms1g -Xmx1g"
+
+resources:
+  requests:
+    memory: "2Gi"
+    cpu: "500m"
+  limits:
+    memory: "4Gi"
+    cpu: "2000m"
+
+persistence:
+  enabled: true
+  size: 50Gi
+  storageClass: ""
+
+ingress:
+  enabled: false

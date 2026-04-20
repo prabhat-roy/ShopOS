@@ -1,0 +1,6 @@
+apiVersion: v2
+name: chartmuseum
+description: ChartMuseum — dedicated Helm chart repository server
+type: application
+version: 1.0.0
+appVersion: "v0.16.2"

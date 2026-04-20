@@ -1,0 +1,6 @@
+apiVersion: v2
+name: quetz
+description: Quetz — open source Conda package server
+type: application
+version: 1.0.0
+appVersion: "latest"

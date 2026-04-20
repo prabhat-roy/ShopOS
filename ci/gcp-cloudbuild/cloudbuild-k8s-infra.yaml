@@ -1,0 +1,184 @@
+# K8s Infrastructure (Terraform) — GCP Cloud Build
+# Mirrors .github/workflows/k8s-infra.yml
+# Substitutions: _ENVIRONMENT, _CLOUD (aws|gcp|azure|all), _ACTION (PLAN|APPLY|DESTROY), _TF_VERSION
+
+substitutions:
+  _ENVIRONMENT: dev
+  _CLOUD: gcp
+  _ACTION: PLAN
+  _TF_VERSION: "1.9.0"
+  _GCP_REGION: us-central1
+  _GCS_TF_STATE_BUCKET: shopos-terraform-state
+
+options:
+  logging: CLOUD_LOGGING_ONLY
+  machineType: E2_STANDARD_4
+  env:
+    - TF_IN_AUTOMATION=true
+    - TF_CLI_ARGS=-no-color
+
+availableSecrets:
+  secretManager:
+    - versionName: projects/$PROJECT_ID/secrets/aws-access-key-id/versions/latest
+      env: AWS_ACCESS_KEY_ID
+    - versionName: projects/$PROJECT_ID/secrets/aws-secret-access-key/versions/latest
+      env: AWS_SECRET_ACCESS_KEY
+    - versionName: projects/$PROJECT_ID/secrets/azure-client-id/versions/latest
+      env: ARM_CLIENT_ID
+    - versionName: projects/$PROJECT_ID/secrets/azure-client-secret/versions/latest
+      env: ARM_CLIENT_SECRET
+    - versionName: projects/$PROJECT_ID/secrets/azure-tenant-id/versions/latest
+      env: ARM_TENANT_ID
+    - versionName: projects/$PROJECT_ID/secrets/azure-subscription-id/versions/latest
+      env: ARM_SUBSCRIPTION_ID
+    - versionName: projects/$PROJECT_ID/secrets/tf-state-bucket/versions/latest
+      env: TF_STATE_BUCKET
+
+steps:
+  # Install Terraform
+  - name: hashicorp/terraform:$_TF_VERSION
+    id: install-check
+    entrypoint: terraform
+    args: [version]
+
+  # ── GCP / GKE ─────────────────────────────────────────────────────────────
+  - name: hashicorp/terraform:$_TF_VERSION
+    id: tf-gcp-init
+    entrypoint: bash
+    args:
+      - -c
+      - |
+        if [ "$_CLOUD" != "gcp" ] && [ "$_CLOUD" != "all" ]; then exit 0; fi
+        cd infra/terraform/gcp/gke
+        terraform init \
+          -backend-config="bucket=$_GCS_TF_STATE_BUCKET" \
+          -backend-config="prefix=$_ENVIRONMENT/gke"
+    waitFor: [install-check]
+
+  - name: hashicorp/terraform:$_TF_VERSION
+    id: tf-gcp-plan
+    entrypoint: bash
+    args:
+      - -c
+      - |
+        if [ "$_CLOUD" != "gcp" ] && [ "$_CLOUD" != "all" ]; then exit 0; fi
+        cd infra/terraform/gcp/gke
+        terraform plan \
+          -var="environment=$_ENVIRONMENT" \
+          -var="project=$PROJECT_ID" \
+          -var="region=$_GCP_REGION" \
+          -out=tfplan-gcp.bin
+        terraform show -no-color tfplan-gcp.bin > /workspace/tfplan-gcp.txt
+    waitFor: [tf-gcp-init]
+
+  - name: hashicorp/terraform:$_TF_VERSION
+    id: tf-gcp-apply
+    entrypoint: bash
+    args:
+      - -c
+      - |
+        if [ "$_CLOUD" != "gcp" ] && [ "$_CLOUD" != "all" ]; then exit 0; fi
+        if [ "$_ACTION" != "APPLY" ]; then exit 0; fi
+        cd infra/terraform/gcp/gke
+        terraform apply -auto-approve tfplan-gcp.bin
+        terraform output -json > /workspace/tf-outputs-gcp.json
+    waitFor: [tf-gcp-plan]
+
+  - name: hashicorp/terraform:$_TF_VERSION
+    id: tf-gcp-destroy
+    entrypoint: bash
+    args:
+      - -c
+      - |
+        if [ "$_CLOUD" != "gcp" ] && [ "$_CLOUD" != "all" ]; then exit 0; fi
+        if [ "$_ACTION" != "DESTROY" ]; then exit 0; fi
+        cd infra/terraform/gcp/gke
+        terraform destroy -auto-approve \
+          -var="environment=$_ENVIRONMENT" \
+          -var="project=$PROJECT_ID"
+    waitFor: [tf-gcp-plan]
+
+  # ── AWS / EKS ─────────────────────────────────────────────────────────────
+  - name: hashicorp/terraform:$_TF_VERSION
+    id: tf-aws-init
+    secretEnv: [AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, TF_STATE_BUCKET]
+    entrypoint: bash
+    args:
+      - -c
+      - |
+        if [ "$_CLOUD" != "aws" ] && [ "$_CLOUD" != "all" ]; then exit 0; fi
+        cd infra/terraform/aws/eks
+        terraform init \
+          -backend-config="bucket=$$TF_STATE_BUCKET" \
+          -backend-config="key=$_ENVIRONMENT/eks/terraform.tfstate" \
+          -backend-config="region=us-east-1"
+    waitFor: [install-check]
+
+  - name: hashicorp/terraform:$_TF_VERSION
+    id: tf-aws-plan
+    secretEnv: [AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY]
+    entrypoint: bash
+    args:
+      - -c
+      - |
+        if [ "$_CLOUD" != "aws" ] && [ "$_CLOUD" != "all" ]; then exit 0; fi
+        cd infra/terraform/aws/eks
+        terraform plan \
+          -var="environment=$_ENVIRONMENT" \
+          -var="region=us-east-1" \
+          -out=tfplan-aws.bin
+        terraform show -no-color tfplan-aws.bin > /workspace/tfplan-aws.txt
+    waitFor: [tf-aws-init]
+
+  - name: hashicorp/terraform:$_TF_VERSION
+    id: tf-aws-apply
+    secretEnv: [AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY]
+    entrypoint: bash
+    args:
+      - -c
+      - |
+        if [ "$_CLOUD" != "aws" ] && [ "$_CLOUD" != "all" ]; then exit 0; fi
+        if [ "$_ACTION" != "APPLY" ]; then exit 0; fi
+        cd infra/terraform/aws/eks
+        terraform apply -auto-approve tfplan-aws.bin
+        terraform output -json > /workspace/tf-outputs-aws.json
+    waitFor: [tf-aws-plan]
+
+  # ── Azure / AKS ───────────────────────────────────────────────────────────
+  - name: hashicorp/terraform:$_TF_VERSION
+    id: tf-azure-init
+    secretEnv: [ARM_CLIENT_ID, ARM_CLIENT_SECRET, ARM_TENANT_ID, ARM_SUBSCRIPTION_ID]
+    entrypoint: bash
+    args:
+      - -c
+      - |
+        if [ "$_CLOUD" != "azure" ] && [ "$_CLOUD" != "all" ]; then exit 0; fi
+        cd infra/terraform/azure/aks
+        terraform init \
+          -backend-config="resource_group_name=shopos-tf-state-rg" \
+          -backend-config="storage_account_name=shopostfstate" \
+          -backend-config="container_name=tfstate" \
+          -backend-config="key=$_ENVIRONMENT/aks/terraform.tfstate"
+    waitFor: [install-check]
+
+  - name: hashicorp/terraform:$_TF_VERSION
+    id: tf-azure-plan
+    secretEnv: [ARM_CLIENT_ID, ARM_CLIENT_SECRET, ARM_TENANT_ID, ARM_SUBSCRIPTION_ID]
+    entrypoint: bash
+    args:
+      - -c
+      - |
+        if [ "$_CLOUD" != "azure" ] && [ "$_CLOUD" != "all" ]; then exit 0; fi
+        cd infra/terraform/azure/aks
+        terraform plan \
+          -var="environment=$_ENVIRONMENT" \
+          -out=tfplan-azure.bin
+        terraform show -no-color tfplan-azure.bin > /workspace/tfplan-azure.txt
+    waitFor: [tf-azure-init]
+
+artifacts:
+  objects:
+    location: gs://$_GCS_TF_STATE_BUCKET/plans/$BUILD_ID/
+    paths:
+      - /workspace/tfplan-*.txt
+      - /workspace/tf-outputs-*.json

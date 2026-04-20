@@ -1,0 +1,103 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: shopos-platform
+  labels:
+    environment: staging
+    domain: platform
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: shopos-identity
+  labels:
+    environment: staging
+    domain: identity
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: shopos-catalog
+  labels:
+    environment: staging
+    domain: catalog
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: shopos-commerce
+  labels:
+    environment: staging
+    domain: commerce
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: shopos-supply-chain
+  labels:
+    environment: staging
+    domain: supply-chain
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: shopos-financial
+  labels:
+    environment: staging
+    domain: financial
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: shopos-customer-experience
+  labels:
+    environment: staging
+    domain: customer-experience
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: shopos-communications
+  labels:
+    environment: staging
+    domain: communications
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: shopos-content
+  labels:
+    environment: staging
+    domain: content
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: shopos-analytics-ai
+  labels:
+    environment: staging
+    domain: analytics-ai
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: shopos-b2b
+  labels:
+    environment: staging
+    domain: b2b
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: shopos-integrations
+  labels:
+    environment: staging
+    domain: integrations
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: shopos-affiliate
+  labels:
+    environment: staging
+    domain: affiliate

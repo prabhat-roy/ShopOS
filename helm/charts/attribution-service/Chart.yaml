@@ -1,0 +1,19 @@
+apiVersion: v2
+name: attribution-service
+description: ShopOS attribution-service — Multi-touch marketing attribution modelling via Kafka events
+type: application
+version: 0.1.0
+appVersion: "1.0.0"
+keywords:
+  - shopos
+  - attribution-service
+  - analytics-ai
+home: https://github.com/your-org/shopos
+sources:
+  - https://github.com/your-org/shopos/tree/main/src/analytics-ai/attribution-service
+maintainers:
+  - name: ShopOS Platform Team
+    email: platform@shopos.io
+annotations:
+  app.kubernetes.io/domain: analytics-ai
+  app.kubernetes.io/language: python

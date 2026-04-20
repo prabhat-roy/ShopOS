@@ -1,0 +1,6 @@
+apiVersion: v2
+name: cilium
+description: Cilium — eBPF-based CNI with L7 network policies and observability
+type: application
+version: 1.0.0
+appVersion: "v1.16.0"

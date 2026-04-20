@@ -1,0 +1,104 @@
+# Deploy Pipeline — Travis CI
+# Env vars (encrypted): HARBOR_REGISTRY, HARBOR_USERNAME, HARBOR_PASSWORD,
+#   SONAR_TOKEN, SONAR_HOST_URL, KUBECONFIG_CONTENT, SLACK_WEBHOOK
+language: minimal
+
+services:
+  - docker
+
+env:
+  global:
+    - ENVIRONMENT=staging
+    - K8S_NAMESPACE=default
+
+stages:
+  - name: preflight
+  - name: sast
+  - name: build-scan
+  - name: push-sign
+    if: branch = main OR branch =~ /^release\/.*/
+  - name: deploy
+    if: branch = main OR branch =~ /^release\/.*/
+
+jobs:
+  include:
+    - stage: preflight
+      name: Secret Scan
+      install: skip
+      script:
+        - docker run --rm -v "$PWD:/path" zricethezav/gitleaks:latest detect --source /path --exit-code 1 || true
+
+    - stage: preflight
+      name: IaC Scan
+      install: pip install checkov --quiet
+      script:
+        - checkov -d infra/ --quiet || true
+
+    - stage: sast
+      name: Semgrep SAST
+      install: pip install semgrep --quiet
+      script:
+        - semgrep --config=auto --json --output=/tmp/semgrep.json src/$SERVICE_NAME || true
+
+    - stage: sast
+      name: SonarQube
+      language: java
+      install: skip
+      script:
+        - |
+          cd src/$SERVICE_NAME
+          sonar-scanner \
+            -Dsonar.projectKey=$SERVICE_NAME \
+            -Dsonar.host.url=$SONAR_HOST_URL \
+            -Dsonar.login=$SONAR_TOKEN \
+            -Dsonar.qualitygate.wait=true || true
+
+    - stage: build-scan
+      name: Docker Build + Trivy Scan
+      script:
+        - docker build -t $HARBOR_REGISTRY/shopos/$SERVICE_NAME:$TRAVIS_COMMIT src/$SERVICE_NAME/
+        - |
+          curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh -s -- -b /usr/local/bin
+          trivy image --exit-code 1 --severity CRITICAL \
+            $HARBOR_REGISTRY/shopos/$SERVICE_NAME:$TRAVIS_COMMIT || true
+          trivy image --format cyclonedx --output sbom.json \
+            $HARBOR_REGISTRY/shopos/$SERVICE_NAME:$TRAVIS_COMMIT || true
+
+    - stage: push-sign
+      name: Push to Harbor + Sign
+      script:
+        - echo "$HARBOR_PASSWORD" | docker login $HARBOR_REGISTRY -u $HARBOR_USERNAME --password-stdin
+        - docker push $HARBOR_REGISTRY/shopos/$SERVICE_NAME:$TRAVIS_COMMIT
+        - docker tag $HARBOR_REGISTRY/shopos/$SERVICE_NAME:$TRAVIS_COMMIT $HARBOR_REGISTRY/shopos/$SERVICE_NAME:latest
+        - docker push $HARBOR_REGISTRY/shopos/$SERVICE_NAME:latest
+        - |
+          curl -fsSL "https://github.com/sigstore/cosign/releases/download/v2.4.0/cosign-linux-amd64" \
+            -o /usr/local/bin/cosign && chmod +x /usr/local/bin/cosign
+          COSIGN_EXPERIMENTAL=1 cosign sign --yes $HARBOR_REGISTRY/shopos/$SERVICE_NAME:$TRAVIS_COMMIT
+
+    - stage: deploy
+      name: Helm Deploy
+      install:
+        - curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
+        - curl -fsSL "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl" -o /usr/local/bin/kubectl && chmod +x /usr/local/bin/kubectl
+      script:
+        - mkdir -p ~/.kube && echo "$KUBECONFIG_CONTENT" | base64 -d > ~/.kube/config
+        - |
+          helm upgrade --install $SERVICE_NAME \
+            helm/charts/$SERVICE_NAME \
+            --namespace $K8S_NAMESPACE --create-namespace \
+            --set image.repository=$HARBOR_REGISTRY/shopos/$SERVICE_NAME \
+            --set image.tag=$TRAVIS_COMMIT \
+            --set environment=$ENVIRONMENT \
+            --wait --timeout 5m
+        - |
+          curl -sf -X POST "$SLACK_WEBHOOK" \
+            -H 'Content-type: application/json' \
+            --data "{\"text\":\":white_check_mark: Deployed $SERVICE_NAME:$TRAVIS_COMMIT to $ENVIRONMENT\"}"
+
+notifications:
+  slack:
+    rooms:
+      - secure: "$SLACK_WEBHOOK_ENCRYPTED"
+    on_success: change
+    on_failure: always

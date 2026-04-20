@@ -1,0 +1,19 @@
+apiVersion: v2
+name: supplier-rating-service
+description: ShopOS supplier-rating-service — Supplier performance scoring and rating aggregation
+type: application
+version: 0.1.0
+appVersion: "1.0.0"
+keywords:
+  - shopos
+  - supplier-rating-service
+  - supply-chain
+home: https://github.com/your-org/shopos
+sources:
+  - https://github.com/your-org/shopos/tree/main/src/supply-chain/supplier-rating-service
+maintainers:
+  - name: ShopOS Platform Team
+    email: platform@shopos.io
+annotations:
+  app.kubernetes.io/domain: supply-chain
+  app.kubernetes.io/language: go

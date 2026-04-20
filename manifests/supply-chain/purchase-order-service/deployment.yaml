@@ -1,0 +1,83 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: purchase-order-service
+  namespace: supply-chain
+  labels:
+    app: purchase-order-service
+    domain: supply-chain
+    version: v1
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: purchase-order-service
+  template:
+    metadata:
+      labels:
+        app: purchase-order-service
+        domain: supply-chain
+        version: v1
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "50101"
+    spec:
+      serviceAccountName: purchase-order-service
+      terminationGracePeriodSeconds: 30
+      containers:
+        - name: purchase-order-service
+          image: shopos/purchase-order-service:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: grpc
+              containerPort: 50101
+              protocol: TCP
+          envFrom:
+            - configMapRef:
+                name: purchase-order-service
+          env:
+            - name: POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            - name: POD_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+          resources:
+            requests:
+              cpu: 250m
+              memory: 256Mi
+            limits:
+              cpu: 1
+              memory: 1Gi
+          livenessProbe:
+            tcpSocket:
+              port: 50101
+            initialDelaySeconds: 15
+            periodSeconds: 20
+            failureThreshold: 3
+          readinessProbe:
+            tcpSocket:
+              port: 50101
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            failureThreshold: 3
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 1000
+            readOnlyRootFilesystem: true
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+      securityContext:
+        fsGroup: 2000
+        runAsNonRoot: true
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: kubernetes.io/hostname
+          whenUnsatisfiable: ScheduleAnyway
+          labelSelector:
+            matchLabels:
+              app: purchase-order-service

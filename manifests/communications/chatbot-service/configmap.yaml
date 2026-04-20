@@ -1,0 +1,21 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: chatbot-service
+  namespace: communications
+  labels:
+    app: chatbot-service
+    domain: communications
+data:
+  APP_ENV: production
+  LOG_LEVEL: info
+  LOG_FORMAT: json
+  SERVICE_NAME: chatbot-service
+  SERVICE_DOMAIN: communications
+  HTTP_PORT: "8193"
+  METRICS_PORT: "9090"
+  HEALTH_PORT: "8193"
+  OTEL_SERVICE_NAME: chatbot-service
+  OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector.monitoring:4317
+  KAFKA_BROKERS: kafka.infra:9092
+  SCHEMA_REGISTRY_URL: http://schema-registry.infra:8081

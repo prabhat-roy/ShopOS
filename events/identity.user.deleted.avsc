@@ -1,0 +1,12 @@
+{
+  "type": "record",
+  "name": "UserDeleted",
+  "namespace": "com.shopos.identity.user",
+  "doc": "Emitted when a user account is deleted (GDPR erasure or admin action)",
+  "fields": [
+    { "name": "event_id",    "type": "string" },
+    { "name": "user_id",     "type": "string" },
+    { "name": "reason",      "type": "string", "default": "" },
+    { "name": "occurred_at", "type": { "type": "long", "logicalType": "timestamp-millis" } }
+  ]
+}

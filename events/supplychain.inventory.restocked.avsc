@@ -1,0 +1,16 @@
+{
+  "type": "record",
+  "name": "InventoryRestocked",
+  "namespace": "com.shopos.supplychain.inventory",
+  "doc": "Emitted when inventory is replenished",
+  "fields": [
+    { "name": "event_id",       "type": "string" },
+    { "name": "product_id",     "type": "string" },
+    { "name": "sku",            "type": "string" },
+    { "name": "warehouse_id",   "type": "string" },
+    { "name": "quantity_added", "type": "int" },
+    { "name": "new_quantity",   "type": "int" },
+    { "name": "po_id",          "type": ["null", "string"], "default": null },
+    { "name": "occurred_at",    "type": { "type": "long", "logicalType": "timestamp-millis" } }
+  ]
+}

@@ -1,0 +1,19 @@
+apiVersion: v2
+name: social-commerce-service
+description: ShopOS Social Commerce Service — social platform integration
+type: application
+version: 0.1.0
+appVersion: "1.0.0"
+keywords:
+  - shopos
+  - social-commerce-service
+  - integrations
+home: https://github.com/your-org/shopos
+sources:
+  - https://github.com/your-org/shopos/tree/main/src/integrations/social-commerce-service
+maintainers:
+  - name: ShopOS Platform Team
+    email: platform@shopos.io
+annotations:
+  app.kubernetes.io/domain: integrations
+  app.kubernetes.io/language: Node.js

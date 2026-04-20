@@ -1,0 +1,119 @@
+# Kubernetes Infrastructure (Terraform) Pipeline — Harness CI
+pipeline:
+  identifier: shopos_k8s_infra
+  name: ShopOS K8s Infrastructure
+  projectIdentifier: shopos
+  orgIdentifier: default
+
+  variables:
+    - name: TF_ACTION
+      type: String
+      value: PLAN
+    - name: CLOUD
+      type: String
+      value: aws
+
+  stages:
+    - stage:
+        identifier: eks
+        name: AWS EKS (Terraform)
+        type: CI
+        when:
+          condition: <+pipeline.variables.CLOUD> == "aws" || <+pipeline.variables.CLOUD> == "all"
+        spec:
+          cloneCodebase: true
+          execution:
+            steps:
+              - step:
+                  identifier: terraform_eks
+                  name: Terraform EKS
+                  type: Run
+                  spec:
+                    image: hashicorp/terraform:1.9.0
+                    envVariables:
+                      AWS_ACCESS_KEY_ID: <+secrets.getValue("aws_access_key_id")>
+                      AWS_SECRET_ACCESS_KEY: <+secrets.getValue("aws_secret_access_key")>
+                      AWS_DEFAULT_REGION: us-east-1
+                    command: |
+                      cd infra/terraform/aws/eks
+                      terraform init \
+                        -backend-config="bucket=shopos-tfstate" \
+                        -backend-config="key=infra/terraform/aws/eks/terraform.tfstate" \
+                        -backend-config="region=$AWS_DEFAULT_REGION"
+                      if [ "<+pipeline.variables.TF_ACTION>" = "APPLY" ]; then
+                        terraform apply -auto-approve
+                      elif [ "<+pipeline.variables.TF_ACTION>" = "DESTROY" ]; then
+                        terraform destroy -auto-approve
+                      else
+                        terraform plan
+                      fi
+
+    - stage:
+        identifier: gke
+        name: GCP GKE (Terraform)
+        type: CI
+        when:
+          condition: <+pipeline.variables.CLOUD> == "gcp" || <+pipeline.variables.CLOUD> == "all"
+        spec:
+          cloneCodebase: true
+          execution:
+            steps:
+              - step:
+                  identifier: terraform_gke
+                  name: Terraform GKE
+                  type: Run
+                  spec:
+                    image: hashicorp/terraform:1.9.0
+                    envVariables:
+                      GCP_SA_KEY: <+secrets.getValue("gcp_sa_key")>
+                    command: |
+                      echo "$GCP_SA_KEY" > /tmp/gcp-key.json
+                      export GOOGLE_APPLICATION_CREDENTIALS=/tmp/gcp-key.json
+                      cd infra/opentofu/gcp/gke
+                      terraform init \
+                        -backend-config="bucket=shopos-tfstate-gcp" \
+                        -backend-config="prefix=infra/opentofu/gcp/gke"
+                      if [ "<+pipeline.variables.TF_ACTION>" = "APPLY" ]; then
+                        terraform apply -auto-approve
+                      elif [ "<+pipeline.variables.TF_ACTION>" = "DESTROY" ]; then
+                        terraform destroy -auto-approve
+                      else
+                        terraform plan
+                      fi
+                      rm -f /tmp/gcp-key.json
+
+    - stage:
+        identifier: aks
+        name: Azure AKS (Terraform)
+        type: CI
+        when:
+          condition: <+pipeline.variables.CLOUD> == "azure" || <+pipeline.variables.CLOUD> == "all"
+        spec:
+          cloneCodebase: true
+          execution:
+            steps:
+              - step:
+                  identifier: terraform_aks
+                  name: Terraform AKS
+                  type: Run
+                  spec:
+                    image: hashicorp/terraform:1.9.0
+                    envVariables:
+                      ARM_CLIENT_ID: <+secrets.getValue("azure_client_id")>
+                      ARM_CLIENT_SECRET: <+secrets.getValue("azure_client_secret")>
+                      ARM_SUBSCRIPTION_ID: <+secrets.getValue("azure_subscription_id")>
+                      ARM_TENANT_ID: <+secrets.getValue("azure_tenant_id")>
+                    command: |
+                      cd infra/opentofu/azure/aks
+                      terraform init \
+                        -backend-config="resource_group_name=shopos-tfstate-rg" \
+                        -backend-config="storage_account_name=shoposterraform" \
+                        -backend-config="container_name=tfstate" \
+                        -backend-config="key=infra/opentofu/azure/aks/terraform.tfstate"
+                      if [ "<+pipeline.variables.TF_ACTION>" = "APPLY" ]; then
+                        terraform apply -auto-approve
+                      elif [ "<+pipeline.variables.TF_ACTION>" = "DESTROY" ]; then
+                        terraform destroy -auto-approve
+                      else
+                        terraform plan
+                      fi

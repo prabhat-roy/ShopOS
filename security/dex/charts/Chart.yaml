@@ -1,0 +1,6 @@
+apiVersion: v2
+name: dex
+description: Dex - OIDC federation and identity brokering
+type: application
+version: 1.0.0
+appVersion: "v2.41.0"

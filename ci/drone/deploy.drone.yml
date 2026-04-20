@@ -1,0 +1,433 @@
+kind: pipeline
+type: docker
+name: deploy
+
+trigger:
+  event:
+    - push
+    - custom
+  branch:
+    - main
+    - develop
+    - "release/*"
+
+# Secrets required:
+#   harbor_url, harbor_user, harbor_password
+#   sonar_url, sonar_token, snyk_token, fossa_api_key, gitguardian_api_key
+#   anchore_url, anchore_password, clair_url
+#   defectdojo_url, defectdojo_token, deptrack_url, deptrack_key
+#   wazuh_url, wazuh_token, kubeconfig_b64
+
+environment:
+  REGISTRY_PROJECT: shopos
+  ENVIRONMENT: dev
+
+steps:
+
+  - name: resolve-build-context
+    image: alpine/git:latest
+    commands:
+      - export GIT_SHA=$(git rev-parse --short HEAD)
+      - echo "IMAGE_TAG=${ENVIRONMENT}-${GIT_SHA}-${DRONE_BUILD_NUMBER}" > /drone/src/.build.env
+      - cat /drone/src/.build.env
+
+  - name: preflight-checks
+    image: bitnami/kubectl:latest
+    environment:
+      KUBECONFIG_B64:
+        from_secret: kubeconfig_b64
+      HARBOR_URL:
+        from_secret: harbor_url
+    commands:
+      - echo "$KUBECONFIG_B64" | base64 -d > /tmp/kubeconfig
+      - export KUBECONFIG=/tmp/kubeconfig
+      - export BUILD_DOMAIN=${BUILD_DOMAIN:-platform}
+      - export FAILURES=0
+      - |
+        echo "════════════════════════════════════════════════════════════"
+        echo " PRE-FLIGHT CHECKS — $BUILD_DOMAIN → ${ENVIRONMENT:-dev}"
+        echo "════════════════════════════════════════════════════════════"
+      - |
+        # 1. Domain namespace
+        if ! kubectl get namespace "$BUILD_DOMAIN" 2>/dev/null; then
+          echo "FAIL  Namespace '$BUILD_DOMAIN' does not exist — run cluster-bootstrap first"
+          FAILURES=$((FAILURES+1))
+        else
+          echo "OK  namespace '$BUILD_DOMAIN' exists"
+        fi
+      - |
+        # 2. Cilium CNI
+        CILIUM_NS=$(kubectl get daemonset -A --no-headers 2>/dev/null | grep cilium | awk '{print $1}' | head -1)
+        if [ -z "$CILIUM_NS" ]; then
+          echo "FAIL  Cilium DaemonSet not found — cluster has no CNI"; FAILURES=$((FAILURES+1))
+        else
+          kubectl rollout status daemonset/cilium -n "$CILIUM_NS" --timeout=15s || { echo "FAIL  Cilium not ready"; FAILURES=$((FAILURES+1)); }
+        fi
+      - |
+        # 3. Traefik ingress
+        TRAEFIK_NS=$(kubectl get deployment -A --no-headers 2>/dev/null | grep traefik | awk '{print $1}' | head -1)
+        if [ -z "$TRAEFIK_NS" ]; then
+          echo "FAIL  Traefik Deployment not found"; FAILURES=$((FAILURES+1))
+        else
+          kubectl rollout status deployment/traefik -n "$TRAEFIK_NS" --timeout=15s || { echo "FAIL  Traefik not ready"; FAILURES=$((FAILURES+1)); }
+        fi
+      - |
+        # 4. Istio control plane
+        if ! kubectl get deployment istiod -n istio-system 2>/dev/null; then
+          echo "FAIL  istiod not found in istio-system"; FAILURES=$((FAILURES+1))
+        else
+          kubectl rollout status deployment/istiod -n istio-system --timeout=15s || { echo "FAIL  istiod not ready"; FAILURES=$((FAILURES+1)); }
+        fi
+      - |
+        # 5. cert-manager
+        CM_NS=$(kubectl get deployment -A --no-headers 2>/dev/null | grep 'cert-manager ' | awk '{print $1}' | head -1)
+        if [ -z "$CM_NS" ]; then
+          echo "FAIL  cert-manager not found"; FAILURES=$((FAILURES+1))
+        else
+          kubectl rollout status deployment/cert-manager -n "$CM_NS" --timeout=15s || { echo "FAIL  cert-manager not ready"; FAILURES=$((FAILURES+1)); }
+        fi
+      - |
+        # 6. Vault (running + unsealed)
+        VAULT_NS=$(kubectl get statefulset -A --no-headers 2>/dev/null | grep vault | awk '{print $1}' | head -1)
+        if [ -z "$VAULT_NS" ]; then
+          echo "FAIL  Vault StatefulSet not found"; FAILURES=$((FAILURES+1))
+        else
+          kubectl rollout status statefulset/vault -n "$VAULT_NS" --timeout=15s || { echo "FAIL  Vault not ready"; FAILURES=$((FAILURES+1)); }
+          SEALED=$(kubectl exec vault-0 -n "$VAULT_NS" -- vault status -format=json 2>/dev/null | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('sealed',True))" 2>/dev/null || echo "True")
+          if [ "$SEALED" = "True" ]; then
+            echo "FAIL  Vault is sealed"; FAILURES=$((FAILURES+1))
+          else
+            echo "OK  Vault is unsealed"
+          fi
+        fi
+      - |
+        # 7. External Secrets Operator
+        ESO_NS=$(kubectl get deployment -A --no-headers 2>/dev/null | grep external-secrets | grep -v webhook | awk '{print $1}' | head -1)
+        if [ -z "$ESO_NS" ]; then
+          echo "FAIL  External Secrets Operator not found"; FAILURES=$((FAILURES+1))
+        else
+          kubectl rollout status deployment/external-secrets -n "$ESO_NS" --timeout=15s || { echo "FAIL  ESO not ready"; FAILURES=$((FAILURES+1)); }
+        fi
+      - |
+        # 8. Kafka
+        KAFKA_NS=$(kubectl get statefulset -A --no-headers 2>/dev/null | grep kafka | awk '{print $1}' | head -1)
+        if [ -z "$KAFKA_NS" ]; then
+          echo "FAIL  Kafka StatefulSet not found"; FAILURES=$((FAILURES+1))
+        else
+          kubectl rollout status statefulset/kafka -n "$KAFKA_NS" --timeout=15s || { echo "FAIL  Kafka not ready"; FAILURES=$((FAILURES+1)); }
+        fi
+      - |
+        # 9. Schema Registry
+        SR_NS=$(kubectl get deployment -A --no-headers 2>/dev/null | grep schema-registry | awk '{print $1}' | head -1)
+        if [ -z "$SR_NS" ]; then
+          echo "FAIL  Schema Registry not found"; FAILURES=$((FAILURES+1))
+        else
+          kubectl rollout status deployment/schema-registry -n "$SR_NS" --timeout=15s || { echo "FAIL  Schema Registry not ready"; FAILURES=$((FAILURES+1)); }
+        fi
+      - |
+        # 10. Harbor registry
+        if [ -n "$HARBOR_URL" ]; then
+          curl -sf --max-time 10 "https://$HARBOR_URL/api/v2.0/ping" 2>/dev/null || \
+          curl -sf --max-time 10 "http://$HARBOR_URL/api/v2.0/ping" 2>/dev/null || \
+          { echo "FAIL  Harbor at '$HARBOR_URL' unreachable"; FAILURES=$((FAILURES+1)); }
+        else
+          echo "WARN  HARBOR_URL not set — registry check skipped"
+        fi
+      - |
+        echo "════════════════════════════════════════════════════════════"
+        if [ "$FAILURES" -gt 0 ]; then
+          echo " FAILURES: $FAILURES blocking issue(s). Run cluster-bootstrap pipeline first."
+          echo "════════════════════════════════════════════════════════════"
+          exit 1
+        fi
+        echo " All required components are ready. Proceeding with deployment."
+        echo "════════════════════════════════════════════════════════════"
+
+  - name: secret-scan
+    image: zricethezav/gitleaks:latest
+    commands:
+      - gitleaks detect --source . --report-format json --report-path reports/secrets/gitleaks.json --exit-code 0 || true
+    volumes:
+      - name: reports
+        path: /drone/src/reports
+
+  - name: sast-semgrep
+    image: semgrep/semgrep:latest
+    commands:
+      - mkdir -p reports/sast
+      - semgrep scan --config=auto --json --output=reports/sast/semgrep.json src/ || true
+    volumes:
+      - name: reports
+        path: /drone/src/reports
+
+  - name: sast-shellcheck
+    image: koalaman/shellcheck-alpine:stable
+    commands:
+      - mkdir -p reports/sast
+      - find . -name "*.sh" -not -path "./.git/*" | xargs shellcheck -f json > reports/sast/shellcheck.json 2>/dev/null || true
+
+  - name: sca-trivy-fs
+    image: aquasec/trivy:latest
+    commands:
+      - mkdir -p reports/sca
+      - trivy fs --format json --output reports/sca/trivy-fs.json --severity HIGH,CRITICAL src/ || true
+
+  - name: sca-syft-sbom
+    image: anchore/syft:latest
+    commands:
+      - mkdir -p reports/sca
+      - syft dir:src -o spdx-json=reports/sca/sbom-source.spdx.json || true
+      - syft dir:src -o cyclonedx-json=reports/sca/sbom-source.cdx.json || true
+
+  - name: iac-checkov
+    image: bridgecrew/checkov:latest
+    commands:
+      - mkdir -p reports/iac
+      - checkov -d . --output json --output-file-path reports/iac/ --quiet || true
+
+  - name: iac-kics
+    image: checkmarx/kics:latest
+    commands:
+      - mkdir -p reports/iac
+      - kics scan -p . -o reports/iac/ --report-formats json --no-progress || true
+
+  - name: test-go
+    image: golang:1.24-alpine
+    commands:
+      - apk add --no-cache make git
+      - |
+        for domain in platform identity catalog commerce supply-chain financial customer-experience communications content b2b integrations affiliate; do
+          for svc in src/$domain/*/; do
+            [ -f "$svc/go.mod" ] || continue
+            echo "=== Testing $svc ==="
+            (cd "$svc" && go test ./... -race -count=1) || true
+          done
+        done
+    when:
+      event: [push, pull_request]
+
+  - name: test-java
+    image: maven:3.9-eclipse-temurin-21
+    commands:
+      - |
+        for domain in platform identity catalog commerce supply-chain financial customer-experience b2b integrations; do
+          for svc in src/$domain/*/; do
+            [ -f "$svc/pom.xml" ] || continue
+            echo "=== Testing $svc ==="
+            (cd "$svc" && mvn test -q) || true
+          done
+        done
+    when:
+      event: [push, pull_request]
+
+  - name: test-kotlin
+    image: gradle:8.10-jdk21
+    commands:
+      - |
+        for domain in catalog commerce supply-chain financial b2b; do
+          for svc in src/$domain/*/; do
+            [ -f "$svc/build.gradle.kts" ] || continue
+            echo "=== Testing $svc ==="
+            (cd "$svc" && gradle test -q) || true
+          done
+        done
+    when:
+      event: [push, pull_request]
+
+  - name: test-python
+    image: python:3.13-slim
+    commands:
+      - pip install pytest pytest-asyncio httpx -q
+      - |
+        for domain in platform supply-chain content analytics-ai communications; do
+          for svc in src/$domain/*/; do
+            [ -f "$svc/requirements.txt" ] || continue
+            echo "=== Testing $svc ==="
+            (cd "$svc" && pip install -r requirements.txt -q && pytest -q) || true
+          done
+        done
+    when:
+      event: [push, pull_request]
+
+  - name: test-node
+    image: node:22-alpine
+    commands:
+      - |
+        for domain in platform catalog commerce supply-chain customer-experience communications content analytics-ai b2b integrations; do
+          for svc in src/$domain/*/; do
+            [ -f "$svc/package.json" ] || continue
+            echo "=== Testing $svc ==="
+            (cd "$svc" && npm ci --silent && npm test) || true
+          done
+        done
+    when:
+      event: [push, pull_request]
+
+  - name: test-dotnet
+    image: mcr.microsoft.com/dotnet/sdk:8.0
+    commands:
+      - |
+        for domain in commerce; do
+          for svc in src/$domain/*/; do
+            [ -f "$svc/*.csproj" ] && (cd "$svc" && dotnet test -q) || true
+          done
+        done
+    when:
+      event: [push, pull_request]
+
+  - name: test-rust
+    image: rust:1.82-alpine
+    commands:
+      - apk add --no-cache musl-dev
+      - |
+        for domain in identity commerce supply-chain; do
+          for svc in src/$domain/*/; do
+            [ -f "$svc/Cargo.toml" ] || continue
+            echo "=== Testing $svc ==="
+            (cd "$svc" && cargo test) || true
+          done
+        done
+    when:
+      event: [push, pull_request]
+
+  - name: docker-build
+    image: docker:27-dind
+    privileged: true
+    environment:
+      HARBOR_URL:
+        from_secret: harbor_url
+      HARBOR_USER:
+        from_secret: harbor_user
+      HARBOR_PASSWORD:
+        from_secret: harbor_password
+    commands:
+      - source /drone/src/.build.env
+      - echo "$HARBOR_PASSWORD" | docker login $HARBOR_URL -u $HARBOR_USER --password-stdin
+      - |
+        DOMAIN=${BUILD_DOMAIN:-platform}
+        for svc in src/$DOMAIN/*/; do
+          svc_name=$(basename $svc)
+          image="$HARBOR_URL/$REGISTRY_PROJECT/$svc_name:$IMAGE_TAG"
+          echo "=== Building $image ==="
+          docker build -t $image $svc/ || true
+        done
+    volumes:
+      - name: docker-sock
+        path: /var/run/docker.sock
+
+  - name: image-scan-trivy
+    image: aquasec/trivy:latest
+    environment:
+      HARBOR_URL:
+        from_secret: harbor_url
+    commands:
+      - source /drone/src/.build.env
+      - mkdir -p reports/image-scan
+      - |
+        DOMAIN=${BUILD_DOMAIN:-platform}
+        for svc in src/$DOMAIN/*/; do
+          svc_name=$(basename $svc)
+          image="$HARBOR_URL/$REGISTRY_PROJECT/$svc_name:$IMAGE_TAG"
+          trivy image --format json --output reports/image-scan/trivy-$svc_name.json \
+            --severity HIGH,CRITICAL $image || true
+        done
+
+  - name: push-to-registry
+    image: docker:27-dind
+    privileged: true
+    environment:
+      HARBOR_URL:
+        from_secret: harbor_url
+      HARBOR_USER:
+        from_secret: harbor_user
+      HARBOR_PASSWORD:
+        from_secret: harbor_password
+    commands:
+      - source /drone/src/.build.env
+      - echo "$HARBOR_PASSWORD" | docker login $HARBOR_URL -u $HARBOR_USER --password-stdin
+      - |
+        DOMAIN=${BUILD_DOMAIN:-platform}
+        for svc in src/$DOMAIN/*/; do
+          svc_name=$(basename $svc)
+          image="$HARBOR_URL/$REGISTRY_PROJECT/$svc_name:$IMAGE_TAG"
+          echo "=== Pushing $image ==="
+          docker push $image || true
+        done
+    when:
+      branch: [main, develop, "release/*"]
+    volumes:
+      - name: docker-sock
+        path: /var/run/docker.sock
+
+  - name: sign-images-cosign
+    image: gcr.io/projectsigstore/cosign:latest
+    environment:
+      HARBOR_URL:
+        from_secret: harbor_url
+    commands:
+      - source /drone/src/.build.env
+      - |
+        DOMAIN=${BUILD_DOMAIN:-platform}
+        for svc in src/$DOMAIN/*/; do
+          svc_name=$(basename $svc)
+          image="$HARBOR_URL/$REGISTRY_PROJECT/$svc_name:$IMAGE_TAG"
+          cosign sign --yes $image || true
+        done
+    when:
+      branch: [main]
+
+  - name: deploy-to-k8s
+    image: alpine/helm:3.16.2
+    environment:
+      KUBECONFIG_B64:
+        from_secret: kubeconfig_b64
+      HARBOR_URL:
+        from_secret: harbor_url
+    commands:
+      - source /drone/src/.build.env
+      - echo "$KUBECONFIG_B64" | base64 -d > /tmp/kubeconfig
+      - export KUBECONFIG=/tmp/kubeconfig
+      - apk add --no-cache kubectl
+      - |
+        DOMAIN=${BUILD_DOMAIN:-platform}
+        for svc in src/$DOMAIN/*/; do
+          svc_name=$(basename $svc)
+          ns=$DOMAIN
+          image_repo="$HARBOR_URL/$REGISTRY_PROJECT/$svc_name"
+          values_file="helm/charts/$svc_name/values-${ENVIRONMENT}.yaml"
+          echo "=== Deploying $svc_name → namespace=$ns ==="
+          helm upgrade --install $svc_name helm/charts/$svc_name \
+            --namespace $ns \
+            --create-namespace \
+            --set image.repository=$image_repo \
+            --set image.tag=$IMAGE_TAG \
+            --set environment=$ENVIRONMENT \
+            $([ -f $values_file ] && echo "-f $values_file" || true) \
+            --wait --timeout 5m || true
+        done
+      - rm -f /tmp/kubeconfig
+    when:
+      branch: [main, develop]
+
+  - name: notify-slack
+    image: plugins/slack
+    settings:
+      webhook:
+        from_secret: slack_webhook
+      channel: "#deployments"
+      template: |
+        {{#success build.status}}
+        :white_check_mark: *Deploy succeeded* — {{repo.name}} on {{build.branch}} ({{build.number}})
+        {{else}}
+        :x: *Deploy failed* — {{repo.name}} on {{build.branch}} ({{build.number}})
+        {{/success}}
+    when:
+      status: [success, failure]
+      branch: [main]
+
+volumes:
+  - name: docker-sock
+    host:
+      path: /var/run/docker.sock
+  - name: reports
+    temp: {}

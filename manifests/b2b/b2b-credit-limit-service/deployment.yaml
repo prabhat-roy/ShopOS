@@ -1,0 +1,83 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: b2b-credit-limit-service
+  namespace: b2b
+  labels:
+    app: b2b-credit-limit-service
+    domain: b2b
+    version: v1
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: b2b-credit-limit-service
+  template:
+    metadata:
+      labels:
+        app: b2b-credit-limit-service
+        domain: b2b
+        version: v1
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "50164"
+    spec:
+      serviceAccountName: b2b-credit-limit-service
+      terminationGracePeriodSeconds: 30
+      containers:
+        - name: b2b-credit-limit-service
+          image: shopos/b2b-credit-limit-service:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: grpc
+              containerPort: 50164
+              protocol: TCP
+          envFrom:
+            - configMapRef:
+                name: b2b-credit-limit-service
+          env:
+            - name: POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            - name: POD_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+          resources:
+            requests:
+              cpu: 250m
+              memory: 256Mi
+            limits:
+              cpu: 1
+              memory: 1Gi
+          livenessProbe:
+            tcpSocket:
+              port: 50164
+            initialDelaySeconds: 15
+            periodSeconds: 20
+            failureThreshold: 3
+          readinessProbe:
+            tcpSocket:
+              port: 50164
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            failureThreshold: 3
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 1000
+            readOnlyRootFilesystem: true
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+      securityContext:
+        fsGroup: 2000
+        runAsNonRoot: true
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: kubernetes.io/hostname
+          whenUnsatisfiable: ScheduleAnyway
+          labelSelector:
+            matchLabels:
+              app: b2b-credit-limit-service

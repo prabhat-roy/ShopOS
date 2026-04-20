@@ -1,0 +1,196 @@
+# Observability Stack — GCP Cloud Build
+# Mirrors .github/workflows/observability.yml
+# Substitutions: _ENVIRONMENT, _ACTION, _PROMETHEUS, _GRAFANA, _LOKI,
+#   _JAEGER, _TEMPO, _OTEL_COLLECTOR, _THANOS, _FLUENT_BIT, _METRICS_SERVER
+
+substitutions:
+  _ENVIRONMENT: dev
+  _ACTION: INSTALL
+  _PROMETHEUS: "true"
+  _GRAFANA: "true"
+  _LOKI: "true"
+  _JAEGER: "true"
+  _TEMPO: "true"
+  _OTEL_COLLECTOR: "true"
+  _THANOS: "false"
+  _FLUENT_BIT: "true"
+  _METRICS_SERVER: "true"
+
+options:
+  logging: CLOUD_LOGGING_ONLY
+  machineType: E2_STANDARD_4
+
+availableSecrets:
+  secretManager:
+    - versionName: projects/$PROJECT_ID/secrets/kubeconfig-content/versions/latest
+      env: KUBECONFIG_CONTENT
+    - versionName: projects/$PROJECT_ID/secrets/grafana-admin-password/versions/latest
+      env: GRAFANA_ADMIN_PASSWORD
+    - versionName: projects/$PROJECT_ID/secrets/minio-secret-key/versions/latest
+      env: MINIO_SECRET_KEY
+
+steps:
+  - name: alpine/helm
+    id: metrics-server
+    secretEnv: [KUBECONFIG_CONTENT]
+    entrypoint: bash
+    args:
+      - -c
+      - |
+        [ "$_METRICS_SERVER" = "true" ] || exit 0
+        mkdir -p ~/.kube && echo "$$KUBECONFIG_CONTENT" | base64 -d > ~/.kube/config
+        helm repo add metrics-server https://kubernetes-sigs.github.io/metrics-server --force-update
+        helm upgrade --install metrics-server metrics-server/metrics-server \
+          --namespace kube-system \
+          --set args[0]=--kubelet-insecure-tls \
+          --wait --timeout 3m
+
+  - name: alpine/helm
+    id: prometheus
+    secretEnv: [KUBECONFIG_CONTENT]
+    entrypoint: bash
+    args:
+      - -c
+      - |
+        [ "$_PROMETHEUS" = "true" ] || exit 0
+        mkdir -p ~/.kube && echo "$$KUBECONFIG_CONTENT" | base64 -d > ~/.kube/config
+        helm repo add prometheus-community https://prometheus-community.github.io/helm-charts --force-update
+        if [ "$_ACTION" = "UNINSTALL" ]; then
+          helm uninstall kube-prometheus-stack -n observability 2>/dev/null || true
+        else
+          helm upgrade --install kube-prometheus-stack prometheus-community/kube-prometheus-stack \
+            --namespace observability --create-namespace \
+            --set prometheus.prometheusSpec.retention=30d \
+            --set alertmanager.alertmanagerSpec.replicas=2 \
+            --set grafana.enabled=false \
+            --set prometheus.prometheusSpec.serviceMonitorSelectorNilUsesHelmValues=false \
+            --wait --timeout 10m
+        fi
+    waitFor: [metrics-server]
+
+  - name: alpine/helm
+    id: grafana
+    secretEnv: [KUBECONFIG_CONTENT, GRAFANA_ADMIN_PASSWORD]
+    entrypoint: bash
+    args:
+      - -c
+      - |
+        [ "$_GRAFANA" = "true" ] || exit 0
+        mkdir -p ~/.kube && echo "$$KUBECONFIG_CONTENT" | base64 -d > ~/.kube/config
+        helm repo add grafana https://grafana.github.io/helm-charts --force-update
+        if [ "$_ACTION" = "UNINSTALL" ]; then
+          helm uninstall grafana -n observability 2>/dev/null || true
+        else
+          helm upgrade --install grafana grafana/grafana \
+            --namespace observability --create-namespace \
+            --set adminPassword="$$GRAFANA_ADMIN_PASSWORD" \
+            --set persistence.enabled=true \
+            --set sidecar.dashboards.enabled=true \
+            --set sidecar.datasources.enabled=true \
+            --wait --timeout 5m
+        fi
+    waitFor: [prometheus]
+
+  - name: alpine/helm
+    id: loki
+    secretEnv: [KUBECONFIG_CONTENT, MINIO_SECRET_KEY]
+    entrypoint: bash
+    args:
+      - -c
+      - |
+        [ "$_LOKI" = "true" ] || exit 0
+        mkdir -p ~/.kube && echo "$$KUBECONFIG_CONTENT" | base64 -d > ~/.kube/config
+        helm repo add grafana https://grafana.github.io/helm-charts --force-update
+        if [ "$_ACTION" = "UNINSTALL" ]; then
+          helm uninstall loki -n observability 2>/dev/null || true
+        else
+          helm upgrade --install loki grafana/loki \
+            --namespace observability --create-namespace \
+            --set loki.auth_enabled=false \
+            --set loki.storage.type=gcs \
+            --set loki.storage.gcs.bucketname=shopos-loki-chunks-$_ENVIRONMENT \
+            --wait --timeout 8m
+        fi
+    waitFor: [grafana]
+
+  - name: alpine/helm
+    id: fluent-bit
+    secretEnv: [KUBECONFIG_CONTENT]
+    entrypoint: bash
+    args:
+      - -c
+      - |
+        [ "$_FLUENT_BIT" = "true" ] || exit 0
+        mkdir -p ~/.kube && echo "$$KUBECONFIG_CONTENT" | base64 -d > ~/.kube/config
+        helm repo add fluent https://fluent.github.io/helm-charts --force-update
+        if [ "$_ACTION" = "UNINSTALL" ]; then
+          helm uninstall fluent-bit -n observability 2>/dev/null || true
+        else
+          helm upgrade --install fluent-bit fluent/fluent-bit \
+            --namespace observability --create-namespace \
+            --wait --timeout 5m
+        fi
+    waitFor: [loki]
+
+  - name: alpine/helm
+    id: jaeger
+    secretEnv: [KUBECONFIG_CONTENT]
+    entrypoint: bash
+    args:
+      - -c
+      - |
+        [ "$_JAEGER" = "true" ] || exit 0
+        mkdir -p ~/.kube && echo "$$KUBECONFIG_CONTENT" | base64 -d > ~/.kube/config
+        helm repo add jaegertracing https://jaegertracing.github.io/helm-charts --force-update
+        if [ "$_ACTION" = "UNINSTALL" ]; then
+          helm uninstall jaeger -n observability 2>/dev/null || true
+        else
+          helm upgrade --install jaeger jaegertracing/jaeger \
+            --namespace observability --create-namespace \
+            --set provisionDataStore.cassandra=false \
+            --set storage.type=elasticsearch \
+            --wait --timeout 8m
+        fi
+    waitFor: [fluent-bit]
+
+  - name: alpine/helm
+    id: tempo
+    secretEnv: [KUBECONFIG_CONTENT]
+    entrypoint: bash
+    args:
+      - -c
+      - |
+        [ "$_TEMPO" = "true" ] || exit 0
+        mkdir -p ~/.kube && echo "$$KUBECONFIG_CONTENT" | base64 -d > ~/.kube/config
+        helm repo add grafana https://grafana.github.io/helm-charts --force-update
+        if [ "$_ACTION" = "UNINSTALL" ]; then
+          helm uninstall tempo-distributed -n observability 2>/dev/null || true
+        else
+          helm upgrade --install tempo-distributed grafana/tempo-distributed \
+            --namespace observability --create-namespace \
+            --set storage.trace.backend=gcs \
+            --set storage.trace.gcs.bucket_name=shopos-tempo-traces-$_ENVIRONMENT \
+            --wait --timeout 8m
+        fi
+    waitFor: [jaeger]
+
+  - name: alpine/helm
+    id: otel-collector
+    secretEnv: [KUBECONFIG_CONTENT]
+    entrypoint: bash
+    args:
+      - -c
+      - |
+        [ "$_OTEL_COLLECTOR" = "true" ] || exit 0
+        mkdir -p ~/.kube && echo "$$KUBECONFIG_CONTENT" | base64 -d > ~/.kube/config
+        helm repo add open-telemetry https://open-telemetry.github.io/opentelemetry-helm-charts --force-update
+        if [ "$_ACTION" = "UNINSTALL" ]; then
+          helm uninstall otel-collector -n observability 2>/dev/null || true
+        else
+          helm upgrade --install otel-collector open-telemetry/opentelemetry-collector \
+            --namespace observability --create-namespace \
+            --set mode=deployment --set replicaCount=2 \
+            -f observability/otel-collector/values.yaml \
+            --wait --timeout 5m
+        fi
+    waitFor: [tempo]

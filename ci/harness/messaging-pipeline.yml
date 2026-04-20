@@ -1,0 +1,128 @@
+# Messaging Infrastructure Pipeline — Harness CI
+pipeline:
+  identifier: shopos_messaging
+  name: ShopOS Messaging Infrastructure
+  projectIdentifier: shopos
+  orgIdentifier: default
+
+  variables:
+    - name: CREATE_TOPICS
+      type: String
+      value: "false"
+
+  stages:
+    - stage:
+        identifier: coordination
+        name: Coordination — ZooKeeper
+        type: CI
+        spec:
+          cloneCodebase: false
+          execution:
+            steps:
+              - step:
+                  identifier: zookeeper
+                  name: Install ZooKeeper
+                  type: Run
+                  spec:
+                    image: alpine/helm:latest
+                    envVariables:
+                      KUBECONFIG_CONTENT: <+secrets.getValue("kubeconfig_content")>
+                    command: |
+                      mkdir -p ~/.kube && echo "$KUBECONFIG_CONTENT" | base64 -d > ~/.kube/config
+                      helm repo add bitnami https://charts.bitnami.com/bitnami --force-update
+                      helm upgrade --install zookeeper bitnami/zookeeper \
+                        --namespace messaging --create-namespace \
+                        --set replicaCount=3 --wait --timeout 8m
+
+    - stage:
+        identifier: brokers
+        name: Message Brokers
+        type: CI
+        spec:
+          cloneCodebase: false
+          execution:
+            steps:
+              - step:
+                  identifier: kafka
+                  name: Install Kafka
+                  type: Run
+                  spec:
+                    image: alpine/helm:latest
+                    envVariables:
+                      KUBECONFIG_CONTENT: <+secrets.getValue("kubeconfig_content")>
+                    command: |
+                      mkdir -p ~/.kube && echo "$KUBECONFIG_CONTENT" | base64 -d > ~/.kube/config
+                      helm repo add bitnami https://charts.bitnami.com/bitnami --force-update
+                      helm upgrade --install kafka bitnami/kafka \
+                        --namespace messaging \
+                        --set replicaCount=3 \
+                        --set zookeeper.enabled=false \
+                        --set externalZookeeper.servers=zookeeper.messaging.svc:2181 \
+                        --set autoCreateTopicsEnable=false \
+                        --set defaultReplicationFactor=3 --wait --timeout 10m
+              - step:
+                  identifier: rabbitmq
+                  name: Install RabbitMQ
+                  type: Run
+                  spec:
+                    image: alpine/helm:latest
+                    envVariables:
+                      KUBECONFIG_CONTENT: <+secrets.getValue("kubeconfig_content")>
+                      RABBITMQ_PASSWORD: <+secrets.getValue("rabbitmq_password")>
+                    command: |
+                      mkdir -p ~/.kube && echo "$KUBECONFIG_CONTENT" | base64 -d > ~/.kube/config
+                      helm repo add bitnami https://charts.bitnami.com/bitnami --force-update
+                      helm upgrade --install rabbitmq bitnami/rabbitmq \
+                        --namespace messaging \
+                        --set replicaCount=3 \
+                        --set auth.password="$RABBITMQ_PASSWORD" \
+                        --set clustering.enabled=true --wait --timeout 8m
+              - step:
+                  identifier: nats
+                  name: Install NATS JetStream
+                  type: Run
+                  spec:
+                    image: alpine/helm:latest
+                    envVariables:
+                      KUBECONFIG_CONTENT: <+secrets.getValue("kubeconfig_content")>
+                    command: |
+                      mkdir -p ~/.kube && echo "$KUBECONFIG_CONTENT" | base64 -d > ~/.kube/config
+                      helm repo add nats https://nats-io.github.io/k8s/helm/charts --force-update
+                      helm upgrade --install nats nats/nats \
+                        --namespace messaging \
+                        --set nats.jetstream.enabled=true \
+                        --set cluster.enabled=true --set cluster.replicas=3 --wait --timeout 5m
+
+    - stage:
+        identifier: configure
+        name: Configure — Kafka Topics
+        type: CI
+        spec:
+          cloneCodebase: false
+          execution:
+            steps:
+              - step:
+                  identifier: create_topics
+                  name: Create Kafka Topics
+                  type: Run
+                  spec:
+                    image: bitnami/kubectl:latest
+                    envVariables:
+                      KUBECONFIG_CONTENT: <+secrets.getValue("kubeconfig_content")>
+                    command: |
+                      [ "<+pipeline.variables.CREATE_TOPICS>" = "true" ] || { echo "Skipped"; exit 0; }
+                      mkdir -p ~/.kube && echo "$KUBECONFIG_CONTENT" | base64 -d > ~/.kube/config
+                      KAFKA_POD=$(kubectl get pods -n messaging -l app.kubernetes.io/name=kafka -o jsonpath='{.items[0].metadata.name}')
+                      for TOPIC in identity.user.registered identity.user.deleted \
+                        commerce.order.placed commerce.order.cancelled commerce.order.fulfilled \
+                        commerce.payment.processed commerce.payment.failed commerce.cart.abandoned \
+                        supplychain.shipment.created supplychain.shipment.updated \
+                        supplychain.inventory.low supplychain.inventory.restocked \
+                        notification.email.requested notification.sms.requested notification.push.requested \
+                        analytics.page.viewed analytics.product.clicked analytics.search.performed \
+                        security.fraud.detected security.login.failed; do
+                        kubectl exec -n messaging "$KAFKA_POD" -- \
+                          kafka-topics.sh --create --if-not-exists \
+                          --bootstrap-server kafka.messaging.svc:9092 \
+                          --topic "$TOPIC" --partitions 12 --replication-factor 3 || true
+                      done

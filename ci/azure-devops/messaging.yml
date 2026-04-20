@@ -1,0 +1,254 @@
+name: Messaging Infrastructure
+
+trigger: none
+
+parameters:
+  - name: environment
+    displayName: Target environment
+    type: string
+    default: dev
+    values: [dev, staging, prod]
+  - name: action
+    displayName: Action
+    type: string
+    default: INSTALL
+    values: [INSTALL, UPGRADE, UNINSTALL, CONFIGURE]
+  - name: zookeeper
+    type: boolean
+    default: true
+  - name: kafka
+    type: boolean
+    default: true
+  - name: schema_registry
+    type: boolean
+    default: true
+  - name: kafka_connect
+    type: boolean
+    default: true
+  - name: rabbitmq
+    type: boolean
+    default: true
+  - name: nats
+    type: boolean
+    default: true
+  - name: kafka_ui
+    type: boolean
+    default: true
+  - name: debezium
+    type: boolean
+    default: false
+  - name: flink
+    type: boolean
+    default: false
+
+variables:
+  - group: shopos-secrets
+
+pool:
+  vmImage: ubuntu-latest
+
+jobs:
+  - job: Messaging
+    displayName: Messaging ${{ parameters.action }} on ${{ parameters.environment }}
+    timeoutInMinutes: 60
+    steps:
+      - task: KubectlInstaller@0
+
+      - script: |
+          curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
+        displayName: Install Helm
+
+      - script: |
+          mkdir -p ~/.kube
+          echo "$(KUBECONFIG_CONTENT)" | base64 -d > ~/.kube/config
+        displayName: Configure kubeconfig
+
+      # ── ZooKeeper ─────────────────────────────────────────────────────────
+      - ${{ if and(eq(parameters.zookeeper, true), ne(parameters.action, 'CONFIGURE')) }}:
+        - script: |
+            helm repo add bitnami https://charts.bitnami.com/bitnami --force-update
+            if [ "${{ parameters.action }}" = "UNINSTALL" ]; then
+              helm uninstall zookeeper -n messaging 2>/dev/null || true
+            else
+              helm upgrade --install zookeeper bitnami/zookeeper \
+                --namespace messaging --create-namespace \
+                --set replicaCount=3 \
+                --set auth.enabled=false \
+                --set allowAnonymousLogin=true \
+                --wait --timeout 8m
+            fi
+          displayName: ZooKeeper
+
+      # ── Kafka ─────────────────────────────────────────────────────────────
+      - ${{ if and(eq(parameters.kafka, true), ne(parameters.action, 'CONFIGURE')) }}:
+        - script: |
+            helm repo add bitnami https://charts.bitnami.com/bitnami --force-update
+            if [ "${{ parameters.action }}" = "UNINSTALL" ]; then
+              helm uninstall kafka -n messaging 2>/dev/null || true
+            else
+              helm upgrade --install kafka bitnami/kafka \
+                --namespace messaging --create-namespace \
+                --set replicaCount=3 \
+                --set zookeeper.enabled=false \
+                --set externalZookeeper.servers=zookeeper.messaging.svc:2181 \
+                --set deleteTopicEnable=true \
+                --set autoCreateTopicsEnable=false \
+                --set offsetsTopicReplicationFactor=3 \
+                --set defaultReplicationFactor=3 \
+                --wait --timeout 10m
+            fi
+          displayName: Apache Kafka
+
+      # ── Schema Registry ───────────────────────────────────────────────────
+      - ${{ if and(eq(parameters.schema_registry, true), ne(parameters.action, 'CONFIGURE')) }}:
+        - script: |
+            helm repo add bitnami https://charts.bitnami.com/bitnami --force-update
+            if [ "${{ parameters.action }}" = "UNINSTALL" ]; then
+              helm uninstall schema-registry -n messaging 2>/dev/null || true
+            else
+              helm upgrade --install schema-registry bitnami/schema-registry \
+                --namespace messaging --create-namespace \
+                --set kafka.enabled=false \
+                --set externalKafka.brokers=kafka.messaging.svc:9092 \
+                --set replicaCount=2 \
+                --wait --timeout 5m
+            fi
+          displayName: Confluent Schema Registry
+
+      # ── Kafka Connect ─────────────────────────────────────────────────────
+      - ${{ if and(eq(parameters.kafka_connect, true), ne(parameters.action, 'CONFIGURE')) }}:
+        - script: |
+            helm repo add bitnami https://charts.bitnami.com/bitnami --force-update
+            if [ "${{ parameters.action }}" = "UNINSTALL" ]; then
+              helm uninstall kafka-connect -n messaging 2>/dev/null || true
+            else
+              helm upgrade --install kafka-connect bitnami/kafka \
+                --namespace messaging \
+                --set kafka.enabled=false \
+                --wait --timeout 5m || true
+              kubectl apply -f messaging/kafka/ 2>/dev/null || true
+            fi
+          displayName: Kafka Connect
+
+      # ── RabbitMQ ──────────────────────────────────────────────────────────
+      - ${{ if and(eq(parameters.rabbitmq, true), ne(parameters.action, 'CONFIGURE')) }}:
+        - script: |
+            helm repo add bitnami https://charts.bitnami.com/bitnami --force-update
+            if [ "${{ parameters.action }}" = "UNINSTALL" ]; then
+              helm uninstall rabbitmq -n messaging 2>/dev/null || true
+            else
+              helm upgrade --install rabbitmq bitnami/rabbitmq \
+                --namespace messaging --create-namespace \
+                --set replicaCount=3 \
+                --set auth.username=admin \
+                --set auth.password="$(RABBITMQ_PASSWORD)" \
+                --set clustering.enabled=true \
+                --set metrics.enabled=true \
+                --wait --timeout 8m
+              kubectl apply -f messaging/rabbitmq/ 2>/dev/null || true
+            fi
+          displayName: RabbitMQ
+
+      # ── NATS ──────────────────────────────────────────────────────────────
+      - ${{ if and(eq(parameters.nats, true), ne(parameters.action, 'CONFIGURE')) }}:
+        - script: |
+            helm repo add nats https://nats-io.github.io/k8s/helm/charts --force-update
+            if [ "${{ parameters.action }}" = "UNINSTALL" ]; then
+              helm uninstall nats -n messaging 2>/dev/null || true
+            else
+              helm upgrade --install nats nats/nats \
+                --namespace messaging --create-namespace \
+                --set nats.jetstream.enabled=true \
+                --set cluster.enabled=true \
+                --set cluster.replicas=3 \
+                --set nats.jetstream.memStorage.enabled=true \
+                --set nats.jetstream.fileStorage.enabled=true \
+                --set nats.jetstream.fileStorage.size=20Gi \
+                --wait --timeout 5m
+              kubectl apply -f messaging/nats/ 2>/dev/null || true
+            fi
+          displayName: NATS JetStream
+
+      # ── Kafka UI ──────────────────────────────────────────────────────────
+      - ${{ if and(eq(parameters.kafka_ui, true), ne(parameters.action, 'CONFIGURE')) }}:
+        - script: |
+            helm repo add kafka-ui https://provectus.github.io/kafka-ui-charts --force-update
+            if [ "${{ parameters.action }}" = "UNINSTALL" ]; then
+              helm uninstall kafka-ui -n messaging 2>/dev/null || true
+            else
+              helm upgrade --install kafka-ui kafka-ui/kafka-ui \
+                --namespace messaging --create-namespace \
+                --set yamlApplicationConfig.kafka.clusters[0].name=shopos \
+                --set "yamlApplicationConfig.kafka.clusters[0].bootstrapServers=kafka.messaging.svc:9092" \
+                --set yamlApplicationConfig.kafka.clusters[0].schemaRegistry=http://schema-registry.messaging.svc:8081 \
+                --wait --timeout 3m
+            fi
+          displayName: Kafka UI
+
+      # ── Debezium ──────────────────────────────────────────────────────────
+      - ${{ if and(eq(parameters.debezium, true), ne(parameters.action, 'CONFIGURE')) }}:
+        - script: |
+            if [ "${{ parameters.action }}" = "UNINSTALL" ]; then
+              kubectl delete -f streaming/debezium/ 2>/dev/null || true
+            else
+              kubectl apply -f streaming/debezium/
+            fi
+          displayName: Debezium CDC
+
+      # ── Apache Flink ──────────────────────────────────────────────────────
+      - ${{ if and(eq(parameters.flink, true), ne(parameters.action, 'CONFIGURE')) }}:
+        - script: |
+            helm repo add flink-operator-helm https://downloads.apache.org/flink/flink-kubernetes-operator --force-update
+            if [ "${{ parameters.action }}" = "UNINSTALL" ]; then
+              helm uninstall flink-kubernetes-operator -n flink 2>/dev/null || true
+            else
+              helm upgrade --install flink-kubernetes-operator flink-operator-helm/flink-kubernetes-operator \
+                --namespace flink --create-namespace \
+                --wait --timeout 5m
+              kubectl apply -f streaming/flink/ 2>/dev/null || true
+            fi
+          displayName: Apache Flink Operator
+
+      # ── CONFIGURE: Create Kafka Topics ────────────────────────────────────
+      - ${{ if eq(parameters.action, 'CONFIGURE') }}:
+        - script: |
+            KAFKA_POD=$(kubectl get pod -n messaging -l app.kubernetes.io/name=kafka -o jsonpath='{.items[0].metadata.name}')
+            create_topic() {
+              local TOPIC=$1 PARTITIONS=$2 REPLICATION=$3
+              kubectl exec -n messaging "$KAFKA_POD" -- \
+                kafka-topics.sh --create --if-not-exists \
+                --bootstrap-server kafka.messaging.svc:9092 \
+                --topic "$TOPIC" \
+                --partitions "$PARTITIONS" \
+                --replication-factor "$REPLICATION" || true
+            }
+            # Identity
+            create_topic identity.user.registered 6 3
+            create_topic identity.user.deleted 3 3
+            # Commerce
+            create_topic commerce.order.placed 12 3
+            create_topic commerce.order.cancelled 6 3
+            create_topic commerce.order.fulfilled 6 3
+            create_topic commerce.payment.processed 12 3
+            create_topic commerce.payment.failed 6 3
+            create_topic commerce.cart.abandoned 6 3
+            # Supply Chain
+            create_topic supplychain.shipment.created 6 3
+            create_topic supplychain.shipment.updated 6 3
+            create_topic supplychain.inventory.low 3 3
+            create_topic supplychain.inventory.restocked 3 3
+            # Notifications
+            create_topic notification.email.requested 6 3
+            create_topic notification.sms.requested 6 3
+            create_topic notification.push.requested 6 3
+            # Analytics
+            create_topic analytics.page.viewed 12 3
+            create_topic analytics.product.clicked 12 3
+            create_topic analytics.search.performed 6 3
+            # Security
+            create_topic security.fraud.detected 3 3
+            create_topic security.login.failed 6 3
+            echo "=== Topics created ==="
+            kubectl exec -n messaging "$KAFKA_POD" -- \
+              kafka-topics.sh --list --bootstrap-server kafka.messaging.svc:9092
+          displayName: Create Kafka Topics

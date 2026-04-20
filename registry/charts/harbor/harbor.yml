@@ -1,0 +1,20 @@
+hostname: harbor.shopos.internal
+http:
+  port: 5000
+harbor_admin_password: Harbor12345
+database:
+  password: postgres
+  max_idle_conns: 100
+  max_open_conns: 900
+data_volume: /data
+trivy:
+  ignore_unfixed: false
+  skip_update: false
+jobservice:
+  max_job_workers: 10
+notification:
+  webhook_job_max_retry: 3
+chart:
+  absolute_url: disabled
+log:
+  level: info

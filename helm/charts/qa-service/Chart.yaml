@@ -1,0 +1,19 @@
+apiVersion: v2
+name: qa-service
+description: ShopOS Q&A Service — product questions and answers
+type: application
+version: 0.1.0
+appVersion: "1.0.0"
+keywords:
+  - shopos
+  - qa-service
+  - customer-experience
+home: https://github.com/your-org/shopos
+sources:
+  - https://github.com/your-org/shopos/tree/main/src/customer-experience/qa-service
+maintainers:
+  - name: ShopOS Platform Team
+    email: platform@shopos.io
+annotations:
+  app.kubernetes.io/domain: customer-experience
+  app.kubernetes.io/language: Node.js

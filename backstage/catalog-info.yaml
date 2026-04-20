@@ -1,0 +1,148 @@
+---
+apiVersion: backstage.io/v1alpha1
+kind: System
+metadata:
+  name: shopos
+  title: ShopOS Enterprise Commerce Platform
+  description: 130-service enterprise e-commerce platform across 12 domains
+  tags:
+    - commerce
+    - microservices
+    - enterprise
+  links:
+    - url: https://github.com/your-org/shopos
+      title: GitHub
+      icon: github
+spec:
+  owner: platform-team
+---
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: api-gateway
+  title: API Gateway
+  description: HTTP/gRPC entry point for all client traffic
+  tags: [go, grpc, http, platform]
+  annotations:
+    github.com/project-slug: your-org/shopos
+    backstage.io/techdocs-ref: dir:.
+    sonarqube.org/project-key: shopos-api-gateway
+    argocd/app-name: api-gateway
+spec:
+  type: service
+  lifecycle: production
+  owner: platform-team
+  system: shopos
+  dependsOn:
+    - component:order-service
+    - component:product-catalog-service
+    - component:cart-service
+    - component:auth-service
+  providesApis:
+    - api-gateway-api
+---
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: order-service
+  title: Order Service
+  description: Order lifecycle management
+  tags: [kotlin, grpc, postgres, kafka]
+spec:
+  type: service
+  lifecycle: production
+  owner: commerce-team
+  system: shopos
+  dependsOn:
+    - component:payment-service
+    - component:inventory-service
+    - component:fulfillment-service
+---
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: payment-service
+  title: Payment Service
+  description: Payment processing and gateway integration
+  tags: [java, grpc, postgres, kafka]
+spec:
+  type: service
+  lifecycle: production
+  owner: commerce-team
+  system: shopos
+---
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: product-catalog-service
+  title: Product Catalog Service
+  description: Product metadata and CRUD via MongoDB
+  tags: [go, grpc, mongodb]
+spec:
+  type: service
+  lifecycle: production
+  owner: catalog-team
+  system: shopos
+---
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: auth-service
+  title: Auth Service
+  description: JWT authentication and token lifecycle
+  tags: [rust, grpc, postgres]
+spec:
+  type: service
+  lifecycle: production
+  owner: identity-team
+  system: shopos
+---
+apiVersion: backstage.io/v1alpha1
+kind: API
+metadata:
+  name: api-gateway-api
+  title: ShopOS REST/gRPC API
+  description: Unified API surface for all ShopOS client interactions
+spec:
+  type: openapi
+  lifecycle: production
+  owner: platform-team
+  system: shopos
+  definition:
+    $text: https://raw.githubusercontent.com/your-org/shopos/main/docs/openapi.yaml
+---
+apiVersion: backstage.io/v1alpha1
+kind: Group
+metadata:
+  name: platform-team
+  title: Platform Team
+spec:
+  type: team
+  children: []
+---
+apiVersion: backstage.io/v1alpha1
+kind: Group
+metadata:
+  name: commerce-team
+  title: Commerce Team
+spec:
+  type: team
+  children: []
+---
+apiVersion: backstage.io/v1alpha1
+kind: Group
+metadata:
+  name: identity-team
+  title: Identity Team
+spec:
+  type: team
+  children: []
+---
+apiVersion: backstage.io/v1alpha1
+kind: Group
+metadata:
+  name: catalog-team
+  title: Catalog Team
+spec:
+  type: team
+  children: []

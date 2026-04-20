@@ -1,0 +1,63 @@
+apiVersion: helm.cattle.io/v1
+kind: HelmChart
+metadata:
+  name: temporal
+  namespace: temporal-system
+spec:
+  repo: https://go.temporal.io/helm-charts
+  chart: temporal
+  version: 0.54.0
+  targetNamespace: temporal-system
+  valuesContent: |-
+    server:
+      replicaCount: 1
+      config:
+        persistence:
+          defaultStore: postgres-default
+          visibilityStore: postgres-visibility
+          numHistoryShards: 512
+          datastores:
+            postgres-default:
+              sql:
+                pluginName: postgres12
+                databaseName: temporal
+                connectAddr: "postgres:5432"
+                connectProtocol: tcp
+                user: temporal
+                password: "${TEMPORAL_DB_PASSWORD}"
+                maxConns: 20
+                maxIdleConns: 20
+                maxConnLifetime: 1h
+            postgres-visibility:
+              sql:
+                pluginName: postgres12
+                databaseName: temporal_visibility
+                connectAddr: "postgres:5432"
+                connectProtocol: tcp
+                user: temporal
+                password: "${TEMPORAL_DB_PASSWORD}"
+                maxConns: 10
+                maxIdleConns: 10
+                maxConnLifetime: 1h
+
+    web:
+      enabled: true
+      replicaCount: 1
+      service:
+        type: ClusterIP
+        port: 8080
+
+    admintools:
+      enabled: true
+
+    elasticsearch:
+      enabled: false
+
+    cassandra:
+      enabled: false
+
+    mysql:
+      enabled: false
+
+    postgresql:
+      enabled: false

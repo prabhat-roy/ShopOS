@@ -1,0 +1,16 @@
+# Baseline deny-all for all shopos namespaces
+# Applied first; specific allow policies layered on top
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny-all
+  namespace: shopos-platform
+spec:
+  podSelector: {}
+  policyTypes: [Ingress, Egress]
+  egress:
+    - ports:
+        - port: 53
+          protocol: UDP
+        - port: 53
+          protocol: TCP

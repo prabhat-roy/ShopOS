@@ -1,0 +1,22 @@
+apiVersion: chaos-mesh.org/v1alpha1
+kind: NetworkChaos
+metadata:
+  name: network-bandwidth-limit
+  namespace: chaos-mesh
+  labels:
+    app.kubernetes.io/part-of: shopos-chaos
+    chaos.shopos.io/tier: catalog
+spec:
+  action: bandwidth
+  mode: all
+  selector:
+    namespaces:
+      - catalog
+    labelSelectors:
+      app.kubernetes.io/name: search-service
+  bandwidth:
+    rate: 1mbps
+    limit: 100
+    buffer: 10000
+  direction: to
+  duration: 5m

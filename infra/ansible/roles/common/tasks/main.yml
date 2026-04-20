@@ -1,0 +1,59 @@
+---
+- name: Update apt cache
+  apt:
+    update_cache: true
+    cache_valid_time: 3600
+
+- name: Upgrade all packages
+  apt:
+    upgrade: dist
+    force_apt_get: true
+  environment:
+    DEBIAN_FRONTEND: noninteractive
+
+- name: Install common packages
+  apt:
+    name: "{{ common_packages }}"
+    state: present
+
+- name: Set timezone
+  timezone:
+    name: "{{ timezone }}"
+
+- name: Set hostname
+  hostname:
+    name: "{{ inventory_hostname }}"
+
+- name: Configure SSH hardening
+  lineinfile:
+    path: /etc/ssh/sshd_config
+    regexp: "{{ item.regexp }}"
+    line: "{{ item.line }}"
+    state: present
+  loop:
+    - { regexp: '^PermitRootLogin', line: 'PermitRootLogin no' }
+    - { regexp: '^PasswordAuthentication', line: 'PasswordAuthentication no' }
+    - { regexp: '^MaxAuthTries', line: 'MaxAuthTries 3' }
+    - { regexp: '^X11Forwarding', line: 'X11Forwarding no' }
+  notify: restart sshd
+
+- name: Enable ufw
+  ufw:
+    state: enabled
+    policy: deny
+
+- name: Allow SSH through ufw
+  ufw:
+    rule: allow
+    port: "22"
+    proto: tcp
+
+- name: Disable swap (required for Kubernetes)
+  command: swapoff -a
+  changed_when: false
+
+- name: Remove swap from fstab
+  replace:
+    path: /etc/fstab
+    regexp: '^([^#].*\sswap\s.*)$'
+    replace: '# \1'

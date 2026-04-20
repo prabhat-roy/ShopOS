@@ -1,0 +1,48 @@
+syntax = "proto3";
+package commerce.checkout.v1;
+option go_package = "github.com/shopos/proto/commerce/checkout/v1;checkoutv1";
+
+import "google/protobuf/timestamp.proto";
+
+service CheckoutService {
+  rpc CreateCheckout(CreateCheckoutRequest)   returns (CreateCheckoutResponse);
+  rpc GetCheckout(GetCheckoutRequest)         returns (GetCheckoutResponse);
+  rpc UpdateCheckout(UpdateCheckoutRequest)   returns (UpdateCheckoutResponse);
+  rpc ConfirmCheckout(ConfirmCheckoutRequest) returns (ConfirmCheckoutResponse);
+  rpc ApplyCoupon(ApplyCouponRequest)         returns (ApplyCouponResponse);
+}
+
+message CheckoutLineItem {
+  string product_id = 1;
+  string sku        = 2;
+  int32  quantity   = 3;
+  string unit_price = 4;
+  string currency   = 5;
+}
+
+message Checkout {
+  string id          = 1;
+  string customer_id = 2;
+  repeated CheckoutLineItem items = 3;
+  string subtotal    = 4;
+  string tax         = 5;
+  string shipping    = 6;
+  string discount    = 7;
+  string total       = 8;
+  string currency    = 9;
+  string status      = 10;
+  string coupon_code = 11;
+  google.protobuf.Timestamp created_at = 12;
+  google.protobuf.Timestamp expires_at = 13;
+}
+
+message CreateCheckoutRequest   { string customer_id = 1; string cart_id = 2; string currency = 3; }
+message CreateCheckoutResponse  { Checkout checkout = 1; }
+message GetCheckoutRequest      { string id = 1; }
+message GetCheckoutResponse     { Checkout checkout = 1; }
+message UpdateCheckoutRequest   { string id = 1; string shipping_address_id = 2; string payment_method_id = 3; }
+message UpdateCheckoutResponse  { Checkout checkout = 1; }
+message ConfirmCheckoutRequest  { string id = 1; }
+message ConfirmCheckoutResponse { string order_id = 1; Checkout checkout = 2; }
+message ApplyCouponRequest      { string checkout_id = 1; string coupon_code = 2; }
+message ApplyCouponResponse     { Checkout checkout = 1; string discount_amount = 2; }

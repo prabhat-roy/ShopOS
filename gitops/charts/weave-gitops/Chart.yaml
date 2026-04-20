@@ -1,0 +1,6 @@
+apiVersion: v2
+name: weave-gitops
+description: Weave GitOps — GitOps dashboard and automation platform
+type: application
+version: 1.0.0
+appVersion: "v0.38.0"

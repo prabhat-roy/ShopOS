@@ -1,0 +1,34 @@
+replicaCount: 1
+
+image:
+  repository: memphisos/memphis
+  tag: "1.4.3"
+  pullPolicy: IfNotPresent
+
+service:
+  type: ClusterIP
+  port: 6666
+  targetPort: 6666
+
+persistence:
+  enabled: true
+  storageClass: ""
+  size: 10Gi
+  accessMode: ReadWriteOnce
+  mountPath: /var/lib/data
+
+resources:
+  requests:
+    cpu: 200m
+    memory: 512Mi
+  limits:
+    cpu: "2"
+    memory: 2Gi
+
+env: {}
+
+ingress:
+  enabled: false
+  className: ""
+  host: ""
+  tls: []

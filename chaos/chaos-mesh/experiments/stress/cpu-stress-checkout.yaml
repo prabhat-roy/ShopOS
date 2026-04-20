@@ -1,0 +1,24 @@
+apiVersion: chaos-mesh.org/v1alpha1
+kind: StressChaos
+metadata:
+  name: cpu-stress-checkout
+  namespace: chaos-mesh
+  labels:
+    app.kubernetes.io/part-of: shopos-chaos
+    chaos.shopos.io/tier: commerce
+spec:
+  mode: one
+  selector:
+    namespaces:
+      - commerce
+    labelSelectors:
+      app.kubernetes.io/name: checkout-service
+  stressors:
+    cpu:
+      workers: 2
+      load: 80
+      options:
+        - --cpu-method=all
+  duration: 5m
+  containerNames:
+    - checkout-service

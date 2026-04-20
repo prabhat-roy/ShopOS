@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: recommendation-service
+  namespace: analytics-ai
+  labels:
+    app: recommendation-service
+    domain: analytics-ai
+spec:
+  selector:
+    app: recommendation-service
+  type: ClusterIP
+  ports:
+    - name: grpc
+      port: 50150
+      targetPort: grpc
+      protocol: TCP

@@ -1,0 +1,41 @@
+syntax = "proto3";
+package commerce.loyalty.v1;
+option go_package = "github.com/shopos/proto/commerce/loyalty/v1;loyaltyv1";
+
+import "google/protobuf/timestamp.proto";
+
+service LoyaltyService {
+  rpc GetBalance(GetBalanceRequest)     returns (GetBalanceResponse);
+  rpc EarnPoints(EarnPointsRequest)     returns (EarnPointsResponse);
+  rpc RedeemPoints(RedeemPointsRequest) returns (RedeemPointsResponse);
+  rpc GetHistory(GetHistoryRequest)     returns (GetHistoryResponse);
+  rpc GetTier(GetTierRequest)           returns (GetTierResponse);
+}
+
+message LoyaltyAccount {
+  string customer_id     = 1;
+  int64  points_balance  = 2;
+  string tier            = 3;
+  int64  lifetime_points = 4;
+}
+
+message PointTransaction {
+  string id          = 1;
+  string customer_id = 2;
+  int64  points      = 3;
+  string type        = 4;
+  string reference   = 5;
+  string description = 6;
+  google.protobuf.Timestamp created_at = 7;
+}
+
+message GetBalanceRequest    { string customer_id = 1; }
+message GetBalanceResponse   { LoyaltyAccount account = 1; }
+message EarnPointsRequest    { string customer_id = 1; int64 points = 2; string order_id = 3; string description = 4; }
+message EarnPointsResponse   { LoyaltyAccount account = 1; }
+message RedeemPointsRequest  { string customer_id = 1; int64 points = 2; string order_id = 3; }
+message RedeemPointsResponse { LoyaltyAccount account = 1; string discount_amount = 2; }
+message GetHistoryRequest    { string customer_id = 1; int32 page = 2; int32 page_size = 3; }
+message GetHistoryResponse   { repeated PointTransaction transactions = 1; int32 total = 2; }
+message GetTierRequest       { string customer_id = 1; }
+message GetTierResponse      { string tier = 1; int64 points_to_next_tier = 2; }

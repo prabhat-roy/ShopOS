@@ -1,0 +1,19 @@
+apiVersion: v2
+name: affiliate-service
+description: ShopOS affiliate-service — Affiliate partner accounts, tracking links, and commission tier management
+type: application
+version: 0.1.0
+appVersion: "1.0.0"
+keywords:
+  - shopos
+  - affiliate-service
+  - affiliate
+home: https://github.com/your-org/shopos
+sources:
+  - https://github.com/your-org/shopos/tree/main/src/affiliate/affiliate-service
+maintainers:
+  - name: ShopOS Platform Team
+    email: platform@shopos.io
+annotations:
+  app.kubernetes.io/domain: affiliate
+  app.kubernetes.io/language: go

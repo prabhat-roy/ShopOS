@@ -1,0 +1,126 @@
+syntax = "proto3";
+
+package customerexperience;
+
+option go_package = "github.com/shopos/proto/customerexperience";
+
+// ---------------------------------------------------------------------------
+// Enums
+// ---------------------------------------------------------------------------
+
+enum ReviewStatus {
+  REVIEW_STATUS_UNSPECIFIED = 0;
+  REVIEW_STATUS_PENDING     = 1;  // Awaiting moderation
+  REVIEW_STATUS_APPROVED    = 2;
+  REVIEW_STATUS_REJECTED    = 3;
+  REVIEW_STATUS_FLAGGED     = 4;
+}
+
+enum ReviewSortBy {
+  REVIEW_SORT_BY_UNSPECIFIED  = 0;
+  REVIEW_SORT_BY_NEWEST       = 1;
+  REVIEW_SORT_BY_HIGHEST_RATING = 2;
+  REVIEW_SORT_BY_LOWEST_RATING  = 3;
+  REVIEW_SORT_BY_MOST_HELPFUL   = 4;
+}
+
+// ---------------------------------------------------------------------------
+// Messages
+// ---------------------------------------------------------------------------
+
+message Review {
+  string       id            = 1;
+  string       product_id    = 2;
+  string       customer_id   = 3;
+  // Order that the customer actually purchased the product through.
+  string       order_id      = 4;
+  // 1–5 star rating.
+  int32        rating        = 5;
+  string       title         = 6;
+  string       body          = 7;
+  ReviewStatus status        = 8;
+  int32        helpful_votes = 9;
+  // Unix epoch seconds.
+  int64        created_at    = 10;
+}
+
+// Aggregate rating statistics for a product.
+message ProductRatings {
+  string             product_id   = 1;
+  float              avg_rating   = 2;
+  int32              total_count  = 3;
+  // Key = star value (1–5), Value = number of reviews at that star level.
+  map<int32, int32>  distribution = 4;
+}
+
+message SubmitReviewRequest {
+  string product_id  = 1;
+  string customer_id = 2;
+  string order_id    = 3;
+  int32  rating      = 4;
+  string title       = 5;
+  string body        = 6;
+}
+
+message GetReviewRequest {
+  string review_id = 1;
+}
+
+message ListReviewsRequest {
+  string        product_id = 1;
+  ReviewStatus  status     = 2;
+  ReviewSortBy  sort_by    = 3;
+  int32         page       = 4;
+  int32         page_size  = 5;
+}
+
+message ListReviewsResponse {
+  repeated Review reviews    = 1;
+  int32           total      = 2;
+  int32           total_pages = 3;
+}
+
+message GetProductRatingsRequest {
+  string product_id = 1;
+}
+
+message ApproveReviewRequest {
+  string review_id = 1;
+}
+
+message RejectReviewRequest {
+  string review_id = 1;
+  string reason    = 2;
+}
+
+message MarkHelpfulRequest {
+  string review_id   = 1;
+  string customer_id = 2;
+}
+
+// ---------------------------------------------------------------------------
+// Service
+// ---------------------------------------------------------------------------
+
+service ReviewService {
+  // Submit a new product review (initially PENDING moderation).
+  rpc SubmitReview(SubmitReviewRequest) returns (Review);
+
+  // Fetch a single review by its ID.
+  rpc GetReview(GetReviewRequest) returns (Review);
+
+  // List all reviews for a product with optional filters and sorting.
+  rpc ListProductReviews(ListReviewsRequest) returns (ListReviewsResponse);
+
+  // Return aggregate rating statistics (avg, count, distribution) for a product.
+  rpc GetProductRatings(GetProductRatingsRequest) returns (ProductRatings);
+
+  // Approve a pending or flagged review (moderation action).
+  rpc ApproveReview(ApproveReviewRequest) returns (Review);
+
+  // Reject a pending or flagged review (moderation action).
+  rpc RejectReview(RejectReviewRequest) returns (Review);
+
+  // Record a "helpful" vote from a customer on a review.
+  rpc MarkHelpful(MarkHelpfulRequest) returns (Review);
+}

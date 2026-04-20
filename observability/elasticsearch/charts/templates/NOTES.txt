@@ -1,0 +1,2 @@
+Elasticsearch deployed in namespace {{ .Release.Namespace }}.
+HTTP API: http://{{ include "elasticsearch.fullname" . }}.{{ .Release.Namespace }}.svc.cluster.local:9200

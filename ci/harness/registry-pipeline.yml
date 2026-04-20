@@ -1,0 +1,87 @@
+# Registry Tools Pipeline — Harness CI
+pipeline:
+  identifier: shopos_registry
+  name: ShopOS Registry Infrastructure
+  projectIdentifier: shopos
+  orgIdentifier: default
+
+  variables:
+    - name: CONFIGURE
+      type: String
+      value: "false"
+
+  stages:
+    - stage:
+        identifier: install_registry
+        name: Install Harbor + MinIO
+        type: CI
+        spec:
+          cloneCodebase: false
+          execution:
+            steps:
+              - step:
+                  identifier: harbor
+                  name: Install Harbor
+                  type: Run
+                  spec:
+                    image: alpine/helm:latest
+                    envVariables:
+                      KUBECONFIG_CONTENT: <+secrets.getValue("kubeconfig_content")>
+                      HARBOR_ADMIN_PASSWORD: <+secrets.getValue("harbor_admin_password")>
+                    command: |
+                      mkdir -p ~/.kube && echo "$KUBECONFIG_CONTENT" | base64 -d > ~/.kube/config
+                      helm repo add harbor https://helm.goharbor.io --force-update
+                      helm upgrade --install harbor harbor/harbor \
+                        --namespace registry --create-namespace \
+                        --set expose.type=ingress \
+                        --set expose.ingress.className=traefik \
+                        --set expose.ingress.hosts.core=harbor.shopos.internal \
+                        --set externalURL=https://harbor.shopos.internal \
+                        --set harborAdminPassword="$HARBOR_ADMIN_PASSWORD" \
+                        --set trivy.enabled=true --set persistence.enabled=true \
+                        --wait --timeout 10m
+              - step:
+                  identifier: minio
+                  name: Install MinIO
+                  type: Run
+                  spec:
+                    image: alpine/helm:latest
+                    envVariables:
+                      KUBECONFIG_CONTENT: <+secrets.getValue("kubeconfig_content")>
+                      MINIO_ROOT_USER: <+secrets.getValue("minio_root_user")>
+                      MINIO_ROOT_PASSWORD: <+secrets.getValue("minio_root_password")>
+                    command: |
+                      mkdir -p ~/.kube && echo "$KUBECONFIG_CONTENT" | base64 -d > ~/.kube/config
+                      helm repo add minio https://charts.min.io --force-update
+                      helm upgrade --install minio minio/minio \
+                        --namespace registry \
+                        --set rootUser="$MINIO_ROOT_USER" \
+                        --set rootPassword="$MINIO_ROOT_PASSWORD" \
+                        --set replicas=4 \
+                        --set persistence.enabled=true --set persistence.size=100Gi \
+                        --wait --timeout 8m
+
+    - stage:
+        identifier: configure_buckets
+        name: Configure MinIO Buckets
+        type: CI
+        when:
+          condition: <+pipeline.variables.CONFIGURE> == "true"
+        spec:
+          cloneCodebase: false
+          execution:
+            steps:
+              - step:
+                  identifier: create_buckets
+                  name: Create MinIO Buckets
+                  type: Run
+                  spec:
+                    image: minio/mc:latest
+                    envVariables:
+                      MINIO_ROOT_USER: <+secrets.getValue("minio_root_user")>
+                      MINIO_ROOT_PASSWORD: <+secrets.getValue("minio_root_password")>
+                    command: |
+                      mc alias set shopos http://minio.registry.svc:9000 "$MINIO_ROOT_USER" "$MINIO_ROOT_PASSWORD"
+                      for BUCKET in harbor-registry velero-backups loki-chunks tempo-traces thanos mlflow artifacts media-assets; do
+                        mc mb --ignore-existing "shopos/$BUCKET" || true
+                      done

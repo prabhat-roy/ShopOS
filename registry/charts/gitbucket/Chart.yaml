@@ -1,0 +1,6 @@
+apiVersion: v2
+name: gitbucket
+description: GitBucket — GitHub-like Git platform on JVM
+type: application
+version: 1.0.0
+appVersion: "4.39"

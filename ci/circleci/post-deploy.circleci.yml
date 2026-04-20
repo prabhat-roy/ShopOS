@@ -1,0 +1,119 @@
+# Post-Deploy Validation Pipeline — CircleCI
+# Context: shopos-kubernetes, shopos-slack
+version: 2.1
+
+executors:
+  curl-executor:
+    docker:
+      - image: curlimages/curl:latest
+    resource_class: small
+  k6-executor:
+    docker:
+      - image: grafana/k6:latest
+    resource_class: medium
+  audit-executor:
+    docker:
+      - image: aquasec/kube-bench:latest
+    resource_class: medium
+
+jobs:
+  health-check:
+    executor: curl-executor
+    steps:
+      - run:
+          name: Health check all critical services
+          command: |
+            FAILED=0
+            for PATH in /healthz /api/v1/products; do
+              STATUS=$(curl -sf --max-time 10 "$BASE_URL$PATH" -o /dev/null -w "%{http_code}" || echo "000")
+              echo "$BASE_URL$PATH → $STATUS"
+              [ "$STATUS" = "000" ] && FAILED=1
+            done
+            [ "$FAILED" = "1" ] && exit 1
+            echo "All health checks passed"
+
+  load-test:
+    executor: k6-executor
+    steps:
+      - run:
+          name: k6 load test
+          command: |
+            [ "$RUN_LOAD_TEST" = "true" ] || { echo "Skipped"; exit 0; }
+            cat > /tmp/load.js << 'EOF'
+            import http from 'k6/http';
+            import { check, sleep } from 'k6';
+            export let options = {
+              vus: 10, duration: '60s',
+              thresholds: {
+                http_req_failed: ['rate<0.05'],
+                http_req_duration: ['p(95)<500'],
+              },
+            };
+            export default function() {
+              let res = http.get(`${__ENV.BASE_URL}/healthz`);
+              check(res, { 'status 200': (r) => r.status === 200 });
+              sleep(1);
+            }
+            EOF
+            k6 run /tmp/load.js -e BASE_URL="$BASE_URL"
+      - store_artifacts:
+          path: /tmp/k6-summary.json
+
+  dast-zap:
+    docker:
+      - image: ghcr.io/zaproxy/zaproxy:stable
+    steps:
+      - run:
+          name: ZAP baseline scan
+          command: |
+            [ "$RUN_DAST" = "true" ] || { echo "Skipped"; exit 0; }
+            zap-baseline.py -t "$BASE_URL" -r /tmp/zap-report.html || true
+      - store_artifacts:
+          path: /tmp/zap-report.html
+
+  kube-audit:
+    executor: audit-executor
+    steps:
+      - run:
+          name: Setup kubeconfig
+          command: mkdir -p ~/.kube && echo "$KUBECONFIG_CONTENT" | base64 -d > ~/.kube/config
+      - run:
+          name: kube-bench CIS audit
+          command: kube-bench run --targets node,policies --json > /tmp/kube-bench.json 2>/dev/null || true
+      - run:
+          name: Kubescape scan
+          command: |
+            curl -s https://raw.githubusercontent.com/kubescape/kubescape/master/install.sh | /bin/bash
+            kubescape scan framework nsa,mitre --format json --output /tmp/kubescape.json 2>/dev/null || true
+      - store_artifacts:
+          path: /tmp/kube-bench.json
+      - store_artifacts:
+          path: /tmp/kubescape.json
+
+  notify:
+    executor: curl-executor
+    steps:
+      - run:
+          name: Slack notification
+          command: |
+            curl -sf -X POST "$SLACK_WEBHOOK" \
+              -H 'Content-type: application/json' \
+              --data "{\"text\":\":white_check_mark: Post-deploy validation passed for *$ENVIRONMENT*\"}"
+
+workflows:
+  post-deploy-workflow:
+    jobs:
+      - health-check:
+          context: shopos-kubernetes
+      - load-test:
+          requires: [health-check]
+          context: shopos-kubernetes
+      - dast-zap:
+          requires: [health-check]
+          context: shopos-kubernetes
+      - kube-audit:
+          requires: [health-check]
+          context: shopos-kubernetes
+      - notify:
+          requires: [load-test, dast-zap, kube-audit]
+          context: shopos-slack

@@ -1,0 +1,113 @@
+# Kubernetes Infrastructure (Terraform) Pipeline — GoCD
+format_version: 10
+
+pipelines:
+  shopos-k8s-infra-aws:
+    group: shopos-infra
+    label_template: "eks-${COUNT}"
+    materials:
+      git:
+        git: https://github.com/prabhat-roy/ShopOS.git
+        branch: main
+    environment_variables:
+      TF_ACTION: PLAN
+      AWS_DEFAULT_REGION: us-east-1
+    stages:
+      - terraform-plan:
+          jobs:
+            plan:
+              elastic_profile_id: terraform-agent
+              tasks:
+                - exec:
+                    command: /bin/sh
+                    arguments:
+                      - -c
+                      - |
+                        cd infra/terraform/aws/eks
+                        terraform init \
+                          -backend-config="bucket=shopos-tfstate" \
+                          -backend-config="key=infra/terraform/aws/eks/terraform.tfstate" \
+                          -backend-config="region=$AWS_DEFAULT_REGION"
+                        terraform plan -out=tfplan
+              artifacts:
+                - build:
+                    source: infra/terraform/aws/eks/tfplan
+                    destination: tfplan/
+      - terraform-apply:
+          approval:
+            type: manual
+          jobs:
+            apply:
+              elastic_profile_id: terraform-agent
+              tasks:
+                - fetch:
+                    pipeline: shopos-k8s-infra-aws
+                    stage: terraform-plan
+                    job: plan
+                    source: tfplan/
+                    destination: infra/terraform/aws/eks/
+                - exec:
+                    command: /bin/sh
+                    arguments:
+                      - -c
+                      - |
+                        [ "$TF_ACTION" = "APPLY" ] || { echo "Skipped (set TF_ACTION=APPLY)"; exit 0; }
+                        cd infra/terraform/aws/eks
+                        terraform apply -auto-approve tfplan/tfplan
+
+  shopos-k8s-infra-gcp:
+    group: shopos-infra
+    label_template: "gke-${COUNT}"
+    materials:
+      git:
+        git: https://github.com/prabhat-roy/ShopOS.git
+        branch: main
+    environment_variables:
+      TF_ACTION: PLAN
+    stages:
+      - terraform-plan:
+          jobs:
+            plan:
+              elastic_profile_id: terraform-agent
+              tasks:
+                - exec:
+                    command: /bin/sh
+                    arguments:
+                      - -c
+                      - |
+                        echo "$GCP_SA_KEY" > /tmp/gcp-key.json
+                        export GOOGLE_APPLICATION_CREDENTIALS=/tmp/gcp-key.json
+                        cd infra/opentofu/gcp/gke
+                        terraform init \
+                          -backend-config="bucket=shopos-tfstate-gcp" \
+                          -backend-config="prefix=infra/opentofu/gcp/gke"
+                        terraform plan
+                        rm -f /tmp/gcp-key.json
+
+  shopos-k8s-infra-azure:
+    group: shopos-infra
+    label_template: "aks-${COUNT}"
+    materials:
+      git:
+        git: https://github.com/prabhat-roy/ShopOS.git
+        branch: main
+    environment_variables:
+      TF_ACTION: PLAN
+    stages:
+      - terraform-plan:
+          jobs:
+            plan:
+              elastic_profile_id: terraform-agent
+              tasks:
+                - exec:
+                    command: /bin/sh
+                    arguments:
+                      - -c
+                      - |
+                        cd infra/opentofu/azure/aks
+                        terraform init \
+                          -backend-config="resource_group_name=shopos-tfstate-rg" \
+                          -backend-config="storage_account_name=shoposterraform" \
+                          -backend-config="container_name=tfstate" \
+                          -backend-config="key=infra/opentofu/azure/aks/terraform.tfstate"
+                        terraform plan

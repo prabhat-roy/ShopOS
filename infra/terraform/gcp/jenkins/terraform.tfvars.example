@@ -1,0 +1,12 @@
+project_id       = "your-gcp-project-id"
+region           = "us-central1"
+zone             = "us-central1-a"
+environment      = "dev"
+name             = "jenkins"
+network_cidr     = "10.0.0.0/16"
+subnet_cidr      = "10.0.1.0/24"
+machine_type     = "n2-standard-4"
+disk_size_gb     = 200
+ssh_user         = "ubuntu"
+ssh_pub_key_path = "/path/to/your-key.pub"
+private_key_path = "/path/to/your-key"

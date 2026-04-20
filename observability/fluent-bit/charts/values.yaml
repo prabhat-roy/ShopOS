@@ -1,0 +1,34 @@
+replicaCount: 1
+
+image:
+  repository: cr.fluentbit.io/fluent/fluent-bit
+  tag: "3.1.9"
+  pullPolicy: IfNotPresent
+
+service:
+  type: ClusterIP
+  port: 2020
+  targetPort: 2020
+
+persistence:
+  enabled: true
+  storageClass: ""
+  size: 10Gi
+  accessMode: ReadWriteOnce
+  mountPath: /var/lib/data
+
+resources:
+  requests:
+    cpu: 200m
+    memory: 512Mi
+  limits:
+    cpu: "2"
+    memory: 2Gi
+
+env: {}
+
+ingress:
+  enabled: false
+  className: ""
+  host: ""
+  tls: []

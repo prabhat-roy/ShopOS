@@ -1,0 +1,21 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: inventory-service
+  namespace: catalog
+  labels:
+    app: inventory-service
+    domain: catalog
+data:
+  APP_ENV: production
+  LOG_LEVEL: info
+  LOG_FORMAT: json
+  SERVICE_NAME: inventory-service
+  SERVICE_DOMAIN: catalog
+  GRPC_PORT: "50074"
+  METRICS_PORT: "9090"
+  HEALTH_PORT: "50074"
+  OTEL_SERVICE_NAME: inventory-service
+  OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector.monitoring:4317
+  KAFKA_BROKERS: kafka.infra:9092
+  SCHEMA_REGISTRY_URL: http://schema-registry.infra:8081

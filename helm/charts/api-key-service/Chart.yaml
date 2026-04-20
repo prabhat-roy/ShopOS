@@ -1,0 +1,19 @@
+apiVersion: v2
+name: api-key-service
+description: ShopOS API Key Service — API key lifecycle management
+type: application
+version: 0.1.0
+appVersion: "1.0.0"
+keywords:
+  - shopos
+  - api-key-service
+  - identity
+home: https://github.com/your-org/shopos
+sources:
+  - https://github.com/your-org/shopos/tree/main/src/identity/api-key-service
+maintainers:
+  - name: ShopOS Platform Team
+    email: platform@shopos.io
+annotations:
+  app.kubernetes.io/domain: identity
+  app.kubernetes.io/language: Go

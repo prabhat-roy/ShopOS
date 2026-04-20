@@ -1,0 +1,109 @@
+# Install CI Tools — GCP Cloud Build
+# Mirrors .github/workflows/install-tools.yml
+# Verifies all required tools are available / installable in Cloud Build environment
+
+options:
+  logging: CLOUD_LOGGING_ONLY
+  machineType: E2_HIGHCPU_8
+
+steps:
+  - name: gcr.io/cloud-builders/kubectl
+    id: kubectl-check
+    args: [version, --client]
+
+  - name: alpine/helm
+    id: helm-check
+    args: [version, --short]
+
+  - name: hashicorp/terraform:1.9.0
+    id: terraform-check
+    args: [version]
+
+  - name: golang:1.23
+    id: go-check
+    args: [go, version]
+
+  - name: eclipse-temurin:21
+    id: java-check
+    entrypoint: java
+    args: [-version]
+
+  - name: node:22
+    id: node-check
+    args: [node, --version]
+
+  - name: python:3.13
+    id: python-check
+    args: [python, --version]
+
+  - name: mcr.microsoft.com/dotnet/sdk:8.0
+    id: dotnet-check
+    args: [dotnet, --version]
+
+  - name: rust:latest
+    id: rust-check
+    args: [rustc, --version]
+
+  - name: gcr.io/projectsigstore/cosign
+    id: cosign-check
+    args: [version]
+
+  - name: gcr.io/cloud-builders/docker
+    id: security-tools
+    entrypoint: bash
+    args:
+      - -c
+      - |
+        # Buf
+        BUF_VERSION=1.35.1
+        curl -fsSL "https://github.com/bufbuild/buf/releases/download/v${BUF_VERSION}/buf-Linux-x86_64" \
+          -o /usr/local/bin/buf && chmod +x /usr/local/bin/buf
+        buf --version
+
+        # Trivy
+        curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh -s -- -b /usr/local/bin
+        trivy --version | head -1
+
+        # Grype
+        curl -sSfL https://raw.githubusercontent.com/anchore/grype/main/install.sh | sh -s -- -b /usr/local/bin
+        grype version | head -1
+
+        # Syft
+        curl -sSfL https://raw.githubusercontent.com/anchore/syft/main/install.sh | sh -s -- -b /usr/local/bin
+        syft --version
+
+        # Gitleaks
+        GITLEAKS_VER=8.21.0
+        curl -fsSL "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VER}/gitleaks_${GITLEAKS_VER}_linux_x64.tar.gz" \
+          | tar -xz -C /usr/local/bin gitleaks
+        gitleaks version
+
+        # Kustomize
+        curl -fsSL "https://raw.githubusercontent.com/kubernetes-sigs/kustomize/master/hack/install_kustomize.sh" | bash
+        ./kustomize version
+
+        echo "=== Security tools installed ==="
+
+  - name: python:3.13
+    id: python-tools
+    entrypoint: bash
+    args:
+      - -c
+      - |
+        pip install semgrep checkov ansible ansible-lint --quiet
+        semgrep --version
+        checkov --version
+        ansible --version | head -1
+        echo "=== Python tools installed ==="
+
+  - name: gcr.io/cloud-builders/docker
+    id: k6
+    entrypoint: bash
+    args:
+      - -c
+      - |
+        apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 \
+          --recv-keys C5AD17C747E3415A3642D57D77C6C491D6AC1D69 2>/dev/null || true
+        echo "deb https://dl.k6.io/deb stable main" | tee /etc/apt/sources.list.d/k6.list
+        apt-get update -qq && apt-get install k6 -y -qq
+        k6 version

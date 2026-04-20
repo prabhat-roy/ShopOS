@@ -1,0 +1,168 @@
+# GitOps Tools Pipeline — Concourse CI
+# Credentials: kubeconfig, argocd-credentials, minio-credentials
+---
+resources:
+  - name: source-code
+    type: git
+    source:
+      uri: ((git.uri))
+      branch: ((git.branch))
+      private_key: ((git.private_key))
+
+  - name: trigger-manual
+    type: time
+    source:
+      interval: 8760h
+
+jobs:
+  - name: install-argocd
+    plan:
+      - get: trigger-manual
+        trigger: false
+      - task: helm-install
+        config:
+          platform: linux
+          image_resource:
+            type: registry-image
+            source: {repository: alpine/helm}
+          params:
+            KUBECONFIG_CONTENT: ((kubeconfig.content))
+            ARGOCD_ADMIN_PASSWORD_HASH: ((argocd.admin_password_hash))
+            ACTION: ((action))
+          run:
+            path: sh
+            args:
+              - -c
+              - |
+                mkdir -p ~/.kube && echo "$KUBECONFIG_CONTENT" | base64 -d > ~/.kube/config
+                if [ "$ACTION" = "UNINSTALL" ]; then
+                  helm uninstall argocd -n argocd 2>/dev/null || true; exit 0
+                fi
+                helm repo add argo https://argoproj.github.io/argo-helm --force-update
+                helm upgrade --install argocd argo/argo-cd \
+                  --namespace argocd --create-namespace \
+                  --set server.replicas=2 --set redis-ha.enabled=true \
+                  --set controller.replicas=1 --set repoServer.replicas=2 \
+                  --set configs.secret.argocdServerAdminPassword="$ARGOCD_ADMIN_PASSWORD_HASH" \
+                  --wait --timeout 10m
+
+  - name: install-argo-rollouts
+    plan:
+      - get: trigger-manual
+        trigger: false
+        passed: [install-argocd]
+      - task: helm-install
+        config:
+          platform: linux
+          image_resource:
+            type: registry-image
+            source: {repository: alpine/helm}
+          params:
+            KUBECONFIG_CONTENT: ((kubeconfig.content))
+            ACTION: ((action))
+          run:
+            path: sh
+            args:
+              - -c
+              - |
+                mkdir -p ~/.kube && echo "$KUBECONFIG_CONTENT" | base64 -d > ~/.kube/config
+                if [ "$ACTION" = "UNINSTALL" ]; then
+                  helm uninstall argo-rollouts -n argo-rollouts 2>/dev/null || true; exit 0
+                fi
+                helm repo add argo https://argoproj.github.io/argo-helm --force-update
+                helm upgrade --install argo-rollouts argo/argo-rollouts \
+                  --namespace argo-rollouts --create-namespace \
+                  --set dashboard.enabled=true --wait --timeout 5m
+
+  - name: install-keda
+    plan:
+      - get: source-code
+      - get: trigger-manual
+        trigger: false
+        passed: [install-argocd]
+      - task: helm-install
+        config:
+          platform: linux
+          image_resource:
+            type: registry-image
+            source: {repository: alpine/helm}
+          inputs:
+            - name: source-code
+          params:
+            KUBECONFIG_CONTENT: ((kubeconfig.content))
+            ACTION: ((action))
+          run:
+            path: sh
+            args:
+              - -c
+              - |
+                mkdir -p ~/.kube && echo "$KUBECONFIG_CONTENT" | base64 -d > ~/.kube/config
+                if [ "$ACTION" = "UNINSTALL" ]; then
+                  helm uninstall keda -n keda 2>/dev/null || true; exit 0
+                fi
+                helm repo add kedacore https://kedacore.github.io/charts --force-update
+                helm upgrade --install keda kedacore/keda \
+                  --namespace keda --create-namespace \
+                  --set metricsServer.replicaCount=2 --wait --timeout 5m
+                kubectl apply -f source-code/kubernetes/keda/ 2>/dev/null || true
+
+  - name: install-velero
+    plan:
+      - get: trigger-manual
+        trigger: false
+        passed: [install-argocd]
+      - task: helm-install
+        config:
+          platform: linux
+          image_resource:
+            type: registry-image
+            source: {repository: alpine/helm}
+          params:
+            KUBECONFIG_CONTENT: ((kubeconfig.content))
+            MINIO_ACCESS_KEY: ((minio.access_key))
+            MINIO_SECRET_KEY: ((minio.secret_key))
+            ACTION: ((action))
+          run:
+            path: sh
+            args:
+              - -c
+              - |
+                mkdir -p ~/.kube && echo "$KUBECONFIG_CONTENT" | base64 -d > ~/.kube/config
+                if [ "$ACTION" = "UNINSTALL" ]; then
+                  helm uninstall velero -n velero 2>/dev/null || true; exit 0
+                fi
+                helm repo add vmware-tanzu https://vmware-tanzu.github.io/helm-charts --force-update
+                helm upgrade --install velero vmware-tanzu/velero \
+                  --namespace velero --create-namespace \
+                  --set configuration.backupStorageLocation[0].provider=aws \
+                  --set configuration.backupStorageLocation[0].bucket=velero-backups \
+                  --set "configuration.backupStorageLocation[0].config.s3Url=http://minio.registry.svc:9000" \
+                  --set configuration.backupStorageLocation[0].config.s3ForcePathStyle=true \
+                  --set "credentials.secretContents.cloud=[default]\naws_access_key_id=$MINIO_ACCESS_KEY\naws_secret_access_key=$MINIO_SECRET_KEY" \
+                  --wait --timeout 5m
+
+  - name: argocd-bootstrap
+    plan:
+      - get: source-code
+      - get: trigger-manual
+        trigger: false
+        passed: [install-argocd, install-keda, install-velero]
+      - task: bootstrap
+        config:
+          platform: linux
+          image_resource:
+            type: registry-image
+            source: {repository: bitnami/kubectl}
+          inputs:
+            - name: source-code
+          params:
+            KUBECONFIG_CONTENT: ((kubeconfig.content))
+          run:
+            path: sh
+            args:
+              - -c
+              - |
+                mkdir -p ~/.kube && echo "$KUBECONFIG_CONTENT" | base64 -d > ~/.kube/config
+                kubectl wait --for=condition=available deployment/argocd-server -n argocd --timeout=120s
+                kubectl apply -f source-code/gitops/argocd/app-of-apps.yaml
+                kubectl apply -f source-code/gitops/argocd/applicationsets/ 2>/dev/null || true

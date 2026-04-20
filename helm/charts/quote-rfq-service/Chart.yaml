@@ -1,0 +1,19 @@
+apiVersion: v2
+name: quote-rfq-service
+description: ShopOS Quote/RFQ Service — request for quote management
+type: application
+version: 0.1.0
+appVersion: "1.0.0"
+keywords:
+  - shopos
+  - quote-rfq-service
+  - b2b
+home: https://github.com/your-org/shopos
+sources:
+  - https://github.com/your-org/shopos/tree/main/src/b2b/quote-rfq-service
+maintainers:
+  - name: ShopOS Platform Team
+    email: platform@shopos.io
+annotations:
+  app.kubernetes.io/domain: b2b
+  app.kubernetes.io/language: Go

@@ -1,0 +1,18 @@
+plugin: azure.azcollection.azure_rm
+include_vm_resource_groups:
+  - shopos-jenkins-rg
+  - shopos-k8s-rg
+auth_source: auto
+keyed_groups:
+  - key: tags.role
+    prefix: role
+  - key: tags.environment
+    prefix: env
+  - key: location
+    prefix: location
+hostnames:
+  - public_ipv4_address
+  - name
+compose:
+  ansible_host: public_ipv4_address
+  ansible_user: "'ubuntu'"

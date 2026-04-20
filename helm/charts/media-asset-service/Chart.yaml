@@ -1,0 +1,19 @@
+apiVersion: v2
+name: media-asset-service
+description: ShopOS Media Asset Service — media upload and management via MinIO
+type: application
+version: 0.1.0
+appVersion: "1.0.0"
+keywords:
+  - shopos
+  - media-asset-service
+  - content
+home: https://github.com/your-org/shopos
+sources:
+  - https://github.com/your-org/shopos/tree/main/src/content/media-asset-service
+maintainers:
+  - name: ShopOS Platform Team
+    email: platform@shopos.io
+annotations:
+  app.kubernetes.io/domain: content
+  app.kubernetes.io/language: Go

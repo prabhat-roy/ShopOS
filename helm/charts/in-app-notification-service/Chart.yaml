@@ -1,0 +1,19 @@
+apiVersion: v2
+name: in-app-notification-service
+description: ShopOS In-App Notification Service — real-time notifications
+type: application
+version: 0.1.0
+appVersion: "1.0.0"
+keywords:
+  - shopos
+  - in-app-notification-service
+  - communications
+home: https://github.com/your-org/shopos
+sources:
+  - https://github.com/your-org/shopos/tree/main/src/communications/in-app-notification-service
+maintainers:
+  - name: ShopOS Platform Team
+    email: platform@shopos.io
+annotations:
+  app.kubernetes.io/domain: communications
+  app.kubernetes.io/language: Go

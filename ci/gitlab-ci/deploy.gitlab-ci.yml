@@ -1,0 +1,238 @@
+# Deploy Service — GitLab CI
+# Mirrors ci/jenkins/deploy.Jenkinsfile
+# Triggered manually or via CI: set variables in GitLab UI or pipeline trigger
+# Required CI/CD variables (Settings → CI/CD → Variables):
+#   HARBOR_REGISTRY, HARBOR_USER, HARBOR_PASSWORD
+#   SONAR_HOST_URL, SONAR_TOKEN
+#   KUBECONFIG_CONTENT (base64-encoded kubeconfig)
+#   SLACK_WEBHOOK
+
+variables:
+  SERVICE_NAME: api-gateway
+  DOMAIN: platform
+  IMAGE_TAG: $CI_COMMIT_SHA
+  ENVIRONMENT: dev
+  SKIP_TESTS: "false"
+  SCAN_SEVERITY: HIGH,CRITICAL
+
+workflow:
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "web"
+    - if: $CI_PIPELINE_SOURCE == "trigger"
+    - if: $CI_PIPELINE_SOURCE == "api"
+
+stages:
+  - preflight
+  - sast
+  - build-test
+  - docker
+  - scan
+  - push-sign
+  - deploy
+  - dast
+  - report
+
+# ── Preflight ──────────────────────────────────────────────────────────────
+secret-scan:
+  stage: preflight
+  image: zricethezav/gitleaks:latest
+  script:
+    - mkdir -p reports
+    - gitleaks detect --source . --no-git --exit-code 0 --report-format json --report-path reports/gitleaks.json || true
+  artifacts:
+    paths: [reports/]
+    expire_in: 7d
+
+iac-scan:
+  stage: preflight
+  image: bridgecrew/checkov:latest
+  script:
+    - mkdir -p reports
+    - checkov -d . --output json --output-file-path reports/ --soft-fail || true
+  artifacts:
+    paths: [reports/]
+    expire_in: 7d
+
+# ── SAST ───────────────────────────────────────────────────────────────────
+semgrep:
+  stage: sast
+  image: returntocorp/semgrep:latest
+  script:
+    - mkdir -p reports
+    - semgrep --config=auto --json --output=reports/semgrep.json --error --severity=ERROR src/$DOMAIN/$SERVICE_NAME || true
+  artifacts:
+    paths: [reports/]
+    expire_in: 7d
+  needs: [secret-scan]
+
+sonarqube:
+  stage: sast
+  image: sonarsource/sonar-scanner-cli:latest
+  script:
+    - |
+      cd src/$DOMAIN/$SERVICE_NAME
+      if [ -f "pom.xml" ]; then
+        mvn sonar:sonar -Dsonar.host.url=$SONAR_HOST_URL -Dsonar.login=$SONAR_TOKEN -q || true
+      else
+        sonar-scanner \
+          -Dsonar.host.url=$SONAR_HOST_URL \
+          -Dsonar.login=$SONAR_TOKEN \
+          -Dsonar.projectKey=$SERVICE_NAME \
+          -Dsonar.sources=. || true
+      fi
+  needs: [secret-scan]
+  allow_failure: true
+
+# ── Build + Test ───────────────────────────────────────────────────────────
+build-test:
+  stage: build-test
+  image: ubuntu:24.04
+  before_script:
+    - apt-get update -qq && apt-get install -y curl git --quiet
+  script:
+    - mkdir -p reports
+    - cd src/$DOMAIN/$SERVICE_NAME
+    - |
+      if [ -f "go.mod" ]; then
+        apt-get install -y golang-go --quiet
+        go test ./... -coverprofile=/tmp/coverage.out 2>&1 | tee /tmp/test.txt || [ "$SKIP_TESTS" = "true" ]
+      elif [ -f "pom.xml" ]; then
+        apt-get install -y default-jdk maven --quiet
+        mvn test -q 2>&1 | tee /tmp/test.txt || [ "$SKIP_TESTS" = "true" ]
+      elif [ -f "package.json" ]; then
+        apt-get install -y nodejs npm --quiet
+        npm ci --quiet && npm test 2>&1 | tee /tmp/test.txt || [ "$SKIP_TESTS" = "true" ]
+      elif [ -f "requirements.txt" ]; then
+        apt-get install -y python3 python3-pip --quiet
+        pip3 install -r requirements.txt --quiet
+        python3 -m pytest --tb=short 2>&1 | tee /tmp/test.txt || [ "$SKIP_TESTS" = "true" ]
+      fi
+  artifacts:
+    paths: [reports/]
+    reports:
+      junit: reports/*.xml
+    expire_in: 7d
+  needs: [semgrep]
+
+# ── Docker Build ───────────────────────────────────────────────────────────
+docker-build:
+  stage: docker
+  image: docker:27
+  services:
+    - docker:27-dind
+  variables:
+    DOCKER_TLS_CERTDIR: "/certs"
+  script:
+    - echo "$HARBOR_PASSWORD" | docker login "$HARBOR_REGISTRY" -u "$HARBOR_USER" --password-stdin
+    - IMAGE="$HARBOR_REGISTRY/$DOMAIN/$SERVICE_NAME:$IMAGE_TAG"
+    - docker build -t "$IMAGE" -t "$HARBOR_REGISTRY/$DOMAIN/$SERVICE_NAME:latest" src/$DOMAIN/$SERVICE_NAME
+    - docker save "$IMAGE" -o /tmp/image.tar
+  artifacts:
+    paths: [/tmp/image.tar]
+    expire_in: 1h
+  needs: [build-test]
+
+# ── Image Scan ─────────────────────────────────────────────────────────────
+trivy-scan:
+  stage: scan
+  image: aquasec/trivy:latest
+  script:
+    - mkdir -p reports
+    - IMAGE="$HARBOR_REGISTRY/$DOMAIN/$SERVICE_NAME:$IMAGE_TAG"
+    - trivy image --exit-code 0 --severity $SCAN_SEVERITY --format json --output reports/trivy-$SERVICE_NAME.json "$IMAGE" || true
+    - trivy image --exit-code 1 --severity CRITICAL "$IMAGE" || echo "WARNING Critical vulnerabilities found"
+  artifacts:
+    paths: [reports/]
+    expire_in: 7d
+  needs: [docker-build]
+  allow_failure: true
+
+sbom:
+  stage: scan
+  image: anchore/syft:latest
+  script:
+    - mkdir -p reports
+    - IMAGE="$HARBOR_REGISTRY/$DOMAIN/$SERVICE_NAME:$IMAGE_TAG"
+    - syft "$IMAGE" -o cyclonedx-json > reports/sbom-$SERVICE_NAME.json || true
+  artifacts:
+    paths: [reports/]
+    expire_in: 7d
+  needs: [docker-build]
+
+# ── Push + Sign ────────────────────────────────────────────────────────────
+push-sign:
+  stage: push-sign
+  image: gcr.io/projectsigstore/cosign:latest
+  services:
+    - docker:27-dind
+  variables:
+    DOCKER_TLS_CERTDIR: "/certs"
+  script:
+    - IMAGE="$HARBOR_REGISTRY/$DOMAIN/$SERVICE_NAME:$IMAGE_TAG"
+    - echo "$HARBOR_PASSWORD" | docker login "$HARBOR_REGISTRY" -u "$HARBOR_USER" --password-stdin
+    - docker push "$IMAGE"
+    - docker push "$HARBOR_REGISTRY/$DOMAIN/$SERVICE_NAME:latest"
+    - cosign sign --yes "$IMAGE" || true
+    - cosign attest --yes --predicate reports/sbom-$SERVICE_NAME.json --type cyclonedx "$IMAGE" || true
+  needs: [trivy-scan, sbom]
+
+# ── Deploy ─────────────────────────────────────────────────────────────────
+deploy:
+  stage: deploy
+  image: alpine/helm:latest
+  environment:
+    name: $ENVIRONMENT
+  before_script:
+    - apk add --no-cache curl bash
+    - curl -fsSL "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl" -o /usr/local/bin/kubectl && chmod +x /usr/local/bin/kubectl
+    - mkdir -p ~/.kube
+    - echo "$KUBECONFIG_CONTENT" | base64 -d > ~/.kube/config
+  script:
+    - IMAGE="$HARBOR_REGISTRY/$DOMAIN/$SERVICE_NAME:$IMAGE_TAG"
+    - |
+      helm upgrade --install "$SERVICE_NAME" "helm/charts/$SERVICE_NAME" \
+        --namespace "$DOMAIN" \
+        --set image.repository="$HARBOR_REGISTRY/$DOMAIN/$SERVICE_NAME" \
+        --set image.tag="$IMAGE_TAG" \
+        --set environment="$ENVIRONMENT" \
+        -f "helm/charts/$SERVICE_NAME/values-$ENVIRONMENT.yaml" \
+        --wait --timeout 5m
+    - kubectl rollout status deploy/"$SERVICE_NAME" -n "$DOMAIN" --timeout=120s
+  needs: [push-sign]
+  rules:
+    - if: $ENVIRONMENT == "prod"
+      when: manual
+    - when: on_success
+
+# ── DAST ───────────────────────────────────────────────────────────────────
+dast-zap:
+  stage: dast
+  image: ghcr.io/zaproxy/zaproxy:stable
+  before_script:
+    - apt-get update -qq && apt-get install -y curl --quiet
+    - curl -fsSL "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl" -o /usr/local/bin/kubectl && chmod +x /usr/local/bin/kubectl
+    - mkdir -p ~/.kube reports/dast
+    - echo "$KUBECONFIG_CONTENT" | base64 -d > ~/.kube/config
+  script:
+    - kubectl port-forward svc/api-gateway 18080:8080 -n platform &
+    - sleep 5
+    - zap-baseline.py -t http://localhost:18080 -J reports/dast/zap-$ENVIRONMENT.json -r reports/dast/zap-$ENVIRONMENT.html -I || true
+  artifacts:
+    paths: [reports/dast/]
+    expire_in: 7d
+  needs: [deploy]
+  allow_failure: true
+  rules:
+    - if: $ENVIRONMENT == "staging" || $ENVIRONMENT == "prod"
+
+# ── Notify ─────────────────────────────────────────────────────────────────
+notify:
+  stage: report
+  image: curlimages/curl:latest
+  script:
+    - |
+      curl -sf -X POST "$SLACK_WEBHOOK" \
+        -H "Content-Type: application/json" \
+        -d "{\"text\":\"Deployed *$SERVICE_NAME* @ $IMAGE_TAG to *$ENVIRONMENT* — pipeline #$CI_PIPELINE_ID\"}" || true
+  needs: [deploy]
+  when: always

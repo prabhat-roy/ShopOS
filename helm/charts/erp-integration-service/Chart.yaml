@@ -1,0 +1,19 @@
+apiVersion: v2
+name: erp-integration-service
+description: ShopOS ERP Integration Service — SAP/Oracle/NetSuite sync
+type: application
+version: 0.1.0
+appVersion: "1.0.0"
+keywords:
+  - shopos
+  - erp-integration-service
+  - integrations
+home: https://github.com/your-org/shopos
+sources:
+  - https://github.com/your-org/shopos/tree/main/src/integrations/erp-integration-service
+maintainers:
+  - name: ShopOS Platform Team
+    email: platform@shopos.io
+annotations:
+  app.kubernetes.io/domain: integrations
+  app.kubernetes.io/language: Java

@@ -1,0 +1,16 @@
+{
+  "type": "record",
+  "name": "PageViewed",
+  "namespace": "com.shopos.analytics.page",
+  "doc": "Emitted when a user views a page",
+  "fields": [
+    { "name": "event_id",    "type": "string" },
+    { "name": "session_id",  "type": "string" },
+    { "name": "user_id",     "type": ["null", "string"], "default": null },
+    { "name": "page_url",    "type": "string" },
+    { "name": "referrer",    "type": "string", "default": "" },
+    { "name": "user_agent",  "type": "string", "default": "" },
+    { "name": "ip_address",  "type": "string", "default": "" },
+    { "name": "occurred_at", "type": { "type": "long", "logicalType": "timestamp-millis" } }
+  ]
+}

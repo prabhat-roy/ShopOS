@@ -1,0 +1,31 @@
+apiVersion: jaegertracing.io/v1
+kind: Jaeger
+metadata:
+  name: shopos-jaeger
+  namespace: monitoring
+spec:
+  strategy: production
+  storage:
+    type: elasticsearch
+    elasticsearch:
+      nodeCount: 3
+      resources:
+        requests:
+          cpu: 200m
+          memory: 4Gi
+        limits:
+          memory: 8Gi
+  collector:
+    replicas: 3
+    resources:
+      requests:
+        cpu: 200m
+        memory: 256Mi
+  query:
+    replicas: 2
+  agent:
+    strategy: DaemonSet
+  ingress:
+    enabled: true
+    hosts:
+      - jaeger.shopos.io

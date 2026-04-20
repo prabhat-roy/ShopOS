@@ -1,0 +1,19 @@
+apiVersion: v2
+name: influencer-service
+description: ShopOS influencer-service — Influencer campaign management, UTM attribution, and performance metrics
+type: application
+version: 0.1.0
+appVersion: "1.0.0"
+keywords:
+  - shopos
+  - influencer-service
+  - affiliate
+home: https://github.com/your-org/shopos
+sources:
+  - https://github.com/your-org/shopos/tree/main/src/affiliate/influencer-service
+maintainers:
+  - name: ShopOS Platform Team
+    email: platform@shopos.io
+annotations:
+  app.kubernetes.io/domain: affiliate
+  app.kubernetes.io/language: go

@@ -1,0 +1,154 @@
+# Deploy Pipeline — CircleCI
+# Context: shopos-harbor, shopos-sonarqube, shopos-kubernetes, shopos-slack
+version: 2.1
+
+orbs:
+  node: circleci/node@5.2
+  go: circleci/go@1.11
+  python: circleci/python@2.1
+
+executors:
+  helm-executor:
+    docker:
+      - image: alpine/helm:latest
+    resource_class: medium
+  kaniko-executor:
+    docker:
+      - image: gcr.io/kaniko-project/executor:latest
+    resource_class: medium
+  security-executor:
+    docker:
+      - image: ubuntu:24.04
+    resource_class: medium
+
+jobs:
+  secret-scan:
+    docker:
+      - image: zricethezav/gitleaks:latest
+    steps:
+      - checkout
+      - run:
+          name: Gitleaks secret scan
+          command: gitleaks detect --source . --exit-code 1 || true
+
+  sast-semgrep:
+    docker:
+      - image: returntocorp/semgrep:latest
+    steps:
+      - checkout
+      - run:
+          name: Semgrep SAST
+          command: |
+            semgrep --config=auto --json --output=/tmp/semgrep.json \
+              src/$SERVICE_NAME || true
+      - store_artifacts:
+          path: /tmp/semgrep.json
+
+  sonarqube-scan:
+    docker:
+      - image: sonarsource/sonar-scanner-cli:latest
+    steps:
+      - checkout
+      - run:
+          name: SonarQube scan
+          command: |
+            cd src/$SERVICE_NAME
+            sonar-scanner \
+              -Dsonar.projectKey=$SERVICE_NAME \
+              -Dsonar.host.url=$SONAR_HOST_URL \
+              -Dsonar.login=$SONAR_TOKEN \
+              -Dsonar.qualitygate.wait=true || true
+
+  docker-build:
+    executor: security-executor
+    steps:
+      - checkout
+      - setup_remote_docker:
+          docker_layer_caching: true
+      - run:
+          name: Build image
+          command: |
+            docker build -t $HARBOR_REGISTRY/shopos/$SERVICE_NAME:$CIRCLE_SHA1 \
+              src/$SERVICE_NAME/
+      - run:
+          name: Trivy scan
+          command: |
+            curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh -s -- -b /usr/local/bin
+            trivy image --exit-code 1 --severity CRITICAL --no-progress \
+              $HARBOR_REGISTRY/shopos/$SERVICE_NAME:$CIRCLE_SHA1 || true
+            trivy image --format cyclonedx --output /tmp/sbom.json \
+              $HARBOR_REGISTRY/shopos/$SERVICE_NAME:$CIRCLE_SHA1 || true
+      - store_artifacts:
+          path: /tmp/sbom.json
+
+  docker-push:
+    executor: security-executor
+    steps:
+      - checkout
+      - setup_remote_docker
+      - run:
+          name: Push to Harbor
+          command: |
+            echo "$HARBOR_PASSWORD" | docker login $HARBOR_REGISTRY -u $HARBOR_USERNAME --password-stdin
+            docker push $HARBOR_REGISTRY/shopos/$SERVICE_NAME:$CIRCLE_SHA1
+            docker tag $HARBOR_REGISTRY/shopos/$SERVICE_NAME:$CIRCLE_SHA1 \
+              $HARBOR_REGISTRY/shopos/$SERVICE_NAME:latest
+            docker push $HARBOR_REGISTRY/shopos/$SERVICE_NAME:latest
+      - run:
+          name: Cosign sign
+          command: |
+            curl -fsSL "https://github.com/sigstore/cosign/releases/download/v2.4.0/cosign-linux-amd64" \
+              -o /usr/local/bin/cosign && chmod +x /usr/local/bin/cosign
+            COSIGN_EXPERIMENTAL=1 cosign sign --yes \
+              $HARBOR_REGISTRY/shopos/$SERVICE_NAME:$CIRCLE_SHA1
+
+  deploy:
+    executor: helm-executor
+    steps:
+      - checkout
+      - run:
+          name: Setup kubeconfig
+          command: mkdir -p ~/.kube && echo "$KUBECONFIG_CONTENT" | base64 -d > ~/.kube/config
+      - run:
+          name: Helm deploy
+          command: |
+            helm upgrade --install $SERVICE_NAME \
+              helm/charts/$SERVICE_NAME \
+              --namespace $K8S_NAMESPACE --create-namespace \
+              --set image.repository=$HARBOR_REGISTRY/shopos/$SERVICE_NAME \
+              --set image.tag=$CIRCLE_SHA1 \
+              --set environment=$ENVIRONMENT \
+              --wait --timeout 5m
+      - run:
+          name: Notify Slack
+          command: |
+            apk add --no-cache curl
+            curl -sf -X POST "$SLACK_WEBHOOK" \
+              -H 'Content-type: application/json' \
+              --data "{\"text\":\":white_check_mark: Deployed *$SERVICE_NAME:$CIRCLE_SHA1* to *$ENVIRONMENT*\"}"
+          when: on_success
+
+workflows:
+  deploy-workflow:
+    jobs:
+      - secret-scan
+      - sast-semgrep:
+          requires: [secret-scan]
+      - sonarqube-scan:
+          requires: [secret-scan]
+          context: shopos-sonarqube
+      - docker-build:
+          requires: [sast-semgrep, sonarqube-scan]
+          context: shopos-harbor
+      - docker-push:
+          requires: [docker-build]
+          context: shopos-harbor
+          filters:
+            branches:
+              only: [main, /release\/.*/]
+      - deploy:
+          requires: [docker-push]
+          context: [shopos-kubernetes, shopos-slack]
+          filters:
+            branches:
+              only: [main, /release\/.*/]

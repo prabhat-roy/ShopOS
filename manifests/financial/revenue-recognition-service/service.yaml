@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: revenue-recognition-service
+  namespace: financial
+  labels:
+    app: revenue-recognition-service
+    domain: financial
+spec:
+  selector:
+    app: revenue-recognition-service
+  type: ClusterIP
+  ports:
+    - name: grpc
+      port: 50192
+      targetPort: grpc
+      protocol: TCP

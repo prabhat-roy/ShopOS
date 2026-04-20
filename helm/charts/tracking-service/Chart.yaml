@@ -1,0 +1,19 @@
+apiVersion: v2
+name: tracking-service
+description: ShopOS Tracking Service — shipment tracking events
+type: application
+version: 0.1.0
+appVersion: "1.0.0"
+keywords:
+  - shopos
+  - tracking-service
+  - supply-chain
+home: https://github.com/your-org/shopos
+sources:
+  - https://github.com/your-org/shopos/tree/main/src/supply-chain/tracking-service
+maintainers:
+  - name: ShopOS Platform Team
+    email: platform@shopos.io
+annotations:
+  app.kubernetes.io/domain: supply-chain
+  app.kubernetes.io/language: Node.js

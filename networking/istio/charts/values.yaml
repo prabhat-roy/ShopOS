@@ -1,0 +1,34 @@
+replicaCount: 1
+
+image:
+  repository: docker.io/istio/pilot
+  tag: "1.23.0"
+  pullPolicy: IfNotPresent
+
+service:
+  type: ClusterIP
+  port: 15010
+  targetPort: 15010
+
+persistence:
+  enabled: false
+  storageClass: ""
+  size: 1Gi
+  accessMode: ReadWriteOnce
+  mountPath: /data
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 128Mi
+  limits:
+    cpu: "1"
+    memory: 512Mi
+
+env: {}
+
+ingress:
+  enabled: false
+  className: ""
+  host: ""
+  tls: []

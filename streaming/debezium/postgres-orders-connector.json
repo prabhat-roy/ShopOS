@@ -1,0 +1,30 @@
+{
+  "name": "postgres-orders-connector",
+  "config": {
+    "connector.class": "io.debezium.connector.postgresql.PostgresConnector",
+    "database.hostname": "postgres",
+    "database.port": "5432",
+    "database.user": "shopos",
+    "database.password": "${file:/opt/kafka/external-configuration/connector-secrets/connector.properties:postgres.password}",
+    "database.dbname": "orders",
+    "database.server.name": "postgres-orders",
+    "topic.prefix": "commerce",
+    "table.include.list": "public.orders,public.order_items,public.order_status_history",
+    "plugin.name": "pgoutput",
+    "publication.autocreate.mode": "filtered",
+    "slot.name": "debezium_orders_slot",
+    "heartbeat.interval.ms": "10000",
+    "key.converter": "io.confluent.kafka.serializers.KafkaAvroSerializer",
+    "value.converter": "io.confluent.kafka.serializers.KafkaAvroSerializer",
+    "key.converter.schema.registry.url": "http://schema-registry:8081",
+    "value.converter.schema.registry.url": "http://schema-registry:8081",
+    "transforms": "unwrap,addTopicPrefix",
+    "transforms.unwrap.type": "io.debezium.transforms.ExtractNewRecordState",
+    "transforms.unwrap.drop.tombstones": "false",
+    "transforms.unwrap.delete.handling.mode": "rewrite",
+    "transforms.addTopicPrefix.type": "org.apache.kafka.connect.transforms.ReplaceField$Value",
+    "errors.tolerance": "all",
+    "errors.deadletterqueue.topic.name": "debezium.errors.postgres-orders",
+    "errors.deadletterqueue.topic.replication.factor": "1"
+  }
+}

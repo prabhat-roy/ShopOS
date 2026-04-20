@@ -1,0 +1,655 @@
+apiVersion: skaffold/v4beta11
+kind: Config
+metadata:
+  name: shopos
+
+build:
+  local:
+    push: false
+  artifacts:
+    # ── Platform (22) ──────────────────────────────────────────────────────────
+    - image: shopos/api-gateway
+      context: src/platform/api-gateway
+    - image: shopos/web-bff
+      context: src/platform/web-bff
+    - image: shopos/mobile-bff
+      context: src/platform/mobile-bff
+    - image: shopos/partner-bff
+      context: src/platform/partner-bff
+    - image: shopos/config-service
+      context: src/platform/config-service
+    - image: shopos/feature-flag-service
+      context: src/platform/feature-flag-service
+    - image: shopos/rate-limiter-service
+      context: src/platform/rate-limiter-service
+    - image: shopos/health-check-service
+      context: src/platform/health-check-service
+    - image: shopos/saga-orchestrator
+      context: src/platform/saga-orchestrator
+    - image: shopos/event-store-service
+      context: src/platform/event-store-service
+    - image: shopos/cache-warming-service
+      context: src/platform/cache-warming-service
+    - image: shopos/webhook-service
+      context: src/platform/webhook-service
+    - image: shopos/scheduler-service
+      context: src/platform/scheduler-service
+    - image: shopos/worker-job-queue
+      context: src/platform/worker-job-queue
+    - image: shopos/audit-service
+      context: src/platform/audit-service
+    - image: shopos/load-generator
+      context: src/platform/load-generator
+    - image: shopos/admin-portal
+      context: src/platform/admin-portal
+    - image: shopos/graphql-gateway
+      context: src/platform/graphql-gateway
+    - image: shopos/dead-letter-service
+      context: src/platform/dead-letter-service
+    - image: shopos/geolocation-service
+      context: src/platform/geolocation-service
+    - image: shopos/event-replay-service
+      context: src/platform/event-replay-service
+    - image: shopos/tenant-service
+      context: src/platform/tenant-service
+    # ── Identity (8) ───────────────────────────────────────────────────────────
+    - image: shopos/auth-service
+      context: src/identity/auth-service
+    - image: shopos/user-service
+      context: src/identity/user-service
+    - image: shopos/session-service
+      context: src/identity/session-service
+    - image: shopos/permission-service
+      context: src/identity/permission-service
+    - image: shopos/mfa-service
+      context: src/identity/mfa-service
+    - image: shopos/gdpr-service
+      context: src/identity/gdpr-service
+    - image: shopos/api-key-service
+      context: src/identity/api-key-service
+    - image: shopos/device-fingerprint-service
+      context: src/identity/device-fingerprint-service
+    # ── Catalog (12) ───────────────────────────────────────────────────────────
+    - image: shopos/product-catalog-service
+      context: src/catalog/product-catalog-service
+    - image: shopos/category-service
+      context: src/catalog/category-service
+    - image: shopos/brand-service
+      context: src/catalog/brand-service
+    - image: shopos/pricing-service
+      context: src/catalog/pricing-service
+    - image: shopos/inventory-service
+      context: src/catalog/inventory-service
+    - image: shopos/bundle-service
+      context: src/catalog/bundle-service
+    - image: shopos/configurator-service
+      context: src/catalog/configurator-service
+    - image: shopos/subscription-product-service
+      context: src/catalog/subscription-product-service
+    - image: shopos/search-service
+      context: src/catalog/search-service
+    - image: shopos/seo-service
+      context: src/catalog/seo-service
+    - image: shopos/product-import-service
+      context: src/catalog/product-import-service
+    - image: shopos/price-list-service
+      context: src/catalog/price-list-service
+    # ── Commerce (23) ──────────────────────────────────────────────────────────
+    - image: shopos/cart-service
+      context: src/commerce/cart-service
+    - image: shopos/checkout-service
+      context: src/commerce/checkout-service
+    - image: shopos/order-service
+      context: src/commerce/order-service
+    - image: shopos/payment-service
+      context: src/commerce/payment-service
+    - image: shopos/shipping-service
+      context: src/commerce/shipping-service
+    - image: shopos/currency-service
+      context: src/commerce/currency-service
+    - image: shopos/tax-service
+      context: src/commerce/tax-service
+    - image: shopos/promotions-service
+      context: src/commerce/promotions-service
+    - image: shopos/loyalty-service
+      context: src/commerce/loyalty-service
+    - image: shopos/return-refund-service
+      context: src/commerce/return-refund-service
+    - image: shopos/subscription-billing-service
+      context: src/commerce/subscription-billing-service
+    - image: shopos/fraud-detection-service
+      context: src/commerce/fraud-detection-service
+    - image: shopos/wallet-service
+      context: src/commerce/wallet-service
+    - image: shopos/ab-testing-service
+      context: src/commerce/ab-testing-service
+    - image: shopos/gift-card-service
+      context: src/commerce/gift-card-service
+    - image: shopos/address-validation-service
+      context: src/commerce/address-validation-service
+    - image: shopos/digital-goods-service
+      context: src/commerce/digital-goods-service
+    - image: shopos/voucher-service
+      context: src/commerce/voucher-service
+    - image: shopos/pre-order-service
+      context: src/commerce/pre-order-service
+    - image: shopos/backorder-service
+      context: src/commerce/backorder-service
+    - image: shopos/waitlist-service
+      context: src/commerce/waitlist-service
+    - image: shopos/flash-sale-service
+      context: src/commerce/flash-sale-service
+    - image: shopos/bnpl-service
+      context: src/commerce/bnpl-service
+    # ── Supply Chain (13) ──────────────────────────────────────────────────────
+    - image: shopos/vendor-service
+      context: src/supply-chain/vendor-service
+    - image: shopos/purchase-order-service
+      context: src/supply-chain/purchase-order-service
+    - image: shopos/warehouse-service
+      context: src/supply-chain/warehouse-service
+    - image: shopos/fulfillment-service
+      context: src/supply-chain/fulfillment-service
+    - image: shopos/tracking-service
+      context: src/supply-chain/tracking-service
+    - image: shopos/label-service
+      context: src/supply-chain/label-service
+    - image: shopos/carrier-integration-service
+      context: src/supply-chain/carrier-integration-service
+    - image: shopos/demand-forecast-service
+      context: src/supply-chain/demand-forecast-service
+    - image: shopos/customs-duties-service
+      context: src/supply-chain/customs-duties-service
+    - image: shopos/returns-logistics-service
+      context: src/supply-chain/returns-logistics-service
+    - image: shopos/supplier-portal-service
+      context: src/supply-chain/supplier-portal-service
+    - image: shopos/cold-chain-service
+      context: src/supply-chain/cold-chain-service
+    - image: shopos/supplier-rating-service
+      context: src/supply-chain/supplier-rating-service
+    # ── Financial (11) ─────────────────────────────────────────────────────────
+    - image: shopos/invoice-service
+      context: src/financial/invoice-service
+    - image: shopos/accounting-service
+      context: src/financial/accounting-service
+    - image: shopos/payout-service
+      context: src/financial/payout-service
+    - image: shopos/reconciliation-service
+      context: src/financial/reconciliation-service
+    - image: shopos/tax-reporting-service
+      context: src/financial/tax-reporting-service
+    - image: shopos/expense-management-service
+      context: src/financial/expense-management-service
+    - image: shopos/credit-service
+      context: src/financial/credit-service
+    - image: shopos/kyc-aml-service
+      context: src/financial/kyc-aml-service
+    - image: shopos/budget-service
+      context: src/financial/budget-service
+    - image: shopos/chargeback-service
+      context: src/financial/chargeback-service
+    - image: shopos/revenue-recognition-service
+      context: src/financial/revenue-recognition-service
+    # ── Customer Experience (14) ───────────────────────────────────────────────
+    - image: shopos/review-rating-service
+      context: src/customer-experience/review-rating-service
+    - image: shopos/qa-service
+      context: src/customer-experience/qa-service
+    - image: shopos/wishlist-service
+      context: src/customer-experience/wishlist-service
+    - image: shopos/compare-service
+      context: src/customer-experience/compare-service
+    - image: shopos/recently-viewed-service
+      context: src/customer-experience/recently-viewed-service
+    - image: shopos/support-ticket-service
+      context: src/customer-experience/support-ticket-service
+    - image: shopos/live-chat-service
+      context: src/customer-experience/live-chat-service
+    - image: shopos/consent-management-service
+      context: src/customer-experience/consent-management-service
+    - image: shopos/age-verification-service
+      context: src/customer-experience/age-verification-service
+    - image: shopos/survey-service
+      context: src/customer-experience/survey-service
+    - image: shopos/feedback-service
+      context: src/customer-experience/feedback-service
+    - image: shopos/price-alert-service
+      context: src/customer-experience/price-alert-service
+    - image: shopos/back-in-stock-service
+      context: src/customer-experience/back-in-stock-service
+    - image: shopos/gift-registry-service
+      context: src/customer-experience/gift-registry-service
+    # ── Communications (9) ─────────────────────────────────────────────────────
+    - image: shopos/notification-orchestrator
+      context: src/communications/notification-orchestrator
+    - image: shopos/email-service
+      context: src/communications/email-service
+    - image: shopos/sms-service
+      context: src/communications/sms-service
+    - image: shopos/push-notification-service
+      context: src/communications/push-notification-service
+    - image: shopos/template-service
+      context: src/communications/template-service
+    - image: shopos/in-app-notification-service
+      context: src/communications/in-app-notification-service
+    - image: shopos/digest-service
+      context: src/communications/digest-service
+    - image: shopos/whatsapp-service
+      context: src/communications/whatsapp-service
+    - image: shopos/chatbot-service
+      context: src/communications/chatbot-service
+    # ── Content (8) ────────────────────────────────────────────────────────────
+    - image: shopos/media-asset-service
+      context: src/content/media-asset-service
+    - image: shopos/image-processing-service
+      context: src/content/image-processing-service
+    - image: shopos/document-service
+      context: src/content/document-service
+    - image: shopos/cms-service
+      context: src/content/cms-service
+    - image: shopos/video-service
+      context: src/content/video-service
+    - image: shopos/sitemap-service
+      context: src/content/sitemap-service
+    - image: shopos/i18n-l10n-service
+      context: src/content/i18n-l10n-service
+    - image: shopos/data-export-service
+      context: src/content/data-export-service
+    # ── Analytics / AI (13) ────────────────────────────────────────────────────
+    - image: shopos/analytics-service
+      context: src/analytics-ai/analytics-service
+    - image: shopos/reporting-service
+      context: src/analytics-ai/reporting-service
+    - image: shopos/recommendation-service
+      context: src/analytics-ai/recommendation-service
+    - image: shopos/sentiment-analysis-service
+      context: src/analytics-ai/sentiment-analysis-service
+    - image: shopos/price-optimization-service
+      context: src/analytics-ai/price-optimization-service
+    - image: shopos/ml-feature-store
+      context: src/analytics-ai/ml-feature-store
+    - image: shopos/personalization-service
+      context: src/analytics-ai/personalization-service
+    - image: shopos/data-pipeline-service
+      context: src/analytics-ai/data-pipeline-service
+    - image: shopos/ad-service
+      context: src/analytics-ai/ad-service
+    - image: shopos/event-tracking-service
+      context: src/analytics-ai/event-tracking-service
+    - image: shopos/attribution-service
+      context: src/analytics-ai/attribution-service
+    - image: shopos/clv-service
+      context: src/analytics-ai/clv-service
+    - image: shopos/search-analytics-service
+      context: src/analytics-ai/search-analytics-service
+    # ── B2B (7) ────────────────────────────────────────────────────────────────
+    - image: shopos/organization-service
+      context: src/b2b/organization-service
+    - image: shopos/contract-service
+      context: src/b2b/contract-service
+    - image: shopos/quote-rfq-service
+      context: src/b2b/quote-rfq-service
+    - image: shopos/approval-workflow-service
+      context: src/b2b/approval-workflow-service
+    - image: shopos/b2b-credit-limit-service
+      context: src/b2b/b2b-credit-limit-service
+    - image: shopos/edi-service
+      context: src/b2b/edi-service
+    - image: shopos/marketplace-seller-service
+      context: src/b2b/marketplace-seller-service
+    # ── Integrations (10) ──────────────────────────────────────────────────────
+    - image: shopos/erp-integration-service
+      context: src/integrations/erp-integration-service
+    - image: shopos/marketplace-connector-service
+      context: src/integrations/marketplace-connector-service
+    - image: shopos/social-commerce-service
+      context: src/integrations/social-commerce-service
+    - image: shopos/crm-integration-service
+      context: src/integrations/crm-integration-service
+    - image: shopos/payment-gateway-integration
+      context: src/integrations/payment-gateway-integration
+    - image: shopos/logistics-provider-integration
+      context: src/integrations/logistics-provider-integration
+    - image: shopos/tax-provider-integration
+      context: src/integrations/tax-provider-integration
+    - image: shopos/pim-integration-service
+      context: src/integrations/pim-integration-service
+    - image: shopos/cdp-integration-service
+      context: src/integrations/cdp-integration-service
+    - image: shopos/accounting-integration-service
+      context: src/integrations/accounting-integration-service
+    # ── Affiliate (4) ──────────────────────────────────────────────────────────
+    - image: shopos/affiliate-service
+      context: src/affiliate/affiliate-service
+    - image: shopos/referral-service
+      context: src/affiliate/referral-service
+    - image: shopos/influencer-service
+      context: src/affiliate/influencer-service
+    - image: shopos/commission-payout-service
+      context: src/affiliate/commission-payout-service
+
+deploy:
+  helm:
+    releases:
+      - name: api-gateway
+        chartPath: helm/charts/api-gateway
+        namespace: api-gateway
+        createNamespace: true
+        valuesFiles:
+          - helm/charts/api-gateway/values.yaml
+      - name: order-service
+        chartPath: helm/charts/order-service
+        namespace: order-service
+        createNamespace: true
+        valuesFiles:
+          - helm/charts/order-service/values.yaml
+      - name: cart-service
+        chartPath: helm/charts/cart-service
+        namespace: cart-service
+        createNamespace: true
+        valuesFiles:
+          - helm/charts/cart-service/values.yaml
+      - name: checkout-service
+        chartPath: helm/charts/checkout-service
+        namespace: checkout-service
+        createNamespace: true
+        valuesFiles:
+          - helm/charts/checkout-service/values.yaml
+      - name: payment-service
+        chartPath: helm/charts/payment-service
+        namespace: payment-service
+        createNamespace: true
+        valuesFiles:
+          - helm/charts/payment-service/values.yaml
+      - name: product-catalog-service
+        chartPath: helm/charts/product-catalog-service
+        namespace: product-catalog-service
+        createNamespace: true
+        valuesFiles:
+          - helm/charts/product-catalog-service/values.yaml
+      - name: search-service
+        chartPath: helm/charts/search-service
+        namespace: search-service
+        createNamespace: true
+        valuesFiles:
+          - helm/charts/search-service/values.yaml
+      - name: auth-service
+        chartPath: helm/charts/auth-service
+        namespace: auth-service
+        createNamespace: true
+        valuesFiles:
+          - helm/charts/auth-service/values.yaml
+      - name: user-service
+        chartPath: helm/charts/user-service
+        namespace: user-service
+        createNamespace: true
+        valuesFiles:
+          - helm/charts/user-service/values.yaml
+
+# ── Profiles ───────────────────────────────────────────────────────────────────
+# Usage: skaffold dev -p platform
+#        skaffold dev -p commerce-core
+#        skaffold run -p catalog
+
+profiles:
+
+  - name: platform
+    build:
+      artifacts:
+        - image: shopos/api-gateway
+          context: src/platform/api-gateway
+        - image: shopos/web-bff
+          context: src/platform/web-bff
+        - image: shopos/mobile-bff
+          context: src/platform/mobile-bff
+        - image: shopos/partner-bff
+          context: src/platform/partner-bff
+        - image: shopos/graphql-gateway
+          context: src/platform/graphql-gateway
+        - image: shopos/saga-orchestrator
+          context: src/platform/saga-orchestrator
+        - image: shopos/event-store-service
+          context: src/platform/event-store-service
+        - image: shopos/scheduler-service
+          context: src/platform/scheduler-service
+        - image: shopos/worker-job-queue
+          context: src/platform/worker-job-queue
+        - image: shopos/webhook-service
+          context: src/platform/webhook-service
+        - image: shopos/config-service
+          context: src/platform/config-service
+        - image: shopos/feature-flag-service
+          context: src/platform/feature-flag-service
+        - image: shopos/rate-limiter-service
+          context: src/platform/rate-limiter-service
+        - image: shopos/tenant-service
+          context: src/platform/tenant-service
+
+  - name: identity
+    build:
+      artifacts:
+        - image: shopos/auth-service
+          context: src/identity/auth-service
+        - image: shopos/user-service
+          context: src/identity/user-service
+        - image: shopos/session-service
+          context: src/identity/session-service
+        - image: shopos/permission-service
+          context: src/identity/permission-service
+        - image: shopos/mfa-service
+          context: src/identity/mfa-service
+        - image: shopos/gdpr-service
+          context: src/identity/gdpr-service
+        - image: shopos/api-key-service
+          context: src/identity/api-key-service
+        - image: shopos/device-fingerprint-service
+          context: src/identity/device-fingerprint-service
+
+  - name: catalog
+    build:
+      artifacts:
+        - image: shopos/product-catalog-service
+          context: src/catalog/product-catalog-service
+        - image: shopos/category-service
+          context: src/catalog/category-service
+        - image: shopos/pricing-service
+          context: src/catalog/pricing-service
+        - image: shopos/inventory-service
+          context: src/catalog/inventory-service
+        - image: shopos/search-service
+          context: src/catalog/search-service
+        - image: shopos/brand-service
+          context: src/catalog/brand-service
+        - image: shopos/bundle-service
+          context: src/catalog/bundle-service
+        - image: shopos/configurator-service
+          context: src/catalog/configurator-service
+        - image: shopos/subscription-product-service
+          context: src/catalog/subscription-product-service
+        - image: shopos/seo-service
+          context: src/catalog/seo-service
+        - image: shopos/product-import-service
+          context: src/catalog/product-import-service
+        - image: shopos/price-list-service
+          context: src/catalog/price-list-service
+
+  - name: commerce-core
+    build:
+      artifacts:
+        - image: shopos/cart-service
+          context: src/commerce/cart-service
+        - image: shopos/checkout-service
+          context: src/commerce/checkout-service
+        - image: shopos/order-service
+          context: src/commerce/order-service
+        - image: shopos/payment-service
+          context: src/commerce/payment-service
+        - image: shopos/shipping-service
+          context: src/commerce/shipping-service
+        - image: shopos/tax-service
+          context: src/commerce/tax-service
+        - image: shopos/promotions-service
+          context: src/commerce/promotions-service
+        - image: shopos/fraud-detection-service
+          context: src/commerce/fraud-detection-service
+        - image: shopos/wallet-service
+          context: src/commerce/wallet-service
+        - image: shopos/return-refund-service
+          context: src/commerce/return-refund-service
+        - image: shopos/inventory-service
+          context: src/catalog/inventory-service
+
+  - name: supply-chain
+    build:
+      artifacts:
+        - image: shopos/vendor-service
+          context: src/supply-chain/vendor-service
+        - image: shopos/warehouse-service
+          context: src/supply-chain/warehouse-service
+        - image: shopos/fulfillment-service
+          context: src/supply-chain/fulfillment-service
+        - image: shopos/tracking-service
+          context: src/supply-chain/tracking-service
+        - image: shopos/purchase-order-service
+          context: src/supply-chain/purchase-order-service
+        - image: shopos/carrier-integration-service
+          context: src/supply-chain/carrier-integration-service
+        - image: shopos/returns-logistics-service
+          context: src/supply-chain/returns-logistics-service
+        - image: shopos/demand-forecast-service
+          context: src/supply-chain/demand-forecast-service
+
+  - name: financial
+    build:
+      artifacts:
+        - image: shopos/invoice-service
+          context: src/financial/invoice-service
+        - image: shopos/accounting-service
+          context: src/financial/accounting-service
+        - image: shopos/payout-service
+          context: src/financial/payout-service
+        - image: shopos/reconciliation-service
+          context: src/financial/reconciliation-service
+        - image: shopos/tax-reporting-service
+          context: src/financial/tax-reporting-service
+        - image: shopos/kyc-aml-service
+          context: src/financial/kyc-aml-service
+        - image: shopos/chargeback-service
+          context: src/financial/chargeback-service
+        - image: shopos/revenue-recognition-service
+          context: src/financial/revenue-recognition-service
+
+  - name: customer-experience
+    build:
+      artifacts:
+        - image: shopos/review-rating-service
+          context: src/customer-experience/review-rating-service
+        - image: shopos/wishlist-service
+          context: src/customer-experience/wishlist-service
+        - image: shopos/support-ticket-service
+          context: src/customer-experience/support-ticket-service
+        - image: shopos/live-chat-service
+          context: src/customer-experience/live-chat-service
+        - image: shopos/compare-service
+          context: src/customer-experience/compare-service
+        - image: shopos/recently-viewed-service
+          context: src/customer-experience/recently-viewed-service
+        - image: shopos/feedback-service
+          context: src/customer-experience/feedback-service
+        - image: shopos/price-alert-service
+          context: src/customer-experience/price-alert-service
+        - image: shopos/back-in-stock-service
+          context: src/customer-experience/back-in-stock-service
+        - image: shopos/gift-registry-service
+          context: src/customer-experience/gift-registry-service
+
+  - name: communications
+    build:
+      artifacts:
+        - image: shopos/notification-orchestrator
+          context: src/communications/notification-orchestrator
+        - image: shopos/email-service
+          context: src/communications/email-service
+        - image: shopos/sms-service
+          context: src/communications/sms-service
+        - image: shopos/push-notification-service
+          context: src/communications/push-notification-service
+        - image: shopos/template-service
+          context: src/communications/template-service
+        - image: shopos/in-app-notification-service
+          context: src/communications/in-app-notification-service
+        - image: shopos/whatsapp-service
+          context: src/communications/whatsapp-service
+        - image: shopos/chatbot-service
+          context: src/communications/chatbot-service
+
+  - name: analytics-ai
+    build:
+      artifacts:
+        - image: shopos/analytics-service
+          context: src/analytics-ai/analytics-service
+        - image: shopos/recommendation-service
+          context: src/analytics-ai/recommendation-service
+        - image: shopos/personalization-service
+          context: src/analytics-ai/personalization-service
+        - image: shopos/price-optimization-service
+          context: src/analytics-ai/price-optimization-service
+        - image: shopos/ml-feature-store
+          context: src/analytics-ai/ml-feature-store
+        - image: shopos/sentiment-analysis-service
+          context: src/analytics-ai/sentiment-analysis-service
+        - image: shopos/attribution-service
+          context: src/analytics-ai/attribution-service
+        - image: shopos/clv-service
+          context: src/analytics-ai/clv-service
+        - image: shopos/search-analytics-service
+          context: src/analytics-ai/search-analytics-service
+
+  - name: b2b
+    build:
+      artifacts:
+        - image: shopos/organization-service
+          context: src/b2b/organization-service
+        - image: shopos/contract-service
+          context: src/b2b/contract-service
+        - image: shopos/quote-rfq-service
+          context: src/b2b/quote-rfq-service
+        - image: shopos/approval-workflow-service
+          context: src/b2b/approval-workflow-service
+        - image: shopos/b2b-credit-limit-service
+          context: src/b2b/b2b-credit-limit-service
+        - image: shopos/edi-service
+          context: src/b2b/edi-service
+        - image: shopos/marketplace-seller-service
+          context: src/b2b/marketplace-seller-service
+
+  - name: integrations
+    build:
+      artifacts:
+        - image: shopos/erp-integration-service
+          context: src/integrations/erp-integration-service
+        - image: shopos/marketplace-connector-service
+          context: src/integrations/marketplace-connector-service
+        - image: shopos/crm-integration-service
+          context: src/integrations/crm-integration-service
+        - image: shopos/payment-gateway-integration
+          context: src/integrations/payment-gateway-integration
+        - image: shopos/pim-integration-service
+          context: src/integrations/pim-integration-service
+        - image: shopos/cdp-integration-service
+          context: src/integrations/cdp-integration-service
+        - image: shopos/accounting-integration-service
+          context: src/integrations/accounting-integration-service
+
+  - name: affiliate
+    build:
+      artifacts:
+        - image: shopos/affiliate-service
+          context: src/affiliate/affiliate-service
+        - image: shopos/referral-service
+          context: src/affiliate/referral-service
+        - image: shopos/influencer-service
+          context: src/affiliate/influencer-service
+        - image: shopos/commission-payout-service
+          context: src/affiliate/commission-payout-service

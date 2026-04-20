@@ -1,0 +1,50 @@
+syntax = "proto3";
+package platform.webhook.v1;
+option go_package = "github.com/shopos/proto/platform/webhook/v1;webhookv1";
+
+import "google/protobuf/timestamp.proto";
+
+service WebhookService {
+  rpc RegisterEndpoint(RegisterEndpointRequest)   returns (RegisterEndpointResponse);
+  rpc GetEndpoint(GetEndpointRequest)             returns (GetEndpointResponse);
+  rpc DeleteEndpoint(DeleteEndpointRequest)       returns (DeleteEndpointResponse);
+  rpc ListEndpoints(ListEndpointsRequest)         returns (ListEndpointsResponse);
+  rpc ListDeliveries(ListDeliveriesRequest)       returns (ListDeliveriesResponse);
+}
+
+message WebhookEndpoint {
+  string id       = 1;
+  string url      = 2;
+  string secret   = 3;
+  repeated string events = 4;
+  bool   active   = 5;
+  string owner_id = 6;
+  google.protobuf.Timestamp created_at = 7;
+}
+
+message WebhookDelivery {
+  string id          = 1;
+  string endpoint_id = 2;
+  string event_type  = 3;
+  int32  status_code = 4;
+  bool   success     = 5;
+  int32  attempt     = 6;
+  google.protobuf.Timestamp delivered_at = 7;
+}
+
+message RegisterEndpointRequest {
+  string url      = 1;
+  string secret   = 2;
+  repeated string events = 3;
+  string owner_id = 4;
+}
+
+message RegisterEndpointResponse { WebhookEndpoint endpoint = 1; }
+message GetEndpointRequest       { string id = 1; }
+message GetEndpointResponse      { WebhookEndpoint endpoint = 1; }
+message DeleteEndpointRequest    { string id = 1; }
+message DeleteEndpointResponse   { bool success = 1; }
+message ListEndpointsRequest     { string owner_id = 1; bool active_only = 2; int32 page = 3; int32 page_size = 4; }
+message ListEndpointsResponse    { repeated WebhookEndpoint endpoints = 1; int32 total = 2; }
+message ListDeliveriesRequest    { string endpoint_id = 1; bool success_only = 2; int32 page = 3; int32 page_size = 4; }
+message ListDeliveriesResponse   { repeated WebhookDelivery deliveries = 1; int32 total = 2; }

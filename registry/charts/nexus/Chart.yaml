@@ -1,0 +1,6 @@
+apiVersion: v2
+name: nexus
+description: Nexus OSS — Maven, npm, PyPI, Go, Docker, Helm, Cargo, NuGet
+type: application
+version: 1.0.0
+appVersion: "3.71.0"

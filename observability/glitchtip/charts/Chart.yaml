@@ -1,0 +1,6 @@
+apiVersion: v2
+name: glitchtip
+description: GlitchTip — open source Sentry-compatible error tracking platform
+type: application
+version: 1.0.0
+appVersion: "v4.1"

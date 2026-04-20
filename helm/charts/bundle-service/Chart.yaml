@@ -1,0 +1,19 @@
+apiVersion: v2
+name: bundle-service
+description: ShopOS Bundle Service — product bundle definitions
+type: application
+version: 0.1.0
+appVersion: "1.0.0"
+keywords:
+  - shopos
+  - bundle-service
+  - catalog
+home: https://github.com/your-org/shopos
+sources:
+  - https://github.com/your-org/shopos/tree/main/src/catalog/bundle-service
+maintainers:
+  - name: ShopOS Platform Team
+    email: platform@shopos.io
+annotations:
+  app.kubernetes.io/domain: catalog
+  app.kubernetes.io/language: Go

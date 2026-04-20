@@ -1,0 +1,183 @@
+version: 0.2
+
+# Observability Stack — CodeBuild buildspec
+# Mirrors .github/workflows/observability.yml
+# Parameters via environment variables:
+#   ENVIRONMENT, ACTION, PROMETHEUS, GRAFANA, LOKI, JAEGER, TEMPO,
+#   OTEL_COLLECTOR, THANOS, PYROSCOPE, OPENSEARCH, FLUENT_BIT, METRICS_SERVER
+
+env:
+  variables:
+    ENVIRONMENT: dev
+    ACTION: INSTALL
+    PROMETHEUS: "true"
+    GRAFANA: "true"
+    LOKI: "true"
+    JAEGER: "true"
+    TEMPO: "true"
+    OTEL_COLLECTOR: "true"
+    THANOS: "false"
+    PYROSCOPE: "false"
+    OPENSEARCH: "false"
+    FLUENT_BIT: "true"
+    METRICS_SERVER: "true"
+  parameter-store:
+    GRAFANA_ADMIN_PASSWORD: /shopos/grafana/admin-password
+    MINIO_ENDPOINT: /shopos/minio/endpoint
+    MINIO_ACCESS_KEY: /shopos/minio/access-key
+  secrets-manager:
+    KUBECONFIG_CONTENT: shopos/kubeconfig:content
+    MINIO_SECRET_KEY: shopos/minio:secret-key
+
+phases:
+  install:
+    commands:
+      - curl -fsSL "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl" -o /usr/local/bin/kubectl && chmod +x /usr/local/bin/kubectl
+      - curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
+
+  pre_build:
+    commands:
+      - mkdir -p ~/.kube
+      - echo "$KUBECONFIG_CONTENT" | base64 -d > ~/.kube/config
+      - echo "Observability $ACTION on $ENVIRONMENT"
+
+  build:
+    commands:
+      # Metrics Server
+      - |
+        if [ "$METRICS_SERVER" = "true" ]; then
+          helm repo add metrics-server https://kubernetes-sigs.github.io/metrics-server --force-update
+          if [ "$ACTION" = "UNINSTALL" ]; then
+            helm uninstall metrics-server -n kube-system 2>/dev/null || true
+          else
+            helm upgrade --install metrics-server metrics-server/metrics-server \
+              --namespace kube-system \
+              --set args[0]=--kubelet-insecure-tls \
+              --wait --timeout 3m
+          fi
+        fi
+
+      # kube-prometheus-stack
+      - |
+        if [ "$PROMETHEUS" = "true" ]; then
+          helm repo add prometheus-community https://prometheus-community.github.io/helm-charts --force-update
+          if [ "$ACTION" = "UNINSTALL" ]; then
+            helm uninstall kube-prometheus-stack -n observability 2>/dev/null || true
+          else
+            helm upgrade --install kube-prometheus-stack prometheus-community/kube-prometheus-stack \
+              --namespace observability --create-namespace \
+              --set prometheus.prometheusSpec.retention=30d \
+              --set prometheus.prometheusSpec.storageSpec.volumeClaimTemplate.spec.resources.requests.storage=50Gi \
+              --set alertmanager.alertmanagerSpec.replicas=2 \
+              --set grafana.enabled=false \
+              --set prometheus.prometheusSpec.serviceMonitorSelectorNilUsesHelmValues=false \
+              --wait --timeout 10m
+            kubectl apply -f observability/prometheus/ 2>/dev/null || true
+          fi
+        fi
+
+      # Grafana
+      - |
+        if [ "$GRAFANA" = "true" ]; then
+          helm repo add grafana https://grafana.github.io/helm-charts --force-update
+          if [ "$ACTION" = "UNINSTALL" ]; then
+            helm uninstall grafana -n observability 2>/dev/null || true
+          else
+            helm upgrade --install grafana grafana/grafana \
+              --namespace observability --create-namespace \
+              --set adminPassword="$GRAFANA_ADMIN_PASSWORD" \
+              --set persistence.enabled=true \
+              --set sidecar.dashboards.enabled=true \
+              --set sidecar.datasources.enabled=true \
+              --wait --timeout 5m
+            kubectl apply -f observability/grafana/ 2>/dev/null || true
+          fi
+        fi
+
+      # Loki
+      - |
+        if [ "$LOKI" = "true" ]; then
+          helm repo add grafana https://grafana.github.io/helm-charts --force-update
+          if [ "$ACTION" = "UNINSTALL" ]; then
+            helm uninstall loki -n observability 2>/dev/null || true
+          else
+            helm upgrade --install loki grafana/loki \
+              --namespace observability --create-namespace \
+              --set loki.auth_enabled=false \
+              --set loki.storage.type=s3 \
+              --set loki.storage.s3.endpoint="$MINIO_ENDPOINT" \
+              --set loki.storage.s3.bucketnames=loki-chunks \
+              --set loki.storage.s3.access_key_id="$MINIO_ACCESS_KEY" \
+              --set loki.storage.s3.secret_access_key="$MINIO_SECRET_KEY" \
+              --set loki.storage.s3.s3ForcePathStyle=true \
+              --wait --timeout 8m
+          fi
+        fi
+
+      # Fluent Bit
+      - |
+        if [ "$FLUENT_BIT" = "true" ]; then
+          helm repo add fluent https://fluent.github.io/helm-charts --force-update
+          if [ "$ACTION" = "UNINSTALL" ]; then
+            helm uninstall fluent-bit -n observability 2>/dev/null || true
+          else
+            helm upgrade --install fluent-bit fluent/fluent-bit \
+              --namespace observability --create-namespace \
+              --wait --timeout 5m
+          fi
+        fi
+
+      # Jaeger
+      - |
+        if [ "$JAEGER" = "true" ]; then
+          helm repo add jaegertracing https://jaegertracing.github.io/helm-charts --force-update
+          if [ "$ACTION" = "UNINSTALL" ]; then
+            helm uninstall jaeger -n observability 2>/dev/null || true
+          else
+            helm upgrade --install jaeger jaegertracing/jaeger \
+              --namespace observability --create-namespace \
+              --set provisionDataStore.cassandra=false \
+              --set allInOne.enabled=false \
+              --set storage.type=elasticsearch \
+              --set storage.elasticsearch.host=elasticsearch.observability \
+              --wait --timeout 8m
+          fi
+        fi
+
+      # Tempo
+      - |
+        if [ "$TEMPO" = "true" ]; then
+          helm repo add grafana https://grafana.github.io/helm-charts --force-update
+          if [ "$ACTION" = "UNINSTALL" ]; then
+            helm uninstall tempo-distributed -n observability 2>/dev/null || true
+          else
+            helm upgrade --install tempo-distributed grafana/tempo-distributed \
+              --namespace observability --create-namespace \
+              --set storage.trace.backend=s3 \
+              --set storage.trace.s3.endpoint="$MINIO_ENDPOINT" \
+              --set storage.trace.s3.bucket=tempo-traces \
+              --set storage.trace.s3.access_key="$MINIO_ACCESS_KEY" \
+              --set storage.trace.s3.secret_key="$MINIO_SECRET_KEY" \
+              --set storage.trace.s3.insecure=true \
+              --wait --timeout 8m
+          fi
+        fi
+
+      # OTel Collector
+      - |
+        if [ "$OTEL_COLLECTOR" = "true" ]; then
+          helm repo add open-telemetry https://open-telemetry.github.io/opentelemetry-helm-charts --force-update
+          if [ "$ACTION" = "UNINSTALL" ]; then
+            helm uninstall otel-collector -n observability 2>/dev/null || true
+          else
+            helm upgrade --install otel-collector open-telemetry/opentelemetry-collector \
+              --namespace observability --create-namespace \
+              --set mode=deployment --set replicaCount=2 \
+              -f observability/otel-collector/values.yaml \
+              --wait --timeout 5m
+          fi
+        fi
+
+  post_build:
+    commands:
+      - echo "Observability $ACTION complete on $ENVIRONMENT"

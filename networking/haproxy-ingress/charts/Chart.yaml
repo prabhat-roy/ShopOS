@@ -1,0 +1,6 @@
+apiVersion: v2
+name: haproxy-ingress
+description: HAProxy Ingress Controller — high-performance ingress
+type: application
+version: 1.0.0
+appVersion: "v0.14.7"

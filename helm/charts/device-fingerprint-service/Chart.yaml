@@ -1,0 +1,19 @@
+apiVersion: v2
+name: device-fingerprint-service
+description: ShopOS Device Fingerprint Service — device recognition
+type: application
+version: 0.1.0
+appVersion: "1.0.0"
+keywords:
+  - shopos
+  - device-fingerprint-service
+  - identity
+home: https://github.com/your-org/shopos
+sources:
+  - https://github.com/your-org/shopos/tree/main/src/identity/device-fingerprint-service
+maintainers:
+  - name: ShopOS Platform Team
+    email: platform@shopos.io
+annotations:
+  app.kubernetes.io/domain: identity
+  app.kubernetes.io/language: Go

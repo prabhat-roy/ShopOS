@@ -1,0 +1,21 @@
+apiVersion: chaos-mesh.org/v1alpha1
+kind: NetworkChaos
+metadata:
+  name: network-loss-platform
+  namespace: chaos-mesh
+  labels:
+    app.kubernetes.io/part-of: shopos-chaos
+    chaos.shopos.io/tier: platform
+spec:
+  action: loss
+  mode: all
+  selector:
+    namespaces:
+      - platform
+    labelSelectors:
+      app.kubernetes.io/name: api-gateway
+  loss:
+    loss: "10"
+    correlation: "50"
+  direction: to
+  duration: 3m

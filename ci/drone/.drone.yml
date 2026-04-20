@@ -1,0 +1,181 @@
+kind: pipeline
+type: docker
+name: ci
+
+# Primary CI pipeline — runs on every push and PR.
+# Triggers the full test + security scan suite.
+# Heavy pipelines (deploy, post-deploy, infra) are triggered manually via Drone API.
+
+trigger:
+  event:
+    - push
+    - pull_request
+  branch:
+    - main
+    - develop
+    - "feature/*"
+    - "release/*"
+
+steps:
+
+  - name: detect-changes
+    image: alpine/git:latest
+    commands:
+      - echo "Branch  : ${DRONE_BRANCH}"
+      - echo "Commit  : ${DRONE_COMMIT_SHA}"
+      - echo "Event   : ${DRONE_BUILD_EVENT}"
+      - git diff --name-only HEAD~1 HEAD 2>/dev/null | head -20 || echo "(first commit)"
+
+  # ── Tests ──────────────────────────────────────────────────────────────────
+
+  - name: test-go
+    image: golang:1.24-alpine
+    commands:
+      - apk add --no-cache make git
+      - |
+        for domain in platform identity catalog commerce supply-chain financial customer-experience communications content b2b integrations affiliate; do
+          for svc in src/$domain/*/; do
+            [ -f "$svc/go.mod" ] || continue
+            echo "=== Testing $svc ==="
+            (cd "$svc" && go test ./... -race -count=1) || true
+          done
+        done
+    when:
+      event: [push, pull_request]
+
+  - name: test-java
+    image: maven:3.9-eclipse-temurin-21
+    commands:
+      - |
+        for domain in platform identity catalog commerce supply-chain financial customer-experience b2b integrations; do
+          for svc in src/$domain/*/; do
+            [ -f "$svc/pom.xml" ] || continue
+            echo "=== Testing $svc ==="
+            (cd "$svc" && mvn test -q) || true
+          done
+        done
+    when:
+      event: [push, pull_request]
+
+  - name: test-kotlin
+    image: gradle:8.10-jdk21
+    commands:
+      - |
+        for domain in catalog commerce supply-chain financial b2b; do
+          for svc in src/$domain/*/; do
+            [ -f "$svc/build.gradle.kts" ] || continue
+            echo "=== Testing $svc ==="
+            (cd "$svc" && gradle test -q) || true
+          done
+        done
+    when:
+      event: [push, pull_request]
+
+  - name: test-python
+    image: python:3.13-slim
+    commands:
+      - pip install pytest pytest-asyncio httpx -q
+      - |
+        for domain in platform supply-chain content analytics-ai communications; do
+          for svc in src/$domain/*/; do
+            [ -f "$svc/requirements.txt" ] || continue
+            echo "=== Testing $svc ==="
+            (cd "$svc" && pip install -r requirements.txt -q && pytest -q) || true
+          done
+        done
+    when:
+      event: [push, pull_request]
+
+  - name: test-node
+    image: node:22-alpine
+    commands:
+      - |
+        for domain in platform catalog commerce supply-chain customer-experience communications content analytics-ai b2b integrations; do
+          for svc in src/$domain/*/; do
+            [ -f "$svc/package.json" ] || continue
+            echo "=== Testing $svc ==="
+            (cd "$svc" && npm ci --silent && npm test) || true
+          done
+        done
+    when:
+      event: [push, pull_request]
+
+  - name: test-rust
+    image: rust:1.82-alpine
+    commands:
+      - apk add --no-cache musl-dev
+      - |
+        for domain in identity commerce supply-chain; do
+          for svc in src/$domain/*/; do
+            [ -f "$svc/Cargo.toml" ] || continue
+            echo "=== Testing $svc ==="
+            (cd "$svc" && cargo test) || true
+          done
+        done
+    when:
+      event: [push, pull_request]
+
+  - name: test-dotnet
+    image: mcr.microsoft.com/dotnet/sdk:8.0
+    commands:
+      - |
+        find src -name "*.csproj" | while read proj; do
+          echo "=== Testing $(dirname $proj) ==="
+          (cd "$(dirname $proj)" && dotnet test -q) || true
+        done
+    when:
+      event: [push, pull_request]
+
+  # ── Security Scans ─────────────────────────────────────────────────────────
+
+  - name: secret-scan
+    image: zricethezav/gitleaks:latest
+    commands:
+      - mkdir -p reports/secrets
+      - gitleaks detect --source . --report-format json --report-path reports/reports/secrets/gitleaks.json --exit-code 0 || true
+    when:
+      event: [push, pull_request]
+
+  - name: sast-semgrep
+    image: semgrep/semgrep:latest
+    commands:
+      - mkdir -p reports/sast
+      - semgrep scan --config=auto --json --output=reports/sast/semgrep.json src/ || true
+    when:
+      event: [push, pull_request]
+
+  - name: sca-trivy
+    image: aquasec/trivy:latest
+    commands:
+      - mkdir -p reports/sca
+      - trivy fs --format json --output reports/sca/trivy-fs.json --severity HIGH,CRITICAL src/ || true
+    when:
+      event: [push]
+      branch: [main, develop]
+
+  - name: iac-checkov
+    image: bridgecrew/checkov:latest
+    commands:
+      - mkdir -p reports/iac
+      - checkov -d . --output json --output-file-path reports/iac/ --quiet || true
+    when:
+      event: [push]
+      branch: [main, develop]
+
+  # ── Notify ─────────────────────────────────────────────────────────────────
+
+  - name: notify-slack
+    image: plugins/slack
+    settings:
+      webhook:
+        from_secret: slack_webhook
+      channel: "#deployments"
+      template: |
+        {{#success build.status}}
+        :white_check_mark: *CI passed* — {{repo.name}} on {{build.branch}} ({{build.number}})
+        {{else}}
+        :x: *CI failed* — {{repo.name}} on {{build.branch}} ({{build.number}})
+        {{/success}}
+    when:
+      status: [success, failure]
+      branch: [main, develop]

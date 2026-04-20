@@ -1,0 +1,6 @@
+apiVersion: v2
+name: kube-state-metrics
+description: kube-state-metrics — generates metrics from Kubernetes object state
+type: application
+version: 1.0.0
+appVersion: "v2.13.0"

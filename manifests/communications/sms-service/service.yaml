@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: sms-service
+  namespace: communications
+  labels:
+    app: sms-service
+    domain: communications
+spec:
+  selector:
+    app: sms-service
+  type: ClusterIP
+  ports:
+    - name: http
+      port: 8080
+      targetPort: http
+      protocol: TCP

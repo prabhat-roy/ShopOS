@@ -1,0 +1,48 @@
+syntax = "proto3";
+package catalog.search.v1;
+option go_package = "github.com/shopos/proto/catalog/search/v1;searchv1";
+
+service SearchService {
+  rpc SearchProducts(SearchProductsRequest)       returns (SearchProductsResponse);
+  rpc Suggest(SuggestRequest)                     returns (SuggestResponse);
+  rpc IndexProduct(IndexProductRequest)           returns (IndexProductResponse);
+  rpc DeleteFromIndex(DeleteFromIndexRequest)     returns (DeleteFromIndexResponse);
+}
+
+message SearchFacet {
+  string field = 1;
+  string value = 2;
+  int64  count = 3;
+}
+
+message SearchHit {
+  string product_id = 1;
+  float  score      = 2;
+  map<string, string> highlights = 3;
+}
+
+message SearchProductsRequest {
+  string query      = 1;
+  map<string, string> filters = 2;
+  repeated string facet_fields = 3;
+  string sort_by    = 4;
+  string sort_order = 5;
+  int32  page       = 6;
+  int32  page_size  = 7;
+}
+
+message SearchProductsResponse {
+  repeated SearchHit   hits    = 1;
+  repeated SearchFacet facets  = 2;
+  int64  total                 = 3;
+  int32  took_ms               = 4;
+}
+
+message SuggestRequest  { string prefix = 1; int32 limit = 2; }
+message SuggestResponse { repeated string suggestions = 1; }
+
+message IndexProductRequest  { string product_id = 1; map<string, string> fields = 2; }
+message IndexProductResponse { bool success = 1; }
+
+message DeleteFromIndexRequest  { string product_id = 1; }
+message DeleteFromIndexResponse { bool success = 1; }

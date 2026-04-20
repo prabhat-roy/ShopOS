@@ -1,0 +1,552 @@
+# Azure DevOps — Deploy Service Pipeline
+# Mirrors: ci/jenkins/deploy.Jenkinsfile
+# Usage: Import via Pipelines → New pipeline → Azure Repos Git → Existing YAML file
+
+trigger:
+  branches:
+    include: [main]
+  paths:
+    include: ['src/**']
+
+parameters:
+  - name: serviceName
+    displayName: 'Service name (blank = all in domain)'
+    type: string
+    default: ''
+  - name: domain
+    displayName: 'Business domain'
+    type: string
+    default: platform
+    values: [platform, identity, catalog, commerce, supply-chain, financial, customer-experience, communications, content, analytics-ai, b2b, integrations, affiliate]
+  - name: environment
+    displayName: 'Target environment'
+    type: string
+    default: dev
+    values: [dev, staging, prod]
+  - name: imageTag
+    displayName: 'Docker image tag (blank = auto)'
+    type: string
+    default: ''
+  - name: registryProject
+    displayName: 'Harbor project'
+    type: string
+    default: shopos
+  - name: skipSecrets
+    displayName: 'Skip secret scanning'
+    type: boolean
+    default: false
+  - name: skipSast
+    displayName: 'Skip SAST'
+    type: boolean
+    default: false
+  - name: skipSca
+    displayName: 'Skip SCA & SBOM'
+    type: boolean
+    default: false
+  - name: skipIac
+    displayName: 'Skip IaC scanning'
+    type: boolean
+    default: false
+  - name: skipLicense
+    displayName: 'Skip license checks'
+    type: boolean
+    default: false
+  - name: skipImageScan
+    displayName: 'Skip image scanning'
+    type: boolean
+    default: false
+  - name: skipK8sAudit
+    displayName: 'Skip K8s audit'
+    type: boolean
+    default: false
+  - name: skipDast
+    displayName: 'Skip DAST'
+    type: boolean
+    default: true
+  - name: skipDeploy
+    displayName: 'Build & scan only (skip deploy)'
+    type: boolean
+    default: false
+
+variables:
+  - group: shopos-secrets           # Azure DevOps variable group linked to Azure Key Vault
+  - name: IMAGE_TAG
+    value: ${{ coalesce(parameters.imageTag, format('{0}-{1}-{2}', parameters.environment, variables['Build.SourceVersion'], variables['Build.BuildNumber'])) }}
+
+pool:
+  vmImage: ubuntu-latest
+
+stages:
+
+  # ── Pre-flight ─────────────────────────────────────────────────────────────
+  - stage: Preflight
+    displayName: 'Pre-flight Checks'
+    condition: and(succeeded(), eq('${{ parameters.skipDeploy }}', 'false'))
+    jobs:
+      - job: PreflightChecks
+        steps:
+          - checkout: self
+          - task: KubectlInstaller@0
+          - task: HelmInstaller@1
+            inputs:
+              helmVersionToInstall: latest
+          - script: |
+              mkdir -p ~/.kube
+              echo "$(KUBECONFIG_CONTENT)" | base64 -d > ~/.kube/config
+              chmod 600 ~/.kube/config
+            displayName: Decode kubeconfig
+          - script: |
+              set -euo pipefail
+              FAILURES=0
+              echo "=== Cluster connectivity ===" && kubectl cluster-info || FAILURES=$((FAILURES+1))
+              echo "=== Cilium ===" && kubectl rollout status daemonset/cilium -n kube-system --timeout=30s || FAILURES=$((FAILURES+1))
+              echo "=== cert-manager ===" && kubectl rollout status deployment/cert-manager -n cert-manager --timeout=30s || FAILURES=$((FAILURES+1))
+              VAULT_SEALED=$(kubectl exec -n vault vault-0 -- vault status -format=json 2>/dev/null | jq -r '.sealed' || echo "true")
+              [ "$VAULT_SEALED" = "false" ] || { echo "FAIL: Vault sealed"; FAILURES=$((FAILURES+1)); }
+              echo "=== ESO ===" && kubectl rollout status deployment/external-secrets -n external-secrets --timeout=30s || FAILURES=$((FAILURES+1))
+              echo "=== Kafka ===" && kubectl rollout status statefulset/kafka -n messaging --timeout=30s || FAILURES=$((FAILURES+1))
+              curl -sf "$(HARBOR_URL)/api/v2.0/ping" > /dev/null || FAILURES=$((FAILURES+1))
+              [ "$FAILURES" -eq 0 ] || { echo "Pre-flight FAILED: $FAILURES checks failed"; exit 1; }
+              echo "Pre-flight PASSED."
+            displayName: Run pre-flight checks
+
+  # ── Secret Scanning ────────────────────────────────────────────────────────
+  - stage: SecretScan
+    displayName: 'Secret Scanning'
+    condition: and(succeeded(), eq('${{ parameters.skipSecrets }}', 'false'))
+    jobs:
+      - job: SecretScan
+        steps:
+          - checkout: self
+            fetchDepth: 0
+          - script: |
+              docker run --rm -v "$(Build.SourcesDirectory):/repo" \
+                zricethezav/gitleaks:latest detect --source /repo --verbose || true
+            displayName: Gitleaks
+          - script: |
+              docker run --rm -v "$(Build.SourcesDirectory):/src" \
+                trufflesecurity/trufflehog:latest filesystem /src --only-verified || true
+            displayName: TruffleHog
+          - script: |
+              docker run --rm \
+                -e GITGUARDIAN_API_KEY="$(GITGUARDIAN_API_KEY)" \
+                -v "$(Build.SourcesDirectory):/data" \
+                gitguardian/ggshield:latest secret scan path /data --recursive || true
+            displayName: GitGuardian
+          - task: PublishPipelineArtifact@1
+            inputs:
+              targetPath: '$(Build.ArtifactStagingDirectory)/reports/secrets'
+              artifact: 'security-secrets'
+            condition: always()
+
+  # ── SAST ──────────────────────────────────────────────────────────────────
+  - stage: SAST
+    displayName: 'SAST'
+    condition: and(succeeded(), eq('${{ parameters.skipSast }}', 'false'))
+    jobs:
+      - job: SAST
+        steps:
+          - checkout: self
+          - script: |
+              mkdir -p $(Build.ArtifactStagingDirectory)/reports/sast
+              docker run --rm \
+                -e SEMGREP_APP_TOKEN="$(SEMGREP_APP_TOKEN)" \
+                -v "$(Build.SourcesDirectory):/src" \
+                semgrep/semgrep:latest semgrep scan \
+                --config "p/security-audit" --config "p/owasp-top-ten" \
+                --json --output /src/reports/sast/semgrep.json /src || true
+            displayName: Semgrep
+          - task: SonarQubePrepare@6
+            inputs:
+              SonarQube: 'SonarQube-SC'     # Azure DevOps service connection name
+              scannerMode: CLI
+              configMode: manual
+              cliProjectKey: 'shopos-${{ parameters.domain }}'
+              cliSources: 'src/${{ parameters.domain }}'
+            displayName: SonarQube Prepare
+          - task: SonarQubeAnalyze@6
+            displayName: SonarQube Analyze
+          - task: SonarQubePublish@6
+            inputs:
+              pollingTimeoutSec: '300'
+            displayName: SonarQube Publish
+          - script: |
+              docker run --rm \
+                -v "$(Build.SourcesDirectory):/src" \
+                koalaman/shellcheck:stable \
+                $(find $(Build.SourcesDirectory) -name "*.sh" -not -path "*/.git/*" | head -50) || true
+            displayName: ShellCheck
+          - script: |
+              docker run --rm -v "$(Build.SourcesDirectory):/src" \
+                securego/gosec:latest \
+                -fmt sarif -out /src/reports/sast/gosec.sarif \
+                $(Build.SourcesDirectory)/... || true
+            displayName: GoSec
+          - task: PublishPipelineArtifact@1
+            inputs:
+              targetPath: '$(Build.SourcesDirectory)/reports/sast'
+              artifact: 'security-sast'
+            condition: always()
+
+  # ── SCA & SBOM ─────────────────────────────────────────────────────────────
+  - stage: SCA
+    displayName: 'SCA & SBOM'
+    condition: and(succeeded(), eq('${{ parameters.skipSca }}', 'false'))
+    jobs:
+      - job: SCA
+        steps:
+          - checkout: self
+          - script: |
+              mkdir -p $(Build.SourcesDirectory)/reports/sca
+              # Trivy FS scan
+              docker run --rm -v "$(Build.SourcesDirectory):/src" \
+                aquasec/trivy:latest fs /src \
+                --format sarif --output /src/reports/sca/trivy-fs.sarif \
+                --severity HIGH,CRITICAL --exit-code 0 || true
+              # Grype FS scan
+              docker run --rm -v "$(Build.SourcesDirectory):/src" \
+                anchore/grype:latest dir:/src \
+                -o json > $(Build.SourcesDirectory)/reports/sca/grype-fs.json || true
+              # Syft SBOM
+              docker run --rm -v "$(Build.SourcesDirectory):/src" \
+                anchore/syft:latest dir:/src \
+                -o cyclonedx-json=/src/reports/sca/sbom.cyclonedx.json \
+                -o spdx-json=/src/reports/sca/sbom.spdx.json || true
+            displayName: Trivy + Grype + Syft
+          - script: |
+              docker run --rm \
+                -v "$(Build.SourcesDirectory):/src" \
+                owasp/dependency-check:latest \
+                --project "shopos-${{ parameters.domain }}" \
+                --scan /src/src --format JSON \
+                --out /src/reports/sca/owasp-dc || true
+            displayName: OWASP Dependency-Check
+          - script: |
+              curl -sf -X POST "$(DEPTRACK_URL)/api/v1/bom" \
+                -H "X-Api-Key: $(DEPTRACK_API_KEY)" \
+                -F "autoCreate=true" \
+                -F "projectName=shopos-${{ parameters.domain }}" \
+                -F "projectVersion=$(IMAGE_TAG)" \
+                -F "bom=@$(Build.SourcesDirectory)/reports/sca/sbom.cyclonedx.json" || true
+            displayName: Upload SBOM to Dependency Track
+          - task: PublishPipelineArtifact@1
+            inputs:
+              targetPath: '$(Build.SourcesDirectory)/reports/sca'
+              artifact: 'security-sca'
+            condition: always()
+
+  # ── IaC Scanning ──────────────────────────────────────────────────────────
+  - stage: IacScan
+    displayName: 'IaC & Manifest Scanning'
+    condition: and(succeeded(), eq('${{ parameters.skipIac }}', 'false'))
+    jobs:
+      - job: IacScan
+        steps:
+          - checkout: self
+          - script: |
+              mkdir -p $(Build.SourcesDirectory)/reports/iac
+              docker run --rm -v "$(Build.SourcesDirectory):/src" \
+                bridgecrew/checkov:latest -d /src \
+                --framework terraform,helm,kubernetes,dockerfile \
+                -o json --output-file /src/reports/iac/checkov.json \
+                --soft-fail || true
+            displayName: Checkov
+          - script: |
+              docker run --rm -v "$(Build.SourcesDirectory):/src" \
+                checkmarx/kics:latest scan \
+                -p /src/infra/terraform,/src/helm,/src/kubernetes \
+                -o /src/reports/iac/kics \
+                --report-formats json --ignore-on-exit results || true
+            displayName: KICS
+          - script: |
+              docker run --rm -v "$(Build.SourcesDirectory):/src" \
+                aquasec/tfsec:latest /src/infra/terraform \
+                --format sarif --out /src/reports/iac/tfsec.sarif || true
+            displayName: tfsec
+          - task: PublishPipelineArtifact@1
+            inputs:
+              targetPath: '$(Build.SourcesDirectory)/reports/iac'
+              artifact: 'security-iac'
+            condition: always()
+
+  # ── Build & Test ──────────────────────────────────────────────────────────
+  - stage: BuildTest
+    displayName: 'Compile & Test'
+    jobs:
+      - job: BuildTest
+        steps:
+          - checkout: self
+          - task: GoTool@0
+            inputs:
+              version: '1.23.0'
+          - task: JavaToolInstaller@0
+            inputs:
+              versionSpec: '21'
+              jdkArchitectureOption: x64
+              jdkSourceOption: PreInstalled
+          - task: NodeTool@0
+            inputs:
+              versionSpec: '22.x'
+          - task: UsePythonVersion@0
+            inputs:
+              versionSpec: '3.13'
+          - task: UseDotNet@2
+            inputs:
+              version: '8.0.x'
+          - script: |
+              DOMAIN="${{ parameters.domain }}"
+              if [ -n "${{ parameters.serviceName }}" ]; then
+                SERVICES="${{ parameters.serviceName }}"
+              else
+                SERVICES=$(ls src/$DOMAIN/ | tr '\n' ' ')
+              fi
+              for svc in $SERVICES; do
+                SVC_DIR="src/$DOMAIN/$svc"
+                echo "=== Building: $svc ==="
+                if [ -f "$SVC_DIR/go.mod" ]; then
+                  cd "$SVC_DIR" && go test ./... && go build ./... && cd -
+                elif [ -f "$SVC_DIR/pom.xml" ]; then
+                  cd "$SVC_DIR" && mvn -q package && cd -
+                elif [ -f "$SVC_DIR/build.gradle.kts" ]; then
+                  cd "$SVC_DIR" && ./gradlew test build && cd -
+                elif [ -f "$SVC_DIR/package.json" ]; then
+                  cd "$SVC_DIR" && npm ci && npm test --if-present || true && cd -
+                elif [ -f "$SVC_DIR/requirements.txt" ]; then
+                  cd "$SVC_DIR" && pip install -r requirements.txt -q && python -m pytest tests/ -q || true && cd -
+                fi
+              done
+            displayName: Build & test services
+          - task: PublishTestResults@2
+            inputs:
+              testResultsFormat: JUnit
+              testResultsFiles: '**/test-results/*.xml'
+            condition: always()
+
+  # ── Docker Build ──────────────────────────────────────────────────────────
+  - stage: DockerBuild
+    displayName: 'Docker Build'
+    dependsOn: BuildTest
+    jobs:
+      - job: DockerBuild
+        steps:
+          - checkout: self
+          - task: Docker@2
+            displayName: Login to Harbor
+            inputs:
+              command: login
+              containerRegistry: 'Harbor-SC'   # Azure DevOps service connection
+          - script: |
+              DOMAIN="${{ parameters.domain }}"
+              if [ -n "${{ parameters.serviceName }}" ]; then
+                SERVICES="${{ parameters.serviceName }}"
+              else
+                SERVICES=$(ls src/$DOMAIN/ | tr '\n' ' ')
+              fi
+              for svc in $SERVICES; do
+                IMAGE="$(HARBOR_URL)/${{ parameters.registryProject }}/$svc:$(IMAGE_TAG)"
+                echo "=== Building: $IMAGE ==="
+                docker build \
+                  --label "git.commit=$(Build.SourceVersion)" \
+                  --label "build.number=$(Build.BuildNumber)" \
+                  --label "domain=$DOMAIN" \
+                  --label "environment=${{ parameters.environment }}" \
+                  -t "$IMAGE" \
+                  "src/$DOMAIN/$svc/"
+              done
+            displayName: Build Docker images
+
+  # ── Image Scan ─────────────────────────────────────────────────────────────
+  - stage: ImageScan
+    displayName: 'Container Image Scan'
+    dependsOn: DockerBuild
+    condition: and(succeeded(), eq('${{ parameters.skipImageScan }}', 'false'))
+    jobs:
+      - job: ImageScan
+        steps:
+          - checkout: self
+          - script: |
+              DOMAIN="${{ parameters.domain }}"
+              SERVICES=$([ -n "${{ parameters.serviceName }}" ] && echo "${{ parameters.serviceName }}" || ls src/$DOMAIN/)
+              mkdir -p $(Build.SourcesDirectory)/reports/image-scan
+              for svc in $SERVICES; do
+                IMAGE="$(HARBOR_URL)/${{ parameters.registryProject }}/$svc:$(IMAGE_TAG)"
+                docker run --rm -v /var/run/docker.sock:/var/run/docker.sock \
+                  aquasec/trivy:latest image \
+                  --exit-code 1 --severity CRITICAL \
+                  --format json --output "$(Build.SourcesDirectory)/reports/image-scan/trivy-$svc.json" \
+                  "$IMAGE" || true
+                docker run --rm -v /var/run/docker.sock:/var/run/docker.sock \
+                  anchore/grype:latest "$IMAGE" \
+                  -o json > "$(Build.SourcesDirectory)/reports/image-scan/grype-$svc.json" || true
+                docker run --rm -v /var/run/docker.sock:/var/run/docker.sock \
+                  anchore/syft:latest "$IMAGE" \
+                  -o cyclonedx-json="$(Build.SourcesDirectory)/reports/image-scan/sbom-$svc.json" || true
+              done
+            displayName: Trivy + Grype + Syft image scan
+          - task: PublishPipelineArtifact@1
+            inputs:
+              targetPath: '$(Build.SourcesDirectory)/reports/image-scan'
+              artifact: 'security-image-scan'
+            condition: always()
+
+  # ── Push & Sign ────────────────────────────────────────────────────────────
+  - stage: PushSign
+    displayName: 'Push & Sign'
+    dependsOn: ImageScan
+    jobs:
+      - job: PushSign
+        steps:
+          - checkout: self
+          - task: Docker@2
+            displayName: Login to Harbor
+            inputs:
+              command: login
+              containerRegistry: 'Harbor-SC'
+          - script: |
+              DOMAIN="${{ parameters.domain }}"
+              SERVICES=$([ -n "${{ parameters.serviceName }}" ] && echo "${{ parameters.serviceName }}" || ls src/$DOMAIN/)
+              for svc in $SERVICES; do
+                IMAGE="$(HARBOR_URL)/${{ parameters.registryProject }}/$svc:$(IMAGE_TAG)"
+                echo "=== Pushing: $IMAGE ==="
+                docker push "$IMAGE"
+                # Cosign sign
+                if command -v cosign &>/dev/null; then
+                  cosign sign --yes "$IMAGE" || true
+                else
+                  docker run --rm gcr.io/projectsigstore/cosign:latest sign --yes "$IMAGE" || true
+                fi
+              done
+            displayName: Push images + Cosign sign
+
+  # ── K8s Audit ─────────────────────────────────────────────────────────────
+  - stage: K8sAudit
+    displayName: 'K8s Security Audit'
+    dependsOn: []
+    condition: eq('${{ parameters.skipK8sAudit }}', 'false')
+    jobs:
+      - job: K8sAudit
+        steps:
+          - checkout: self
+          - script: |
+              mkdir -p ~/.kube
+              echo "$(KUBECONFIG_CONTENT)" | base64 -d > ~/.kube/config
+            displayName: Decode kubeconfig
+          - script: |
+              mkdir -p $(Build.SourcesDirectory)/reports/k8s-audit
+              docker run --rm -v ~/.kube:/root/.kube \
+                aquasec/kube-bench:latest --json \
+                > $(Build.SourcesDirectory)/reports/k8s-audit/kube-bench.json || true
+            displayName: kube-bench CIS
+          - script: |
+              docker run --rm -v ~/.kube:/root/.kube \
+                quay.io/armosec/kubescape:latest scan framework nsa,mitre \
+                --format json \
+                --output $(Build.SourcesDirectory)/reports/k8s-audit/kubescape.json || true
+            displayName: Kubescape NSA/MITRE
+
+  # ── Deploy ─────────────────────────────────────────────────────────────────
+  - stage: Deploy
+    displayName: 'Deploy to Kubernetes (${{ parameters.environment }})'
+    dependsOn: [PushSign, K8sAudit, Preflight]
+    condition: and(succeeded(), eq('${{ parameters.skipDeploy }}', 'false'))
+    jobs:
+      - deployment: Deploy
+        environment: ${{ parameters.environment }}
+        strategy:
+          runOnce:
+            deploy:
+              steps:
+                - checkout: self
+                - task: HelmInstaller@1
+                  inputs:
+                    helmVersionToInstall: latest
+                - script: |
+                    mkdir -p ~/.kube
+                    echo "$(KUBECONFIG_CONTENT)" | base64 -d > ~/.kube/config
+                  displayName: Decode kubeconfig
+                - script: |
+                    DOMAIN="${{ parameters.domain }}"
+                    SERVICES=$([ -n "${{ parameters.serviceName }}" ] && echo "${{ parameters.serviceName }}" || ls src/$DOMAIN/)
+                    for svc in $SERVICES; do
+                      IMAGE_REPO="$(HARBOR_URL)/${{ parameters.registryProject }}/$svc"
+                      VALUES_FILE="helm/charts/$svc/values-${{ parameters.environment }}.yaml"
+                      echo "=== Deploying: $svc → $DOMAIN (${{ parameters.environment }}) ==="
+                      helm upgrade --install "$svc" "helm/charts/$svc" \
+                        --namespace "$DOMAIN" \
+                        --create-namespace \
+                        --set image.repository="$IMAGE_REPO" \
+                        --set image.tag="$(IMAGE_TAG)" \
+                        --set environment="${{ parameters.environment }}" \
+                        $([ -f "$VALUES_FILE" ] && echo "-f $VALUES_FILE" || true) \
+                        --wait --timeout 5m
+                    done
+                  displayName: Helm deploy
+                - script: |
+                    DOMAIN="${{ parameters.domain }}"
+                    SERVICES=$([ -n "${{ parameters.serviceName }}" ] && echo "${{ parameters.serviceName }}" || ls src/$DOMAIN/)
+                    for svc in $SERVICES; do
+                      kubectl rollout status deployment/$svc -n $DOMAIN --timeout=120s || true
+                      kubectl port-forward svc/$svc 19090:80 -n $DOMAIN &
+                      PF_PID=$!; sleep 5
+                      HTTP_CODE=$(curl -sf -o /dev/null -w "%{http_code}" http://localhost:19090/healthz 2>/dev/null || echo "000")
+                      kill $PF_PID 2>/dev/null || true
+                      echo "Health: $svc → $HTTP_CODE"
+                    done
+                  displayName: Post-deploy health check
+
+  # ── DAST ──────────────────────────────────────────────────────────────────
+  - stage: DAST
+    displayName: 'DAST'
+    dependsOn: Deploy
+    condition: and(succeeded(), eq('${{ parameters.skipDast }}', 'false'), eq('${{ parameters.skipDeploy }}', 'false'))
+    jobs:
+      - job: DAST
+        steps:
+          - checkout: self
+          - script: |
+              mkdir -p $(Build.SourcesDirectory)/reports/dast
+              TARGET="http://${{ parameters.domain }}-service.${{ parameters.domain }}.svc.cluster.local:80"
+              docker run --rm \
+                -v "$(Build.SourcesDirectory)/reports/dast:/zap/wrk" \
+                ghcr.io/zaproxy/zaproxy:stable \
+                zap-baseline.py -t "$TARGET" \
+                -J /zap/wrk/zap-report.json -r /zap/wrk/zap-report.html || true
+            displayName: OWASP ZAP
+          - script: |
+              TARGET="http://${{ parameters.domain }}-service.${{ parameters.domain }}.svc.cluster.local:80"
+              docker run --rm \
+                -v "$(Build.SourcesDirectory)/reports/dast:/output" \
+                projectdiscovery/nuclei:latest \
+                -target "$TARGET" -severity critical,high \
+                -json-export /output/nuclei.json || true
+            displayName: Nuclei
+          - task: PublishPipelineArtifact@1
+            inputs:
+              targetPath: '$(Build.SourcesDirectory)/reports/dast'
+              artifact: 'security-dast'
+            condition: always()
+
+  # ── Security Report Upload ─────────────────────────────────────────────────
+  - stage: ReportUpload
+    displayName: 'Security Report Upload'
+    dependsOn: [SecretScan, SAST, SCA, IacScan, ImageScan, DAST]
+    condition: always()
+    jobs:
+      - job: ReportUpload
+        steps:
+          - task: PublishPipelineArtifact@1
+            inputs:
+              targetPath: '$(Build.SourcesDirectory)/reports'
+              artifact: 'all-security-reports-$(Build.BuildNumber)'
+            condition: always()
+          - script: |
+              for report in reports/sast/semgrep.json reports/sca/trivy-fs.sarif; do
+                [ -f "$report" ] || continue
+                curl -sf -X POST "$(DEFECTDOJO_URL)/api/v2/import-scan/" \
+                  -H "Authorization: Token $(DEFECTDOJO_TOKEN)" \
+                  -F "scan_type=SARIF" \
+                  -F "product_name=ShopOS" \
+                  -F "engagement_name=${{ parameters.domain }}-$(IMAGE_TAG)" \
+                  -F "file=@$report" || true
+              done
+            displayName: Upload to DefectDojo

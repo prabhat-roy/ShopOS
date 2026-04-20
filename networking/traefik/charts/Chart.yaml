@@ -1,0 +1,6 @@
+apiVersion: v2
+name: traefik
+description: Traefik — cloud-native edge router and ingress controller
+type: application
+version: 1.0.0
+appVersion: "v3.1"

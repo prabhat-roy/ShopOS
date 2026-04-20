@@ -1,0 +1,19 @@
+apiVersion: helm.cattle.io/v1
+kind: HelmChart
+metadata:
+  name: flink-operator
+  namespace: flink-system
+spec:
+  repo: https://downloads.apache.org/flink/flink-kubernetes-operator-1.10.0/
+  chart: flink-kubernetes-operator
+  version: 1.10.0
+  targetNamespace: flink-system
+  valuesContent: |-
+    webhook:
+      create: true
+    defaultConfiguration:
+      create: true
+      append: true
+      flink-conf.yaml: |+
+        kubernetes.operator.metrics.reporter.slf4j.factory.class: org.apache.flink.metrics.slf4j.Slf4jReporterFactory
+        kubernetes.operator.reconciler.max.parallelism: 5

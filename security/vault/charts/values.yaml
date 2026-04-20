@@ -1,0 +1,34 @@
+replicaCount: 1
+
+image:
+  repository: hashicorp/vault
+  tag: "1.17"
+  pullPolicy: IfNotPresent
+
+service:
+  type: ClusterIP
+  port: 8200
+  targetPort: 8200
+
+persistence:
+  enabled: true
+  storageClass: ""
+  size: 5Gi
+  accessMode: ReadWriteOnce
+  mountPath: /data
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 256Mi
+  limits:
+    cpu: "1"
+    memory: 1Gi
+
+env: {}
+
+ingress:
+  enabled: false
+  className: ""
+  host: ""
+  tls: []

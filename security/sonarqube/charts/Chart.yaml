@@ -1,0 +1,6 @@
+apiVersion: v2
+name: sonarqube
+description: SonarQube Community - static code analysis
+type: application
+version: 1.0.0
+appVersion: "10.6-community"

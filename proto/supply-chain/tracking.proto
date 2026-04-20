@@ -1,0 +1,42 @@
+syntax = "proto3";
+package supplychain.tracking.v1;
+option go_package = "github.com/shopos/proto/supplychain/tracking/v1;trackingv1";
+
+import "google/protobuf/timestamp.proto";
+
+service TrackingService {
+  rpc CreateTracking(CreateTrackingRequest) returns (CreateTrackingResponse);
+  rpc GetTracking(GetTrackingRequest)       returns (GetTrackingResponse);
+  rpc AddEvent(AddEventRequest)             returns (AddEventResponse);
+  rpc GetByOrder(GetByOrderRequest)         returns (GetByOrderResponse);
+}
+
+message TrackingEvent {
+  string id          = 1;
+  string status      = 2;
+  string location    = 3;
+  string description = 4;
+  google.protobuf.Timestamp occurred_at = 5;
+}
+
+message Tracking {
+  string id               = 1;
+  string shipment_id      = 2;
+  string order_id         = 3;
+  string carrier          = 4;
+  string tracking_number  = 5;
+  string status           = 6;
+  repeated TrackingEvent events = 7;
+  google.protobuf.Timestamp created_at   = 8;
+  google.protobuf.Timestamp updated_at   = 9;
+  google.protobuf.Timestamp delivered_at = 10;
+}
+
+message CreateTrackingRequest  { string shipment_id = 1; string order_id = 2; string carrier = 3; string tracking_number = 4; }
+message CreateTrackingResponse { Tracking tracking = 1; }
+message GetTrackingRequest     { string id = 1; }
+message GetTrackingResponse    { Tracking tracking = 1; }
+message AddEventRequest        { string tracking_id = 1; string status = 2; string location = 3; string description = 4; }
+message AddEventResponse       { Tracking tracking = 1; }
+message GetByOrderRequest      { string order_id = 1; }
+message GetByOrderResponse     { Tracking tracking = 1; }

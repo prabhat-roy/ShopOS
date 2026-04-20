@@ -1,0 +1,68 @@
+# Kubernetes Infrastructure (Terraform) Pipeline — Travis CI
+language: minimal
+
+env:
+  global:
+    - TF_ACTION=PLAN
+
+install:
+  - wget -O /tmp/terraform.zip https://releases.hashicorp.com/terraform/1.9.0/terraform_1.9.0_linux_amd64.zip
+  - unzip /tmp/terraform.zip -d /usr/local/bin/
+
+jobs:
+  include:
+    - name: terraform-eks
+      env:
+        - AWS_DEFAULT_REGION=us-east-1
+      if: env(CLOUD) = aws OR env(CLOUD) = all
+      script:
+        - |
+          cd infra/terraform/aws/eks
+          terraform init \
+            -backend-config="bucket=shopos-tfstate" \
+            -backend-config="key=infra/terraform/aws/eks/terraform.tfstate" \
+            -backend-config="region=$AWS_DEFAULT_REGION"
+          if [ "$TF_ACTION" = "APPLY" ]; then
+            terraform apply -auto-approve
+          elif [ "$TF_ACTION" = "DESTROY" ]; then
+            terraform destroy -auto-approve
+          else
+            terraform plan
+          fi
+
+    - name: terraform-gke
+      if: env(CLOUD) = gcp OR env(CLOUD) = all
+      script:
+        - |
+          echo "$GCP_SA_KEY" > /tmp/gcp-key.json
+          export GOOGLE_APPLICATION_CREDENTIALS=/tmp/gcp-key.json
+          cd infra/opentofu/gcp/gke
+          terraform init \
+            -backend-config="bucket=shopos-tfstate-gcp" \
+            -backend-config="prefix=infra/opentofu/gcp/gke"
+          if [ "$TF_ACTION" = "APPLY" ]; then
+            terraform apply -auto-approve
+          elif [ "$TF_ACTION" = "DESTROY" ]; then
+            terraform destroy -auto-approve
+          else
+            terraform plan
+          fi
+          rm -f /tmp/gcp-key.json
+
+    - name: terraform-aks
+      if: env(CLOUD) = azure OR env(CLOUD) = all
+      script:
+        - |
+          cd infra/opentofu/azure/aks
+          terraform init \
+            -backend-config="resource_group_name=shopos-tfstate-rg" \
+            -backend-config="storage_account_name=shoposterraform" \
+            -backend-config="container_name=tfstate" \
+            -backend-config="key=infra/opentofu/azure/aks/terraform.tfstate"
+          if [ "$TF_ACTION" = "APPLY" ]; then
+            terraform apply -auto-approve
+          elif [ "$TF_ACTION" = "DESTROY" ]; then
+            terraform destroy -auto-approve
+          else
+            terraform plan
+          fi

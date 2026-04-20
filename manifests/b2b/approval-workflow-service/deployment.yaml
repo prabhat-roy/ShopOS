@@ -1,0 +1,83 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: approval-workflow-service
+  namespace: b2b
+  labels:
+    app: approval-workflow-service
+    domain: b2b
+    version: v1
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: approval-workflow-service
+  template:
+    metadata:
+      labels:
+        app: approval-workflow-service
+        domain: b2b
+        version: v1
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "50163"
+    spec:
+      serviceAccountName: approval-workflow-service
+      terminationGracePeriodSeconds: 30
+      containers:
+        - name: approval-workflow-service
+          image: shopos/approval-workflow-service:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: grpc
+              containerPort: 50163
+              protocol: TCP
+          envFrom:
+            - configMapRef:
+                name: approval-workflow-service
+          env:
+            - name: POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            - name: POD_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+          resources:
+            requests:
+              cpu: 250m
+              memory: 256Mi
+            limits:
+              cpu: 1
+              memory: 1Gi
+          livenessProbe:
+            tcpSocket:
+              port: 50163
+            initialDelaySeconds: 15
+            periodSeconds: 20
+            failureThreshold: 3
+          readinessProbe:
+            tcpSocket:
+              port: 50163
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            failureThreshold: 3
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 1000
+            readOnlyRootFilesystem: true
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+      securityContext:
+        fsGroup: 2000
+        runAsNonRoot: true
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: kubernetes.io/hostname
+          whenUnsatisfiable: ScheduleAnyway
+          labelSelector:
+            matchLabels:
+              app: approval-workflow-service

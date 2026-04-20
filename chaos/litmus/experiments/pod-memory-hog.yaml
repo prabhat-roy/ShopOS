@@ -1,0 +1,29 @@
+apiVersion: litmuschaos.io/v1alpha1
+kind: ChaosEngine
+metadata:
+  name: recommendation-pod-memory-hog
+  namespace: analytics-ai
+  labels:
+    app.kubernetes.io/part-of: shopos-chaos
+spec:
+  appinfo:
+    appns: analytics-ai
+    applabel: app.kubernetes.io/name=recommendation-service
+    appkind: deployment
+  engineState: active
+  chaosServiceAccount: litmus-admin
+  experiments:
+    - name: pod-memory-hog
+      spec:
+        components:
+          env:
+            - name: TOTAL_CHAOS_DURATION
+              value: "300"
+            - name: MEMORY_CONSUMPTION
+              value: "500"
+            - name: NUMBER_OF_WORKERS
+              value: "2"
+            - name: PODS_AFFECTED_PERC
+              value: "50"
+            - name: RAMP_TIME
+              value: "10"

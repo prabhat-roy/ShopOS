@@ -1,0 +1,19 @@
+apiVersion: v2
+name: recommendation-service
+description: ShopOS Recommendation Service — collaborative filtering
+type: application
+version: 0.1.0
+appVersion: "1.0.0"
+keywords:
+  - shopos
+  - recommendation-service
+  - analytics-ai
+home: https://github.com/your-org/shopos
+sources:
+  - https://github.com/your-org/shopos/tree/main/src/analytics-ai/recommendation-service
+maintainers:
+  - name: ShopOS Platform Team
+    email: platform@shopos.io
+annotations:
+  app.kubernetes.io/domain: analytics-ai
+  app.kubernetes.io/language: Python

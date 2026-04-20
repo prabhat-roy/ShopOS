@@ -1,0 +1,83 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: fulfillment-service
+  namespace: supply-chain
+  labels:
+    app: fulfillment-service
+    domain: supply-chain
+    version: v1
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: fulfillment-service
+  template:
+    metadata:
+      labels:
+        app: fulfillment-service
+        domain: supply-chain
+        version: v1
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "50103"
+    spec:
+      serviceAccountName: fulfillment-service
+      terminationGracePeriodSeconds: 30
+      containers:
+        - name: fulfillment-service
+          image: shopos/fulfillment-service:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: grpc
+              containerPort: 50103
+              protocol: TCP
+          envFrom:
+            - configMapRef:
+                name: fulfillment-service
+          env:
+            - name: POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            - name: POD_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+          resources:
+            requests:
+              cpu: 500m
+              memory: 512Mi
+            limits:
+              cpu: 2
+              memory: 2Gi
+          livenessProbe:
+            tcpSocket:
+              port: 50103
+            initialDelaySeconds: 15
+            periodSeconds: 20
+            failureThreshold: 3
+          readinessProbe:
+            tcpSocket:
+              port: 50103
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            failureThreshold: 3
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 1000
+            readOnlyRootFilesystem: true
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+      securityContext:
+        fsGroup: 2000
+        runAsNonRoot: true
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: kubernetes.io/hostname
+          whenUnsatisfiable: ScheduleAnyway
+          labelSelector:
+            matchLabels:
+              app: fulfillment-service

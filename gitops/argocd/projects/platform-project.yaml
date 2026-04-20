@@ -1,0 +1,48 @@
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: shopos-platform
+  namespace: argocd
+spec:
+  description: ShopOS Platform domain services
+  sourceRepos:
+    - 'https://github.com/your-org/shopos.git'
+    - 'https://charts.shopos.io'
+  destinations:
+    - namespace: shopos-platform
+      server: https://kubernetes.default.svc
+    - namespace: shopos-infra
+      server: https://kubernetes.default.svc
+  clusterResourceWhitelist:
+    - group: ''
+      kind: Namespace
+    - group: 'rbac.authorization.k8s.io'
+      kind: ClusterRole
+    - group: 'rbac.authorization.k8s.io'
+      kind: ClusterRoleBinding
+  namespaceResourceWhitelist:
+    - group: 'apps'
+      kind: Deployment
+    - group: ''
+      kind: Service
+    - group: ''
+      kind: ConfigMap
+    - group: ''
+      kind: Secret
+    - group: 'autoscaling'
+      kind: HorizontalPodAutoscaler
+    - group: 'networking.k8s.io'
+      kind: NetworkPolicy
+  roles:
+    - name: platform-admin
+      description: Platform team full access
+      policies:
+        - p, proj:shopos-platform:platform-admin, applications, *, shopos-platform/*, allow
+      groups:
+        - platform-team
+    - name: platform-readonly
+      description: Read-only access for platform services
+      policies:
+        - p, proj:shopos-platform:platform-readonly, applications, get, shopos-platform/*, allow
+      groups:
+        - developers

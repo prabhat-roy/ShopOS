@@ -1,0 +1,186 @@
+# K8s Infrastructure (Terraform) — GitLab CI
+# Variables: ENVIRONMENT, CLOUD (aws|gcp|azure|all), ACTION (PLAN|APPLY|DESTROY)
+# GitLab managed Terraform state: Settings → CI/CD → Infrastructure
+
+variables:
+  ENVIRONMENT: dev
+  CLOUD: aws
+  ACTION: PLAN
+  TF_VERSION: "1.9.0"
+  TF_IN_AUTOMATION: "true"
+  TF_CLI_ARGS: "-no-color"
+  TF_ROOT: infra/terraform
+
+workflow:
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "web"
+    - if: $CI_PIPELINE_SOURCE == "trigger"
+
+stages:
+  - validate
+  - plan
+  - apply
+
+default:
+  image: hashicorp/terraform:$TF_VERSION
+
+# ── AWS / EKS ──────────────────────────────────────────────────────────────
+tf-aws-validate:
+  stage: validate
+  script:
+    - '[ "$CLOUD" = "aws" ] || [ "$CLOUD" = "all" ] || exit 0'
+    - cd $TF_ROOT/aws/eks
+    - terraform init
+        -backend-config="bucket=$TF_STATE_BUCKET"
+        -backend-config="key=$ENVIRONMENT/eks/terraform.tfstate"
+        -backend-config="region=$AWS_REGION"
+    - terraform validate
+  rules:
+    - if: $CLOUD == "aws" || $CLOUD == "all"
+
+tf-aws-plan:
+  stage: plan
+  script:
+    - '[ "$CLOUD" = "aws" ] || [ "$CLOUD" = "all" ] || exit 0'
+    - cd $TF_ROOT/aws/eks
+    - terraform plan
+        -var="environment=$ENVIRONMENT"
+        -var="region=$AWS_REGION"
+        -out=tfplan-aws.bin
+    - terraform show -no-color tfplan-aws.bin > $CI_PROJECT_DIR/tfplan-aws.txt
+  artifacts:
+    paths:
+      - tfplan-aws.txt
+      - $TF_ROOT/aws/eks/tfplan-aws.bin
+    expire_in: 1d
+  needs: [tf-aws-validate]
+  rules:
+    - if: $CLOUD == "aws" || $CLOUD == "all"
+
+tf-aws-apply:
+  stage: apply
+  script:
+    - '[ "$ACTION" = "APPLY" ] || exit 0'
+    - cd $TF_ROOT/aws/eks
+    - terraform apply -auto-approve tfplan-aws.bin
+    - terraform output -json > $CI_PROJECT_DIR/tf-outputs-aws.json
+  artifacts:
+    paths: [tf-outputs-aws.json]
+    expire_in: 7d
+  needs: [tf-aws-plan]
+  environment:
+    name: $ENVIRONMENT/aws
+  rules:
+    - if: $ACTION == "APPLY" && ($CLOUD == "aws" || $CLOUD == "all")
+      when: manual
+
+tf-aws-destroy:
+  stage: apply
+  script:
+    - '[ "$ACTION" = "DESTROY" ] || exit 0'
+    - cd $TF_ROOT/aws/eks
+    - terraform destroy -auto-approve
+        -var="environment=$ENVIRONMENT"
+        -var="region=$AWS_REGION"
+  needs: [tf-aws-plan]
+  rules:
+    - if: $ACTION == "DESTROY" && ($CLOUD == "aws" || $CLOUD == "all")
+      when: manual
+
+# ── GCP / GKE ──────────────────────────────────────────────────────────────
+tf-gcp-validate:
+  stage: validate
+  script:
+    - '[ "$CLOUD" = "gcp" ] || [ "$CLOUD" = "all" ] || exit 0'
+    - cd $TF_ROOT/gcp/gke
+    - terraform init
+        -backend-config="bucket=$GCS_TF_STATE_BUCKET"
+        -backend-config="prefix=$ENVIRONMENT/gke"
+    - terraform validate
+  rules:
+    - if: $CLOUD == "gcp" || $CLOUD == "all"
+
+tf-gcp-plan:
+  stage: plan
+  script:
+    - '[ "$CLOUD" = "gcp" ] || [ "$CLOUD" = "all" ] || exit 0'
+    - echo "$GCP_SERVICE_ACCOUNT_KEY" | base64 -d > /tmp/gcp-key.json
+    - export GOOGLE_APPLICATION_CREDENTIALS=/tmp/gcp-key.json
+    - cd $TF_ROOT/gcp/gke
+    - terraform plan
+        -var="environment=$ENVIRONMENT"
+        -var="project=$GCP_PROJECT_ID"
+        -var="region=$GCP_REGION"
+        -out=tfplan-gcp.bin
+    - terraform show -no-color tfplan-gcp.bin > $CI_PROJECT_DIR/tfplan-gcp.txt
+    - rm -f /tmp/gcp-key.json
+  artifacts:
+    paths:
+      - tfplan-gcp.txt
+      - $TF_ROOT/gcp/gke/tfplan-gcp.bin
+    expire_in: 1d
+  needs: [tf-gcp-validate]
+  rules:
+    - if: $CLOUD == "gcp" || $CLOUD == "all"
+
+tf-gcp-apply:
+  stage: apply
+  script:
+    - '[ "$ACTION" = "APPLY" ] || exit 0'
+    - echo "$GCP_SERVICE_ACCOUNT_KEY" | base64 -d > /tmp/gcp-key.json
+    - export GOOGLE_APPLICATION_CREDENTIALS=/tmp/gcp-key.json
+    - cd $TF_ROOT/gcp/gke
+    - terraform apply -auto-approve tfplan-gcp.bin
+    - rm -f /tmp/gcp-key.json
+  needs: [tf-gcp-plan]
+  environment:
+    name: $ENVIRONMENT/gcp
+  rules:
+    - if: $ACTION == "APPLY" && ($CLOUD == "gcp" || $CLOUD == "all")
+      when: manual
+
+# ── Azure / AKS ────────────────────────────────────────────────────────────
+tf-azure-validate:
+  stage: validate
+  script:
+    - '[ "$CLOUD" = "azure" ] || [ "$CLOUD" = "all" ] || exit 0'
+    - cd $TF_ROOT/azure/aks
+    - terraform init
+        -backend-config="resource_group_name=$AZURE_TF_RG"
+        -backend-config="storage_account_name=$AZURE_TF_SA"
+        -backend-config="container_name=tfstate"
+        -backend-config="key=$ENVIRONMENT/aks/terraform.tfstate"
+    - terraform validate
+  rules:
+    - if: $CLOUD == "azure" || $CLOUD == "all"
+
+tf-azure-plan:
+  stage: plan
+  script:
+    - '[ "$CLOUD" = "azure" ] || [ "$CLOUD" = "all" ] || exit 0'
+    - cd $TF_ROOT/azure/aks
+    - terraform plan
+        -var="environment=$ENVIRONMENT"
+        -out=tfplan-azure.bin
+    - terraform show -no-color tfplan-azure.bin > $CI_PROJECT_DIR/tfplan-azure.txt
+  artifacts:
+    paths:
+      - tfplan-azure.txt
+      - $TF_ROOT/azure/aks/tfplan-azure.bin
+    expire_in: 1d
+  needs: [tf-azure-validate]
+  rules:
+    - if: $CLOUD == "azure" || $CLOUD == "all"
+
+tf-azure-apply:
+  stage: apply
+  script:
+    - '[ "$ACTION" = "APPLY" ] || exit 0'
+    - cd $TF_ROOT/azure/aks
+    - terraform apply -auto-approve tfplan-azure.bin
+  needs: [tf-azure-plan]
+  environment:
+    name: $ENVIRONMENT/azure
+  rules:
+    - if: $ACTION == "APPLY" && ($CLOUD == "azure" || $CLOUD == "all")
+      when: manual

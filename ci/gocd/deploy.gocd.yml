@@ -1,0 +1,148 @@
+# Deploy Pipeline — GoCD
+# Environment: shopos-env (with HARBOR_REGISTRY, HARBOR_USERNAME, HARBOR_PASSWORD,
+#   SONAR_TOKEN, SONAR_HOST_URL, KUBECONFIG_CONTENT, SLACK_WEBHOOK)
+format_version: 10
+
+pipelines:
+  shopos-deploy:
+    group: shopos-delivery
+    label_template: "${git[:8]}"
+    lock_behavior: unlockWhenFinished
+    materials:
+      git:
+        git: https://github.com/prabhat-roy/ShopOS.git
+        branch: main
+        shallow_clone: true
+        auto_update: true
+
+    environment_variables:
+      ENVIRONMENT: staging
+      K8S_NAMESPACE: default
+
+    stages:
+      - preflight:
+          approval:
+            type: success
+          jobs:
+            secret-scan:
+              elastic_profile_id: security-tools
+              tasks:
+                - exec:
+                    command: /bin/sh
+                    arguments:
+                      - -c
+                      - gitleaks detect --source . --exit-code 1 || true
+            iac-scan:
+              elastic_profile_id: security-tools
+              tasks:
+                - exec:
+                    command: /bin/sh
+                    arguments:
+                      - -c
+                      - checkov -d infra/ --quiet || true
+
+      - sast:
+          approval:
+            type: success
+          jobs:
+            semgrep:
+              elastic_profile_id: security-tools
+              tasks:
+                - exec:
+                    command: /bin/sh
+                    arguments:
+                      - -c
+                      - semgrep --config=auto --json --output=/tmp/semgrep.json src/$SERVICE_NAME || true
+              artifacts:
+                - build:
+                    source: /tmp/semgrep.json
+                    destination: semgrep/
+            sonarqube:
+              elastic_profile_id: sonar-scanner
+              tasks:
+                - exec:
+                    command: /bin/sh
+                    arguments:
+                      - -c
+                      - |
+                        cd src/$SERVICE_NAME
+                        sonar-scanner \
+                          -Dsonar.projectKey=$SERVICE_NAME \
+                          -Dsonar.host.url=$SONAR_HOST_URL \
+                          -Dsonar.login=$SONAR_TOKEN \
+                          -Dsonar.qualitygate.wait=true || true
+
+      - build-scan:
+          approval:
+            type: success
+          jobs:
+            docker-build:
+              elastic_profile_id: docker-agent
+              tasks:
+                - exec:
+                    command: /bin/sh
+                    arguments:
+                      - -c
+                      - |
+                        docker build -t $HARBOR_REGISTRY/shopos/$SERVICE_NAME:${GO_PIPELINE_LABEL} \
+                          src/$SERVICE_NAME/
+                        trivy image --exit-code 1 --severity CRITICAL \
+                          $HARBOR_REGISTRY/shopos/$SERVICE_NAME:${GO_PIPELINE_LABEL} || true
+                        trivy image --format cyclonedx --output sbom.json \
+                          $HARBOR_REGISTRY/shopos/$SERVICE_NAME:${GO_PIPELINE_LABEL} || true
+              artifacts:
+                - build:
+                    source: sbom.json
+                    destination: sbom/
+
+      - push-sign:
+          approval:
+            type: success
+          jobs:
+            push:
+              elastic_profile_id: docker-agent
+              tasks:
+                - exec:
+                    command: /bin/sh
+                    arguments:
+                      - -c
+                      - |
+                        echo "$HARBOR_PASSWORD" | docker login $HARBOR_REGISTRY -u $HARBOR_USERNAME --password-stdin
+                        docker push $HARBOR_REGISTRY/shopos/$SERVICE_NAME:${GO_PIPELINE_LABEL}
+                        docker tag $HARBOR_REGISTRY/shopos/$SERVICE_NAME:${GO_PIPELINE_LABEL} \
+                          $HARBOR_REGISTRY/shopos/$SERVICE_NAME:latest
+                        docker push $HARBOR_REGISTRY/shopos/$SERVICE_NAME:latest
+            sign:
+              elastic_profile_id: security-tools
+              tasks:
+                - exec:
+                    command: /bin/sh
+                    arguments:
+                      - -c
+                      - |
+                        COSIGN_EXPERIMENTAL=1 cosign sign --yes \
+                          $HARBOR_REGISTRY/shopos/$SERVICE_NAME:${GO_PIPELINE_LABEL}
+
+      - deploy:
+          approval:
+            type: manual
+          jobs:
+            helm-deploy:
+              elastic_profile_id: helm-agent
+              tasks:
+                - exec:
+                    command: /bin/sh
+                    arguments:
+                      - -c
+                      - |
+                        mkdir -p ~/.kube && echo "$KUBECONFIG_CONTENT" | base64 -d > ~/.kube/config
+                        helm upgrade --install $SERVICE_NAME \
+                          helm/charts/$SERVICE_NAME \
+                          --namespace $K8S_NAMESPACE --create-namespace \
+                          --set image.repository=$HARBOR_REGISTRY/shopos/$SERVICE_NAME \
+                          --set image.tag=${GO_PIPELINE_LABEL} \
+                          --set environment=$ENVIRONMENT \
+                          --wait --timeout 5m
+                        curl -sf -X POST "$SLACK_WEBHOOK" \
+                          -H 'Content-type: application/json' \
+                          --data "{\"text\":\":rocket: Deployed $SERVICE_NAME:${GO_PIPELINE_LABEL} to $ENVIRONMENT\"}"

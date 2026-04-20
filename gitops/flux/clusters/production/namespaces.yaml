@@ -1,0 +1,103 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: shopos-platform
+  labels:
+    environment: production
+    domain: platform
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: shopos-identity
+  labels:
+    environment: production
+    domain: identity
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: shopos-catalog
+  labels:
+    environment: production
+    domain: catalog
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: shopos-commerce
+  labels:
+    environment: production
+    domain: commerce
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: shopos-supply-chain
+  labels:
+    environment: production
+    domain: supply-chain
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: shopos-financial
+  labels:
+    environment: production
+    domain: financial
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: shopos-customer-experience
+  labels:
+    environment: production
+    domain: customer-experience
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: shopos-communications
+  labels:
+    environment: production
+    domain: communications
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: shopos-content
+  labels:
+    environment: production
+    domain: content
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: shopos-analytics-ai
+  labels:
+    environment: production
+    domain: analytics-ai
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: shopos-b2b
+  labels:
+    environment: production
+    domain: b2b
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: shopos-integrations
+  labels:
+    environment: production
+    domain: integrations
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: shopos-affiliate
+  labels:
+    environment: production
+    domain: affiliate

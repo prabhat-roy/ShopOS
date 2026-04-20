@@ -1,0 +1,19 @@
+apiVersion: v2
+name: back-in-stock-service
+description: ShopOS back-in-stock-service — Back-in-stock notifications for out-of-stock products
+type: application
+version: 0.1.0
+appVersion: "1.0.0"
+keywords:
+  - shopos
+  - back-in-stock-service
+  - customer-experience
+home: https://github.com/your-org/shopos
+sources:
+  - https://github.com/your-org/shopos/tree/main/src/customer-experience/back-in-stock-service
+maintainers:
+  - name: ShopOS Platform Team
+    email: platform@shopos.io
+annotations:
+  app.kubernetes.io/domain: customer-experience
+  app.kubernetes.io/language: go

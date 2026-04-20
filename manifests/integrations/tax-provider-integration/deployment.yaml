@@ -1,0 +1,83 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: tax-provider-integration
+  namespace: integrations
+  labels:
+    app: tax-provider-integration
+    domain: integrations
+    version: v1
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: tax-provider-integration
+  template:
+    metadata:
+      labels:
+        app: tax-provider-integration
+        domain: integrations
+        version: v1
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "50175"
+    spec:
+      serviceAccountName: tax-provider-integration
+      terminationGracePeriodSeconds: 30
+      containers:
+        - name: tax-provider-integration
+          image: shopos/tax-provider-integration:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: grpc
+              containerPort: 50175
+              protocol: TCP
+          envFrom:
+            - configMapRef:
+                name: tax-provider-integration
+          env:
+            - name: POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            - name: POD_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+          resources:
+            requests:
+              cpu: 250m
+              memory: 256Mi
+            limits:
+              cpu: 1
+              memory: 1Gi
+          livenessProbe:
+            tcpSocket:
+              port: 50175
+            initialDelaySeconds: 15
+            periodSeconds: 20
+            failureThreshold: 3
+          readinessProbe:
+            tcpSocket:
+              port: 50175
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            failureThreshold: 3
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 1000
+            readOnlyRootFilesystem: true
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+      securityContext:
+        fsGroup: 2000
+        runAsNonRoot: true
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: kubernetes.io/hostname
+          whenUnsatisfiable: ScheduleAnyway
+          labelSelector:
+            matchLabels:
+              app: tax-provider-integration

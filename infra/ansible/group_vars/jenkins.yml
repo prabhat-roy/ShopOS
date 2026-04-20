@@ -1,0 +1,76 @@
+---
+# Jenkins node variables
+
+java_version: "21"
+jenkins_port: 8080
+jenkins_admin_user: admin
+jenkins_admin_password: admin   # Override via Vault or --extra-vars in production
+
+jenkins_plugins:
+  - workflow-aggregator
+  - pipeline-stage-view
+  - pipeline-graph-analysis
+  - pipeline-utility-steps
+  - git
+  - git-client
+  - github
+  - github-branch-source
+  - ssh-agent
+  - maven-plugin
+  - gradle
+  - nodejs
+  - docker-workflow
+  - docker-plugin
+  - kubernetes
+  - kubernetes-credentials
+  - kubernetes-cli
+  - terraform
+  - ansible
+  - sonar
+  - dependency-check-jenkins-plugin
+  - warnings-ng
+  - jacoco
+  - htmlpublisher
+  - junit
+  - credentials
+  - credentials-binding
+  - ssh-credentials
+  - plain-credentials
+  - role-strategy
+  - matrix-auth
+  - email-ext
+  - slack
+  - blueocean
+  - timestamper
+  - ansicolor
+  - build-timeout
+  - ws-cleanup
+  - dashboard-view
+  - parameterized-trigger
+  - rebuild
+  - copy-artifact
+  - generic-webhook-trigger
+  - job-dsl
+  - configuration-as-code
+  - prometheus
+  - monitoring
+
+# Tools installed on Jenkins agent alongside Jenkins
+jenkins_agent_tools:
+  - docker
+  - kubectl
+  - helm
+  - terraform
+  - go
+  - python3
+  - nodejs
+  - maven
+  - gradle
+  - rust
+  - dotnet
+
+go_version: "1.24.0"
+node_version: "22"
+terraform_version: "1.9.5"
+kubectl_version: "1.31.0"
+helm_version: "3.16.0"

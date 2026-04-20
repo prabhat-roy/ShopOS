@@ -1,0 +1,66 @@
+syntax = "proto3";
+package content.i18n.v1;
+option go_package = "github.com/shopos/proto/content/i18n/v1;i18nv1";
+
+import "google/protobuf/timestamp.proto";
+
+service I18nService {
+  rpc GetTranslation(GetTranslationRequest) returns (GetTranslationResponse);
+  rpc SetTranslation(SetTranslationRequest) returns (SetTranslationResponse);
+  rpc DeleteTranslation(DeleteTranslationRequest) returns (DeleteTranslationResponse);
+  rpc ListTranslations(ListTranslationsRequest) returns (ListTranslationsResponse);
+  rpc ListLocales(ListLocalesRequest) returns (ListLocalesResponse);
+}
+
+message Translation {
+  string id = 1;
+  string locale = 2;
+  string namespace = 3;
+  string key = 4;
+  string value = 5;
+  google.protobuf.Timestamp created_at = 6;
+  google.protobuf.Timestamp updated_at = 7;
+}
+
+message GetTranslationRequest {
+  string locale = 1;
+  string namespace = 2;
+  string key = 3;
+}
+
+message GetTranslationResponse {
+  string value = 1;
+  bool found = 2;
+}
+
+message SetTranslationRequest {
+  string locale = 1;
+  string namespace = 2;
+  string key = 3;
+  string value = 4;
+}
+
+message SetTranslationResponse { Translation translation = 1; }
+
+message DeleteTranslationRequest {
+  string locale = 1;
+  string namespace = 2;
+  string key = 3;
+}
+
+message DeleteTranslationResponse { bool success = 1; }
+
+message ListTranslationsRequest {
+  string locale = 1;
+  string namespace = 2;
+  int32 page = 3;
+  int32 page_size = 4;
+}
+
+message ListTranslationsResponse {
+  repeated Translation translations = 1;
+  int32 total = 2;
+}
+
+message ListLocalesRequest {}
+message ListLocalesResponse { repeated string locales = 1; }

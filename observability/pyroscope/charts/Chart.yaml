@@ -1,0 +1,6 @@
+apiVersion: v2
+name: pyroscope
+description: Grafana Pyroscope — continuous profiling for all applications
+type: application
+version: 1.0.0
+appVersion: "1.7.1"

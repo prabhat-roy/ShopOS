@@ -1,0 +1,191 @@
+# Security Infrastructure — GCP Cloud Build
+# Mirrors .github/workflows/security.yml
+# Substitutions: _ENVIRONMENT, _ACTION, _CERT_MANAGER, _VAULT, _KEYCLOAK,
+#   _SPIRE, _OPA, _KYVERNO, _KUBEWARDEN, _FALCO, _TRIVY_OPERATOR
+
+substitutions:
+  _ENVIRONMENT: dev
+  _ACTION: INSTALL
+  _CERT_MANAGER: "true"
+  _VAULT: "true"
+  _KEYCLOAK: "true"
+  _SPIRE: "true"
+  _OPA: "true"
+  _KYVERNO: "true"
+  _KUBEWARDEN: "true"
+  _FALCO: "true"
+  _TRIVY_OPERATOR: "true"
+
+options:
+  logging: CLOUD_LOGGING_ONLY
+  machineType: E2_STANDARD_4
+
+availableSecrets:
+  secretManager:
+    - versionName: projects/$PROJECT_ID/secrets/kubeconfig-content/versions/latest
+      env: KUBECONFIG_CONTENT
+    - versionName: projects/$PROJECT_ID/secrets/keycloak-admin-password/versions/latest
+      env: KEYCLOAK_ADMIN_PASSWORD
+    - versionName: projects/$PROJECT_ID/secrets/slack-webhook/versions/latest
+      env: SLACK_WEBHOOK
+
+steps:
+  - name: alpine/helm
+    id: setup-kubeconfig
+    secretEnv: [KUBECONFIG_CONTENT]
+    entrypoint: sh
+    args:
+      - -c
+      - |
+        mkdir -p ~/.kube
+        echo "$$KUBECONFIG_CONTENT" | base64 -d > ~/.kube/config
+        cp ~/.kube/config /workspace/kubeconfig
+
+  - name: alpine/helm
+    id: cert-manager
+    secretEnv: [KUBECONFIG_CONTENT]
+    entrypoint: bash
+    args:
+      - -c
+      - |
+        [ "$_CERT_MANAGER" = "true" ] || exit 0
+        mkdir -p ~/.kube && echo "$$KUBECONFIG_CONTENT" | base64 -d > ~/.kube/config
+        helm repo add jetstack https://charts.jetstack.io --force-update
+        if [ "$_ACTION" = "UNINSTALL" ]; then
+          helm uninstall cert-manager -n cert-manager 2>/dev/null || true
+        else
+          helm upgrade --install cert-manager jetstack/cert-manager \
+            --namespace cert-manager --create-namespace \
+            --set installCRDs=true --set replicaCount=2 \
+            --wait --timeout 5m
+        fi
+    waitFor: [setup-kubeconfig]
+
+  - name: alpine/helm
+    id: vault
+    secretEnv: [KUBECONFIG_CONTENT]
+    entrypoint: bash
+    args:
+      - -c
+      - |
+        [ "$_VAULT" = "true" ] || exit 0
+        mkdir -p ~/.kube && echo "$$KUBECONFIG_CONTENT" | base64 -d > ~/.kube/config
+        helm repo add hashicorp https://helm.releases.hashicorp.com --force-update
+        if [ "$_ACTION" = "UNINSTALL" ]; then
+          helm uninstall vault -n vault 2>/dev/null || true
+        else
+          helm upgrade --install vault hashicorp/vault \
+            --namespace vault --create-namespace \
+            --set server.ha.enabled=true \
+            --set server.ha.raft.enabled=true \
+            --set server.ha.replicas=3 \
+            --set ui.enabled=true \
+            --wait --timeout 10m
+        fi
+    waitFor: [cert-manager]
+
+  - name: alpine/helm
+    id: keycloak
+    secretEnv: [KUBECONFIG_CONTENT, KEYCLOAK_ADMIN_PASSWORD]
+    entrypoint: bash
+    args:
+      - -c
+      - |
+        [ "$_KEYCLOAK" = "true" ] || exit 0
+        mkdir -p ~/.kube && echo "$$KUBECONFIG_CONTENT" | base64 -d > ~/.kube/config
+        helm repo add bitnami https://charts.bitnami.com/bitnami --force-update
+        if [ "$_ACTION" = "UNINSTALL" ]; then
+          helm uninstall keycloak -n keycloak 2>/dev/null || true
+        else
+          helm upgrade --install keycloak bitnami/keycloak \
+            --namespace keycloak --create-namespace \
+            --set replicaCount=2 \
+            --set auth.adminPassword="$$KEYCLOAK_ADMIN_PASSWORD" \
+            --set postgresql.enabled=true \
+            --wait --timeout 10m
+        fi
+    waitFor: [vault]
+
+  - name: alpine/helm
+    id: kyverno
+    secretEnv: [KUBECONFIG_CONTENT]
+    entrypoint: bash
+    args:
+      - -c
+      - |
+        [ "$_KYVERNO" = "true" ] || exit 0
+        mkdir -p ~/.kube && echo "$$KUBECONFIG_CONTENT" | base64 -d > ~/.kube/config
+        helm repo add kyverno https://kyverno.github.io/kyverno --force-update
+        if [ "$_ACTION" = "UNINSTALL" ]; then
+          helm uninstall kyverno -n kyverno 2>/dev/null || true
+        else
+          helm upgrade --install kyverno kyverno/kyverno \
+            --namespace kyverno --create-namespace \
+            --set replicaCount=2 --wait --timeout 5m
+        fi
+    waitFor: [keycloak]
+
+  - name: alpine/helm
+    id: kubewarden
+    secretEnv: [KUBECONFIG_CONTENT]
+    entrypoint: bash
+    args:
+      - -c
+      - |
+        [ "$_KUBEWARDEN" = "true" ] || exit 0
+        mkdir -p ~/.kube && echo "$$KUBECONFIG_CONTENT" | base64 -d > ~/.kube/config
+        helm repo add kubewarden https://charts.kubewarden.io --force-update
+        if [ "$_ACTION" = "UNINSTALL" ]; then
+          helm uninstall kubewarden-defaults -n kubewarden 2>/dev/null || true
+          helm uninstall kubewarden-controller -n kubewarden 2>/dev/null || true
+          helm uninstall kubewarden-crds -n kubewarden 2>/dev/null || true
+        else
+          helm upgrade --install kubewarden-crds kubewarden/kubewarden-crds \
+            --namespace kubewarden --create-namespace --wait --timeout 3m
+          helm upgrade --install kubewarden-controller kubewarden/kubewarden-controller \
+            --namespace kubewarden --wait --timeout 5m
+          helm upgrade --install kubewarden-defaults kubewarden/kubewarden-defaults \
+            --namespace kubewarden --wait --timeout 5m
+        fi
+    waitFor: [kyverno]
+
+  - name: alpine/helm
+    id: falco
+    secretEnv: [KUBECONFIG_CONTENT, SLACK_WEBHOOK]
+    entrypoint: bash
+    args:
+      - -c
+      - |
+        [ "$_FALCO" = "true" ] || exit 0
+        mkdir -p ~/.kube && echo "$$KUBECONFIG_CONTENT" | base64 -d > ~/.kube/config
+        helm repo add falcosecurity https://falcosecurity.github.io/charts --force-update
+        if [ "$_ACTION" = "UNINSTALL" ]; then
+          helm uninstall falco -n falco 2>/dev/null || true
+        else
+          helm upgrade --install falco falcosecurity/falco \
+            --namespace falco --create-namespace \
+            --set driver.kind=ebpf \
+            --set falcosidekick.enabled=true \
+            --set falcosidekick.config.slack.webhookurl="$$SLACK_WEBHOOK" \
+            --wait --timeout 8m
+        fi
+    waitFor: [kubewarden]
+
+  - name: alpine/helm
+    id: trivy-operator
+    secretEnv: [KUBECONFIG_CONTENT]
+    entrypoint: bash
+    args:
+      - -c
+      - |
+        [ "$_TRIVY_OPERATOR" = "true" ] || exit 0
+        mkdir -p ~/.kube && echo "$$KUBECONFIG_CONTENT" | base64 -d > ~/.kube/config
+        helm repo add aqua https://aquasecurity.github.io/helm-charts --force-update
+        if [ "$_ACTION" = "UNINSTALL" ]; then
+          helm uninstall trivy-operator -n trivy-system 2>/dev/null || true
+        else
+          helm upgrade --install trivy-operator aqua/trivy-operator \
+            --namespace trivy-system --create-namespace \
+            --set trivy.ignoreUnfixed=true --wait --timeout 5m
+        fi
+    waitFor: [falco]

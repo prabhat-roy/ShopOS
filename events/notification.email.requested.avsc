@@ -1,0 +1,14 @@
+{
+  "type": "record",
+  "name": "EmailRequested",
+  "namespace": "com.shopos.notification.email",
+  "doc": "Emitted by notification-orchestrator to trigger email delivery",
+  "fields": [
+    { "name": "event_id",    "type": "string" },
+    { "name": "to_address",  "type": "string" },
+    { "name": "template_id", "type": "string" },
+    { "name": "variables",   "type": { "type": "map", "values": "string" }, "default": {} },
+    { "name": "reply_to",    "type": ["null", "string"], "default": null },
+    { "name": "occurred_at", "type": { "type": "long", "logicalType": "timestamp-millis" } }
+  ]
+}

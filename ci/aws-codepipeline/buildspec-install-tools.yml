@@ -1,0 +1,126 @@
+version: 0.2
+
+# Install CI Agent Tools — CodeBuild buildspec
+# Mirrors .github/workflows/install-tools.yml
+# Run this to verify all tools are available in the CodeBuild environment
+
+env:
+  variables: {}
+
+phases:
+  install:
+    runtime-versions:
+      golang: 1.23
+      java: corretto21
+      nodejs: 22
+      python: 3.13
+      dotnet: 8.0
+
+  build:
+    commands:
+      # kubectl
+      - |
+        curl -fsSL "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl" \
+          -o /usr/local/bin/kubectl && chmod +x /usr/local/bin/kubectl
+        kubectl version --client 2>/dev/null || kubectl version --client
+
+      # Helm
+      - |
+        curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
+        helm version --short
+
+      # Terraform
+      - |
+        TF_VER=1.9.0
+        curl -fsSL "https://releases.hashicorp.com/terraform/${TF_VER}/terraform_${TF_VER}_linux_amd64.zip" -o /tmp/tf.zip
+        unzip -o /tmp/tf.zip -d /usr/local/bin/
+        terraform version
+
+      # Rust
+      - |
+        curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+        source "$HOME/.cargo/env"
+        rustc --version
+
+      # Cosign
+      - |
+        COSIGN_VERSION=2.4.0
+        curl -fsSL "https://github.com/sigstore/cosign/releases/download/v${COSIGN_VERSION}/cosign-linux-amd64" \
+          -o /usr/local/bin/cosign && chmod +x /usr/local/bin/cosign
+        cosign version
+
+      # Buf
+      - |
+        BUF_VERSION=1.35.1
+        curl -fsSL "https://github.com/bufbuild/buf/releases/download/v${BUF_VERSION}/buf-Linux-x86_64" \
+          -o /usr/local/bin/buf && chmod +x /usr/local/bin/buf
+        buf --version
+
+      # Kustomize
+      - |
+        curl -fsSL "https://raw.githubusercontent.com/kubernetes-sigs/kustomize/master/hack/install_kustomize.sh" | bash
+        mv kustomize /usr/local/bin/
+        kustomize version
+
+      # Trivy
+      - |
+        curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh -s -- -b /usr/local/bin
+        trivy --version | head -1
+
+      # Grype
+      - |
+        curl -sSfL https://raw.githubusercontent.com/anchore/grype/main/install.sh | sh -s -- -b /usr/local/bin
+        grype version | head -1
+
+      # Syft
+      - |
+        curl -sSfL https://raw.githubusercontent.com/anchore/syft/main/install.sh | sh -s -- -b /usr/local/bin
+        syft --version
+
+      # Gitleaks
+      - |
+        GITLEAKS_VER=8.21.0
+        curl -fsSL "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VER}/gitleaks_${GITLEAKS_VER}_linux_x64.tar.gz" \
+          | tar -xz -C /usr/local/bin gitleaks
+        gitleaks version
+
+      # Semgrep
+      - pip install semgrep --quiet && semgrep --version
+
+      # Checkov
+      - pip install checkov --quiet && checkov --version
+
+      # Ansible
+      - pip install ansible ansible-lint --quiet && ansible --version | head -1
+
+      # k6
+      - |
+        sudo apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 \
+          --recv-keys C5AD17C747E3415A3642D57D77C6C491D6AC1D69
+        echo "deb https://dl.k6.io/deb stable main" | sudo tee /etc/apt/sources.list.d/k6.list
+        sudo apt-get update -qq && sudo apt-get install k6 -y -qq
+        k6 version
+
+  post_build:
+    commands:
+      - echo "=== All Tool Versions ==="
+      - kubectl version --client 2>/dev/null || true
+      - helm version --short
+      - terraform version
+      - go version
+      - java -version 2>&1 | head -1
+      - node --version
+      - python3 --version
+      - dotnet --version
+      - source "$HOME/.cargo/env" 2>/dev/null && rustc --version || true
+      - cosign version
+      - buf --version
+      - kustomize version
+      - trivy --version | head -1
+      - grype version | head -1
+      - syft --version
+      - gitleaks version
+      - semgrep --version
+      - checkov --version
+      - ansible --version | head -1
+      - k6 version

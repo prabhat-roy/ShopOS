@@ -1,0 +1,118 @@
+syntax = "proto3";
+
+package identity;
+
+option go_package = "github.com/shopos/proto/identity";
+
+// ---------------------------------------------------------------------------
+// Core domain messages
+// ---------------------------------------------------------------------------
+
+// Permission represents a single access-control grant on a resource.
+message Permission {
+  // UUID
+  string id       = 1;
+  // Machine-readable name, e.g. "product:create"
+  string name     = 2;
+  // The resource this permission controls, e.g. "product", "order"
+  string resource = 3;
+  // The action being permitted, e.g. "create", "read", "update", "delete"
+  string action   = 4;
+}
+
+// Role is a named collection of permissions that can be assigned to users.
+message Role {
+  // UUID
+  string             id          = 1;
+  // Human-readable name, e.g. "catalog-manager"
+  string             name        = 2;
+  repeated Permission permissions = 3;
+}
+
+// ---------------------------------------------------------------------------
+// Request / response messages
+// ---------------------------------------------------------------------------
+
+message CheckPermissionRequest {
+  string user_id    = 1;
+  // Permission name to check, e.g. "order:read"
+  string permission = 2;
+}
+
+message CheckPermissionResponse {
+  bool allowed = 1;
+}
+
+message GetUserPermissionsRequest {
+  string user_id = 1;
+}
+
+message GetUserPermissionsResponse {
+  // Flat list of all resolved permission names for the user
+  repeated string permissions = 1;
+}
+
+message AssignRoleRequest {
+  string user_id = 1;
+  // Name of the role to assign
+  string role    = 2;
+}
+
+message AssignRoleResponse {
+  bool   success = 1;
+  string message = 2;
+}
+
+message RemoveRoleRequest {
+  string user_id = 1;
+  string role    = 2;
+}
+
+message RemoveRoleResponse {
+  bool   success = 1;
+  string message = 2;
+}
+
+message CreatePermissionRequest {
+  string name     = 1;
+  string resource = 2;
+  string action   = 3;
+}
+
+message ListPermissionsRequest {
+  // Optional filter by resource; empty means return all
+  string resource  = 1;
+  int32  page      = 2;
+  int32  page_size = 3;
+}
+
+message ListPermissionsResponse {
+  repeated Permission permissions = 1;
+  int32               page        = 2;
+  int32               page_size   = 3;
+  int32               total       = 4;
+  int32               total_pages = 5;
+}
+
+// ---------------------------------------------------------------------------
+// PermissionService — permission-service (Go, port 50063)
+// ---------------------------------------------------------------------------
+service PermissionService {
+  // Check whether a user has a specific named permission
+  rpc CheckPermission(CheckPermissionRequest) returns (CheckPermissionResponse);
+
+  // Return all permission names the user has (via their roles)
+  rpc GetUserPermissions(GetUserPermissionsRequest) returns (GetUserPermissionsResponse);
+
+  // Assign a named role to a user
+  rpc AssignRole(AssignRoleRequest) returns (AssignRoleResponse);
+
+  // Remove a named role from a user
+  rpc RemoveRole(RemoveRoleRequest) returns (RemoveRoleResponse);
+
+  // Create a new fine-grained permission definition
+  rpc CreatePermission(CreatePermissionRequest) returns (Permission);
+
+  // List all defined permissions with optional resource filter
+  rpc ListPermissions(ListPermissionsRequest) returns (ListPermissionsResponse);
+}

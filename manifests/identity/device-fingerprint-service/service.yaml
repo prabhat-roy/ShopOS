@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: device-fingerprint-service
+  namespace: identity
+  labels:
+    app: device-fingerprint-service
+    domain: identity
+spec:
+  selector:
+    app: device-fingerprint-service
+  type: ClusterIP
+  ports:
+    - name: grpc
+      port: 50067
+      targetPort: grpc
+      protocol: TCP

@@ -1,0 +1,21 @@
+apiVersion: chaos-mesh.org/v1alpha1
+kind: HTTPChaos
+metadata:
+  name: http-delay-checkout-response
+  namespace: chaos-mesh
+  labels:
+    app.kubernetes.io/part-of: shopos-chaos
+    chaos.shopos.io/tier: commerce
+spec:
+  mode: all
+  selector:
+    namespaces:
+      - commerce
+    labelSelectors:
+      app.kubernetes.io/name: checkout-service
+  target: Response
+  port: 8080
+  path: /api/v1/checkout*
+  delay: 3s
+  percent: 50
+  duration: 5m

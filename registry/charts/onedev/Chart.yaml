@@ -1,0 +1,6 @@
+apiVersion: v2
+name: onedev
+description: OneDev — Git, CI, and package registry in one
+type: application
+version: 1.0.0
+appVersion: "10.4"

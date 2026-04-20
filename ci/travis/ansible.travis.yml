@@ -1,0 +1,38 @@
+# Ansible Playbooks Pipeline — Travis CI
+language: python
+python: "3.13"
+
+env:
+  global:
+    - INVENTORY=production
+    - CHECK_MODE=false
+
+install:
+  - pip install ansible ansible-lint boto3 botocore google-auth --quiet
+  - ansible-galaxy collection install amazon.aws google.cloud community.kubernetes --quiet
+
+jobs:
+  include:
+    - name: ansible-lint
+      script:
+        - ansible-lint "infra/ansible/playbooks/$PLAYBOOK.yml" -c infra/ansible/.ansible-lint || true
+
+    - name: run-playbook
+      env:
+        - ANSIBLE_FORCE_COLOR=1
+        - ANSIBLE_HOST_KEY_CHECKING=False
+        - ANSIBLE_STDOUT_CALLBACK=yaml
+      script:
+        - echo "$ANSIBLE_SSH_PRIVATE_KEY" > /tmp/ansible_key && chmod 600 /tmp/ansible_key
+        - |
+          LIMIT_ARG="" && [ -n "$LIMIT" ] && LIMIT_ARG="--limit $LIMIT"
+          EXTRA_ARGS="" && [ -n "$EXTRA_VARS" ] && EXTRA_ARGS="--extra-vars '$EXTRA_VARS'"
+          CHECK_ARG="" && [ "$CHECK_MODE" = "true" ] && CHECK_ARG="--check --diff"
+          eval ansible-playbook \
+            -i "infra/ansible/inventories/$INVENTORY/hosts.yml" \
+            "infra/ansible/playbooks/$PLAYBOOK.yml" \
+            --private-key /tmp/ansible_key \
+            --user "$ANSIBLE_SSH_USER" \
+            $LIMIT_ARG $EXTRA_ARGS $CHECK_ARG -v
+      after_script:
+        - rm -f /tmp/ansible_key

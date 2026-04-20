@@ -1,0 +1,19 @@
+apiVersion: v2
+name: clv-service
+description: ShopOS clv-service — Customer lifetime value scoring and cohort analysis
+type: application
+version: 0.1.0
+appVersion: "1.0.0"
+keywords:
+  - shopos
+  - clv-service
+  - analytics-ai
+home: https://github.com/your-org/shopos
+sources:
+  - https://github.com/your-org/shopos/tree/main/src/analytics-ai/clv-service
+maintainers:
+  - name: ShopOS Platform Team
+    email: platform@shopos.io
+annotations:
+  app.kubernetes.io/domain: analytics-ai
+  app.kubernetes.io/language: python

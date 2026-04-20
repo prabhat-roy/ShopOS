@@ -1,0 +1,6 @@
+apiVersion: v2
+name: zot
+description: Zot — lightweight OCI-native registry (CNCF)
+type: application
+version: 1.0.0
+appVersion: "v2.1.0"

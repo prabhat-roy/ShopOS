@@ -1,0 +1,38 @@
+{
+  "classes": [
+    {
+      "class": "Product",
+      "description": "Product embeddings for semantic search and recommendations",
+      "vectorizer": "text2vec-transformers",
+      "moduleConfig": {
+        "text2vec-transformers": {
+          "poolingStrategy": "masked_mean",
+          "vectorizeClassName": false
+        }
+      },
+      "properties": [
+        { "name": "productId",    "dataType": ["uuid"],   "description": "Internal product ID" },
+        { "name": "name",         "dataType": ["text"],   "description": "Product name", "moduleConfig": { "text2vec-transformers": { "skip": false } } },
+        { "name": "description",  "dataType": ["text"],   "description": "Product description", "moduleConfig": { "text2vec-transformers": { "skip": false } } },
+        { "name": "category",     "dataType": ["text"],   "description": "Category path", "moduleConfig": { "text2vec-transformers": { "skip": true } } },
+        { "name": "brand",        "dataType": ["text"],   "description": "Brand name", "moduleConfig": { "text2vec-transformers": { "skip": true } } },
+        { "name": "tags",         "dataType": ["text[]"], "description": "Product tags" },
+        { "name": "price",        "dataType": ["number"], "description": "Current price" },
+        { "name": "inStock",      "dataType": ["boolean"],"description": "Stock availability" },
+        { "name": "tenantId",     "dataType": ["text"],   "description": "Tenant isolation key" }
+      ]
+    },
+    {
+      "class": "UserQuery",
+      "description": "User search queries for semantic search analytics",
+      "vectorizer": "text2vec-transformers",
+      "properties": [
+        { "name": "queryText",    "dataType": ["text"],   "description": "Raw search query" },
+        { "name": "userId",       "dataType": ["uuid"],   "description": "User who searched" },
+        { "name": "resultCount",  "dataType": ["int"],    "description": "Number of results returned" },
+        { "name": "clicked",      "dataType": ["boolean"],"description": "Whether user clicked a result" },
+        { "name": "tenantId",     "dataType": ["text"],   "description": "Tenant isolation key" }
+      ]
+    }
+  ]
+}

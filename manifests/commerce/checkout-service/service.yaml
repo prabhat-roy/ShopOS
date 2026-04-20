@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: checkout-service
+  namespace: commerce
+  labels:
+    app: checkout-service
+    domain: commerce
+spec:
+  selector:
+    app: checkout-service
+  type: ClusterIP
+  ports:
+    - name: grpc
+      port: 50081
+      targetPort: grpc
+      protocol: TCP

@@ -1,0 +1,19 @@
+apiVersion: v2
+name: cms-service
+description: ShopOS CMS Service — content management
+type: application
+version: 0.1.0
+appVersion: "1.0.0"
+keywords:
+  - shopos
+  - cms-service
+  - content
+home: https://github.com/your-org/shopos
+sources:
+  - https://github.com/your-org/shopos/tree/main/src/content/cms-service
+maintainers:
+  - name: ShopOS Platform Team
+    email: platform@shopos.io
+annotations:
+  app.kubernetes.io/domain: content
+  app.kubernetes.io/language: Node.js

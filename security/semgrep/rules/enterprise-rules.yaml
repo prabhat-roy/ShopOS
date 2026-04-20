@@ -1,0 +1,36 @@
+rules:
+  - id: hardcoded-secret
+    patterns:
+      - pattern: $KEY = "..."
+    message: "Potential hardcoded secret in $KEY. Use environment variables."
+    languages: [go, python, javascript, java, kotlin]
+    severity: ERROR
+    metadata:
+      category: security
+      confidence: MEDIUM
+
+  - id: sql-injection-go
+    patterns:
+      - pattern: |
+          db.Query($QUERY + ...)
+      - pattern: |
+          db.Exec($QUERY + ...)
+    message: "Potential SQL injection. Use parameterized queries."
+    languages: [go]
+    severity: ERROR
+
+  - id: insecure-http-go
+    pattern: http.Get($URL)
+    message: "Use http.Client with TLS verification. Don't skip TLS."
+    languages: [go]
+    severity: WARNING
+    fix: |
+      client := &http.Client{Timeout: 10 * time.Second}
+      client.Get($URL)
+
+  - id: jwt-none-algorithm
+    patterns:
+      - pattern: jwt.Parse($TOKEN, func(...) { return nil, nil })
+    message: "JWT none algorithm vulnerability. Always validate the signing method."
+    languages: [go]
+    severity: ERROR

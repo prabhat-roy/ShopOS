@@ -1,0 +1,83 @@
+syntax = "proto3";
+package b2b.contract.v1;
+option go_package = "github.com/shopos/proto/b2b/contract/v1;contractv1";
+
+import "google/protobuf/timestamp.proto";
+
+service ContractService {
+  rpc CreateContract(CreateContractRequest) returns (CreateContractResponse);
+  rpc GetContract(GetContractRequest) returns (GetContractResponse);
+  rpc UpdateContract(UpdateContractRequest) returns (UpdateContractResponse);
+  rpc ListContracts(ListContractsRequest) returns (ListContractsResponse);
+  rpc SignContract(SignContractRequest) returns (SignContractResponse);
+  rpc TerminateContract(TerminateContractRequest) returns (TerminateContractResponse);
+}
+
+enum ContractStatus {
+  CONTRACT_STATUS_UNSPECIFIED = 0;
+  CONTRACT_STATUS_DRAFT = 1;
+  CONTRACT_STATUS_PENDING_SIGNATURE = 2;
+  CONTRACT_STATUS_ACTIVE = 3;
+  CONTRACT_STATUS_EXPIRED = 4;
+  CONTRACT_STATUS_TERMINATED = 5;
+}
+
+message Contract {
+  string id = 1;
+  string org_id = 2;
+  string title = 3;
+  string terms = 4;
+  ContractStatus status = 5;
+  double credit_limit = 6;
+  double discount_percent = 7;
+  string payment_terms = 8;
+  google.protobuf.Timestamp start_date = 9;
+  google.protobuf.Timestamp end_date = 10;
+  google.protobuf.Timestamp signed_at = 11;
+  google.protobuf.Timestamp created_at = 12;
+  google.protobuf.Timestamp updated_at = 13;
+}
+
+message CreateContractRequest {
+  string org_id = 1;
+  string title = 2;
+  string terms = 3;
+  double credit_limit = 4;
+  double discount_percent = 5;
+  string payment_terms = 6;
+  google.protobuf.Timestamp start_date = 7;
+  google.protobuf.Timestamp end_date = 8;
+}
+
+message CreateContractResponse { Contract contract = 1; }
+message GetContractRequest { string id = 1; }
+message GetContractResponse { Contract contract = 1; }
+
+message UpdateContractRequest {
+  string id = 1;
+  string terms = 2;
+  double credit_limit = 3;
+  double discount_percent = 4;
+  string payment_terms = 5;
+  google.protobuf.Timestamp end_date = 6;
+}
+
+message UpdateContractResponse { Contract contract = 1; }
+
+message ListContractsRequest {
+  string org_id = 1;
+  ContractStatus status = 2;
+  int32 page = 3;
+  int32 page_size = 4;
+}
+
+message ListContractsResponse {
+  repeated Contract contracts = 1;
+  int32 total = 2;
+}
+
+message SignContractRequest { string id = 1; string signed_by = 2; }
+message SignContractResponse { Contract contract = 1; }
+
+message TerminateContractRequest { string id = 1; string reason = 2; }
+message TerminateContractResponse { Contract contract = 1; }

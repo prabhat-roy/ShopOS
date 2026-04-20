@@ -1,0 +1,352 @@
+# Security Infrastructure Pipeline — Tekton
+# Secrets: kubeconfig-secret, vault-credentials, keycloak-credentials, slack-webhook
+---
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  name: setup-kubeconfig
+  namespace: tekton-pipelines
+spec:
+  workspaces:
+    - name: kubeconfig
+      mountPath: /root/.kube
+  steps:
+    - name: verify
+      image: bitnami/kubectl:latest
+      script: |
+        kubectl cluster-info
+---
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  name: install-cert-manager
+  namespace: tekton-pipelines
+spec:
+  params:
+    - name: action
+      default: INSTALL
+  workspaces:
+    - name: kubeconfig
+      mountPath: /root/.kube
+  steps:
+    - name: helm
+      image: alpine/helm:latest
+      script: |
+        if [ "$(params.action)" = "UNINSTALL" ]; then
+          helm uninstall cert-manager -n cert-manager 2>/dev/null || true
+          exit 0
+        fi
+        helm repo add jetstack https://charts.jetstack.io --force-update
+        helm upgrade --install cert-manager jetstack/cert-manager \
+          --namespace cert-manager --create-namespace \
+          --set installCRDs=true --set replicaCount=2 \
+          --wait --timeout 5m
+---
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  name: install-vault
+  namespace: tekton-pipelines
+spec:
+  params:
+    - name: action
+      default: INSTALL
+  workspaces:
+    - name: kubeconfig
+      mountPath: /root/.kube
+  steps:
+    - name: helm
+      image: alpine/helm:latest
+      script: |
+        if [ "$(params.action)" = "UNINSTALL" ]; then
+          helm uninstall vault -n vault 2>/dev/null || true
+          exit 0
+        fi
+        helm repo add hashicorp https://helm.releases.hashicorp.com --force-update
+        helm upgrade --install vault hashicorp/vault \
+          --namespace vault --create-namespace \
+          --set server.ha.enabled=true --set server.ha.raft.enabled=true \
+          --set server.ha.replicas=3 --wait --timeout 10m
+---
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  name: install-keycloak
+  namespace: tekton-pipelines
+spec:
+  params:
+    - name: action
+      default: INSTALL
+  workspaces:
+    - name: kubeconfig
+      mountPath: /root/.kube
+  steps:
+    - name: helm
+      image: alpine/helm:latest
+      env:
+        - name: KEYCLOAK_ADMIN_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: keycloak-credentials
+              key: admin-password
+      script: |
+        if [ "$(params.action)" = "UNINSTALL" ]; then
+          helm uninstall keycloak -n keycloak 2>/dev/null || true
+          exit 0
+        fi
+        helm repo add bitnami https://charts.bitnami.com/bitnami --force-update
+        helm upgrade --install keycloak bitnami/keycloak \
+          --namespace keycloak --create-namespace \
+          --set replicaCount=2 \
+          --set auth.adminPassword="$KEYCLOAK_ADMIN_PASSWORD" \
+          --set postgresql.enabled=true \
+          --wait --timeout 10m
+---
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  name: install-kyverno
+  namespace: tekton-pipelines
+spec:
+  params:
+    - name: action
+      default: INSTALL
+  workspaces:
+    - name: source
+    - name: kubeconfig
+      mountPath: /root/.kube
+  steps:
+    - name: helm
+      image: alpine/helm:latest
+      script: |
+        if [ "$(params.action)" = "UNINSTALL" ]; then
+          helm uninstall kyverno -n kyverno 2>/dev/null || true
+          exit 0
+        fi
+        helm repo add kyverno https://kyverno.github.io/kyverno --force-update
+        helm upgrade --install kyverno kyverno/kyverno \
+          --namespace kyverno --create-namespace \
+          --set replicaCount=3 --wait --timeout 5m
+    - name: apply-policies
+      image: bitnami/kubectl:latest
+      script: |
+        kubectl apply -f /workspace/source/security/kyverno/ 2>/dev/null || true
+---
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  name: install-falco
+  namespace: tekton-pipelines
+spec:
+  params:
+    - name: action
+      default: INSTALL
+  workspaces:
+    - name: kubeconfig
+      mountPath: /root/.kube
+  steps:
+    - name: helm
+      image: alpine/helm:latest
+      env:
+        - name: SLACK_WEBHOOK
+          valueFrom:
+            secretKeyRef:
+              name: slack-webhook
+              key: url
+      script: |
+        if [ "$(params.action)" = "UNINSTALL" ]; then
+          helm uninstall falco -n falco 2>/dev/null || true
+          exit 0
+        fi
+        helm repo add falcosecurity https://falcosecurity.github.io/charts --force-update
+        helm upgrade --install falco falcosecurity/falco \
+          --namespace falco --create-namespace \
+          --set driver.kind=ebpf \
+          --set falcosidekick.enabled=true \
+          --set falcosidekick.config.slack.webhookurl="$SLACK_WEBHOOK" \
+          --wait --timeout 8m
+---
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  name: install-opa
+  namespace: tekton-pipelines
+spec:
+  params:
+    - name: action
+      default: INSTALL
+  workspaces:
+    - name: source
+    - name: kubeconfig
+      mountPath: /root/.kube
+  steps:
+    - name: helm
+      image: alpine/helm:latest
+      script: |
+        if [ "$(params.action)" = "UNINSTALL" ]; then
+          helm uninstall gatekeeper -n gatekeeper-system 2>/dev/null || true
+          exit 0
+        fi
+        helm repo add gatekeeper https://open-policy-agent.github.io/gatekeeper/charts --force-update
+        helm upgrade --install gatekeeper gatekeeper/gatekeeper \
+          --namespace gatekeeper-system --create-namespace \
+          --set replicaCount=3 --wait --timeout 5m
+    - name: apply-policies
+      image: bitnami/kubectl:latest
+      script: |
+        kubectl apply -f /workspace/source/security/opa/ 2>/dev/null || true
+---
+apiVersion: tekton.dev/v1
+kind: Pipeline
+metadata:
+  name: security-pipeline
+  namespace: tekton-pipelines
+spec:
+  params:
+    - name: action
+      default: INSTALL
+    - name: install-cert-manager
+      default: "true"
+    - name: install-vault
+      default: "true"
+    - name: install-keycloak
+      default: "true"
+    - name: install-kyverno
+      default: "true"
+    - name: install-falco
+      default: "true"
+    - name: install-opa
+      default: "true"
+  workspaces:
+    - name: source
+    - name: kubeconfig
+  tasks:
+    - name: cert-manager
+      taskRef:
+        name: install-cert-manager
+      params:
+        - name: action
+          value: $(params.action)
+      workspaces:
+        - name: kubeconfig
+          workspace: kubeconfig
+      when:
+        - input: $(params.install-cert-manager)
+          operator: in
+          values: ["true"]
+
+    - name: vault
+      taskRef:
+        name: install-vault
+      params:
+        - name: action
+          value: $(params.action)
+      workspaces:
+        - name: kubeconfig
+          workspace: kubeconfig
+      runAfter: [cert-manager]
+      when:
+        - input: $(params.install-vault)
+          operator: in
+          values: ["true"]
+
+    - name: keycloak
+      taskRef:
+        name: install-keycloak
+      params:
+        - name: action
+          value: $(params.action)
+      workspaces:
+        - name: kubeconfig
+          workspace: kubeconfig
+      runAfter: [cert-manager]
+      when:
+        - input: $(params.install-keycloak)
+          operator: in
+          values: ["true"]
+
+    - name: kyverno
+      taskRef:
+        name: install-kyverno
+      params:
+        - name: action
+          value: $(params.action)
+      workspaces:
+        - name: source
+          workspace: source
+        - name: kubeconfig
+          workspace: kubeconfig
+      runAfter: [cert-manager]
+      when:
+        - input: $(params.install-kyverno)
+          operator: in
+          values: ["true"]
+
+    - name: falco
+      taskRef:
+        name: install-falco
+      params:
+        - name: action
+          value: $(params.action)
+      workspaces:
+        - name: kubeconfig
+          workspace: kubeconfig
+      runAfter: [cert-manager]
+      when:
+        - input: $(params.install-falco)
+          operator: in
+          values: ["true"]
+
+    - name: opa
+      taskRef:
+        name: install-opa
+      params:
+        - name: action
+          value: $(params.action)
+      workspaces:
+        - name: source
+          workspace: source
+        - name: kubeconfig
+          workspace: kubeconfig
+      runAfter: [cert-manager]
+      when:
+        - input: $(params.install-opa)
+          operator: in
+          values: ["true"]
+---
+apiVersion: tekton.dev/v1
+kind: PipelineRun
+metadata:
+  name: security-pipeline-run
+  namespace: tekton-pipelines
+  annotations:
+    description: "Example PipelineRun — update params before running"
+spec:
+  pipelineRef:
+    name: security-pipeline
+  params:
+    - name: action
+      value: INSTALL
+    - name: install-cert-manager
+      value: "true"
+    - name: install-vault
+      value: "true"
+    - name: install-keycloak
+      value: "true"
+    - name: install-kyverno
+      value: "true"
+    - name: install-falco
+      value: "true"
+    - name: install-opa
+      value: "true"
+  workspaces:
+    - name: source
+      volumeClaimTemplate:
+        spec:
+          accessModes: [ReadWriteOnce]
+          resources:
+            requests:
+              storage: 512Mi
+    - name: kubeconfig
+      secret:
+        secretName: kubeconfig-secret

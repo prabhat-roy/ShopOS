@@ -1,0 +1,121 @@
+syntax = "proto3";
+
+package financial;
+
+import "common/common.proto";
+
+option go_package = "github.com/shopos/proto/financial";
+
+// ---------------------------------------------------------------------------
+// Enums
+// ---------------------------------------------------------------------------
+
+enum InvoiceStatus {
+  INVOICE_STATUS_UNSPECIFIED = 0;
+  INVOICE_STATUS_DRAFT       = 1;
+  INVOICE_STATUS_ISSUED      = 2;
+  INVOICE_STATUS_SENT        = 3;
+  INVOICE_STATUS_PAID        = 4;
+  INVOICE_STATUS_OVERDUE     = 5;
+  INVOICE_STATUS_CANCELLED   = 6;
+  INVOICE_STATUS_VOID        = 7;
+}
+
+// ---------------------------------------------------------------------------
+// Messages
+// ---------------------------------------------------------------------------
+
+message InvoiceLineItem {
+  string description = 1;
+  int32  quantity    = 2;
+  Money  unit_price  = 3;
+  Money  total       = 4;
+}
+
+message Invoice {
+  string                  id             = 1;
+  string                  order_id       = 2;
+  string                  customer_id    = 3;
+  string                  invoice_number = 4;
+  InvoiceStatus           status         = 5;
+  repeated InvoiceLineItem line_items    = 6;
+  Money                   subtotal       = 7;
+  Money                   tax_amount     = 8;
+  Money                   total_amount   = 9;
+  string                  currency       = 10;
+  // ISO 8601 date string, e.g. "2026-05-01"
+  string                  due_date       = 11;
+  Timestamp               paid_at        = 12;
+  Timestamp               created_at     = 13;
+}
+
+message CreateInvoiceRequest {
+  string                  order_id    = 1;
+  string                  customer_id = 2;
+  repeated InvoiceLineItem line_items = 3;
+  Money                   subtotal    = 4;
+  Money                   tax_amount  = 5;
+  Money                   total_amount = 6;
+  string                  currency    = 7;
+  // ISO 8601 due date, e.g. "2026-05-01"
+  string                  due_date    = 8;
+}
+
+message GetInvoiceRequest {
+  string invoice_id = 1;
+}
+
+message IssueInvoiceRequest {
+  string invoice_id = 1;
+}
+
+message MarkPaidRequest {
+  string    invoice_id  = 1;
+  Timestamp paid_at     = 2;
+  // Reference to the payment record (e.g. payment service ID).
+  string    payment_ref = 3;
+}
+
+message CancelInvoiceRequest {
+  string invoice_id = 1;
+  string reason     = 2;
+}
+
+message ListInvoicesRequest {
+  string        customer_id = 1;
+  InvoiceStatus status      = 2;
+  int32         page        = 3;
+  int32         page_size   = 4;
+}
+
+message ListInvoicesResponse {
+  repeated Invoice invoices   = 1;
+  Pagination       pagination = 2;
+}
+
+// ---------------------------------------------------------------------------
+// Service
+// ---------------------------------------------------------------------------
+
+service InvoiceService {
+  // Create a new invoice (initially in DRAFT state).
+  rpc CreateInvoice(CreateInvoiceRequest) returns (Invoice);
+
+  // Retrieve a single invoice by its ID.
+  rpc GetInvoice(GetInvoiceRequest) returns (Invoice);
+
+  // Transition the invoice from DRAFT to ISSUED (ready to send to customer).
+  rpc IssueInvoice(IssueInvoiceRequest) returns (Invoice);
+
+  // Record that full payment has been received for an invoice.
+  rpc MarkPaid(MarkPaidRequest) returns (Invoice);
+
+  // Void/cancel an invoice (allowed in DRAFT or ISSUED states).
+  rpc CancelInvoice(CancelInvoiceRequest) returns (Invoice);
+
+  // List invoices with optional status filter and pagination.
+  rpc ListInvoices(ListInvoicesRequest) returns (ListInvoicesResponse);
+
+  // Convenience RPC — equivalent to ListInvoices filtered by customer_id.
+  rpc ListByCustomer(ListInvoicesRequest) returns (ListInvoicesResponse);
+}

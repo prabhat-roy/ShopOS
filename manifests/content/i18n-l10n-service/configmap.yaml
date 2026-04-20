@@ -1,0 +1,21 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: i18n-l10n-service
+  namespace: content
+  labels:
+    app: i18n-l10n-service
+    domain: content
+data:
+  APP_ENV: production
+  LOG_LEVEL: info
+  LOG_FORMAT: json
+  SERVICE_NAME: i18n-l10n-service
+  SERVICE_DOMAIN: content
+  GRPC_PORT: "50146"
+  METRICS_PORT: "9090"
+  HEALTH_PORT: "50146"
+  OTEL_SERVICE_NAME: i18n-l10n-service
+  OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector.monitoring:4317
+  KAFKA_BROKERS: kafka.infra:9092
+  SCHEMA_REGISTRY_URL: http://schema-registry.infra:8081

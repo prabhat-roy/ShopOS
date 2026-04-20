@@ -1,0 +1,6 @@
+apiVersion: v2
+name: opa
+description: OPA Gatekeeper - policy-as-code admission controller
+type: application
+version: 1.0.0
+appVersion: "v3.17.0"

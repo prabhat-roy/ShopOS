@@ -1,0 +1,130 @@
+name: Install CI Agent Tools
+
+trigger: none
+
+pool:
+  vmImage: ubuntu-latest
+
+jobs:
+  - job: InstallTools
+    displayName: Install CI Agent Tools
+    timeoutInMinutes: 30
+    steps:
+      - task: KubectlInstaller@0
+        displayName: Install kubectl
+
+      - script: |
+          curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
+          helm version --short
+        displayName: Install Helm
+
+      - task: TerraformInstaller@1
+        inputs:
+          terraformVersion: '1.9.0'
+
+      - task: GoTool@0
+        inputs:
+          version: '1.23'
+
+      - task: JavaToolInstaller@0
+        inputs:
+          versionSpec: '21'
+          jdkArchitectureOption: x64
+          jdkSourceOption: PreInstalled
+
+      - task: NodeTool@0
+        inputs:
+          versionSpec: '22'
+
+      - task: UsePythonVersion@0
+        inputs:
+          versionSpec: '3.13'
+
+      - task: UseDotNet@2
+        inputs:
+          version: '8.0'
+
+      - script: |
+          # Rust
+          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+          source "$HOME/.cargo/env"
+          rustc --version
+
+          # Cosign
+          COSIGN_VERSION=2.4.0
+          curl -fsSL "https://github.com/sigstore/cosign/releases/download/v${COSIGN_VERSION}/cosign-linux-amd64" \
+            -o /usr/local/bin/cosign && chmod +x /usr/local/bin/cosign
+          cosign version
+
+          # Buf (Protobuf toolchain)
+          BUF_VERSION=1.35.1
+          curl -fsSL "https://github.com/bufbuild/buf/releases/download/v${BUF_VERSION}/buf-Linux-x86_64" \
+            -o /usr/local/bin/buf && chmod +x /usr/local/bin/buf
+          buf --version
+
+          # Kustomize
+          curl -fsSL "https://raw.githubusercontent.com/kubernetes-sigs/kustomize/master/hack/install_kustomize.sh" | bash
+          mv kustomize /usr/local/bin/
+          kustomize version
+
+          # Trivy
+          curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh -s -- -b /usr/local/bin
+          trivy --version | head -1
+
+          # Grype
+          curl -sSfL https://raw.githubusercontent.com/anchore/grype/main/install.sh | sh -s -- -b /usr/local/bin
+          grype version | head -1
+
+          # Syft
+          curl -sSfL https://raw.githubusercontent.com/anchore/syft/main/install.sh | sh -s -- -b /usr/local/bin
+          syft --version
+
+          # Gitleaks
+          GITLEAKS_VER=8.21.0
+          curl -fsSL "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VER}/gitleaks_${GITLEAKS_VER}_linux_x64.tar.gz" \
+            | tar -xz -C /usr/local/bin gitleaks
+          gitleaks version
+
+          # Semgrep
+          pip install semgrep --quiet
+          semgrep --version
+
+          # Checkov
+          pip install checkov --quiet
+          checkov --version
+
+          # Ansible
+          pip install ansible ansible-lint --quiet
+          ansible --version | head -1
+
+          # k6
+          sudo apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 \
+            --recv-keys C5AD17C747E3415A3642D57D77C6C491D6AC1D69
+          echo "deb https://dl.k6.io/deb stable main" | sudo tee /etc/apt/sources.list.d/k6.list
+          sudo apt-get update -qq && sudo apt-get install k6 -y -qq
+          k6 version
+        displayName: Install additional CLI tools
+
+      - script: |
+          echo "=== All Tool Versions ==="
+          kubectl version --client 2>/dev/null || true
+          helm version --short
+          terraform version
+          go version
+          java -version 2>&1 | head -1
+          node --version
+          python3 --version
+          dotnet --version
+          source "$HOME/.cargo/env" && rustc --version
+          cosign version
+          buf --version
+          kustomize version
+          trivy --version | head -1
+          grype version | head -1
+          syft --version
+          gitleaks version
+          semgrep --version
+          checkov --version
+          ansible --version | head -1
+          k6 version
+        displayName: Verify tool versions

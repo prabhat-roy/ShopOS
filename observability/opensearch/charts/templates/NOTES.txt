@@ -1,0 +1,2 @@
+OpenSearch deployed in namespace {{ .Release.Namespace }}.
+HTTP API: http://{{ include "opensearch.fullname" . }}.{{ .Release.Namespace }}.svc.cluster.local:9200

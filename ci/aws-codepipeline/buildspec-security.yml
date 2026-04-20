@@ -1,0 +1,193 @@
+version: 0.2
+
+# Security Infrastructure — CodeBuild buildspec
+# Mirrors .github/workflows/security.yml
+# Parameters via environment variables:
+#   ENVIRONMENT, ACTION (INSTALL|UPGRADE|UNINSTALL)
+#   CERT_MANAGER, VAULT, KEYCLOAK, SPIRE, OPA, KYVERNO, KUBEWARDEN
+#   FALCO, TETRAGON, TRIVY_OPERATOR, KUBESCAPE, WAZUH, REKOR, FULCIO
+
+env:
+  variables:
+    ENVIRONMENT: dev
+    ACTION: INSTALL
+    CERT_MANAGER: "true"
+    VAULT: "true"
+    KEYCLOAK: "true"
+    SPIRE: "true"
+    OPA: "true"
+    KYVERNO: "true"
+    KUBEWARDEN: "true"
+    FALCO: "true"
+    TETRAGON: "false"
+    TRIVY_OPERATOR: "true"
+    KUBESCAPE: "false"
+    WAZUH: "false"
+    REKOR: "false"
+    FULCIO: "false"
+  parameter-store:
+    KEYCLOAK_ADMIN_PASSWORD: /shopos/keycloak/admin-password
+    SLACK_WEBHOOK: /shopos/slack/webhook
+  secrets-manager:
+    KUBECONFIG_CONTENT: shopos/kubeconfig:content
+
+phases:
+  install:
+    commands:
+      - curl -fsSL "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl" -o /usr/local/bin/kubectl && chmod +x /usr/local/bin/kubectl
+      - curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
+
+  pre_build:
+    commands:
+      - mkdir -p ~/.kube
+      - echo "$KUBECONFIG_CONTENT" | base64 -d > ~/.kube/config
+      - echo "Security $ACTION on $ENVIRONMENT"
+
+  build:
+    commands:
+      # cert-manager
+      - |
+        if [ "$CERT_MANAGER" = "true" ]; then
+          helm repo add jetstack https://charts.jetstack.io --force-update
+          if [ "$ACTION" = "UNINSTALL" ]; then
+            helm uninstall cert-manager -n cert-manager 2>/dev/null || true
+          else
+            helm upgrade --install cert-manager jetstack/cert-manager \
+              --namespace cert-manager --create-namespace \
+              --set installCRDs=true --set replicaCount=2 \
+              --wait --timeout 5m
+            kubectl apply -f security/cert-manager/ 2>/dev/null || true
+          fi
+        fi
+
+      # Vault
+      - |
+        if [ "$VAULT" = "true" ]; then
+          helm repo add hashicorp https://helm.releases.hashicorp.com --force-update
+          if [ "$ACTION" = "UNINSTALL" ]; then
+            helm uninstall vault -n vault 2>/dev/null || true
+          else
+            helm upgrade --install vault hashicorp/vault \
+              --namespace vault --create-namespace \
+              --set server.ha.enabled=true \
+              --set server.ha.raft.enabled=true \
+              --set server.ha.replicas=3 \
+              --set ui.enabled=true \
+              --wait --timeout 10m
+            kubectl apply -f security/vault/ 2>/dev/null || true
+          fi
+        fi
+
+      # Keycloak
+      - |
+        if [ "$KEYCLOAK" = "true" ]; then
+          helm repo add bitnami https://charts.bitnami.com/bitnami --force-update
+          if [ "$ACTION" = "UNINSTALL" ]; then
+            helm uninstall keycloak -n keycloak 2>/dev/null || true
+          else
+            helm upgrade --install keycloak bitnami/keycloak \
+              --namespace keycloak --create-namespace \
+              --set replicaCount=2 \
+              --set auth.adminUser=admin \
+              --set auth.adminPassword="$KEYCLOAK_ADMIN_PASSWORD" \
+              --set postgresql.enabled=true \
+              --wait --timeout 10m
+            kubectl apply -f security/keycloak/ 2>/dev/null || true
+          fi
+        fi
+
+      # SPIRE
+      - |
+        if [ "$SPIRE" = "true" ]; then
+          helm repo add spiffe https://spiffe.github.io/helm-charts-hardened --force-update
+          if [ "$ACTION" = "UNINSTALL" ]; then
+            helm uninstall spire -n spire 2>/dev/null || true
+          else
+            helm upgrade --install spire spiffe/spire \
+              --namespace spire --create-namespace \
+              --set spire-server.replicaCount=2 \
+              --set global.spire.trustDomain=shopos.cluster.local \
+              --wait --timeout 8m
+          fi
+        fi
+
+      # OPA Gatekeeper
+      - |
+        if [ "$OPA" = "true" ]; then
+          helm repo add gatekeeper https://open-policy-agent.github.io/gatekeeper/charts --force-update
+          if [ "$ACTION" = "UNINSTALL" ]; then
+            helm uninstall gatekeeper -n gatekeeper-system 2>/dev/null || true
+          else
+            helm upgrade --install gatekeeper gatekeeper/gatekeeper \
+              --namespace gatekeeper-system --create-namespace \
+              --set replicas=2 --set auditInterval=30 \
+              --wait --timeout 5m
+            kubectl apply -f security/opa/ 2>/dev/null || true
+          fi
+        fi
+
+      # Kyverno
+      - |
+        if [ "$KYVERNO" = "true" ]; then
+          helm repo add kyverno https://kyverno.github.io/kyverno --force-update
+          if [ "$ACTION" = "UNINSTALL" ]; then
+            helm uninstall kyverno -n kyverno 2>/dev/null || true
+          else
+            helm upgrade --install kyverno kyverno/kyverno \
+              --namespace kyverno --create-namespace \
+              --set replicaCount=2 --wait --timeout 5m
+            kubectl apply -f security/kyverno/ 2>/dev/null || true
+          fi
+        fi
+
+      # Kubewarden
+      - |
+        if [ "$KUBEWARDEN" = "true" ]; then
+          helm repo add kubewarden https://charts.kubewarden.io --force-update
+          if [ "$ACTION" = "UNINSTALL" ]; then
+            helm uninstall kubewarden-defaults -n kubewarden 2>/dev/null || true
+            helm uninstall kubewarden-controller -n kubewarden 2>/dev/null || true
+            helm uninstall kubewarden-crds -n kubewarden 2>/dev/null || true
+          else
+            helm upgrade --install kubewarden-crds kubewarden/kubewarden-crds \
+              --namespace kubewarden --create-namespace --wait --timeout 3m
+            helm upgrade --install kubewarden-controller kubewarden/kubewarden-controller \
+              --namespace kubewarden --wait --timeout 5m
+            helm upgrade --install kubewarden-defaults kubewarden/kubewarden-defaults \
+              --namespace kubewarden --wait --timeout 5m
+          fi
+        fi
+
+      # Falco
+      - |
+        if [ "$FALCO" = "true" ]; then
+          helm repo add falcosecurity https://falcosecurity.github.io/charts --force-update
+          if [ "$ACTION" = "UNINSTALL" ]; then
+            helm uninstall falco -n falco 2>/dev/null || true
+          else
+            helm upgrade --install falco falcosecurity/falco \
+              --namespace falco --create-namespace \
+              --set driver.kind=ebpf \
+              --set falcosidekick.enabled=true \
+              --set falcosidekick.config.slack.webhookurl="$SLACK_WEBHOOK" \
+              --wait --timeout 8m
+            kubectl apply -f security/falco/ 2>/dev/null || true
+          fi
+        fi
+
+      # Trivy Operator
+      - |
+        if [ "$TRIVY_OPERATOR" = "true" ]; then
+          helm repo add aqua https://aquasecurity.github.io/helm-charts --force-update
+          if [ "$ACTION" = "UNINSTALL" ]; then
+            helm uninstall trivy-operator -n trivy-system 2>/dev/null || true
+          else
+            helm upgrade --install trivy-operator aqua/trivy-operator \
+              --namespace trivy-system --create-namespace \
+              --set trivy.ignoreUnfixed=true --wait --timeout 5m
+          fi
+        fi
+
+  post_build:
+    commands:
+      - echo "Security $ACTION complete on $ENVIRONMENT"

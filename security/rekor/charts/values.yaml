@@ -1,0 +1,34 @@
+replicaCount: 1
+
+image:
+  repository: gcr.io/projectsigstore/rekor-server
+  tag: "v1.3.6"
+  pullPolicy: IfNotPresent
+
+service:
+  type: ClusterIP
+  port: 3000
+  targetPort: 3000
+
+persistence:
+  enabled: true
+  storageClass: ""
+  size: 5Gi
+  accessMode: ReadWriteOnce
+  mountPath: /data
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 256Mi
+  limits:
+    cpu: "1"
+    memory: 1Gi
+
+env: {}
+
+ingress:
+  enabled: false
+  className: ""
+  host: ""
+  tls: []

@@ -1,0 +1,40 @@
+portal:
+  frontend:
+    replicas: 1
+    resources:
+      requests:
+        cpu: 125m
+        memory: 250Mi
+  server:
+    replicas: 1
+    resources:
+      requests:
+        cpu: 125m
+        memory: 300Mi
+  authServer:
+    replicas: 1
+    resources:
+      requests:
+        cpu: 125m
+        memory: 250Mi
+
+mongodb:
+  enabled: true
+  persistence:
+    enabled: true
+    size: 10Gi
+  resources:
+    requests:
+      cpu: 250m
+      memory: 750Mi
+
+adminConfig:
+  DBUSER: admin
+  DBPASSWORD: litmus
+  VERSION: "3.0.0"
+  SKIP_SSL_VERIFY: "false"
+
+image:
+  imageRegistryName: litmuschaos
+
+serviceAccountName: litmus

@@ -1,0 +1,6 @@
+apiVersion: v2
+name: gitlab
+description: GitLab CE — Git, CI, container registry, package registry
+type: application
+version: 1.0.0
+appVersion: "17.0.0-ce.0"

@@ -1,0 +1,6 @@
+apiVersion: v2
+name: openvas
+description: OpenVAS/Greenbone - open source vulnerability scanner and management
+type: application
+version: 1.0.0
+appVersion: "22.9"

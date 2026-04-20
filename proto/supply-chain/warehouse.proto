@@ -1,0 +1,139 @@
+syntax = "proto3";
+
+package supplychain;
+
+option go_package = "github.com/shopos/proto/supplychain";
+
+// ---------------------------------------------------------------------------
+// Enums
+// ---------------------------------------------------------------------------
+
+enum StockMovementType {
+  STOCK_MOVEMENT_TYPE_UNSPECIFIED = 0;
+  STOCK_MOVEMENT_TYPE_RECEIPT     = 1;  // Stock received from supplier
+  STOCK_MOVEMENT_TYPE_SHIPMENT    = 2;  // Stock dispatched to customer
+  STOCK_MOVEMENT_TYPE_ADJUSTMENT  = 3;  // Manual stock count correction
+  STOCK_MOVEMENT_TYPE_TRANSFER    = 4;  // Transfer between warehouses
+  STOCK_MOVEMENT_TYPE_RETURN      = 5;  // Customer return received
+}
+
+// ---------------------------------------------------------------------------
+// Messages
+// ---------------------------------------------------------------------------
+
+message Warehouse {
+  string id       = 1;
+  string name     = 2;
+  string location = 3;
+  // Street address / physical location details (stored as plain string to
+  // keep this proto free of the common.proto dependency).
+  string address  = 4;
+  int32  capacity = 5;
+  bool   active   = 6;
+}
+
+message StockLevel {
+  string warehouse_id = 1;
+  string product_id   = 2;
+  string sku          = 3;
+  int32  quantity     = 4;
+}
+
+message StockMovement {
+  string             id           = 1;
+  string             warehouse_id = 2;
+  string             product_id   = 3;
+  string             sku          = 4;
+  int32              quantity     = 5;
+  StockMovementType  type         = 6;
+  // e.g. purchase-order ID, order ID, or adjustment note reference
+  string             reference_id = 7;
+  int64              created_at   = 8;  // Unix epoch seconds
+}
+
+message CreateWarehouseRequest {
+  string name     = 1;
+  string location = 2;
+  string address  = 3;
+  int32  capacity = 4;
+}
+
+message GetWarehouseRequest {
+  string warehouse_id = 1;
+}
+
+message ListWarehousesRequest {
+  bool  active_only = 1;
+  int32 page        = 2;
+  int32 page_size   = 3;
+}
+
+message ListWarehousesResponse {
+  repeated Warehouse warehouses    = 1;
+  int32              total         = 2;
+  int32              total_pages   = 3;
+}
+
+message ReceiveStockRequest {
+  string warehouse_id = 1;
+  string product_id   = 2;
+  string sku          = 3;
+  int32  quantity     = 4;
+  // Reference to the purchase order or transfer that triggered this receipt.
+  string reference_id = 5;
+}
+
+message ShipStockRequest {
+  string warehouse_id = 1;
+  string product_id   = 2;
+  string sku          = 3;
+  int32  quantity     = 4;
+  // Reference to the fulfillment or transfer order being shipped.
+  string reference_id = 5;
+}
+
+message GetStockRequest {
+  string warehouse_id = 1;
+  string product_id   = 2;
+}
+
+message ListStockMovementsRequest {
+  string            warehouse_id = 1;
+  string            product_id   = 2;
+  StockMovementType type         = 3;
+  int32             page         = 4;
+  int32             page_size    = 5;
+}
+
+message ListStockMovementsResponse {
+  repeated StockMovement movements   = 1;
+  int32                  total       = 2;
+  int32                  total_pages = 3;
+}
+
+// ---------------------------------------------------------------------------
+// Service
+// ---------------------------------------------------------------------------
+
+service WarehouseService {
+  // Register a new warehouse in the system.
+  rpc CreateWarehouse(CreateWarehouseRequest) returns (Warehouse);
+
+  // Fetch a single warehouse by its ID.
+  rpc GetWarehouse(GetWarehouseRequest) returns (Warehouse);
+
+  // List all warehouses (optionally filtered to active only).
+  rpc ListWarehouses(ListWarehousesRequest) returns (ListWarehousesResponse);
+
+  // Record the receipt of stock into a warehouse (e.g. from a PO).
+  rpc ReceiveStock(ReceiveStockRequest) returns (StockLevel);
+
+  // Record a stock dispatch from a warehouse (e.g. for an order).
+  rpc ShipStock(ShipStockRequest) returns (StockLevel);
+
+  // Return the current quantity on hand for a product/SKU at a warehouse.
+  rpc GetStockLevel(GetStockRequest) returns (StockLevel);
+
+  // Return the movement history for a product in a warehouse.
+  rpc ListStockMovements(ListStockMovementsRequest) returns (ListStockMovementsResponse);
+}

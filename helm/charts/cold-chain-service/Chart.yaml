@@ -1,0 +1,19 @@
+apiVersion: v2
+name: cold-chain-service
+description: ShopOS cold-chain-service — Cold-chain temperature monitoring and compliance tracking
+type: application
+version: 0.1.0
+appVersion: "1.0.0"
+keywords:
+  - shopos
+  - cold-chain-service
+  - supply-chain
+home: https://github.com/your-org/shopos
+sources:
+  - https://github.com/your-org/shopos/tree/main/src/supply-chain/cold-chain-service
+maintainers:
+  - name: ShopOS Platform Team
+    email: platform@shopos.io
+annotations:
+  app.kubernetes.io/domain: supply-chain
+  app.kubernetes.io/language: go

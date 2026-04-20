@@ -1,0 +1,179 @@
+# Observability Stack Pipeline — Concourse CI
+# Credentials: kubeconfig, grafana-credentials, minio-credentials
+---
+resources:
+  - name: source-code
+    type: git
+    source:
+      uri: ((git.uri))
+      branch: ((git.branch))
+      private_key: ((git.private_key))
+
+  - name: trigger-manual
+    type: time
+    source:
+      interval: 8760h
+
+jobs:
+  - name: install-prometheus-stack
+    plan:
+      - get: trigger-manual
+        trigger: false
+      - task: helm-install
+        config:
+          platform: linux
+          image_resource:
+            type: registry-image
+            source: {repository: alpine/helm}
+          params:
+            KUBECONFIG_CONTENT: ((kubeconfig.content))
+            ACTION: ((action))
+          run:
+            path: sh
+            args:
+              - -c
+              - |
+                mkdir -p ~/.kube && echo "$KUBECONFIG_CONTENT" | base64 -d > ~/.kube/config
+                if [ "$ACTION" = "UNINSTALL" ]; then
+                  helm uninstall kube-prometheus-stack -n observability 2>/dev/null || true; exit 0
+                fi
+                helm repo add prometheus-community https://prometheus-community.github.io/helm-charts --force-update
+                helm upgrade --install kube-prometheus-stack prometheus-community/kube-prometheus-stack \
+                  --namespace observability --create-namespace \
+                  --set prometheus.prometheusSpec.retention=30d \
+                  --set prometheus.prometheusSpec.replicas=2 \
+                  --set alertmanager.alertmanagerSpec.replicas=2 \
+                  --set grafana.enabled=false \
+                  --wait --timeout 10m
+
+  - name: install-grafana
+    plan:
+      - get: source-code
+      - get: trigger-manual
+        trigger: false
+        passed: [install-prometheus-stack]
+      - task: helm-install
+        config:
+          platform: linux
+          image_resource:
+            type: registry-image
+            source: {repository: alpine/helm}
+          inputs:
+            - name: source-code
+          params:
+            KUBECONFIG_CONTENT: ((kubeconfig.content))
+            GRAFANA_ADMIN_PASSWORD: ((grafana.admin_password))
+            ACTION: ((action))
+          run:
+            path: sh
+            args:
+              - -c
+              - |
+                mkdir -p ~/.kube && echo "$KUBECONFIG_CONTENT" | base64 -d > ~/.kube/config
+                if [ "$ACTION" = "UNINSTALL" ]; then
+                  helm uninstall grafana -n observability 2>/dev/null || true; exit 0
+                fi
+                helm repo add grafana https://grafana.github.io/helm-charts --force-update
+                helm upgrade --install grafana grafana/grafana \
+                  --namespace observability \
+                  --set adminPassword="$GRAFANA_ADMIN_PASSWORD" \
+                  --set persistence.enabled=true --set replicas=2 \
+                  --wait --timeout 5m
+                kubectl apply -f source-code/observability/grafana/ 2>/dev/null || true
+
+  - name: install-loki
+    plan:
+      - get: trigger-manual
+        trigger: false
+        passed: [install-prometheus-stack]
+      - task: helm-install
+        config:
+          platform: linux
+          image_resource:
+            type: registry-image
+            source: {repository: alpine/helm}
+          params:
+            KUBECONFIG_CONTENT: ((kubeconfig.content))
+            MINIO_SECRET_KEY: ((minio.secret_key))
+            ACTION: ((action))
+          run:
+            path: sh
+            args:
+              - -c
+              - |
+                mkdir -p ~/.kube && echo "$KUBECONFIG_CONTENT" | base64 -d > ~/.kube/config
+                if [ "$ACTION" = "UNINSTALL" ]; then
+                  helm uninstall loki -n observability 2>/dev/null || true; exit 0
+                fi
+                helm repo add grafana https://grafana.github.io/helm-charts --force-update
+                helm upgrade --install loki grafana/loki \
+                  --namespace observability \
+                  --set loki.storage.type=s3 \
+                  --set loki.storage.s3.endpoint="http://minio.registry.svc:9000" \
+                  --set loki.storage.s3.bucketnames=loki-chunks \
+                  --set loki.storage.s3.secretAccessKey="$MINIO_SECRET_KEY" \
+                  --set loki.storage.s3.s3ForcePathStyle=true \
+                  --set deploymentMode=SimpleScalable \
+                  --wait --timeout 8m
+
+  - name: install-jaeger
+    plan:
+      - get: trigger-manual
+        trigger: false
+        passed: [install-prometheus-stack]
+      - task: helm-install
+        config:
+          platform: linux
+          image_resource:
+            type: registry-image
+            source: {repository: alpine/helm}
+          params:
+            KUBECONFIG_CONTENT: ((kubeconfig.content))
+            ACTION: ((action))
+          run:
+            path: sh
+            args:
+              - -c
+              - |
+                mkdir -p ~/.kube && echo "$KUBECONFIG_CONTENT" | base64 -d > ~/.kube/config
+                if [ "$ACTION" = "UNINSTALL" ]; then
+                  helm uninstall jaeger -n observability 2>/dev/null || true; exit 0
+                fi
+                helm repo add jaegertracing https://jaegertracing.github.io/helm-charts --force-update
+                helm upgrade --install jaeger jaegertracing/jaeger \
+                  --namespace observability \
+                  --set provisionDataStore.cassandra=false \
+                  --set allInOne.enabled=false \
+                  --set collector.replicaCount=2 \
+                  --set query.replicaCount=2 \
+                  --wait --timeout 8m
+
+  - name: install-otel-collector
+    plan:
+      - get: trigger-manual
+        trigger: false
+        passed: [install-jaeger]
+      - task: helm-install
+        config:
+          platform: linux
+          image_resource:
+            type: registry-image
+            source: {repository: alpine/helm}
+          params:
+            KUBECONFIG_CONTENT: ((kubeconfig.content))
+            ACTION: ((action))
+          run:
+            path: sh
+            args:
+              - -c
+              - |
+                mkdir -p ~/.kube && echo "$KUBECONFIG_CONTENT" | base64 -d > ~/.kube/config
+                if [ "$ACTION" = "UNINSTALL" ]; then
+                  helm uninstall otel-collector -n observability 2>/dev/null || true; exit 0
+                fi
+                helm repo add open-telemetry https://open-telemetry.github.io/opentelemetry-helm-charts --force-update
+                helm upgrade --install otel-collector open-telemetry/opentelemetry-collector \
+                  --namespace observability \
+                  --set mode=daemonset \
+                  --set config.exporters.otlp.endpoint=jaeger-collector.observability.svc:4317 \
+                  --wait --timeout 5m

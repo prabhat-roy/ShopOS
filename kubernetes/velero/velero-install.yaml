@@ -1,0 +1,62 @@
+apiVersion: helm.cattle.io/v1
+kind: HelmChart
+metadata:
+  name: velero
+  namespace: velero
+spec:
+  repo: https://vmware-tanzu.github.io/helm-charts
+  chart: velero
+  version: 7.2.1
+  targetNamespace: velero
+  valuesContent: |-
+    initContainers:
+      - name: velero-plugin-for-aws
+        image: velero/velero-plugin-for-aws:v1.10.0
+        volumeMounts:
+          - mountPath: /target
+            name: plugins
+
+    configuration:
+      backupStorageLocation:
+        - name: default
+          provider: aws
+          bucket: shopos-velero-backups
+          prefix: velero
+          config:
+            region: us-east-1
+            s3ForcePathStyle: "true"
+      volumeSnapshotLocation:
+        - name: default
+          provider: aws
+          config:
+            region: us-east-1
+
+    credentials:
+      useSecret: true
+      secretContents:
+        cloud: |
+          [default]
+          aws_access_key_id=${VELERO_AWS_ACCESS_KEY_ID}
+          aws_secret_access_key=${VELERO_AWS_SECRET_ACCESS_KEY}
+
+    serviceAccount:
+      server:
+        annotations:
+          eks.amazonaws.com/role-arn: "arn:aws:iam::${AWS_ACCOUNT_ID}:role/shopos-velero"
+
+    schedules:
+      daily-full-backup:
+        disabled: false
+        schedule: "0 2 * * *"
+        template:
+          ttl: 720h   # 30 days
+          includedNamespaces:
+            - commerce
+            - identity
+            - catalog
+            - supply-chain
+            - financial
+            - analytics-ai
+          storageLocation: default
+          volumeSnapshotLocations:
+            - default

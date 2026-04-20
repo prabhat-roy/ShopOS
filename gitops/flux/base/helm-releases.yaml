@@ -1,0 +1,703 @@
+---
+# Platform
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: api-gateway
+  namespace: shopos-platform
+spec:
+  interval: 5m
+  chart:
+    spec:
+      chart: ./helm/charts/api-gateway
+      sourceRef:
+        kind: GitRepository
+        name: shopos
+        namespace: flux-system
+  values:
+    replicaCount: 1
+    resources:
+      requests:
+        cpu: 100m
+        memory: 128Mi
+      limits:
+        cpu: 500m
+        memory: 512Mi
+---
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: web-bff
+  namespace: shopos-platform
+spec:
+  interval: 5m
+  chart:
+    spec:
+      chart: ./helm/charts/web-bff
+      sourceRef:
+        kind: GitRepository
+        name: shopos
+        namespace: flux-system
+  values:
+    replicaCount: 1
+    resources:
+      requests:
+        cpu: 100m
+        memory: 128Mi
+      limits:
+        cpu: 500m
+        memory: 512Mi
+---
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: mobile-bff
+  namespace: shopos-platform
+spec:
+  interval: 5m
+  chart:
+    spec:
+      chart: ./helm/charts/mobile-bff
+      sourceRef:
+        kind: GitRepository
+        name: shopos
+        namespace: flux-system
+  values:
+    replicaCount: 1
+    resources:
+      requests:
+        cpu: 100m
+        memory: 128Mi
+      limits:
+        cpu: 500m
+        memory: 512Mi
+---
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: partner-bff
+  namespace: shopos-platform
+spec:
+  interval: 5m
+  chart:
+    spec:
+      chart: ./helm/charts/partner-bff
+      sourceRef:
+        kind: GitRepository
+        name: shopos
+        namespace: flux-system
+  values:
+    replicaCount: 1
+    resources:
+      requests:
+        cpu: 100m
+        memory: 128Mi
+      limits:
+        cpu: 500m
+        memory: 512Mi
+---
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: config-service
+  namespace: shopos-platform
+spec:
+  interval: 5m
+  chart:
+    spec:
+      chart: ./helm/charts/config-service
+      sourceRef:
+        kind: GitRepository
+        name: shopos
+        namespace: flux-system
+  values:
+    replicaCount: 1
+    resources:
+      requests:
+        cpu: 100m
+        memory: 128Mi
+      limits:
+        cpu: 500m
+        memory: 512Mi
+---
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: feature-flag-service
+  namespace: shopos-platform
+spec:
+  interval: 5m
+  chart:
+    spec:
+      chart: ./helm/charts/feature-flag-service
+      sourceRef:
+        kind: GitRepository
+        name: shopos
+        namespace: flux-system
+  values:
+    replicaCount: 1
+    resources:
+      requests:
+        cpu: 100m
+        memory: 128Mi
+      limits:
+        cpu: 500m
+        memory: 512Mi
+---
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: saga-orchestrator
+  namespace: shopos-platform
+spec:
+  interval: 5m
+  chart:
+    spec:
+      chart: ./helm/charts/saga-orchestrator
+      sourceRef:
+        kind: GitRepository
+        name: shopos
+        namespace: flux-system
+  values:
+    replicaCount: 1
+    resources:
+      requests:
+        cpu: 100m
+        memory: 128Mi
+      limits:
+        cpu: 500m
+        memory: 512Mi
+---
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: audit-service
+  namespace: shopos-platform
+spec:
+  interval: 5m
+  chart:
+    spec:
+      chart: ./helm/charts/audit-service
+      sourceRef:
+        kind: GitRepository
+        name: shopos
+        namespace: flux-system
+  values:
+    replicaCount: 1
+    resources:
+      requests:
+        cpu: 100m
+        memory: 128Mi
+      limits:
+        cpu: 500m
+        memory: 512Mi
+---
+# Identity
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: auth-service
+  namespace: shopos-identity
+spec:
+  interval: 5m
+  chart:
+    spec:
+      chart: ./helm/charts/auth-service
+      sourceRef:
+        kind: GitRepository
+        name: shopos
+        namespace: flux-system
+  values:
+    replicaCount: 1
+    resources:
+      requests:
+        cpu: 100m
+        memory: 128Mi
+      limits:
+        cpu: 500m
+        memory: 512Mi
+---
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: user-service
+  namespace: shopos-identity
+spec:
+  interval: 5m
+  chart:
+    spec:
+      chart: ./helm/charts/user-service
+      sourceRef:
+        kind: GitRepository
+        name: shopos
+        namespace: flux-system
+  values:
+    replicaCount: 1
+    resources:
+      requests:
+        cpu: 100m
+        memory: 128Mi
+      limits:
+        cpu: 500m
+        memory: 512Mi
+---
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: session-service
+  namespace: shopos-identity
+spec:
+  interval: 5m
+  chart:
+    spec:
+      chart: ./helm/charts/session-service
+      sourceRef:
+        kind: GitRepository
+        name: shopos
+        namespace: flux-system
+  values:
+    replicaCount: 1
+    resources:
+      requests:
+        cpu: 100m
+        memory: 128Mi
+      limits:
+        cpu: 500m
+        memory: 512Mi
+---
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: permission-service
+  namespace: shopos-identity
+spec:
+  interval: 5m
+  chart:
+    spec:
+      chart: ./helm/charts/permission-service
+      sourceRef:
+        kind: GitRepository
+        name: shopos
+        namespace: flux-system
+  values:
+    replicaCount: 1
+    resources:
+      requests:
+        cpu: 100m
+        memory: 128Mi
+      limits:
+        cpu: 500m
+        memory: 512Mi
+---
+# Catalog
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: product-catalog-service
+  namespace: shopos-catalog
+spec:
+  interval: 5m
+  chart:
+    spec:
+      chart: ./helm/charts/product-catalog-service
+      sourceRef:
+        kind: GitRepository
+        name: shopos
+        namespace: flux-system
+  values:
+    replicaCount: 1
+    resources:
+      requests:
+        cpu: 100m
+        memory: 256Mi
+      limits:
+        cpu: 500m
+        memory: 1Gi
+---
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: pricing-service
+  namespace: shopos-catalog
+spec:
+  interval: 5m
+  chart:
+    spec:
+      chart: ./helm/charts/pricing-service
+      sourceRef:
+        kind: GitRepository
+        name: shopos
+        namespace: flux-system
+  values:
+    replicaCount: 1
+    resources:
+      requests:
+        cpu: 100m
+        memory: 128Mi
+      limits:
+        cpu: 500m
+        memory: 512Mi
+---
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: inventory-service
+  namespace: shopos-catalog
+spec:
+  interval: 5m
+  chart:
+    spec:
+      chart: ./helm/charts/inventory-service
+      sourceRef:
+        kind: GitRepository
+        name: shopos
+        namespace: flux-system
+  values:
+    replicaCount: 1
+    resources:
+      requests:
+        cpu: 100m
+        memory: 128Mi
+      limits:
+        cpu: 500m
+        memory: 512Mi
+---
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: search-service
+  namespace: shopos-catalog
+spec:
+  interval: 5m
+  chart:
+    spec:
+      chart: ./helm/charts/search-service
+      sourceRef:
+        kind: GitRepository
+        name: shopos
+        namespace: flux-system
+  values:
+    replicaCount: 1
+    resources:
+      requests:
+        cpu: 200m
+        memory: 256Mi
+      limits:
+        cpu: "1"
+        memory: 1Gi
+---
+# Commerce
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: cart-service
+  namespace: shopos-commerce
+spec:
+  interval: 5m
+  chart:
+    spec:
+      chart: ./helm/charts/cart-service
+      sourceRef:
+        kind: GitRepository
+        name: shopos
+        namespace: flux-system
+  values:
+    replicaCount: 1
+    resources:
+      requests:
+        cpu: 100m
+        memory: 128Mi
+      limits:
+        cpu: 500m
+        memory: 512Mi
+---
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: checkout-service
+  namespace: shopos-commerce
+spec:
+  interval: 5m
+  chart:
+    spec:
+      chart: ./helm/charts/checkout-service
+      sourceRef:
+        kind: GitRepository
+        name: shopos
+        namespace: flux-system
+  values:
+    replicaCount: 1
+    resources:
+      requests:
+        cpu: 100m
+        memory: 128Mi
+      limits:
+        cpu: 500m
+        memory: 512Mi
+---
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: order-service
+  namespace: shopos-commerce
+spec:
+  interval: 5m
+  chart:
+    spec:
+      chart: ./helm/charts/order-service
+      sourceRef:
+        kind: GitRepository
+        name: shopos
+        namespace: flux-system
+  values:
+    replicaCount: 1
+    resources:
+      requests:
+        cpu: 100m
+        memory: 256Mi
+      limits:
+        cpu: 500m
+        memory: 1Gi
+---
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: payment-service
+  namespace: shopos-commerce
+spec:
+  interval: 5m
+  chart:
+    spec:
+      chart: ./helm/charts/payment-service
+      sourceRef:
+        kind: GitRepository
+        name: shopos
+        namespace: flux-system
+  values:
+    replicaCount: 2
+    resources:
+      requests:
+        cpu: 200m
+        memory: 256Mi
+      limits:
+        cpu: "1"
+        memory: 1Gi
+---
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: fraud-detection-service
+  namespace: shopos-commerce
+spec:
+  interval: 5m
+  chart:
+    spec:
+      chart: ./helm/charts/fraud-detection-service
+      sourceRef:
+        kind: GitRepository
+        name: shopos
+        namespace: flux-system
+  values:
+    replicaCount: 1
+    resources:
+      requests:
+        cpu: 200m
+        memory: 512Mi
+      limits:
+        cpu: "1"
+        memory: 2Gi
+---
+# Supply Chain
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: warehouse-service
+  namespace: shopos-supply-chain
+spec:
+  interval: 5m
+  chart:
+    spec:
+      chart: ./helm/charts/warehouse-service
+      sourceRef:
+        kind: GitRepository
+        name: shopos
+        namespace: flux-system
+  values:
+    replicaCount: 1
+    resources:
+      requests:
+        cpu: 100m
+        memory: 128Mi
+      limits:
+        cpu: 500m
+        memory: 512Mi
+---
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: fulfillment-service
+  namespace: shopos-supply-chain
+spec:
+  interval: 5m
+  chart:
+    spec:
+      chart: ./helm/charts/fulfillment-service
+      sourceRef:
+        kind: GitRepository
+        name: shopos
+        namespace: flux-system
+  values:
+    replicaCount: 1
+    resources:
+      requests:
+        cpu: 100m
+        memory: 128Mi
+      limits:
+        cpu: 500m
+        memory: 512Mi
+---
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: tracking-service
+  namespace: shopos-supply-chain
+spec:
+  interval: 5m
+  chart:
+    spec:
+      chart: ./helm/charts/tracking-service
+      sourceRef:
+        kind: GitRepository
+        name: shopos
+        namespace: flux-system
+  values:
+    replicaCount: 1
+    resources:
+      requests:
+        cpu: 100m
+        memory: 128Mi
+      limits:
+        cpu: 500m
+        memory: 512Mi
+---
+# Financial
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: invoice-service
+  namespace: shopos-financial
+spec:
+  interval: 5m
+  chart:
+    spec:
+      chart: ./helm/charts/invoice-service
+      sourceRef:
+        kind: GitRepository
+        name: shopos
+        namespace: flux-system
+  values:
+    replicaCount: 1
+    resources:
+      requests:
+        cpu: 100m
+        memory: 256Mi
+      limits:
+        cpu: 500m
+        memory: 1Gi
+---
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: accounting-service
+  namespace: shopos-financial
+spec:
+  interval: 5m
+  chart:
+    spec:
+      chart: ./helm/charts/accounting-service
+      sourceRef:
+        kind: GitRepository
+        name: shopos
+        namespace: flux-system
+  values:
+    replicaCount: 1
+    resources:
+      requests:
+        cpu: 100m
+        memory: 256Mi
+      limits:
+        cpu: 500m
+        memory: 1Gi
+---
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: payout-service
+  namespace: shopos-financial
+spec:
+  interval: 5m
+  chart:
+    spec:
+      chart: ./helm/charts/payout-service
+      sourceRef:
+        kind: GitRepository
+        name: shopos
+        namespace: flux-system
+  values:
+    replicaCount: 1
+    resources:
+      requests:
+        cpu: 100m
+        memory: 256Mi
+      limits:
+        cpu: 500m
+        memory: 1Gi
+---
+# Analytics/AI
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: analytics-service
+  namespace: shopos-analytics-ai
+spec:
+  interval: 5m
+  chart:
+    spec:
+      chart: ./helm/charts/analytics-service
+      sourceRef:
+        kind: GitRepository
+        name: shopos
+        namespace: flux-system
+  values:
+    replicaCount: 1
+    resources:
+      requests:
+        cpu: 200m
+        memory: 512Mi
+      limits:
+        cpu: "1"
+        memory: 2Gi
+---
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: recommendation-service
+  namespace: shopos-analytics-ai
+spec:
+  interval: 5m
+  chart:
+    spec:
+      chart: ./helm/charts/recommendation-service
+      sourceRef:
+        kind: GitRepository
+        name: shopos
+        namespace: flux-system
+  values:
+    replicaCount: 1
+    resources:
+      requests:
+        cpu: 200m
+        memory: 512Mi
+      limits:
+        cpu: "1"
+        memory: 2Gi

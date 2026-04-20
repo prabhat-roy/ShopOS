@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: erp-integration-service
+  namespace: integrations
+  labels:
+    app: erp-integration-service
+    domain: integrations
+spec:
+  selector:
+    app: erp-integration-service
+  type: ClusterIP
+  ports:
+    - name: grpc
+      port: 50170
+      targetPort: grpc
+      protocol: TCP

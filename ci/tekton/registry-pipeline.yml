@@ -1,0 +1,236 @@
+# Registry Tools Pipeline — Tekton
+# Secrets: kubeconfig-secret, harbor-credentials, minio-credentials
+---
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  name: install-harbor
+  namespace: tekton-pipelines
+spec:
+  params:
+    - name: action
+      default: INSTALL
+  workspaces:
+    - name: kubeconfig
+      mountPath: /root/.kube
+  steps:
+    - name: helm
+      image: alpine/helm:latest
+      env:
+        - name: HARBOR_ADMIN_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: harbor-credentials
+              key: admin-password
+      script: |
+        if [ "$(params.action)" = "UNINSTALL" ]; then
+          helm uninstall harbor -n registry 2>/dev/null || true
+          exit 0
+        fi
+        helm repo add harbor https://helm.goharbor.io --force-update
+        helm upgrade --install harbor harbor/harbor \
+          --namespace registry --create-namespace \
+          --set expose.type=ingress \
+          --set expose.ingress.className=traefik \
+          --set expose.ingress.hosts.core=harbor.shopos.internal \
+          --set externalURL=https://harbor.shopos.internal \
+          --set harborAdminPassword="$HARBOR_ADMIN_PASSWORD" \
+          --set trivy.enabled=true \
+          --set notary.enabled=true \
+          --set persistence.enabled=true \
+          --wait --timeout 10m
+---
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  name: install-minio-registry
+  namespace: tekton-pipelines
+spec:
+  params:
+    - name: action
+      default: INSTALL
+  workspaces:
+    - name: kubeconfig
+      mountPath: /root/.kube
+  steps:
+    - name: helm
+      image: alpine/helm:latest
+      env:
+        - name: MINIO_ROOT_USER
+          valueFrom:
+            secretKeyRef:
+              name: minio-credentials
+              key: root-user
+        - name: MINIO_ROOT_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: minio-credentials
+              key: root-password
+      script: |
+        if [ "$(params.action)" = "UNINSTALL" ]; then
+          helm uninstall minio -n registry 2>/dev/null || true
+          exit 0
+        fi
+        helm repo add minio https://charts.min.io --force-update
+        helm upgrade --install minio minio/minio \
+          --namespace registry \
+          --set rootUser="$MINIO_ROOT_USER" \
+          --set rootPassword="$MINIO_ROOT_PASSWORD" \
+          --set replicas=4 \
+          --set persistence.enabled=true \
+          --set persistence.size=100Gi \
+          --wait --timeout 8m
+---
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  name: install-nexus
+  namespace: tekton-pipelines
+spec:
+  params:
+    - name: action
+      default: INSTALL
+  workspaces:
+    - name: kubeconfig
+      mountPath: /root/.kube
+  steps:
+    - name: helm
+      image: alpine/helm:latest
+      script: |
+        if [ "$(params.action)" = "UNINSTALL" ]; then
+          helm uninstall nexus -n registry 2>/dev/null || true
+          exit 0
+        fi
+        helm repo add sonatype https://sonatype.github.io/helm3-charts --force-update
+        helm upgrade --install nexus sonatype/nexus-repository-manager \
+          --namespace registry \
+          --set persistence.enabled=true \
+          --set persistence.storageSize=200Gi \
+          --wait --timeout 8m
+---
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  name: configure-minio-buckets
+  namespace: tekton-pipelines
+spec:
+  workspaces:
+    - name: kubeconfig
+      mountPath: /root/.kube
+  steps:
+    - name: create-buckets
+      image: minio/mc:latest
+      env:
+        - name: MINIO_ROOT_USER
+          valueFrom:
+            secretKeyRef:
+              name: minio-credentials
+              key: root-user
+        - name: MINIO_ROOT_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: minio-credentials
+              key: root-password
+      script: |
+        apk add --no-cache curl
+        mc alias set shopos http://minio.registry.svc:9000 "$MINIO_ROOT_USER" "$MINIO_ROOT_PASSWORD"
+        for BUCKET in harbor-registry velero-backups loki-chunks tempo-traces thanos mlflow artifacts media-assets; do
+          mc mb --ignore-existing "shopos/$BUCKET" || true
+          echo "Bucket ready: $BUCKET"
+        done
+---
+apiVersion: tekton.dev/v1
+kind: Pipeline
+metadata:
+  name: registry-pipeline
+  namespace: tekton-pipelines
+spec:
+  params:
+    - name: action
+      default: INSTALL
+    - name: install-harbor
+      default: "true"
+    - name: install-minio
+      default: "true"
+    - name: install-nexus
+      default: "false"
+    - name: configure
+      default: "false"
+  workspaces:
+    - name: kubeconfig
+  tasks:
+    - name: harbor
+      taskRef:
+        name: install-harbor
+      params:
+        - name: action
+          value: $(params.action)
+      workspaces:
+        - name: kubeconfig
+          workspace: kubeconfig
+      when:
+        - input: $(params.install-harbor)
+          operator: in
+          values: ["true"]
+
+    - name: minio
+      taskRef:
+        name: install-minio-registry
+      params:
+        - name: action
+          value: $(params.action)
+      workspaces:
+        - name: kubeconfig
+          workspace: kubeconfig
+      when:
+        - input: $(params.install-minio)
+          operator: in
+          values: ["true"]
+
+    - name: nexus
+      taskRef:
+        name: install-nexus
+      params:
+        - name: action
+          value: $(params.action)
+      workspaces:
+        - name: kubeconfig
+          workspace: kubeconfig
+      when:
+        - input: $(params.install-nexus)
+          operator: in
+          values: ["true"]
+
+    - name: configure-buckets
+      taskRef:
+        name: configure-minio-buckets
+      workspaces:
+        - name: kubeconfig
+          workspace: kubeconfig
+      runAfter: [harbor, minio]
+      when:
+        - input: $(params.configure)
+          operator: in
+          values: ["true"]
+---
+apiVersion: tekton.dev/v1
+kind: PipelineRun
+metadata:
+  name: registry-pipeline-run
+  namespace: tekton-pipelines
+  annotations:
+    description: "Example PipelineRun — update params before running"
+spec:
+  pipelineRef:
+    name: registry-pipeline
+  params:
+    - name: action
+      value: INSTALL
+    - name: install-harbor
+      value: "true"
+    - name: install-minio
+      value: "true"
+  workspaces:
+    - name: kubeconfig
+      secret:
+        secretName: kubeconfig-secret

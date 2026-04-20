@@ -1,0 +1,87 @@
+syntax = "proto3";
+
+package common;
+
+option go_package = "github.com/shopos/proto/common";
+
+// ---------------------------------------------------------------------------
+// Money — represents a monetary amount with currency
+// ---------------------------------------------------------------------------
+message Money {
+  // Decimal amount as a string to avoid floating-point precision issues
+  // e.g. "19.99"
+  string amount   = 1;
+  // ISO 4217 currency code, e.g. "USD", "EUR"
+  string currency = 2;
+}
+
+// ---------------------------------------------------------------------------
+// Address — physical or postal address
+// ---------------------------------------------------------------------------
+message Address {
+  string name        = 1;
+  string street1     = 2;
+  string street2     = 3;
+  string city        = 4;
+  string state       = 5;
+  string postal_code = 6;
+  // ISO 3166-1 alpha-2 country code, e.g. "US", "GB"
+  string country     = 7;
+  string phone       = 8;
+}
+
+// ---------------------------------------------------------------------------
+// Pagination — cursor-free page-based pagination metadata
+// ---------------------------------------------------------------------------
+message Pagination {
+  // Current page number, 1-indexed
+  int32 page        = 1;
+  // Number of items per page
+  int32 page_size   = 2;
+  // Total number of matching items
+  int32 total       = 3;
+  // Total number of pages
+  int32 total_pages = 4;
+}
+
+// ---------------------------------------------------------------------------
+// Timestamp — Unix epoch time with nanosecond resolution
+// ---------------------------------------------------------------------------
+message Timestamp {
+  // Seconds since Unix epoch (UTC)
+  int64 seconds = 1;
+  // Sub-second nanoseconds; range [0, 999999999]
+  int32 nanos   = 2;
+}
+
+// ---------------------------------------------------------------------------
+// Error — structured error payload returned inside RPC responses
+// ---------------------------------------------------------------------------
+message Error {
+  // Application-level error code (not HTTP status)
+  int32            code    = 1;
+  // Human-readable summary
+  string           message = 2;
+  // Optional list of field-level or contextual detail strings
+  repeated string  details = 3;
+}
+
+// ---------------------------------------------------------------------------
+// Empty — used as a void request or response type
+// ---------------------------------------------------------------------------
+message Empty {}
+
+// ---------------------------------------------------------------------------
+// Scalar wrapper messages — allow distinguishing "not set" from zero/false
+// ---------------------------------------------------------------------------
+message StringValue {
+  string value = 1;
+}
+
+message Int32Value {
+  int32 value = 1;
+}
+
+message BoolValue {
+  bool value = 1;
+}

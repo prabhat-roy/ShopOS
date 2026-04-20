@@ -1,0 +1,15 @@
+{
+  "type": "record",
+  "name": "CartAbandoned",
+  "namespace": "com.shopos.commerce.cart",
+  "doc": "Emitted when a cart session expires with items still in it",
+  "fields": [
+    { "name": "event_id",    "type": "string" },
+    { "name": "cart_id",     "type": "string" },
+    { "name": "customer_id", "type": ["null", "string"], "default": null },
+    { "name": "item_count",  "type": "int" },
+    { "name": "cart_value",  "type": "string" },
+    { "name": "currency",    "type": "string" },
+    { "name": "occurred_at", "type": { "type": "long", "logicalType": "timestamp-millis" } }
+  ]
+}

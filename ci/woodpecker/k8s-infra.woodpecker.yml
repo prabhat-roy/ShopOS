@@ -1,0 +1,60 @@
+# K8s Infrastructure (Terraform) — Woodpecker CI
+# Secrets: aws_access_key_id, aws_secret_access_key, gcp_service_account_key,
+#   azure_client_id, azure_client_secret, azure_tenant_id, azure_subscription_id
+# Env vars: ENVIRONMENT, CLOUD (aws|gcp|azure), ACTION (PLAN|APPLY|DESTROY)
+
+when:
+  event: [custom, manual]
+
+steps:
+  tf-aws:
+    image: hashicorp/terraform:1.9.0
+    environment:
+      AWS_ACCESS_KEY_ID: { from_secret: aws_access_key_id }
+      AWS_SECRET_ACCESS_KEY: { from_secret: aws_secret_access_key }
+    commands:
+      - '[ "$CLOUD" = "aws" ] || [ "$CLOUD" = "all" ] || exit 0'
+      - cd infra/terraform/aws/eks
+      - terraform init
+          -backend-config="bucket=$TF_STATE_BUCKET"
+          -backend-config="key=$ENVIRONMENT/eks/terraform.tfstate"
+          -backend-config="region=$AWS_REGION"
+      - terraform validate
+      - terraform plan -var="environment=$ENVIRONMENT" -var="region=$AWS_REGION" -out=tfplan-aws.bin
+      - terraform show -no-color tfplan-aws.bin > /woodpecker/src/tfplan-aws.txt
+      - '[ "$ACTION" = "APPLY" ] && terraform apply -auto-approve tfplan-aws.bin || true'
+      - '[ "$ACTION" = "DESTROY" ] && terraform destroy -auto-approve -var="environment=$ENVIRONMENT" || true'
+
+  tf-gcp:
+    image: hashicorp/terraform:1.9.0
+    environment:
+      GCP_SERVICE_ACCOUNT_KEY: { from_secret: gcp_service_account_key }
+    commands:
+      - '[ "$CLOUD" = "gcp" ] || [ "$CLOUD" = "all" ] || exit 0'
+      - echo "$GCP_SERVICE_ACCOUNT_KEY" | base64 -d > /tmp/gcp-key.json
+      - export GOOGLE_APPLICATION_CREDENTIALS=/tmp/gcp-key.json
+      - cd infra/terraform/gcp/gke
+      - terraform init
+          -backend-config="bucket=$GCS_TF_STATE_BUCKET"
+          -backend-config="prefix=$ENVIRONMENT/gke"
+      - terraform plan -var="environment=$ENVIRONMENT" -var="project=$GCP_PROJECT_ID" -var="region=$GCP_REGION" -out=tfplan-gcp.bin
+      - '[ "$ACTION" = "APPLY" ] && terraform apply -auto-approve tfplan-gcp.bin || true'
+      - rm -f /tmp/gcp-key.json
+
+  tf-azure:
+    image: hashicorp/terraform:1.9.0
+    environment:
+      ARM_CLIENT_ID: { from_secret: azure_client_id }
+      ARM_CLIENT_SECRET: { from_secret: azure_client_secret }
+      ARM_TENANT_ID: { from_secret: azure_tenant_id }
+      ARM_SUBSCRIPTION_ID: { from_secret: azure_subscription_id }
+    commands:
+      - '[ "$CLOUD" = "azure" ] || [ "$CLOUD" = "all" ] || exit 0'
+      - cd infra/terraform/azure/aks
+      - terraform init
+          -backend-config="resource_group_name=$AZURE_TF_RG"
+          -backend-config="storage_account_name=$AZURE_TF_SA"
+          -backend-config="container_name=tfstate"
+          -backend-config="key=$ENVIRONMENT/aks/terraform.tfstate"
+      - terraform plan -var="environment=$ENVIRONMENT" -out=tfplan-azure.bin
+      - '[ "$ACTION" = "APPLY" ] && terraform apply -auto-approve tfplan-azure.bin || true'

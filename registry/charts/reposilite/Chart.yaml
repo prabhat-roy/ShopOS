@@ -1,0 +1,6 @@
+apiVersion: v2
+name: reposilite
+description: Reposilite — lightweight Maven/Gradle repository
+type: application
+version: 1.0.0
+appVersion: "3.5"

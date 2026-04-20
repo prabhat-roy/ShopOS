@@ -1,0 +1,55 @@
+# Registry Tools Pipeline — Travis CI
+language: minimal
+
+install:
+  - curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
+  - mkdir -p ~/.kube && echo "$KUBECONFIG_CONTENT" | base64 -d > ~/.kube/config
+
+jobs:
+  include:
+    - name: harbor
+      script:
+        - |
+          helm repo add harbor https://helm.goharbor.io --force-update
+          helm upgrade --install harbor harbor/harbor \
+            --namespace registry --create-namespace \
+            --set expose.type=ingress \
+            --set expose.ingress.className=traefik \
+            --set expose.ingress.hosts.core=harbor.shopos.internal \
+            --set externalURL=https://harbor.shopos.internal \
+            --set harborAdminPassword="$HARBOR_ADMIN_PASSWORD" \
+            --set trivy.enabled=true --set persistence.enabled=true \
+            --wait --timeout 10m
+
+    - name: minio
+      script:
+        - |
+          helm repo add minio https://charts.min.io --force-update
+          helm upgrade --install minio minio/minio \
+            --namespace registry \
+            --set rootUser="$MINIO_ROOT_USER" \
+            --set rootPassword="$MINIO_ROOT_PASSWORD" \
+            --set replicas=4 \
+            --set persistence.enabled=true --set persistence.size=100Gi \
+            --wait --timeout 8m
+
+    - name: nexus
+      if: env(NEXUS) = true
+      script:
+        - |
+          helm repo add sonatype https://sonatype.github.io/helm3-charts --force-update
+          helm upgrade --install nexus sonatype/nexus-repository-manager \
+            --namespace registry \
+            --set persistence.enabled=true --set persistence.storageSize=200Gi \
+            --wait --timeout 8m
+
+    - name: configure-buckets
+      if: env(CONFIGURE) = true
+      install:
+        - curl -fsSL "https://dl.min.io/client/mc/release/linux-amd64/mc" -o /usr/local/bin/mc && chmod +x /usr/local/bin/mc
+      script:
+        - |
+          mc alias set shopos http://minio.registry.svc:9000 "$MINIO_ROOT_USER" "$MINIO_ROOT_PASSWORD"
+          for BUCKET in harbor-registry velero-backups loki-chunks tempo-traces thanos mlflow artifacts media-assets; do
+            mc mb --ignore-existing "shopos/$BUCKET" || true
+          done

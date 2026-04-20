@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: accounting-integration-service
+  namespace: integrations
+  labels:
+    app: accounting-integration-service
+    domain: integrations
+spec:
+  selector:
+    app: accounting-integration-service
+  type: ClusterIP
+  ports:
+    - name: grpc
+      port: 50196
+      targetPort: grpc
+      protocol: TCP

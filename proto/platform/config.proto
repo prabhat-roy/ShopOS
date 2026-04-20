@@ -1,0 +1,32 @@
+syntax = "proto3";
+package platform.config.v1;
+option go_package = "github.com/shopos/proto/platform/config/v1;configv1";
+
+import "google/protobuf/timestamp.proto";
+
+service ConfigService {
+  rpc GetConfig(GetConfigRequest)       returns (GetConfigResponse);
+  rpc SetConfig(SetConfigRequest)       returns (SetConfigResponse);
+  rpc DeleteConfig(DeleteConfigRequest) returns (DeleteConfigResponse);
+  rpc WatchConfig(WatchConfigRequest)   returns (stream WatchConfigResponse);
+  rpc ListConfigs(ListConfigsRequest)   returns (ListConfigsResponse);
+}
+
+message ConfigEntry {
+  string key       = 1;
+  string value     = 2;
+  string namespace = 3;
+  string version   = 4;
+  google.protobuf.Timestamp updated_at = 5;
+}
+
+message GetConfigRequest    { string namespace = 1; string key = 2; }
+message GetConfigResponse   { ConfigEntry entry = 1; }
+message SetConfigRequest    { string namespace = 1; string key = 2; string value = 3; }
+message SetConfigResponse   { ConfigEntry entry = 1; }
+message DeleteConfigRequest { string namespace = 1; string key = 2; }
+message DeleteConfigResponse { bool success = 1; }
+message WatchConfigRequest  { string namespace = 1; string key_prefix = 2; }
+message WatchConfigResponse { ConfigEntry entry = 1; string event_type = 2; }
+message ListConfigsRequest  { string namespace = 1; string key_prefix = 2; int32 page = 3; int32 page_size = 4; }
+message ListConfigsResponse { repeated ConfigEntry entries = 1; int32 total = 2; }

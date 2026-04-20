@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: event-replay-service
+  namespace: platform
+  labels:
+    app: event-replay-service
+    domain: platform
+spec:
+  selector:
+    app: event-replay-service
+  type: ClusterIP
+  ports:
+    - name: grpc
+      port: 50059
+      targetPort: grpc
+      protocol: TCP

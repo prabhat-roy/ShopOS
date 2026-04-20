@@ -1,0 +1,6 @@
+apiVersion: v2
+name: falco
+description: Falco - eBPF runtime threat detection
+type: application
+version: 1.0.0
+appVersion: "0.39.0"

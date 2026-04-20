@@ -1,0 +1,10 @@
+Access {{ .Chart.Name }}:
+
+  export POD=$(kubectl get pods --namespace {{ .Release.Namespace }} \
+    -l "app.kubernetes.io/name={{ .Chart.Name }},app.kubernetes.io/instance={{ .Release.Name }}" \
+    -o jsonpath="{.items[0].metadata.name}")
+
+  kubectl port-forward --namespace {{ .Release.Namespace }} \
+    $POD {{ .Values.service.port }}:{{ .Values.service.targetPort }}
+
+  Open http://localhost:{{ .Values.service.port }}

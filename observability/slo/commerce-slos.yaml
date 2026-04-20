@@ -1,0 +1,30 @@
+apiVersion: sloth.slok.dev/v1
+kind: PrometheusServiceLevel
+metadata:
+  name: shopos-commerce-slos
+  namespace: monitoring
+spec:
+  service: shopos-commerce
+  labels:
+    team: commerce
+  slos:
+    - name: order-service-availability
+      objective: 99.95
+      description: "Order service availability"
+      sli:
+        events:
+          errorQuery: sum(rate(grpc_server_handled_total{service="order-service",grpc_code!="OK"}[{{.window}}]))
+          totalQuery: sum(rate(grpc_server_handled_total{service="order-service"}[{{.window}}]))
+      alerting:
+        name: OrderServiceAvailability
+        labels:
+          domain: commerce
+          severity: critical
+
+    - name: payment-success-rate
+      objective: 99.5
+      description: "Payment processing success rate"
+      sli:
+        events:
+          errorQuery: sum(rate(payments_total{status!="success"}[{{.window}}]))
+          totalQuery: sum(rate(payments_total[{{.window}}]))

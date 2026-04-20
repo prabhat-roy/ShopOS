@@ -1,0 +1,49 @@
+apiVersion: litmuschaos.io/v1alpha1
+kind: ChaosEngine
+metadata:
+  name: order-service-pod-delete
+  namespace: commerce
+  labels:
+    app.kubernetes.io/part-of: shopos-chaos
+spec:
+  appinfo:
+    appns: commerce
+    applabel: app.kubernetes.io/name=order-service
+    appkind: deployment
+  engineState: active
+  chaosServiceAccount: litmus-admin
+  experiments:
+    - name: pod-delete
+      spec:
+        components:
+          env:
+            - name: TOTAL_CHAOS_DURATION
+              value: "120"
+            - name: CHAOS_INTERVAL
+              value: "30"
+            - name: FORCE
+              value: "false"
+            - name: PODS_AFFECTED_PERC
+              value: "50"
+            - name: TARGET_PODS
+              value: ""
+            - name: RAMP_TIME
+              value: "10"
+            - name: SEQUENCE
+              value: parallel
+        probe:
+          - name: order-healthz-probe
+            type: httpProbe
+            mode: Continuous
+            runProperties:
+              probeTimeout: 5000
+              interval: 3
+              retry: 3
+              stopOnFailure: false
+            httpProbe/inputs:
+              url: http://order-service.commerce.svc.cluster.local:8080/healthz
+              insecureSkipVerify: false
+              method:
+                get:
+                  criteria: "=="
+                  responseCode: "200"

@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: bnpl-service
+  namespace: commerce
+  labels:
+    app: bnpl-service
+    domain: commerce
+spec:
+  selector:
+    app: bnpl-service
+  type: ClusterIP
+  ports:
+    - name: grpc
+      port: 50185
+      targetPort: grpc
+      protocol: TCP

@@ -1,0 +1,145 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: platform
+  labels:
+    istio-injection: enabled
+    team: platform
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: identity
+  labels:
+    istio-injection: enabled
+    team: identity
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: catalog
+  labels:
+    istio-injection: enabled
+    team: catalog
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: commerce
+  labels:
+    istio-injection: enabled
+    team: commerce
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: supply-chain
+  labels:
+    istio-injection: enabled
+    team: supply-chain
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: financial
+  labels:
+    istio-injection: enabled
+    team: financial
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: customer-experience
+  labels:
+    istio-injection: enabled
+    team: customer-experience
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: communications
+  labels:
+    istio-injection: enabled
+    team: communications
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: content
+  labels:
+    istio-injection: enabled
+    team: content
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: analytics-ai
+  labels:
+    istio-injection: enabled
+    team: analytics-ai
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: b2b
+  labels:
+    istio-injection: enabled
+    team: b2b
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: integrations
+  labels:
+    istio-injection: enabled
+    team: integrations
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: affiliate
+  labels:
+    istio-injection: enabled
+    team: affiliate
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: infra
+  labels:
+    team: platform
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: monitoring
+  labels:
+    team: platform
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: temporal-system
+  labels:
+    team: platform
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: flink-system
+  labels:
+    team: platform
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: velero
+  labels:
+    team: platform
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: keda
+  labels:
+    team: platform

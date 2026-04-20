@@ -1,0 +1,19 @@
+apiVersion: v2
+name: compare-service
+description: ShopOS Compare Service — side-by-side product comparison
+type: application
+version: 0.1.0
+appVersion: "1.0.0"
+keywords:
+  - shopos
+  - compare-service
+  - customer-experience
+home: https://github.com/your-org/shopos
+sources:
+  - https://github.com/your-org/shopos/tree/main/src/customer-experience/compare-service
+maintainers:
+  - name: ShopOS Platform Team
+    email: platform@shopos.io
+annotations:
+  app.kubernetes.io/domain: customer-experience
+  app.kubernetes.io/language: Go

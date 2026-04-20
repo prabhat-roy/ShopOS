@@ -1,0 +1,143 @@
+# Post-Deploy Validation — GCP Cloud Build
+# Mirrors .github/workflows/post-deploy.yml
+# Substitutions: _ENVIRONMENT, _RUN_LOAD_TEST, _RUN_DAST, _RUN_K8S_AUDIT
+
+substitutions:
+  _ENVIRONMENT: staging
+  _RUN_LOAD_TEST: "true"
+  _RUN_DAST: "false"
+  _RUN_K8S_AUDIT: "true"
+  _GCS_REPORTS_BUCKET: shopos-build-reports
+
+options:
+  logging: CLOUD_LOGGING_ONLY
+  machineType: E2_STANDARD_4
+
+availableSecrets:
+  secretManager:
+    - versionName: projects/$PROJECT_ID/secrets/kubeconfig-content/versions/latest
+      env: KUBECONFIG_CONTENT
+    - versionName: projects/$PROJECT_ID/secrets/slack-webhook/versions/latest
+      env: SLACK_WEBHOOK
+
+steps:
+  # ── Health Checks ──────────────────────────────────────────────────────────
+  - name: bitnami/kubectl
+    id: health-check
+    secretEnv: [KUBECONFIG_CONTENT, SLACK_WEBHOOK]
+    entrypoint: bash
+    args:
+      - -c
+      - |
+        mkdir -p ~/.kube && echo "$$KUBECONFIG_CONTENT" | base64 -d > ~/.kube/config
+        mkdir -p /workspace/reports
+
+        DOMAINS=(platform identity catalog commerce supply-chain financial customer-experience communications content analytics-ai b2b integrations affiliate)
+        for ns in "${DOMAINS[@]}"; do
+          echo "=== Checking namespace: $ns ==="
+          kubectl get deployments -n "$ns" --no-headers 2>/dev/null | while read -r name ready uptodate available age; do
+            if [[ "$available" == "0" ]]; then
+              echo "FAIL: $name in $ns has 0 available replicas"
+            fi
+          done || true
+        done
+
+        INFRA_NS=(messaging networking istio-system vault keycloak argocd observability registry keda)
+        for ns in "${INFRA_NS[@]}"; do
+          kubectl rollout status deploy --namespace="$ns" --timeout=60s 2>/dev/null | tail -3 || true
+        done
+
+        kubectl port-forward svc/api-gateway 18080:8080 -n platform &
+        PF_PID=$!; sleep 5
+        HTTP_CODE=$(curl -sf -o /dev/null -w "%{http_code}" http://localhost:18080/healthz 2>/dev/null || echo "000")
+        kill $PF_PID 2>/dev/null || true
+        echo "API Gateway /healthz → $HTTP_CODE"
+
+        if [ "$HTTP_CODE" != "200" ]; then
+          echo "HEALTH_STATUS=FAILED" > /workspace/health-status.env
+          curl -sf -X POST "$$SLACK_WEBHOOK" \
+            -H "Content-Type: application/json" \
+            -d "{\"text\":\"Post-deploy health check FAILED on *$_ENVIRONMENT* — build #$BUILD_ID\"}" || true
+          exit 1
+        else
+          echo "HEALTH_STATUS=PASSED" > /workspace/health-status.env
+        fi
+
+  # ── k6 Smoke Test ──────────────────────────────────────────────────────────
+  - name: grafana/k6
+    id: k6-smoke
+    secretEnv: [KUBECONFIG_CONTENT]
+    entrypoint: bash
+    args:
+      - -c
+      - |
+        [ "$_RUN_LOAD_TEST" = "true" ] || exit 0
+        # Install kubectl
+        curl -fsSL "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl" \
+          -o /usr/local/bin/kubectl && chmod +x /usr/local/bin/kubectl
+        mkdir -p ~/.kube && echo "$$KUBECONFIG_CONTENT" | base64 -d > ~/.kube/config
+
+        kubectl port-forward svc/api-gateway 18080:8080 -n platform &
+        PF_PID=$!; sleep 5
+        mkdir -p /workspace/reports
+        BASE_URL=http://localhost:18080 k6 run load-testing/k6/scripts/smoke.js \
+          --out json=/workspace/reports/k6-smoke-$_ENVIRONMENT.json || true
+        kill $PF_PID 2>/dev/null || true
+    waitFor: [health-check]
+
+  # ── DAST: OWASP ZAP ───────────────────────────────────────────────────────
+  - name: ghcr.io/zaproxy/zaproxy:stable
+    id: zap-scan
+    secretEnv: [KUBECONFIG_CONTENT]
+    entrypoint: bash
+    args:
+      - -c
+      - |
+        [ "$_RUN_DAST" = "true" ] || exit 0
+        curl -fsSL "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl" \
+          -o /usr/local/bin/kubectl && chmod +x /usr/local/bin/kubectl
+        mkdir -p ~/.kube && echo "$$KUBECONFIG_CONTENT" | base64 -d > ~/.kube/config
+
+        kubectl port-forward svc/api-gateway 18080:8080 -n platform &
+        PF_PID=$!; sleep 5
+        mkdir -p /workspace/reports/dast
+        zap-baseline.py -t http://localhost:18080 \
+          -J /workspace/reports/dast/zap-$_ENVIRONMENT.json \
+          -r /workspace/reports/dast/zap-$_ENVIRONMENT.html \
+          -I || true
+        kill $PF_PID 2>/dev/null || true
+    waitFor: [health-check]
+
+  # ── K8s Audit ─────────────────────────────────────────────────────────────
+  - name: aquasec/kube-bench:latest
+    id: kube-bench
+    secretEnv: [KUBECONFIG_CONTENT]
+    entrypoint: bash
+    args:
+      - -c
+      - |
+        [ "$_RUN_K8S_AUDIT" = "true" ] || exit 0
+        mkdir -p /workspace/reports/k8s-audit
+        kube-bench --json > /workspace/reports/k8s-audit/kube-bench-$_ENVIRONMENT.json || true
+    waitFor: [health-check]
+
+  - name: quay.io/armosec/kubescape:latest
+    id: kubescape
+    secretEnv: [KUBECONFIG_CONTENT]
+    entrypoint: bash
+    args:
+      - -c
+      - |
+        [ "$_RUN_K8S_AUDIT" = "true" ] || exit 0
+        mkdir -p ~/.kube && echo "$$KUBECONFIG_CONTENT" | base64 -d > ~/.kube/config
+        mkdir -p /workspace/reports/k8s-audit
+        kubescape scan framework nsa,mitre \
+          --format json \
+          --output /workspace/reports/k8s-audit/kubescape-$_ENVIRONMENT.json || true
+    waitFor: [kube-bench]
+
+artifacts:
+  objects:
+    location: gs://$_GCS_REPORTS_BUCKET/post-deploy/$_ENVIRONMENT/$BUILD_ID/
+    paths:
+      - /workspace/reports/**

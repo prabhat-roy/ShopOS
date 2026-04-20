@@ -1,0 +1,39 @@
+apiVersion: sloth.slok.dev/v1
+kind: PrometheusServiceLevel
+metadata:
+  name: shopos-platform-slos
+  namespace: monitoring
+spec:
+  service: shopos-platform
+  labels:
+    team: platform
+  slos:
+    - name: api-gateway-availability
+      objective: 99.9
+      description: "API Gateway availability SLO"
+      sli:
+        events:
+          errorQuery: sum(rate(http_requests_total{service="api-gateway",status=~"5.."}[{{.window}}]))
+          totalQuery: sum(rate(http_requests_total{service="api-gateway"}[{{.window}}]))
+      alerting:
+        name: ApiGatewayAvailability
+        labels:
+          domain: platform
+        annotations:
+          summary: API Gateway SLO breach
+        pageAlert:
+          labels:
+            severity: critical
+        ticketAlert:
+          labels:
+            severity: warning
+
+    - name: api-gateway-latency
+      objective: 95
+      description: "95% of API Gateway requests under 500ms"
+      sli:
+        events:
+          errorQuery: |
+            sum(rate(http_request_duration_seconds_bucket{
+              service="api-gateway", le="0.5"}[{{.window}}]))
+          totalQuery: sum(rate(http_request_duration_seconds_count{service="api-gateway"}[{{.window}}]))

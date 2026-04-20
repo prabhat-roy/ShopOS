@@ -1,0 +1,48 @@
+syntax = "proto3";
+package analyticsai.recommendation.v1;
+option go_package = "github.com/shopos/proto/analyticsai/recommendation/v1;recommendationv1";
+
+service RecommendationService {
+  rpc GetRecommendations(GetRecommendationsRequest) returns (GetRecommendationsResponse);
+  rpc GetSimilarProducts(GetSimilarProductsRequest) returns (GetSimilarProductsResponse);
+  rpc RecordInteraction(RecordInteractionRequest) returns (RecordInteractionResponse);
+  rpc GetTrending(GetTrendingRequest) returns (GetTrendingResponse);
+}
+
+message ProductScore {
+  string product_id = 1;
+  double score = 2;
+  string reason = 3;
+}
+
+message GetRecommendationsRequest {
+  string user_id = 1;
+  string context = 2;
+  int32 limit = 3;
+  repeated string exclude_product_ids = 4;
+}
+
+message GetRecommendationsResponse { repeated ProductScore recommendations = 1; }
+
+message GetSimilarProductsRequest {
+  string product_id = 1;
+  int32 limit = 2;
+}
+
+message GetSimilarProductsResponse { repeated ProductScore similar = 1; }
+
+message RecordInteractionRequest {
+  string user_id = 1;
+  string product_id = 2;
+  string interaction_type = 3;
+}
+
+message RecordInteractionResponse { bool success = 1; }
+
+message GetTrendingRequest {
+  string category_id = 1;
+  int32 limit = 2;
+  string time_window = 3;
+}
+
+message GetTrendingResponse { repeated ProductScore trending = 1; }

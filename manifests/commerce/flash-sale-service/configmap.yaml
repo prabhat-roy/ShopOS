@@ -1,0 +1,21 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: flash-sale-service
+  namespace: commerce
+  labels:
+    app: flash-sale-service
+    domain: commerce
+data:
+  APP_ENV: production
+  LOG_LEVEL: info
+  LOG_FORMAT: json
+  SERVICE_NAME: flash-sale-service
+  SERVICE_DOMAIN: commerce
+  GRPC_PORT: "50184"
+  METRICS_PORT: "9090"
+  HEALTH_PORT: "50184"
+  OTEL_SERVICE_NAME: flash-sale-service
+  OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector.monitoring:4317
+  KAFKA_BROKERS: kafka.infra:9092
+  SCHEMA_REGISTRY_URL: http://schema-registry.infra:8081

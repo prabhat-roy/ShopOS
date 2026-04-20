@@ -1,0 +1,47 @@
+apiVersion: database.shopos.io/v1alpha1
+kind: PostgreSQLClaim
+metadata:
+  name: order-service-db
+  namespace: commerce
+spec:
+  parameters:
+    storageGB: 50
+    instanceClass: db.t3.large
+  compositionSelector:
+    matchLabels:
+      provider: aws
+      db: postgres
+  writeConnectionSecretToRef:
+    name: order-service-db-conn
+---
+apiVersion: database.shopos.io/v1alpha1
+kind: PostgreSQLClaim
+metadata:
+  name: payment-service-db
+  namespace: commerce
+spec:
+  parameters:
+    storageGB: 30
+    instanceClass: db.t3.large
+  compositionSelector:
+    matchLabels:
+      provider: aws
+      db: postgres
+  writeConnectionSecretToRef:
+    name: payment-service-db-conn
+---
+apiVersion: database.shopos.io/v1alpha1
+kind: PostgreSQLClaim
+metadata:
+  name: auth-service-db
+  namespace: identity
+spec:
+  parameters:
+    storageGB: 20
+    instanceClass: db.t3.medium
+  compositionSelector:
+    matchLabels:
+      provider: aws
+      db: postgres
+  writeConnectionSecretToRef:
+    name: auth-service-db-conn

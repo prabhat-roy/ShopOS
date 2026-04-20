@@ -1,0 +1,16 @@
+{
+  "type": "record",
+  "name": "ShipmentCreated",
+  "namespace": "com.shopos.supplychain.shipment",
+  "doc": "Emitted when a shipment is created for an order",
+  "fields": [
+    { "name": "event_id",        "type": "string" },
+    { "name": "shipment_id",     "type": "string" },
+    { "name": "order_id",        "type": "string" },
+    { "name": "carrier",         "type": "string" },
+    { "name": "service_level",   "type": "string" },
+    { "name": "tracking_number", "type": "string" },
+    { "name": "weight_grams",    "type": "int" },
+    { "name": "occurred_at",     "type": { "type": "long", "logicalType": "timestamp-millis" } }
+  ]
+}

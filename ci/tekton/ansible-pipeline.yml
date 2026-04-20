@@ -1,0 +1,157 @@
+# Ansible Playbooks Pipeline — Tekton
+# Secrets: ansible-ssh-key, ansible-credentials, aws-credentials
+---
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  name: ansible-lint
+  namespace: tekton-pipelines
+spec:
+  params:
+    - name: playbook
+  workspaces:
+    - name: source
+  steps:
+    - name: lint
+      image: python:3.13
+      script: |
+        pip install ansible ansible-lint --quiet
+        ansible-lint "/workspace/source/infra/ansible/playbooks/$(params.playbook).yml" \
+          -c /workspace/source/infra/ansible/.ansible-lint || true
+---
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  name: run-ansible-playbook
+  namespace: tekton-pipelines
+spec:
+  params:
+    - name: playbook
+    - name: inventory
+      default: production
+    - name: limit
+      default: ""
+    - name: extra-vars
+      default: ""
+    - name: check-mode
+      default: "false"
+  workspaces:
+    - name: source
+  steps:
+    - name: run-playbook
+      image: python:3.13
+      env:
+        - name: ANSIBLE_SSH_PRIVATE_KEY
+          valueFrom:
+            secretKeyRef:
+              name: ansible-ssh-key
+              key: private-key
+        - name: ANSIBLE_SSH_USER
+          valueFrom:
+            secretKeyRef:
+              name: ansible-credentials
+              key: ssh-user
+        - name: AWS_ACCESS_KEY_ID
+          valueFrom:
+            secretKeyRef:
+              name: aws-credentials
+              key: access-key-id
+        - name: AWS_SECRET_ACCESS_KEY
+          valueFrom:
+            secretKeyRef:
+              name: aws-credentials
+              key: secret-access-key
+        - name: ANSIBLE_FORCE_COLOR
+          value: "1"
+        - name: ANSIBLE_HOST_KEY_CHECKING
+          value: "False"
+        - name: ANSIBLE_STDOUT_CALLBACK
+          value: yaml
+      script: |
+        pip install ansible boto3 botocore google-auth --quiet
+        ansible-galaxy collection install amazon.aws google.cloud community.kubernetes --quiet
+        echo "$ANSIBLE_SSH_PRIVATE_KEY" > /tmp/ansible_key && chmod 600 /tmp/ansible_key
+        LIMIT_ARG="" && [ -n "$(params.limit)" ] && LIMIT_ARG="--limit $(params.limit)"
+        EXTRA_ARGS="" && [ -n "$(params.extra-vars)" ] && EXTRA_ARGS="--extra-vars '$(params.extra-vars)'"
+        CHECK_ARG="" && [ "$(params.check-mode)" = "true" ] && CHECK_ARG="--check --diff"
+        eval ansible-playbook \
+          -i "/workspace/source/infra/ansible/inventories/$(params.inventory)/hosts.yml" \
+          "/workspace/source/infra/ansible/playbooks/$(params.playbook).yml" \
+          --private-key /tmp/ansible_key \
+          --user "$ANSIBLE_SSH_USER" \
+          $LIMIT_ARG $EXTRA_ARGS $CHECK_ARG -v
+        rm -f /tmp/ansible_key
+---
+apiVersion: tekton.dev/v1
+kind: Pipeline
+metadata:
+  name: ansible-pipeline
+  namespace: tekton-pipelines
+spec:
+  params:
+    - name: playbook
+    - name: inventory
+      default: production
+    - name: limit
+      default: ""
+    - name: extra-vars
+      default: ""
+    - name: check-mode
+      default: "false"
+  workspaces:
+    - name: source
+  tasks:
+    - name: lint
+      taskRef:
+        name: ansible-lint
+      params:
+        - name: playbook
+          value: $(params.playbook)
+      workspaces:
+        - name: source
+          workspace: source
+
+    - name: run
+      taskRef:
+        name: run-ansible-playbook
+      params:
+        - name: playbook
+          value: $(params.playbook)
+        - name: inventory
+          value: $(params.inventory)
+        - name: limit
+          value: $(params.limit)
+        - name: extra-vars
+          value: $(params.extra-vars)
+        - name: check-mode
+          value: $(params.check-mode)
+      workspaces:
+        - name: source
+          workspace: source
+      runAfter: [lint]
+---
+apiVersion: tekton.dev/v1
+kind: PipelineRun
+metadata:
+  name: ansible-pipeline-run
+  namespace: tekton-pipelines
+  annotations:
+    description: "Example PipelineRun — update params before running"
+spec:
+  pipelineRef:
+    name: ansible-pipeline
+  params:
+    - name: playbook
+      value: site
+    - name: inventory
+      value: production
+    - name: check-mode
+      value: "true"
+  workspaces:
+    - name: source
+      volumeClaimTemplate:
+        spec:
+          accessModes: [ReadWriteOnce]
+          resources:
+            requests:
+              storage: 512Mi

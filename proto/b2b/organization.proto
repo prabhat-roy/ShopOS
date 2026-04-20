@@ -1,0 +1,77 @@
+syntax = "proto3";
+package b2b.organization.v1;
+option go_package = "github.com/shopos/proto/b2b/organization/v1;organizationv1";
+
+import "google/protobuf/timestamp.proto";
+
+service OrganizationService {
+  rpc CreateOrganization(CreateOrganizationRequest) returns (CreateOrganizationResponse);
+  rpc GetOrganization(GetOrganizationRequest) returns (GetOrganizationResponse);
+  rpc UpdateOrganization(UpdateOrganizationRequest) returns (UpdateOrganizationResponse);
+  rpc ListOrganizations(ListOrganizationsRequest) returns (ListOrganizationsResponse);
+  rpc AddMember(AddMemberRequest) returns (AddMemberResponse);
+  rpc RemoveMember(RemoveMemberRequest) returns (RemoveMemberResponse);
+  rpc ListMembers(ListMembersRequest) returns (ListMembersResponse);
+}
+
+message Organization {
+  string id = 1;
+  string name = 2;
+  string tax_id = 3;
+  string billing_email = 4;
+  string phone = 5;
+  string status = 6;
+  string tier = 7;
+  map<string, string> metadata = 8;
+  google.protobuf.Timestamp created_at = 9;
+  google.protobuf.Timestamp updated_at = 10;
+}
+
+message OrgMember {
+  string user_id = 1;
+  string org_id = 2;
+  string role = 3;
+  google.protobuf.Timestamp joined_at = 4;
+}
+
+message CreateOrganizationRequest {
+  string name = 1;
+  string tax_id = 2;
+  string billing_email = 3;
+  string phone = 4;
+  string tier = 5;
+}
+
+message CreateOrganizationResponse { Organization organization = 1; }
+message GetOrganizationRequest { string id = 1; }
+message GetOrganizationResponse { Organization organization = 1; }
+
+message UpdateOrganizationRequest {
+  string id = 1;
+  string name = 2;
+  string billing_email = 3;
+  string phone = 4;
+  string status = 5;
+  string tier = 6;
+}
+
+message UpdateOrganizationResponse { Organization organization = 1; }
+
+message ListOrganizationsRequest {
+  string status = 1;
+  string tier = 2;
+  int32 page = 3;
+  int32 page_size = 4;
+}
+
+message ListOrganizationsResponse {
+  repeated Organization organizations = 1;
+  int32 total = 2;
+}
+
+message AddMemberRequest { string org_id = 1; string user_id = 2; string role = 3; }
+message AddMemberResponse { OrgMember member = 1; }
+message RemoveMemberRequest { string org_id = 1; string user_id = 2; }
+message RemoveMemberResponse { bool success = 1; }
+message ListMembersRequest { string org_id = 1; int32 page = 2; int32 page_size = 3; }
+message ListMembersResponse { repeated OrgMember members = 1; int32 total = 2; }

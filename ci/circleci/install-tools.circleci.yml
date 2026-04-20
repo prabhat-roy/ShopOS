@@ -1,0 +1,85 @@
+# Install CI Tools — CircleCI
+version: 2.1
+
+jobs:
+  verify-kubectl-helm:
+    docker:
+      - image: alpine/helm:latest
+    steps:
+      - run: helm version --short
+      - run: kubectl version --client 2>/dev/null || true
+
+  verify-terraform:
+    docker:
+      - image: hashicorp/terraform:1.9.0
+    steps:
+      - run: terraform version
+
+  verify-golang:
+    docker:
+      - image: golang:1.23
+    steps:
+      - run: go version
+
+  verify-java:
+    docker:
+      - image: eclipse-temurin:21
+    steps:
+      - run: java -version
+
+  verify-nodejs:
+    docker:
+      - image: node:22
+    steps:
+      - run: node --version && npm --version
+
+  verify-python:
+    docker:
+      - image: python:3.13
+    steps:
+      - run: python --version
+
+  verify-dotnet:
+    docker:
+      - image: mcr.microsoft.com/dotnet/sdk:8.0
+    steps:
+      - run: dotnet --version
+
+  verify-rust:
+    docker:
+      - image: rust:latest
+    steps:
+      - run: rustc --version && cargo --version
+
+  verify-security-tools:
+    docker:
+      - image: ubuntu:24.04
+    steps:
+      - run:
+          name: Install and verify security tools
+          command: |
+            apt-get update -qq && apt-get install -y curl python3-pip --quiet
+            curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh -s -- -b /usr/local/bin
+            curl -sSfL https://raw.githubusercontent.com/anchore/grype/main/install.sh | sh -s -- -b /usr/local/bin
+            curl -sSfL https://raw.githubusercontent.com/anchore/syft/main/install.sh | sh -s -- -b /usr/local/bin
+            curl -fsSL "https://github.com/sigstore/cosign/releases/download/v2.4.0/cosign-linux-amd64" \
+              -o /usr/local/bin/cosign && chmod +x /usr/local/bin/cosign
+            pip3 install semgrep checkov --quiet
+            trivy --version | head -1
+            grype version | head -1
+            syft --version
+            cosign version
+            semgrep --version
+
+workflows:
+  install-tools-workflow:
+    jobs:
+      - verify-kubectl-helm
+      - verify-terraform
+      - verify-golang
+      - verify-java
+      - verify-nodejs
+      - verify-python
+      - verify-dotnet
+      - verify-rust
+      - verify-security-tools

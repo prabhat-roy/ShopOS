@@ -1,0 +1,21 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: product-import-service
+  namespace: catalog
+  labels:
+    app: product-import-service
+    domain: catalog
+data:
+  APP_ENV: production
+  LOG_LEVEL: info
+  LOG_FORMAT: json
+  SERVICE_NAME: product-import-service
+  SERVICE_DOMAIN: catalog
+  GRPC_PORT: "50180"
+  METRICS_PORT: "9090"
+  HEALTH_PORT: "50180"
+  OTEL_SERVICE_NAME: product-import-service
+  OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector.monitoring:4317
+  KAFKA_BROKERS: kafka.infra:9092
+  SCHEMA_REGISTRY_URL: http://schema-registry.infra:8081

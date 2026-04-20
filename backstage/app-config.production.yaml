@@ -1,0 +1,32 @@
+app:
+  title: ShopOS Developer Portal
+  baseUrl: https://backstage.shopos.io
+
+backend:
+  baseUrl: https://backstage.shopos.io
+  listen:
+    port: 7007
+  database:
+    client: pg
+    connection:
+      host: ${POSTGRES_HOST}
+      port: ${POSTGRES_PORT}
+      user: ${POSTGRES_USER}
+      password: ${POSTGRES_PASSWORD}
+      ssl:
+        rejectUnauthorized: true
+
+auth:
+  environment: production
+
+catalog:
+  locations:
+    - type: url
+      target: https://github.com/your-org/shopos/blob/main/backstage/catalog-info.yaml
+
+techdocs:
+  publisher:
+    type: 'googleGcs'
+    googleGcs:
+      bucketName: shopos-techdocs
+      credentials: ${GCS_CREDENTIALS}

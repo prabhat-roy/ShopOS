@@ -1,0 +1,299 @@
+name: Security Infrastructure
+
+trigger: none
+
+parameters:
+  - name: environment
+    displayName: Target environment
+    type: string
+    default: dev
+    values: [dev, staging, prod]
+  - name: action
+    displayName: Action
+    type: string
+    default: INSTALL
+    values: [INSTALL, UPGRADE, UNINSTALL]
+  - name: cert_manager
+    type: boolean
+    default: true
+  - name: vault
+    type: boolean
+    default: true
+  - name: keycloak
+    type: boolean
+    default: true
+  - name: spire
+    type: boolean
+    default: true
+  - name: opa
+    type: boolean
+    default: true
+  - name: kyverno
+    type: boolean
+    default: true
+  - name: kubewarden
+    type: boolean
+    default: true
+  - name: falco
+    type: boolean
+    default: true
+  - name: tetragon
+    type: boolean
+    default: false
+  - name: rekor
+    type: boolean
+    default: false
+  - name: fulcio
+    type: boolean
+    default: false
+  - name: trivy_operator
+    type: boolean
+    default: true
+  - name: kubescape
+    type: boolean
+    default: false
+  - name: wazuh
+    type: boolean
+    default: false
+
+variables:
+  - group: shopos-secrets
+
+pool:
+  vmImage: ubuntu-latest
+
+jobs:
+  - job: Security
+    displayName: Security ${{ parameters.action }} on ${{ parameters.environment }}
+    timeoutInMinutes: 90
+    steps:
+      - task: KubectlInstaller@0
+
+      - script: |
+          curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
+        displayName: Install Helm
+
+      - script: |
+          mkdir -p ~/.kube
+          echo "$(KUBECONFIG_CONTENT)" | base64 -d > ~/.kube/config
+        displayName: Configure kubeconfig
+
+      # ── cert-manager ─────────────────────────────────────────────────────
+      - ${{ if eq(parameters.cert_manager, true) }}:
+        - script: |
+            if [ "${{ parameters.action }}" = "UNINSTALL" ]; then
+              helm uninstall cert-manager -n cert-manager 2>/dev/null || true
+              kubectl delete ns cert-manager 2>/dev/null || true
+            else
+              helm repo add jetstack https://charts.jetstack.io --force-update
+              helm upgrade --install cert-manager jetstack/cert-manager \
+                --namespace cert-manager --create-namespace \
+                --set installCRDs=true \
+                --set replicaCount=2 \
+                --set global.leaderElection.namespace=cert-manager \
+                --wait --timeout 5m
+              kubectl apply -f security/cert-manager/ 2>/dev/null || true
+            fi
+          displayName: cert-manager
+
+      # ── Vault ─────────────────────────────────────────────────────────────
+      - ${{ if eq(parameters.vault, true) }}:
+        - script: |
+            helm repo add hashicorp https://helm.releases.hashicorp.com --force-update
+            if [ "${{ parameters.action }}" = "UNINSTALL" ]; then
+              helm uninstall vault -n vault 2>/dev/null || true
+              kubectl delete ns vault 2>/dev/null || true
+            else
+              helm upgrade --install vault hashicorp/vault \
+                --namespace vault --create-namespace \
+                --set server.ha.enabled=true \
+                --set server.ha.raft.enabled=true \
+                --set server.ha.replicas=3 \
+                --set ui.enabled=true \
+                --wait --timeout 10m
+              kubectl apply -f security/vault/ 2>/dev/null || true
+            fi
+          displayName: HashiCorp Vault
+
+      # ── Keycloak ──────────────────────────────────────────────────────────
+      - ${{ if eq(parameters.keycloak, true) }}:
+        - script: |
+            helm repo add bitnami https://charts.bitnami.com/bitnami --force-update
+            if [ "${{ parameters.action }}" = "UNINSTALL" ]; then
+              helm uninstall keycloak -n keycloak 2>/dev/null || true
+              kubectl delete ns keycloak 2>/dev/null || true
+            else
+              helm upgrade --install keycloak bitnami/keycloak \
+                --namespace keycloak --create-namespace \
+                --set replicaCount=2 \
+                --set auth.adminUser=admin \
+                --set auth.adminPassword="$(KEYCLOAK_ADMIN_PASSWORD)" \
+                --set postgresql.enabled=true \
+                --wait --timeout 10m
+              kubectl apply -f security/keycloak/ 2>/dev/null || true
+            fi
+          displayName: Keycloak
+
+      # ── SPIRE ─────────────────────────────────────────────────────────────
+      - ${{ if eq(parameters.spire, true) }}:
+        - script: |
+            helm repo add spiffe https://spiffe.github.io/helm-charts-hardened --force-update
+            if [ "${{ parameters.action }}" = "UNINSTALL" ]; then
+              helm uninstall spire -n spire 2>/dev/null || true
+              kubectl delete ns spire 2>/dev/null || true
+            else
+              helm upgrade --install spire spiffe/spire \
+                --namespace spire --create-namespace \
+                --set spire-server.replicaCount=2 \
+                --set global.spire.trustDomain=shopos.cluster.local \
+                --wait --timeout 8m
+              kubectl apply -f security/spire/ 2>/dev/null || true
+            fi
+          displayName: SPIFFE/SPIRE
+
+      # ── OPA / Gatekeeper ─────────────────────────────────────────────────
+      - ${{ if eq(parameters.opa, true) }}:
+        - script: |
+            helm repo add gatekeeper https://open-policy-agent.github.io/gatekeeper/charts --force-update
+            if [ "${{ parameters.action }}" = "UNINSTALL" ]; then
+              helm uninstall gatekeeper -n gatekeeper-system 2>/dev/null || true
+            else
+              helm upgrade --install gatekeeper gatekeeper/gatekeeper \
+                --namespace gatekeeper-system --create-namespace \
+                --set replicas=2 \
+                --set auditInterval=30 \
+                --wait --timeout 5m
+              kubectl apply -f security/opa/ 2>/dev/null || true
+            fi
+          displayName: OPA Gatekeeper
+
+      # ── Kyverno ───────────────────────────────────────────────────────────
+      - ${{ if eq(parameters.kyverno, true) }}:
+        - script: |
+            helm repo add kyverno https://kyverno.github.io/kyverno --force-update
+            if [ "${{ parameters.action }}" = "UNINSTALL" ]; then
+              helm uninstall kyverno -n kyverno 2>/dev/null || true
+            else
+              helm upgrade --install kyverno kyverno/kyverno \
+                --namespace kyverno --create-namespace \
+                --set replicaCount=2 \
+                --wait --timeout 5m
+              kubectl apply -f security/kyverno/ 2>/dev/null || true
+            fi
+          displayName: Kyverno
+
+      # ── Kubewarden ────────────────────────────────────────────────────────
+      - ${{ if eq(parameters.kubewarden, true) }}:
+        - script: |
+            helm repo add kubewarden https://charts.kubewarden.io --force-update
+            if [ "${{ parameters.action }}" = "UNINSTALL" ]; then
+              helm uninstall kubewarden-defaults -n kubewarden 2>/dev/null || true
+              helm uninstall kubewarden-controller -n kubewarden 2>/dev/null || true
+              helm uninstall kubewarden-crds -n kubewarden 2>/dev/null || true
+            else
+              helm upgrade --install kubewarden-crds kubewarden/kubewarden-crds \
+                --namespace kubewarden --create-namespace --wait --timeout 3m
+              helm upgrade --install kubewarden-controller kubewarden/kubewarden-controller \
+                --namespace kubewarden --wait --timeout 5m
+              helm upgrade --install kubewarden-defaults kubewarden/kubewarden-defaults \
+                --namespace kubewarden --wait --timeout 5m
+            fi
+          displayName: Kubewarden
+
+      # ── Falco ─────────────────────────────────────────────────────────────
+      - ${{ if eq(parameters.falco, true) }}:
+        - script: |
+            helm repo add falcosecurity https://falcosecurity.github.io/charts --force-update
+            if [ "${{ parameters.action }}" = "UNINSTALL" ]; then
+              helm uninstall falco -n falco 2>/dev/null || true
+            else
+              helm upgrade --install falco falcosecurity/falco \
+                --namespace falco --create-namespace \
+                --set driver.kind=ebpf \
+                --set falcosidekick.enabled=true \
+                --set falcosidekick.config.slack.webhookurl="$(SLACK_WEBHOOK)" \
+                --set falcosidekick.config.slack.minimumpriority=warning \
+                --wait --timeout 8m
+              kubectl apply -f security/falco/ 2>/dev/null || true
+            fi
+          displayName: Falco
+
+      # ── Tetragon ──────────────────────────────────────────────────────────
+      - ${{ if eq(parameters.tetragon, true) }}:
+        - script: |
+            helm repo add cilium https://helm.cilium.io --force-update
+            if [ "${{ parameters.action }}" = "UNINSTALL" ]; then
+              helm uninstall tetragon -n kube-system 2>/dev/null || true
+            else
+              helm upgrade --install tetragon cilium/tetragon \
+                --namespace kube-system --wait --timeout 5m
+              kubectl apply -f security/tetragon/ 2>/dev/null || true
+            fi
+          displayName: Tetragon
+
+      # ── Trivy Operator ────────────────────────────────────────────────────
+      - ${{ if eq(parameters.trivy_operator, true) }}:
+        - script: |
+            helm repo add aqua https://aquasecurity.github.io/helm-charts --force-update
+            if [ "${{ parameters.action }}" = "UNINSTALL" ]; then
+              helm uninstall trivy-operator -n trivy-system 2>/dev/null || true
+            else
+              helm upgrade --install trivy-operator aqua/trivy-operator \
+                --namespace trivy-system --create-namespace \
+                --set trivy.ignoreUnfixed=true \
+                --wait --timeout 5m
+            fi
+          displayName: Trivy Operator
+
+      # ── Kubescape ─────────────────────────────────────────────────────────
+      - ${{ if eq(parameters.kubescape, true) }}:
+        - script: |
+            helm repo add kubescape https://kubescape.github.io/helm-charts --force-update
+            if [ "${{ parameters.action }}" = "UNINSTALL" ]; then
+              helm uninstall kubescape -n kubescape 2>/dev/null || true
+            else
+              helm upgrade --install kubescape kubescape/kubescape-operator \
+                --namespace kubescape --create-namespace \
+                --set clusterName=$(kubectl config current-context) \
+                --wait --timeout 5m
+            fi
+          displayName: Kubescape
+
+      # ── Wazuh ─────────────────────────────────────────────────────────────
+      - ${{ if eq(parameters.wazuh, true) }}:
+        - script: |
+            if [ "${{ parameters.action }}" = "UNINSTALL" ]; then
+              kubectl delete -f security/wazuh/ 2>/dev/null || true
+            else
+              kubectl apply -f security/wazuh/
+            fi
+          displayName: Wazuh
+
+      # ── Rekor ─────────────────────────────────────────────────────────────
+      - ${{ if eq(parameters.rekor, true) }}:
+        - script: |
+            helm repo add sigstore https://sigstore.github.io/helm-charts --force-update
+            if [ "${{ parameters.action }}" = "UNINSTALL" ]; then
+              helm uninstall rekor -n rekor 2>/dev/null || true
+            else
+              helm upgrade --install rekor sigstore/rekor \
+                --namespace rekor --create-namespace \
+                --wait --timeout 8m
+            fi
+          displayName: Rekor (Sigstore Transparency Log)
+
+      # ── Fulcio ────────────────────────────────────────────────────────────
+      - ${{ if eq(parameters.fulcio, true) }}:
+        - script: |
+            helm repo add sigstore https://sigstore.github.io/helm-charts --force-update
+            if [ "${{ parameters.action }}" = "UNINSTALL" ]; then
+              helm uninstall fulcio -n fulcio 2>/dev/null || true
+            else
+              helm upgrade --install fulcio sigstore/fulcio \
+                --namespace fulcio --create-namespace \
+                --set config.OIDCIssuers.keycloak.IssuerURL=https://keycloak.shopos.internal/realms/shopos \
+                --set config.OIDCIssuers.keycloak.ClientID=fulcio \
+                --set config.OIDCIssuers.keycloak.Type=keycloak \
+                --wait --timeout 8m
+            fi
+          displayName: Fulcio (Sigstore CA)

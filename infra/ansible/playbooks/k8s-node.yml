@@ -1,0 +1,25 @@
+---
+# Bootstrap Kubernetes nodes (worker nodes for EKS/GKE/AKS self-managed pools).
+# Installs containerd, kubelet, kubeadm, kubectl and configures kernel settings.
+#
+# Usage:
+#   ansible-playbook playbooks/k8s-node.yml -i inventory/hosts.ini
+#   ansible-playbook playbooks/k8s-node.yml -i inventory/aws.yml --limit role_k8s_nodes
+
+- name: Bootstrap Kubernetes nodes
+  hosts: k8s_nodes
+  become: true
+
+  roles:
+    - role: common
+    - role: k8s-node
+
+  post_tasks:
+    - name: Verify kubelet is running
+      service_facts:
+
+    - name: Assert kubelet is enabled
+      assert:
+        that: ansible_facts.services['kubelet.service'].state == 'running'
+        fail_msg: "kubelet is not running on {{ inventory_hostname }}"
+        success_msg: "kubelet is running on {{ inventory_hostname }}"

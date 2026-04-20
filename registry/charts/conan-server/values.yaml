@@ -1,0 +1,34 @@
+replicaCount: 1
+
+image:
+  repository: conanio/conan_server
+  tag: "2.5"
+  pullPolicy: IfNotPresent
+
+service:
+  type: ClusterIP
+  port: 9300
+  targetPort: 9300
+
+persistence:
+  enabled: true
+  storageClass: ""
+  size: 10Gi
+  accessMode: ReadWriteOnce
+  mountPath: /data
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 256Mi
+  limits:
+    cpu: 500m
+    memory: 512Mi
+
+env: {}
+
+ingress:
+  enabled: false
+  className: ""
+  host: ""
+  tls: []

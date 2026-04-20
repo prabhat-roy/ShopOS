@@ -1,0 +1,14 @@
+---
+# Apply common baseline to all hosts:
+# package updates, SSH hardening, ufw, timezone, swap off.
+#
+# Usage:
+#   ansible-playbook playbooks/common.yml -i inventory/hosts.ini
+#   ansible-playbook playbooks/common.yml -i inventory/aws.yml
+
+- name: Apply common baseline to all hosts
+  hosts: all
+  become: true
+
+  roles:
+    - role: common

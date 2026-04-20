@@ -1,0 +1,106 @@
+# Messaging Infrastructure Pipeline — GoCD
+format_version: 10
+
+pipelines:
+  shopos-messaging:
+    group: shopos-infra
+    label_template: "messaging-${COUNT}"
+    lock_behavior: unlockWhenFinished
+    materials:
+      git:
+        git: https://github.com/prabhat-roy/ShopOS.git
+        branch: main
+
+    stages:
+      - coordination:
+          jobs:
+            zookeeper:
+              elastic_profile_id: helm-agent
+              tasks:
+                - exec:
+                    command: /bin/sh
+                    arguments:
+                      - -c
+                      - |
+                        mkdir -p ~/.kube && echo "$KUBECONFIG_CONTENT" | base64 -d > ~/.kube/config
+                        helm repo add bitnami https://charts.bitnami.com/bitnami --force-update
+                        helm upgrade --install zookeeper bitnami/zookeeper \
+                          --namespace messaging --create-namespace \
+                          --set replicaCount=3 --wait --timeout 8m
+
+      - brokers:
+          jobs:
+            kafka:
+              elastic_profile_id: helm-agent
+              tasks:
+                - exec:
+                    command: /bin/sh
+                    arguments:
+                      - -c
+                      - |
+                        mkdir -p ~/.kube && echo "$KUBECONFIG_CONTENT" | base64 -d > ~/.kube/config
+                        helm repo add bitnami https://charts.bitnami.com/bitnami --force-update
+                        helm upgrade --install kafka bitnami/kafka \
+                          --namespace messaging \
+                          --set replicaCount=3 \
+                          --set zookeeper.enabled=false \
+                          --set externalZookeeper.servers=zookeeper.messaging.svc:2181 \
+                          --set autoCreateTopicsEnable=false \
+                          --set defaultReplicationFactor=3 --wait --timeout 10m
+            rabbitmq:
+              elastic_profile_id: helm-agent
+              tasks:
+                - exec:
+                    command: /bin/sh
+                    arguments:
+                      - -c
+                      - |
+                        mkdir -p ~/.kube && echo "$KUBECONFIG_CONTENT" | base64 -d > ~/.kube/config
+                        helm repo add bitnami https://charts.bitnami.com/bitnami --force-update
+                        helm upgrade --install rabbitmq bitnami/rabbitmq \
+                          --namespace messaging \
+                          --set replicaCount=3 \
+                          --set auth.password="$RABBITMQ_PASSWORD" \
+                          --set clustering.enabled=true --wait --timeout 8m
+            nats:
+              elastic_profile_id: helm-agent
+              tasks:
+                - exec:
+                    command: /bin/sh
+                    arguments:
+                      - -c
+                      - |
+                        mkdir -p ~/.kube && echo "$KUBECONFIG_CONTENT" | base64 -d > ~/.kube/config
+                        helm repo add nats https://nats-io.github.io/k8s/helm/charts --force-update
+                        helm upgrade --install nats nats/nats \
+                          --namespace messaging \
+                          --set nats.jetstream.enabled=true \
+                          --set cluster.enabled=true --set cluster.replicas=3 --wait --timeout 5m
+
+      - configure:
+          approval:
+            type: manual
+          jobs:
+            create-topics:
+              elastic_profile_id: kubectl-agent
+              tasks:
+                - exec:
+                    command: /bin/sh
+                    arguments:
+                      - -c
+                      - |
+                        mkdir -p ~/.kube && echo "$KUBECONFIG_CONTENT" | base64 -d > ~/.kube/config
+                        KAFKA_POD=$(kubectl get pods -n messaging -l app.kubernetes.io/name=kafka -o jsonpath='{.items[0].metadata.name}')
+                        for TOPIC in identity.user.registered identity.user.deleted \
+                          commerce.order.placed commerce.order.cancelled commerce.order.fulfilled \
+                          commerce.payment.processed commerce.payment.failed commerce.cart.abandoned \
+                          supplychain.shipment.created supplychain.shipment.updated \
+                          supplychain.inventory.low supplychain.inventory.restocked \
+                          notification.email.requested notification.sms.requested notification.push.requested \
+                          analytics.page.viewed analytics.product.clicked analytics.search.performed \
+                          security.fraud.detected security.login.failed; do
+                          kubectl exec -n messaging "$KAFKA_POD" -- \
+                            kafka-topics.sh --create --if-not-exists \
+                            --bootstrap-server kafka.messaging.svc:9092 \
+                            --topic "$TOPIC" --partitions 12 --replication-factor 3 || true
+                        done

@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: label-service
+  namespace: supply-chain
+  labels:
+    app: label-service
+    domain: supply-chain
+spec:
+  selector:
+    app: label-service
+  type: ClusterIP
+  ports:
+    - name: grpc
+      port: 50105
+      targetPort: grpc
+      protocol: TCP

@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: credit-service
+  namespace: financial
+  labels:
+    app: credit-service
+    domain: financial
+spec:
+  selector:
+    app: credit-service
+  type: ClusterIP
+  ports:
+    - name: grpc
+      port: 50115
+      targetPort: grpc
+      protocol: TCP

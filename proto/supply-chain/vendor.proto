@@ -1,0 +1,60 @@
+syntax = "proto3";
+package supplychain.vendor.v1;
+option go_package = "github.com/shopos/proto/supplychain/vendor/v1;vendorv1";
+
+import "google/protobuf/timestamp.proto";
+
+service VendorService {
+  rpc CreateVendor(CreateVendorRequest)                   returns (CreateVendorResponse);
+  rpc GetVendor(GetVendorRequest)                         returns (GetVendorResponse);
+  rpc UpdateVendor(UpdateVendorRequest)                   returns (UpdateVendorResponse);
+  rpc ListVendors(ListVendorsRequest)                     returns (ListVendorsResponse);
+  rpc CreatePurchaseOrder(CreatePurchaseOrderRequest)     returns (CreatePurchaseOrderResponse);
+  rpc GetPurchaseOrder(GetPurchaseOrderRequest)           returns (GetPurchaseOrderResponse);
+  rpc ListPurchaseOrders(ListPurchaseOrdersRequest)       returns (ListPurchaseOrdersResponse);
+}
+
+message Vendor {
+  string id             = 1;
+  string name           = 2;
+  string email          = 3;
+  string phone          = 4;
+  string address        = 5;
+  string status         = 6;
+  int32  lead_time_days = 7;
+  google.protobuf.Timestamp created_at = 8;
+  google.protobuf.Timestamp updated_at = 9;
+}
+
+message POLineItem {
+  string product_id = 1;
+  string sku        = 2;
+  int32  quantity   = 3;
+  string unit_cost  = 4;
+}
+
+message PurchaseOrder {
+  string id         = 1;
+  string vendor_id  = 2;
+  string status     = 3;
+  repeated POLineItem items = 4;
+  string total_cost = 5;
+  string currency   = 6;
+  google.protobuf.Timestamp expected_at = 7;
+  google.protobuf.Timestamp created_at  = 8;
+}
+
+message CreateVendorRequest         { string name = 1; string email = 2; string phone = 3; string address = 4; int32 lead_time_days = 5; }
+message CreateVendorResponse        { Vendor vendor = 1; }
+message GetVendorRequest            { string id = 1; }
+message GetVendorResponse           { Vendor vendor = 1; }
+message UpdateVendorRequest         { string id = 1; string name = 2; string email = 3; string phone = 4; string status = 5; }
+message UpdateVendorResponse        { Vendor vendor = 1; }
+message ListVendorsRequest          { string status = 1; int32 page = 2; int32 page_size = 3; }
+message ListVendorsResponse         { repeated Vendor vendors = 1; int32 total = 2; }
+message CreatePurchaseOrderRequest  { string vendor_id = 1; repeated POLineItem items = 2; string currency = 3; }
+message CreatePurchaseOrderResponse { PurchaseOrder po = 1; }
+message GetPurchaseOrderRequest     { string id = 1; }
+message GetPurchaseOrderResponse    { PurchaseOrder po = 1; }
+message ListPurchaseOrdersRequest   { string vendor_id = 1; string status = 2; int32 page = 3; int32 page_size = 4; }
+message ListPurchaseOrdersResponse  { repeated PurchaseOrder orders = 1; int32 total = 2; }

@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: demand-forecast-service
+  namespace: supply-chain
+  labels:
+    app: demand-forecast-service
+    domain: supply-chain
+spec:
+  selector:
+    app: demand-forecast-service
+  type: ClusterIP
+  ports:
+    - name: http
+      port: 8080
+      targetPort: http
+      protocol: TCP

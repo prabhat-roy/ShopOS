@@ -1,0 +1,6 @@
+apiVersion: v2
+name: zap
+description: OWASP ZAP - dynamic application security testing
+type: application
+version: 1.0.0
+appVersion: "stable"

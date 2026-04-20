@@ -1,0 +1,47 @@
+groups:
+  - name: commerce.order
+    interval: 30s
+    rules:
+      - alert: OrderServiceDown
+        expr: up{service="order-service"} == 0
+        for: 1m
+        labels:
+          severity: critical
+          domain: commerce
+        annotations:
+          summary: "Order service is down"
+          description: "order-service has been unreachable for more than 1 minute"
+
+      - alert: HighOrderFailureRate
+        expr: |
+          rate(http_requests_total{service="order-service",status=~"5.."}[5m])
+          / rate(http_requests_total{service="order-service"}[5m]) > 0.05
+        for: 5m
+        labels:
+          severity: warning
+          domain: commerce
+        annotations:
+          summary: "High order failure rate"
+          description: "Order service error rate is {{ $value | humanizePercentage }}"
+
+      - alert: PaymentProcessingLatencyHigh
+        expr: |
+          histogram_quantile(0.99,
+            rate(http_request_duration_seconds_bucket{service="payment-service"}[5m])
+          ) > 2
+        for: 5m
+        labels:
+          severity: warning
+          domain: commerce
+        annotations:
+          summary: "Payment latency p99 > 2s"
+          description: "Payment service p99 latency is {{ $value }}s"
+
+      - alert: FraudDetectionDown
+        expr: up{service="fraud-detection-service"} == 0
+        for: 2m
+        labels:
+          severity: critical
+          domain: commerce
+        annotations:
+          summary: "Fraud detection service is down"

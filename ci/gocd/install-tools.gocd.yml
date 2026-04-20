@@ -1,0 +1,83 @@
+# Install CI Tools — GoCD
+format_version: 10
+
+pipelines:
+  shopos-install-tools:
+    group: shopos-platform
+    label_template: "tools-${COUNT}"
+    materials:
+      git:
+        git: https://github.com/prabhat-roy/ShopOS.git
+        branch: main
+
+    stages:
+      - runtimes:
+          jobs:
+            golang:
+              elastic_profile_id: golang-agent
+              tasks:
+                - exec:
+                    command: go
+                    arguments: [version]
+            java:
+              elastic_profile_id: java-agent
+              tasks:
+                - exec:
+                    command: java
+                    arguments: [-version]
+            nodejs:
+              elastic_profile_id: nodejs-agent
+              tasks:
+                - exec:
+                    command: /bin/sh
+                    arguments: [-c, "node --version && npm --version"]
+            python:
+              elastic_profile_id: python-agent
+              tasks:
+                - exec:
+                    command: python
+                    arguments: [--version]
+            dotnet:
+              elastic_profile_id: dotnet-agent
+              tasks:
+                - exec:
+                    command: dotnet
+                    arguments: [--version]
+            rust:
+              elastic_profile_id: rust-agent
+              tasks:
+                - exec:
+                    command: rustc
+                    arguments: [--version]
+
+      - cli-tools:
+          jobs:
+            kubectl-helm:
+              elastic_profile_id: helm-agent
+              tasks:
+                - exec:
+                    command: /bin/sh
+                    arguments: [-c, "helm version --short"]
+            terraform:
+              elastic_profile_id: terraform-agent
+              tasks:
+                - exec:
+                    command: terraform
+                    arguments: [version]
+
+      - security-tools:
+          jobs:
+            verify:
+              elastic_profile_id: security-tools
+              tasks:
+                - exec:
+                    command: /bin/sh
+                    arguments:
+                      - -c
+                      - |
+                        trivy --version | head -1
+                        grype version | head -1
+                        syft --version
+                        cosign version
+                        semgrep --version
+                        gitleaks version

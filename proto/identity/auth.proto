@@ -1,0 +1,75 @@
+syntax = "proto3";
+
+package identity;
+
+import "common/common.proto";
+
+option go_package = "github.com/shopos/proto/identity";
+
+// ---------------------------------------------------------------------------
+// Request / response messages
+// ---------------------------------------------------------------------------
+
+message LoginRequest {
+  string email    = 1;
+  string password = 2;
+}
+
+message LoginResponse {
+  // Short-lived JWT bearer token
+  string access_token  = 1;
+  // Long-lived token used to obtain a new access token
+  string refresh_token = 2;
+  // Number of seconds until access_token expires
+  int64  expires_in    = 3;
+  // Always "Bearer"
+  string token_type    = 4;
+}
+
+message RefreshRequest {
+  string refresh_token = 1;
+}
+
+// RefreshResponse reuses LoginResponse shape (new token pair)
+message RefreshResponse {
+  string access_token  = 1;
+  string refresh_token = 2;
+  int64  expires_in    = 3;
+  string token_type    = 4;
+}
+
+message ValidateTokenRequest {
+  // Raw JWT string (without "Bearer " prefix)
+  string token = 1;
+}
+
+message ValidateTokenResponse {
+  bool            valid   = 1;
+  // Subject claim — maps to the internal user UUID
+  string          user_id = 2;
+  string          email   = 3;
+  // List of role names assigned to the user
+  repeated string roles   = 4;
+}
+
+message LogoutRequest {
+  // The refresh token to invalidate (also invalidates the paired access token)
+  string refresh_token = 1;
+}
+
+// ---------------------------------------------------------------------------
+// AuthService — auth-service (Rust, port 50060)
+// ---------------------------------------------------------------------------
+service AuthService {
+  // Authenticate with email + password; returns a token pair
+  rpc Login(LoginRequest) returns (LoginResponse);
+
+  // Exchange a valid refresh token for a new token pair
+  rpc RefreshToken(RefreshRequest) returns (RefreshResponse);
+
+  // Validate and decode an access token; used by the gateway for every request
+  rpc ValidateToken(ValidateTokenRequest) returns (ValidateTokenResponse);
+
+  // Revoke a refresh token (and its paired access token) — effectively logs out
+  rpc Logout(LogoutRequest) returns (common.Empty);
+}

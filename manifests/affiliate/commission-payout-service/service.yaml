@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: commission-payout-service
+  namespace: affiliate
+  labels:
+    app: commission-payout-service
+    domain: affiliate
+spec:
+  selector:
+    app: commission-payout-service
+  type: ClusterIP
+  ports:
+    - name: grpc
+      port: 50203
+      targetPort: grpc
+      protocol: TCP

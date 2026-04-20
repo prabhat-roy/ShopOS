@@ -1,0 +1,76 @@
+# Networking Infrastructure — Woodpecker CI
+# Secrets: kubeconfig_content
+# Env vars: ENVIRONMENT, ACTION, CILIUM, ISTIO, TRAEFIK, CONSUL, EXTERNAL_DNS
+
+when:
+  event: [custom, manual]
+
+steps:
+  cilium:
+    image: alpine/helm:latest
+    environment:
+      KUBECONFIG_CONTENT: { from_secret: kubeconfig_content }
+    commands:
+      - '[ "$CILIUM" = "true" ] || exit 0'
+      - mkdir -p ~/.kube && echo "$KUBECONFIG_CONTENT" | base64 -d > ~/.kube/config
+      - helm repo add cilium https://helm.cilium.io --force-update
+      - |
+        [ "$ACTION" = "UNINSTALL" ] && helm uninstall cilium -n kube-system 2>/dev/null || true
+        [ "$ACTION" != "UNINSTALL" ] && helm upgrade --install cilium cilium/cilium \
+          --namespace kube-system \
+          --set kubeProxyReplacement=true \
+          --set hubble.relay.enabled=true --set hubble.ui.enabled=true \
+          --wait --timeout 8m
+
+  istio:
+    image: alpine/helm:latest
+    environment:
+      KUBECONFIG_CONTENT: { from_secret: kubeconfig_content }
+    commands:
+      - '[ "$ISTIO" = "true" ] || exit 0'
+      - mkdir -p ~/.kube && echo "$KUBECONFIG_CONTENT" | base64 -d > ~/.kube/config
+      - helm repo add istio https://istio-release.storage.googleapis.com/charts --force-update
+      - |
+        if [ "$ACTION" = "UNINSTALL" ]; then
+          helm uninstall istio-ingressgateway -n istio-system 2>/dev/null || true
+          helm uninstall istiod -n istio-system 2>/dev/null || true
+          helm uninstall istio-base -n istio-system 2>/dev/null || true
+        else
+          helm upgrade --install istio-base istio/base --namespace istio-system --create-namespace --wait --timeout 3m
+          helm upgrade --install istiod istio/istiod --namespace istio-system --set telemetry.enabled=true --wait --timeout 5m
+          helm upgrade --install istio-ingressgateway istio/gateway --namespace istio-system --wait --timeout 3m
+        fi
+    depends_on: [cilium]
+
+  traefik:
+    image: alpine/helm:latest
+    environment:
+      KUBECONFIG_CONTENT: { from_secret: kubeconfig_content }
+    commands:
+      - '[ "$TRAEFIK" = "true" ] || exit 0'
+      - mkdir -p ~/.kube && echo "$KUBECONFIG_CONTENT" | base64 -d > ~/.kube/config
+      - helm repo add traefik https://traefik.github.io/charts --force-update
+      - |
+        [ "$ACTION" = "UNINSTALL" ] && helm uninstall traefik -n networking 2>/dev/null || true
+        [ "$ACTION" != "UNINSTALL" ] && helm upgrade --install traefik traefik/traefik \
+          --namespace networking --create-namespace \
+          --set deployment.replicas=2 --set ingressClass.enabled=true \
+          --set ingressClass.isDefaultClass=true --set metrics.prometheus.enabled=true \
+          --wait --timeout 5m
+    depends_on: [istio]
+
+  consul:
+    image: alpine/helm:latest
+    environment:
+      KUBECONFIG_CONTENT: { from_secret: kubeconfig_content }
+    commands:
+      - '[ "$CONSUL" = "true" ] || exit 0'
+      - mkdir -p ~/.kube && echo "$KUBECONFIG_CONTENT" | base64 -d > ~/.kube/config
+      - helm repo add hashicorp https://helm.releases.hashicorp.com --force-update
+      - |
+        [ "$ACTION" = "UNINSTALL" ] && helm uninstall consul -n consul 2>/dev/null || true
+        [ "$ACTION" != "UNINSTALL" ] && helm upgrade --install consul hashicorp/consul \
+          --namespace consul --create-namespace \
+          --set server.replicas=3 --set server.bootstrapExpect=3 \
+          --set connectInject.enabled=true --set ui.enabled=true --wait --timeout 8m
+    depends_on: [traefik]

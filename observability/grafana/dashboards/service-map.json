@@ -1,0 +1,20 @@
+{
+  "title": "ShopOS Service Map",
+  "uid": "shopos-service-map",
+  "tags": ["shopos", "service-map"],
+  "panels": [
+    {
+      "id": 1,
+      "type": "nodeGraph",
+      "title": "ShopOS Service Dependency Map",
+      "gridPos": { "x": 0, "y": 0, "w": 24, "h": 20 },
+      "targets": [
+        {
+          "datasource": { "type": "jaeger" },
+          "queryType": "serviceGraph",
+          "expr": "rate(traces_spanmetrics_calls_total[5m])"
+        }
+      ]
+    }
+  ]
+}

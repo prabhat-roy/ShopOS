@@ -1,0 +1,21 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: data-pipeline-service
+  namespace: analytics-ai
+  labels:
+    app: data-pipeline-service
+    domain: analytics-ai
+data:
+  APP_ENV: production
+  LOG_LEVEL: info
+  LOG_FORMAT: json
+  SERVICE_NAME: data-pipeline-service
+  SERVICE_DOMAIN: analytics-ai
+  HTTP_PORT: "8080"
+  METRICS_PORT: "9090"
+  HEALTH_PORT: "8080"
+  OTEL_SERVICE_NAME: data-pipeline-service
+  OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector.monitoring:4317
+  KAFKA_BROKERS: kafka.infra:9092
+  SCHEMA_REGISTRY_URL: http://schema-registry.infra:8081

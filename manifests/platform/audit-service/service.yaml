@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: audit-service
+  namespace: platform
+  labels:
+    app: audit-service
+    domain: platform
+spec:
+  selector:
+    app: audit-service
+  type: ClusterIP
+  ports:
+    - name: http
+      port: 8080
+      targetPort: http
+      protocol: TCP

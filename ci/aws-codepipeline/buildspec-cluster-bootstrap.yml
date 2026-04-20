@@ -1,0 +1,289 @@
+version: 0.2
+
+# Cluster Bootstrap — CodeBuild buildspec
+# Mirrors .github/workflows/cluster-bootstrap.yml
+# Orchestrates all 6 infrastructure phases sequentially.
+# Set PHASE to run a specific phase, or ALL to run everything.
+# Parameters via environment variables:
+#   ENVIRONMENT, PHASE (ALL|networking|security|observability|messaging|registry|gitops)
+#   SKIP_NETWORKING, SKIP_SECURITY, SKIP_OBSERVABILITY, SKIP_MESSAGING, SKIP_REGISTRY, SKIP_GITOPS
+
+env:
+  variables:
+    ENVIRONMENT: dev
+    PHASE: ALL
+    SKIP_NETWORKING: "false"
+    SKIP_SECURITY: "false"
+    SKIP_OBSERVABILITY: "false"
+    SKIP_MESSAGING: "false"
+    SKIP_REGISTRY: "false"
+    SKIP_GITOPS: "false"
+  parameter-store:
+    KEYCLOAK_ADMIN_PASSWORD: /shopos/keycloak/admin-password
+    GRAFANA_ADMIN_PASSWORD: /shopos/grafana/admin-password
+    RABBITMQ_PASSWORD: /shopos/rabbitmq/password
+    MINIO_ROOT_USER: /shopos/minio/root-user
+    MINIO_ENDPOINT: /shopos/minio/endpoint
+    MINIO_ACCESS_KEY: /shopos/minio/access-key
+    SLACK_WEBHOOK: /shopos/slack/webhook
+  secrets-manager:
+    KUBECONFIG_CONTENT: shopos/kubeconfig:content
+    HARBOR_ADMIN_PASSWORD: shopos/harbor:admin-password
+    ARGOCD_ADMIN_PASSWORD_HASH: shopos/argocd:admin-password-hash
+    MINIO_ROOT_PASSWORD: shopos/minio:root-password
+    MINIO_SECRET_KEY: shopos/minio:secret-key
+
+phases:
+  install:
+    commands:
+      - curl -fsSL "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl" -o /usr/local/bin/kubectl && chmod +x /usr/local/bin/kubectl
+      - curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
+
+  pre_build:
+    commands:
+      - mkdir -p ~/.kube
+      - echo "$KUBECONFIG_CONTENT" | base64 -d > ~/.kube/config
+      - echo "Cluster Bootstrap — $ENVIRONMENT — Phase: $PHASE"
+      - declare -A RESULTS
+
+  build:
+    commands:
+      # Helper: run a buildspec phase inline
+      # Phase 1: Networking
+      - |
+        if ([ "$PHASE" = "ALL" ] || [ "$PHASE" = "networking" ]) && [ "$SKIP_NETWORKING" != "true" ]; then
+          echo "=== Phase 1/6: Networking ==="
+
+          # CNI: Cilium
+          helm repo add cilium https://helm.cilium.io --force-update
+          helm upgrade --install cilium cilium/cilium \
+            --namespace kube-system \
+            --set kubeProxyReplacement=true \
+            --set hubble.relay.enabled=true \
+            --set hubble.ui.enabled=true \
+            --wait --timeout 8m || true
+
+          # cert-manager (prerequisite for Istio)
+          helm repo add jetstack https://charts.jetstack.io --force-update
+          helm upgrade --install cert-manager jetstack/cert-manager \
+            --namespace cert-manager --create-namespace \
+            --set installCRDs=true --set replicaCount=2 \
+            --wait --timeout 5m
+
+          # Istio
+          helm repo add istio https://istio-release.storage.googleapis.com/charts --force-update
+          helm upgrade --install istio-base istio/base \
+            --namespace istio-system --create-namespace --wait --timeout 3m
+          helm upgrade --install istiod istio/istiod \
+            --namespace istio-system --set telemetry.enabled=true --wait --timeout 5m
+          helm upgrade --install istio-ingressgateway istio/gateway \
+            --namespace istio-system --wait --timeout 3m
+
+          # Traefik
+          helm repo add traefik https://traefik.github.io/charts --force-update
+          helm upgrade --install traefik traefik/traefik \
+            --namespace networking --create-namespace \
+            --set deployment.replicas=2 \
+            --set ports.websecure.tls.enabled=true \
+            --set ingressClass.enabled=true --set ingressClass.isDefaultClass=true \
+            --wait --timeout 5m
+
+          # Consul
+          helm repo add hashicorp https://helm.releases.hashicorp.com --force-update
+          helm upgrade --install consul hashicorp/consul \
+            --namespace consul --create-namespace \
+            --set server.replicas=3 --set server.bootstrapExpect=3 \
+            --set connectInject.enabled=true --wait --timeout 8m
+
+          echo "Phase 1 Networking — DONE"
+        fi
+
+      # Phase 2: Security
+      - |
+        if ([ "$PHASE" = "ALL" ] || [ "$PHASE" = "security" ]) && [ "$SKIP_SECURITY" != "true" ]; then
+          echo "=== Phase 2/6: Security ==="
+
+          # Vault HA
+          helm repo add hashicorp https://helm.releases.hashicorp.com --force-update
+          helm upgrade --install vault hashicorp/vault \
+            --namespace vault --create-namespace \
+            --set server.ha.enabled=true --set server.ha.raft.enabled=true \
+            --set server.ha.replicas=3 --set ui.enabled=true \
+            --wait --timeout 10m
+
+          # Keycloak
+          helm repo add bitnami https://charts.bitnami.com/bitnami --force-update
+          helm upgrade --install keycloak bitnami/keycloak \
+            --namespace keycloak --create-namespace \
+            --set replicaCount=2 \
+            --set auth.adminPassword="$KEYCLOAK_ADMIN_PASSWORD" \
+            --set postgresql.enabled=true --wait --timeout 10m
+
+          # Kyverno
+          helm repo add kyverno https://kyverno.github.io/kyverno --force-update
+          helm upgrade --install kyverno kyverno/kyverno \
+            --namespace kyverno --create-namespace \
+            --set replicaCount=2 --wait --timeout 5m
+
+          # Falco
+          helm repo add falcosecurity https://falcosecurity.github.io/charts --force-update
+          helm upgrade --install falco falcosecurity/falco \
+            --namespace falco --create-namespace \
+            --set driver.kind=ebpf \
+            --set falcosidekick.enabled=true \
+            --set falcosidekick.config.slack.webhookurl="$SLACK_WEBHOOK" \
+            --wait --timeout 8m
+
+          # Trivy Operator
+          helm repo add aqua https://aquasecurity.github.io/helm-charts --force-update
+          helm upgrade --install trivy-operator aqua/trivy-operator \
+            --namespace trivy-system --create-namespace \
+            --set trivy.ignoreUnfixed=true --wait --timeout 5m
+
+          echo "Phase 2 Security — DONE"
+        fi
+
+      # Phase 3: Observability
+      - |
+        if ([ "$PHASE" = "ALL" ] || [ "$PHASE" = "observability" ]) && [ "$SKIP_OBSERVABILITY" != "true" ]; then
+          echo "=== Phase 3/6: Observability ==="
+
+          helm repo add prometheus-community https://prometheus-community.github.io/helm-charts --force-update
+          helm upgrade --install kube-prometheus-stack prometheus-community/kube-prometheus-stack \
+            --namespace observability --create-namespace \
+            --set prometheus.prometheusSpec.retention=30d \
+            --set grafana.enabled=false \
+            --wait --timeout 10m
+
+          helm repo add grafana https://grafana.github.io/helm-charts --force-update
+          helm upgrade --install grafana grafana/grafana \
+            --namespace observability \
+            --set adminPassword="$GRAFANA_ADMIN_PASSWORD" \
+            --set persistence.enabled=true \
+            --wait --timeout 5m
+
+          helm upgrade --install loki grafana/loki \
+            --namespace observability \
+            --set loki.auth_enabled=false \
+            --set loki.storage.type=s3 \
+            --set loki.storage.s3.endpoint="$MINIO_ENDPOINT" \
+            --set loki.storage.s3.bucketnames=loki-chunks \
+            --set loki.storage.s3.access_key_id="$MINIO_ACCESS_KEY" \
+            --set loki.storage.s3.secret_access_key="$MINIO_SECRET_KEY" \
+            --set loki.storage.s3.s3ForcePathStyle=true \
+            --wait --timeout 8m
+
+          echo "Phase 3 Observability — DONE"
+        fi
+
+      # Phase 4: Messaging
+      - |
+        if ([ "$PHASE" = "ALL" ] || [ "$PHASE" = "messaging" ]) && [ "$SKIP_MESSAGING" != "true" ]; then
+          echo "=== Phase 4/6: Messaging ==="
+
+          helm repo add bitnami https://charts.bitnami.com/bitnami --force-update
+          helm upgrade --install zookeeper bitnami/zookeeper \
+            --namespace messaging --create-namespace \
+            --set replicaCount=3 --wait --timeout 8m
+
+          helm upgrade --install kafka bitnami/kafka \
+            --namespace messaging \
+            --set replicaCount=3 \
+            --set zookeeper.enabled=false \
+            --set externalZookeeper.servers=zookeeper.messaging.svc:2181 \
+            --set autoCreateTopicsEnable=false \
+            --set defaultReplicationFactor=3 \
+            --wait --timeout 10m
+
+          helm upgrade --install rabbitmq bitnami/rabbitmq \
+            --namespace messaging \
+            --set replicaCount=3 \
+            --set auth.password="$RABBITMQ_PASSWORD" \
+            --set clustering.enabled=true --wait --timeout 8m
+
+          helm repo add nats https://nats-io.github.io/k8s/helm/charts --force-update
+          helm upgrade --install nats nats/nats \
+            --namespace messaging \
+            --set nats.jetstream.enabled=true \
+            --set cluster.enabled=true --set cluster.replicas=3 \
+            --wait --timeout 5m
+
+          # Create Kafka topics
+          KAFKA_POD=$(kubectl get pod -n messaging -l app.kubernetes.io/name=kafka -o jsonpath='{.items[0].metadata.name}')
+          for TOPIC_ARGS in "commerce.order.placed 12 3" "commerce.payment.processed 12 3" "identity.user.registered 6 3" "analytics.page.viewed 12 3" "security.fraud.detected 3 3"; do
+            kubectl exec -n messaging "$KAFKA_POD" -- \
+              kafka-topics.sh --create --if-not-exists \
+              --bootstrap-server kafka.messaging.svc:9092 \
+              --topic $(echo $TOPIC_ARGS | awk '{print $1}') \
+              --partitions $(echo $TOPIC_ARGS | awk '{print $2}') \
+              --replication-factor $(echo $TOPIC_ARGS | awk '{print $3}') || true
+          done
+
+          echo "Phase 4 Messaging — DONE"
+        fi
+
+      # Phase 5: Registry
+      - |
+        if ([ "$PHASE" = "ALL" ] || [ "$PHASE" = "registry" ]) && [ "$SKIP_REGISTRY" != "true" ]; then
+          echo "=== Phase 5/6: Registry ==="
+
+          helm repo add harbor https://helm.goharbor.io --force-update
+          helm upgrade --install harbor harbor/harbor \
+            --namespace registry --create-namespace \
+            --set harborAdminPassword="$HARBOR_ADMIN_PASSWORD" \
+            --set trivy.enabled=true \
+            --set persistence.enabled=true \
+            --wait --timeout 10m
+
+          helm repo add minio https://charts.min.io --force-update
+          helm upgrade --install minio minio/minio \
+            --namespace registry \
+            --set rootUser="$MINIO_ROOT_USER" \
+            --set rootPassword="$MINIO_ROOT_PASSWORD" \
+            --set replicas=4 --set persistence.enabled=true \
+            --set persistence.size=100Gi \
+            --wait --timeout 8m
+
+          echo "Phase 5 Registry — DONE"
+        fi
+
+      # Phase 6: GitOps
+      - |
+        if ([ "$PHASE" = "ALL" ] || [ "$PHASE" = "gitops" ]) && [ "$SKIP_GITOPS" != "true" ]; then
+          echo "=== Phase 6/6: GitOps ==="
+
+          helm repo add argo https://argoproj.github.io/argo-helm --force-update
+          helm upgrade --install argocd argo/argo-cd \
+            --namespace argocd --create-namespace \
+            --set server.replicas=2 \
+            --set redis-ha.enabled=true \
+            --set configs.secret.argocdServerAdminPassword="$ARGOCD_ADMIN_PASSWORD_HASH" \
+            --wait --timeout 10m
+
+          helm repo add kedacore https://kedacore.github.io/charts --force-update
+          helm upgrade --install keda kedacore/keda \
+            --namespace keda --create-namespace \
+            --wait --timeout 5m
+
+          helm repo add vmware-tanzu https://vmware-tanzu.github.io/helm-charts --force-update
+          helm upgrade --install velero vmware-tanzu/velero \
+            --namespace velero --create-namespace \
+            --set configuration.backupStorageLocation[0].provider=aws \
+            --set configuration.backupStorageLocation[0].bucket=velero-backups \
+            --set "configuration.backupStorageLocation[0].config.s3Url=$MINIO_ENDPOINT" \
+            --set configuration.backupStorageLocation[0].config.s3ForcePathStyle=true \
+            --set credentials.secretContents.cloud="[default]\naws_access_key_id=$MINIO_ACCESS_KEY\naws_secret_access_key=$MINIO_SECRET_KEY" \
+            --wait --timeout 5m
+
+          # Bootstrap ArgoCD App-of-Apps
+          kubectl wait --for=condition=available deployment/argocd-server -n argocd --timeout=120s
+          kubectl apply -f gitops/argocd/app-of-apps.yaml 2>/dev/null || true
+
+          echo "Phase 6 GitOps — DONE"
+        fi
+
+  post_build:
+    commands:
+      - echo "=== Cluster Bootstrap Complete — $ENVIRONMENT ==="
+      - kubectl get nodes 2>/dev/null || true
+      - kubectl get namespaces 2>/dev/null || true

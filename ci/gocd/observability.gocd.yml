@@ -1,0 +1,102 @@
+# Observability Stack Pipeline — GoCD
+format_version: 10
+
+pipelines:
+  shopos-observability:
+    group: shopos-infra
+    label_template: "observability-${COUNT}"
+    lock_behavior: unlockWhenFinished
+    materials:
+      git:
+        git: https://github.com/prabhat-roy/ShopOS.git
+        branch: main
+
+    stages:
+      - metrics:
+          jobs:
+            prometheus:
+              elastic_profile_id: helm-agent
+              tasks:
+                - exec:
+                    command: /bin/sh
+                    arguments:
+                      - -c
+                      - |
+                        mkdir -p ~/.kube && echo "$KUBECONFIG_CONTENT" | base64 -d > ~/.kube/config
+                        helm repo add prometheus-community https://prometheus-community.github.io/helm-charts --force-update
+                        helm upgrade --install kube-prometheus-stack prometheus-community/kube-prometheus-stack \
+                          --namespace observability --create-namespace \
+                          --set prometheus.prometheusSpec.retention=30d \
+                          --set prometheus.prometheusSpec.replicas=2 \
+                          --set grafana.enabled=false --wait --timeout 10m
+
+      - dashboards-logs:
+          jobs:
+            grafana:
+              elastic_profile_id: helm-agent
+              tasks:
+                - exec:
+                    command: /bin/sh
+                    arguments:
+                      - -c
+                      - |
+                        mkdir -p ~/.kube && echo "$KUBECONFIG_CONTENT" | base64 -d > ~/.kube/config
+                        helm repo add grafana https://grafana.github.io/helm-charts --force-update
+                        helm upgrade --install grafana grafana/grafana \
+                          --namespace observability \
+                          --set adminPassword="$GRAFANA_ADMIN_PASSWORD" \
+                          --set persistence.enabled=true --set replicas=2 \
+                          --wait --timeout 5m
+                        kubectl apply -f observability/grafana/ 2>/dev/null || true
+            loki:
+              elastic_profile_id: helm-agent
+              tasks:
+                - exec:
+                    command: /bin/sh
+                    arguments:
+                      - -c
+                      - |
+                        mkdir -p ~/.kube && echo "$KUBECONFIG_CONTENT" | base64 -d > ~/.kube/config
+                        helm repo add grafana https://grafana.github.io/helm-charts --force-update
+                        helm upgrade --install loki grafana/loki \
+                          --namespace observability \
+                          --set loki.storage.type=s3 \
+                          --set loki.storage.s3.endpoint="http://minio.registry.svc:9000" \
+                          --set loki.storage.s3.bucketnames=loki-chunks \
+                          --set loki.storage.s3.secretAccessKey="$MINIO_SECRET_KEY" \
+                          --set loki.storage.s3.s3ForcePathStyle=true \
+                          --set deploymentMode=SimpleScalable \
+                          --wait --timeout 8m
+
+      - tracing:
+          jobs:
+            jaeger:
+              elastic_profile_id: helm-agent
+              tasks:
+                - exec:
+                    command: /bin/sh
+                    arguments:
+                      - -c
+                      - |
+                        mkdir -p ~/.kube && echo "$KUBECONFIG_CONTENT" | base64 -d > ~/.kube/config
+                        helm repo add jaegertracing https://jaegertracing.github.io/helm-charts --force-update
+                        helm upgrade --install jaeger jaegertracing/jaeger \
+                          --namespace observability \
+                          --set provisionDataStore.cassandra=false \
+                          --set collector.replicaCount=2 --set query.replicaCount=2 \
+                          --wait --timeout 8m
+            otel-collector:
+              elastic_profile_id: helm-agent
+              tasks:
+                - exec:
+                    command: /bin/sh
+                    arguments:
+                      - -c
+                      - |
+                        mkdir -p ~/.kube && echo "$KUBECONFIG_CONTENT" | base64 -d > ~/.kube/config
+                        helm repo add open-telemetry https://open-telemetry.github.io/opentelemetry-helm-charts --force-update
+                        helm upgrade --install otel-collector open-telemetry/opentelemetry-collector \
+                          --namespace observability \
+                          --set mode=daemonset \
+                          --set config.exporters.otlp.endpoint=jaeger-collector.observability.svc:4317 \
+                          --wait --timeout 5m

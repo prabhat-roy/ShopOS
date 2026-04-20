@@ -1,0 +1,19 @@
+apiVersion: v2
+name: video-service
+description: ShopOS Video Service — video storage and streaming via MinIO
+type: application
+version: 0.1.0
+appVersion: "1.0.0"
+keywords:
+  - shopos
+  - video-service
+  - content
+home: https://github.com/your-org/shopos
+sources:
+  - https://github.com/your-org/shopos/tree/main/src/content/video-service
+maintainers:
+  - name: ShopOS Platform Team
+    email: platform@shopos.io
+annotations:
+  app.kubernetes.io/domain: content
+  app.kubernetes.io/language: Go

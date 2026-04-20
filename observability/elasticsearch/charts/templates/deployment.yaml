@@ -1,0 +1,40 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "elasticsearch.fullname" . }}
+  namespace: {{ .Release.Namespace }}
+  labels: {{ include "elasticsearch.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels: {{ include "elasticsearch.labels" . | nindent 6 }}
+  template:
+    metadata:
+      labels: {{ include "elasticsearch.labels" . | nindent 8 }}
+    spec:
+      initContainers:
+        - name: sysctl
+          image: busybox
+          command: ["sysctl", "-w", "vm.max_map_count=262144"]
+          securityContext:
+            privileged: true
+      containers:
+        - name: elasticsearch
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            - containerPort: {{ .Values.service.httpPort }}
+            - containerPort: {{ .Values.service.transportPort }}
+          env: {{ toYaml .Values.env | nindent 12 }}
+          resources: {{ toYaml .Values.resources | nindent 12 }}
+          volumeMounts:
+            - name: data
+              mountPath: /usr/share/elasticsearch/data
+      volumes:
+        - name: data
+          {{- if .Values.persistence.enabled }}
+          persistentVolumeClaim:
+            claimName: {{ include "elasticsearch.fullname" . }}
+          {{- else }}
+          emptyDir: {}
+          {{- end }}

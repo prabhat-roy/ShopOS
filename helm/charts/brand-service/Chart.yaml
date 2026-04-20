@@ -1,0 +1,19 @@
+apiVersion: v2
+name: brand-service
+description: ShopOS Brand Service — brand management
+type: application
+version: 0.1.0
+appVersion: "1.0.0"
+keywords:
+  - shopos
+  - brand-service
+  - catalog
+home: https://github.com/your-org/shopos
+sources:
+  - https://github.com/your-org/shopos/tree/main/src/catalog/brand-service
+maintainers:
+  - name: ShopOS Platform Team
+    email: platform@shopos.io
+annotations:
+  app.kubernetes.io/domain: catalog
+  app.kubernetes.io/language: Go

@@ -1,0 +1,23 @@
+apiVersion: chaos-mesh.org/v1alpha1
+kind: IOChaos
+metadata:
+  name: io-delay-product-catalog
+  namespace: chaos-mesh
+  labels:
+    app.kubernetes.io/part-of: shopos-chaos
+    chaos.shopos.io/tier: catalog
+spec:
+  action: latency
+  mode: one
+  selector:
+    namespaces:
+      - catalog
+    labelSelectors:
+      app.kubernetes.io/name: product-catalog-service
+  volumePath: /data
+  path: /data/**
+  delay: 100ms
+  percent: 50
+  duration: 5m
+  containerNames:
+    - product-catalog-service

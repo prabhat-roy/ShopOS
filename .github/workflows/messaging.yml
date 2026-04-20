@@ -1,0 +1,212 @@
+name: Messaging Infrastructure
+
+on:
+  workflow_dispatch:
+    inputs:
+      action:
+        description: 'INSTALL, UNINSTALL, or CONFIGURE messaging tools'
+        required: true
+        default: 'INSTALL'
+        type: choice
+        options: [INSTALL, UNINSTALL, CONFIGURE]
+      zookeeper:      { description: 'Apache ZooKeeper — Kafka coordination',            type: boolean, default: false }
+      kafka:          { description: 'Apache Kafka (Confluent 7.7.1)',                   type: boolean, default: false }
+      schema_registry: { description: 'Confluent Schema Registry — Avro/Protobuf schemas', type: boolean, default: false }
+      kafka_connect:  { description: 'Kafka Connect — data integration framework',       type: boolean, default: false }
+      ksqldb:         { description: 'ksqlDB — streaming SQL on Kafka',                  type: boolean, default: false }
+      strimzi:        { description: 'Strimzi — Kubernetes Kafka operator',              type: boolean, default: false }
+      rabbitmq:       { description: 'RabbitMQ 3.13 — AMQP message broker',             type: boolean, default: false }
+      nats:           { description: 'NATS JetStream 2.10 — real-time pub/sub',          type: boolean, default: false }
+      kafka_ui:       { description: 'Kafka UI — web management console',               type: boolean, default: false }
+      akhq:           { description: 'AKHQ — Kafka HQ management dashboard',            type: boolean, default: false }
+      debezium:       { description: 'Debezium — Change Data Capture connectors',        type: boolean, default: false }
+      flink:          { description: 'Apache Flink — stream processing',                 type: boolean, default: false }
+
+jobs:
+  messaging-tools:
+    name: ${{ inputs.action }} Messaging Tools
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Decode kubeconfig
+        run: |
+          mkdir -p ~/.kube
+          echo "${{ secrets.KUBECONFIG_CONTENT }}" | base64 -d > ~/.kube/config
+
+      - name: Install Helm
+        uses: azure/setup-helm@v4
+
+      - name: Add Helm repos
+        run: |
+          helm repo add confluentinc  https://confluentinc.github.io/cp-helm-charts/
+          helm repo add strimzi       https://strimzi.io/charts/
+          helm repo add bitnami       https://charts.bitnami.com/bitnami
+          helm repo add nats          https://nats-io.github.io/k8s/helm/charts/
+          helm repo add kafka-ui      https://provectus.github.io/kafka-ui-charts
+          helm repo add flink-operator https://downloads.apache.org/flink/flink-kubernetes-operator-1.9.0/
+          helm repo update
+
+      - name: Install — ZooKeeper (3 replicas)
+        if: ${{ inputs.action == 'INSTALL' && inputs.zookeeper == true }}
+        run: |
+          helm upgrade --install zookeeper bitnami/zookeeper \
+            --namespace messaging --create-namespace \
+            --set replicaCount=3 \
+            --set persistence.enabled=true \
+            --set persistence.size=10Gi \
+            --wait --timeout 10m
+
+      - name: Install — Kafka (Confluent, 3 brokers)
+        if: ${{ inputs.action == 'INSTALL' && inputs.kafka == true }}
+        run: |
+          helm upgrade --install kafka bitnami/kafka \
+            --namespace messaging --create-namespace \
+            --set replicaCount=3 \
+            --set zookeeper.enabled=false \
+            --set externalZookeeper.servers=zookeeper.messaging.svc.cluster.local \
+            --set persistence.enabled=true \
+            --set persistence.size=20Gi \
+            --set metrics.kafka.enabled=true \
+            --set metrics.jmx.enabled=true \
+            --set kraft.enabled=false \
+            --wait --timeout 15m
+
+      - name: Install — Schema Registry (Confluent)
+        if: ${{ inputs.action == 'INSTALL' && inputs.schema_registry == true }}
+        run: |
+          helm upgrade --install schema-registry confluentinc/cp-schema-registry \
+            --namespace messaging --create-namespace \
+            --set replicaCount=2 \
+            --set kafka.bootstrapServers=PLAINTEXT://kafka.messaging.svc.cluster.local:9092 \
+            --wait --timeout 10m
+
+      - name: Install — Kafka Connect (Confluent)
+        if: ${{ inputs.action == 'INSTALL' && inputs.kafka_connect == true }}
+        run: |
+          helm upgrade --install kafka-connect confluentinc/cp-kafka-connect \
+            --namespace messaging --create-namespace \
+            --set replicaCount=2 \
+            --set kafka.bootstrapServers=PLAINTEXT://kafka.messaging.svc.cluster.local:9092 \
+            --set cp-schema-registry.url=http://schema-registry.messaging.svc.cluster.local:8081 \
+            --wait --timeout 10m
+
+      - name: Install — Strimzi Kafka Operator
+        if: ${{ inputs.action == 'INSTALL' && inputs.strimzi == true }}
+        run: |
+          helm upgrade --install strimzi-kafka-operator strimzi/strimzi-kafka-operator \
+            --namespace messaging --create-namespace \
+            --set watchAnyNamespace=false \
+            --wait --timeout 10m
+
+      - name: Install — RabbitMQ (3 replicas + management UI)
+        if: ${{ inputs.action == 'INSTALL' && inputs.rabbitmq == true }}
+        run: |
+          helm upgrade --install rabbitmq bitnami/rabbitmq \
+            --namespace messaging --create-namespace \
+            --set replicaCount=3 \
+            --set auth.password="${{ secrets.RABBITMQ_PASSWORD }}" \
+            --set auth.erlangCookie="${{ secrets.RABBITMQ_ERLANG_COOKIE }}" \
+            --set metrics.enabled=true \
+            --set persistence.enabled=true \
+            --set persistence.size=10Gi \
+            --set rabbitmq.plugins="rabbitmq_management rabbitmq_delayed_message_exchange rabbitmq_peer_discovery_k8s" \
+            --wait --timeout 10m
+
+      - name: Install — NATS JetStream (3 replicas)
+        if: ${{ inputs.action == 'INSTALL' && inputs.nats == true }}
+        run: |
+          helm upgrade --install nats nats/nats \
+            --namespace messaging --create-namespace \
+            --set nats.jetstream.enabled=true \
+            --set nats.jetstream.fileStore.enabled=true \
+            --set nats.jetstream.fileStore.pvc.size=10Gi \
+            --set cluster.enabled=true \
+            --set cluster.replicas=3 \
+            --set exporter.enabled=true \
+            --wait --timeout 10m
+
+      - name: Install — Kafka UI
+        if: ${{ inputs.action == 'INSTALL' && inputs.kafka_ui == true }}
+        run: |
+          helm upgrade --install kafka-ui kafka-ui/kafka-ui \
+            --namespace messaging --create-namespace \
+            --set envs.config.KAFKA_CLUSTERS_0_NAME=shopos \
+            --set envs.config.KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS=kafka.messaging.svc.cluster.local:9092 \
+            --set envs.config.KAFKA_CLUSTERS_0_SCHEMAREGISTRY=http://schema-registry.messaging.svc.cluster.local:8081 \
+            --wait --timeout 5m
+
+      - name: Install — Flink Kubernetes Operator
+        if: ${{ inputs.action == 'INSTALL' && inputs.flink == true }}
+        run: |
+          helm upgrade --install flink-kubernetes-operator flink-operator/flink-kubernetes-operator \
+            --namespace flink --create-namespace \
+            --set webhook.create=true \
+            --wait --timeout 10m
+          # Apply Flink job deployments
+          kubectl apply -f streaming/flink/order-analytics-job.yaml -n flink || true
+          kubectl apply -f streaming/flink/fraud-detection-job.yaml -n flink || true
+
+      - name: Install — Debezium (deploy Kafka Connect connectors)
+        if: ${{ inputs.action == 'INSTALL' && inputs.debezium == true }}
+        run: |
+          # Wait for Kafka Connect to be ready
+          kubectl rollout status deployment/kafka-connect -n messaging --timeout=120s || true
+          # Deploy postgres connector
+          kubectl apply -f streaming/debezium/postgres-connector.yaml -n messaging || true
+          # Deploy mongodb connector
+          kubectl apply -f streaming/debezium/mongodb-connector.yaml -n messaging || true
+
+      # ── CONFIGURE: Create Kafka topics ─────────────────────────────────
+      - name: Configure — Create Kafka topics
+        if: ${{ inputs.action == 'CONFIGURE' && inputs.kafka == true }}
+        run: |
+          TOPICS=(
+            "identity.user.registered:3:2"
+            "identity.user.deleted:3:2"
+            "commerce.order.placed:6:3"
+            "commerce.order.cancelled:3:2"
+            "commerce.order.fulfilled:3:2"
+            "commerce.payment.processed:6:3"
+            "commerce.payment.failed:3:2"
+            "commerce.cart.abandoned:3:2"
+            "supplychain.shipment.created:3:2"
+            "supplychain.shipment.updated:3:2"
+            "supplychain.inventory.low:3:2"
+            "supplychain.inventory.restocked:3:2"
+            "notification.email.requested:3:2"
+            "notification.sms.requested:3:2"
+            "notification.push.requested:3:2"
+            "analytics.page.viewed:6:3"
+            "analytics.product.clicked:6:3"
+            "analytics.search.performed:3:2"
+            "security.fraud.detected:3:2"
+            "security.login.failed:3:2"
+          )
+          KAFKA_POD=$(kubectl get pod -n messaging -l app.kubernetes.io/name=kafka -o name | head -1)
+          for TOPIC_SPEC in "${TOPICS[@]}"; do
+            IFS=':' read -r TOPIC PARTITIONS REPLICATION <<< "$TOPIC_SPEC"
+            kubectl exec -n messaging "$KAFKA_POD" -- \
+              kafka-topics.sh --create \
+              --topic "$TOPIC" \
+              --partitions "$PARTITIONS" \
+              --replication-factor "$REPLICATION" \
+              --if-not-exists \
+              --bootstrap-server localhost:9092 || true
+          done
+
+      # ── UNINSTALL ──────────────────────────────────────────────────────
+      - name: Uninstall tools
+        if: ${{ inputs.action == 'UNINSTALL' }}
+        run: |
+          ${{ inputs.flink          && 'helm uninstall flink-kubernetes-operator -n flink     --ignore-not-found || true' || '' }}
+          ${{ inputs.kafka_ui       && 'helm uninstall kafka-ui                  -n messaging  --ignore-not-found || true' || '' }}
+          ${{ inputs.akhq           && 'helm uninstall akhq                      -n messaging  --ignore-not-found || true' || '' }}
+          ${{ inputs.kafka_connect  && 'helm uninstall kafka-connect             -n messaging  --ignore-not-found || true' || '' }}
+          ${{ inputs.schema_registry && 'helm uninstall schema-registry          -n messaging  --ignore-not-found || true' || '' }}
+          ${{ inputs.nats           && 'helm uninstall nats                      -n messaging  --ignore-not-found || true' || '' }}
+          ${{ inputs.rabbitmq       && 'helm uninstall rabbitmq                  -n messaging  --ignore-not-found || true' || '' }}
+          ${{ inputs.kafka          && 'helm uninstall kafka                     -n messaging  --ignore-not-found || true' || '' }}
+          ${{ inputs.strimzi        && 'helm uninstall strimzi-kafka-operator    -n messaging  --ignore-not-found || true' || '' }}
+          ${{ inputs.zookeeper      && 'helm uninstall zookeeper                 -n messaging  --ignore-not-found || true' || '' }}
+          echo "Uninstall complete."

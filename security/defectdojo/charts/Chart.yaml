@@ -1,0 +1,6 @@
+apiVersion: v2
+name: defectdojo
+description: DefectDojo - open source vulnerability management platform
+type: application
+version: 1.0.0
+appVersion: "2.39.0"

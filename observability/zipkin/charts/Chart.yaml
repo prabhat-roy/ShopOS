@@ -1,0 +1,6 @@
+apiVersion: v2
+name: zipkin
+description: Zipkin — distributed tracing system for latency troubleshooting
+type: application
+version: 1.0.0
+appVersion: "3.4"

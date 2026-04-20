@@ -1,0 +1,19 @@
+apiVersion: v2
+name: notification-orchestrator
+description: ShopOS Notification Orchestrator — multi-channel routing
+type: application
+version: 0.1.0
+appVersion: "1.0.0"
+keywords:
+  - shopos
+  - notification-orchestrator
+  - communications
+home: https://github.com/your-org/shopos
+sources:
+  - https://github.com/your-org/shopos/tree/main/src/communications/notification-orchestrator
+maintainers:
+  - name: ShopOS Platform Team
+    email: platform@shopos.io
+annotations:
+  app.kubernetes.io/domain: communications
+  app.kubernetes.io/language: Node.js

@@ -1,0 +1,52 @@
+syntax = "proto3";
+package platform.audit.v1;
+option go_package = "github.com/shopos/proto/platform/audit/v1;auditv1";
+
+import "google/protobuf/timestamp.proto";
+
+service AuditService {
+  rpc LogEvent(LogEventRequest)     returns (LogEventResponse);
+  rpc ListEvents(ListEventsRequest) returns (ListEventsResponse);
+  rpc GetEvent(GetEventRequest)     returns (GetEventResponse);
+}
+
+message AuditEvent {
+  string id          = 1;
+  string actor_id    = 2;
+  string actor_type  = 3;
+  string action      = 4;
+  string resource    = 5;
+  string resource_id = 6;
+  map<string, string> metadata = 7;
+  string ip_address  = 8;
+  google.protobuf.Timestamp occurred_at = 9;
+}
+
+message LogEventRequest {
+  string actor_id    = 1;
+  string actor_type  = 2;
+  string action      = 3;
+  string resource    = 4;
+  string resource_id = 5;
+  map<string, string> metadata = 6;
+  string ip_address  = 7;
+}
+
+message LogEventResponse  { string event_id = 1; }
+message GetEventRequest   { string id = 1; }
+message GetEventResponse  { AuditEvent event = 1; }
+
+message ListEventsRequest {
+  string actor_id    = 1;
+  string resource    = 2;
+  string resource_id = 3;
+  google.protobuf.Timestamp start_time = 4;
+  google.protobuf.Timestamp end_time   = 5;
+  int32 page      = 6;
+  int32 page_size = 7;
+}
+
+message ListEventsResponse {
+  repeated AuditEvent events = 1;
+  int32 total = 2;
+}

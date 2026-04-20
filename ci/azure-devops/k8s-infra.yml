@@ -1,0 +1,222 @@
+name: K8s Infrastructure (Terraform)
+
+trigger: none
+
+parameters:
+  - name: environment
+    displayName: Target environment
+    type: string
+    default: dev
+    values: [dev, staging, prod]
+  - name: cloud
+    displayName: Cloud provider
+    type: string
+    default: aws
+    values: [aws, gcp, azure, all]
+  - name: action
+    displayName: Terraform action
+    type: string
+    default: PLAN
+    values: [PLAN, APPLY, DESTROY]
+  - name: terraform_version
+    displayName: Terraform version
+    type: string
+    default: '1.9.0'
+
+variables:
+  - group: shopos-secrets
+  - name: TF_IN_AUTOMATION
+    value: 'true'
+  - name: TF_CLI_ARGS
+    value: '-no-color'
+
+pool:
+  vmImage: ubuntu-latest
+
+stages:
+  # ── AWS / EKS ─────────────────────────────────────────────────────────────
+  - stage: AWS_EKS
+    displayName: AWS EKS
+    condition: or(eq('${{ parameters.cloud }}', 'aws'), eq('${{ parameters.cloud }}', 'all'))
+    jobs:
+      - job: Terraform_AWS
+        displayName: Terraform ${{ parameters.action }} — AWS EKS
+        timeoutInMinutes: 60
+        steps:
+          - task: TerraformInstaller@1
+            inputs:
+              terraformVersion: ${{ parameters.terraform_version }}
+
+          - task: AWSShellScript@1
+            displayName: Configure AWS credentials
+            inputs:
+              awsCredentials: AWS-Service-Connection
+              regionName: $(AWS_REGION)
+              scriptType: inline
+              inlineScript: echo "AWS credentials configured"
+
+          - script: |
+              cd infra/terraform/aws/eks
+              terraform init \
+                -backend-config="bucket=$(TF_STATE_BUCKET)" \
+                -backend-config="key=${{ parameters.environment }}/eks/terraform.tfstate" \
+                -backend-config="region=$(AWS_REGION)"
+            displayName: Terraform Init (AWS)
+
+          - script: |
+              cd infra/terraform/aws/eks
+              terraform validate
+            displayName: Terraform Validate (AWS)
+
+          - script: |
+              cd infra/terraform/aws/eks
+              terraform plan \
+                -var="environment=${{ parameters.environment }}" \
+                -var="region=$(AWS_REGION)" \
+                -out=tfplan-aws.bin
+              terraform show -no-color tfplan-aws.bin > tfplan-aws.txt
+            displayName: Terraform Plan (AWS)
+
+          - task: PublishPipelineArtifact@1
+            inputs:
+              targetPath: infra/terraform/aws/eks/tfplan-aws.txt
+              artifact: tfplan-aws-${{ parameters.environment }}
+
+          - ${{ if eq(parameters.action, 'APPLY') }}:
+            - script: |
+                cd infra/terraform/aws/eks
+                terraform apply -auto-approve tfplan-aws.bin
+                terraform output -json > /tmp/tf-outputs-aws.json
+                echo "EKS Cluster: $(terraform output -raw cluster_name)"
+                echo "Kubeconfig: $(terraform output -raw configure_kubectl)"
+              displayName: Terraform Apply (AWS)
+
+          - ${{ if eq(parameters.action, 'DESTROY') }}:
+            - script: |
+                cd infra/terraform/aws/eks
+                terraform destroy -auto-approve \
+                  -var="environment=${{ parameters.environment }}" \
+                  -var="region=$(AWS_REGION)"
+              displayName: Terraform Destroy (AWS)
+
+  # ── GCP / GKE ─────────────────────────────────────────────────────────────
+  - stage: GCP_GKE
+    displayName: GCP GKE
+    condition: or(eq('${{ parameters.cloud }}', 'gcp'), eq('${{ parameters.cloud }}', 'all'))
+    jobs:
+      - job: Terraform_GCP
+        displayName: Terraform ${{ parameters.action }} — GCP GKE
+        timeoutInMinutes: 60
+        steps:
+          - task: TerraformInstaller@1
+            inputs:
+              terraformVersion: ${{ parameters.terraform_version }}
+
+          - task: GoogleCloudSdkTool@1
+            displayName: Install gcloud
+
+          - script: |
+              echo "$(GCP_SERVICE_ACCOUNT_KEY)" | base64 -d > /tmp/gcp-key.json
+              gcloud auth activate-service-account --key-file=/tmp/gcp-key.json
+              gcloud config set project $(GCP_PROJECT_ID)
+            displayName: Configure GCP credentials
+
+          - script: |
+              cd infra/terraform/gcp/gke
+              terraform init \
+                -backend-config="bucket=$(GCS_TF_STATE_BUCKET)" \
+                -backend-config="prefix=${{ parameters.environment }}/gke"
+            displayName: Terraform Init (GCP)
+
+          - script: |
+              cd infra/terraform/gcp/gke
+              terraform plan \
+                -var="environment=${{ parameters.environment }}" \
+                -var="project=$(GCP_PROJECT_ID)" \
+                -var="region=$(GCP_REGION)" \
+                -out=tfplan-gcp.bin
+              terraform show -no-color tfplan-gcp.bin > tfplan-gcp.txt
+            displayName: Terraform Plan (GCP)
+
+          - task: PublishPipelineArtifact@1
+            inputs:
+              targetPath: infra/terraform/gcp/gke/tfplan-gcp.txt
+              artifact: tfplan-gcp-${{ parameters.environment }}
+
+          - ${{ if eq(parameters.action, 'APPLY') }}:
+            - script: |
+                cd infra/terraform/gcp/gke
+                terraform apply -auto-approve tfplan-gcp.bin
+                echo "GKE Cluster: $(terraform output -raw cluster_name)"
+              displayName: Terraform Apply (GCP)
+
+          - ${{ if eq(parameters.action, 'DESTROY') }}:
+            - script: |
+                cd infra/terraform/gcp/gke
+                terraform destroy -auto-approve \
+                  -var="environment=${{ parameters.environment }}" \
+                  -var="project=$(GCP_PROJECT_ID)"
+              displayName: Terraform Destroy (GCP)
+
+          - script: rm -f /tmp/gcp-key.json
+            condition: always()
+            displayName: Cleanup GCP credentials
+
+  # ── Azure / AKS ───────────────────────────────────────────────────────────
+  - stage: Azure_AKS
+    displayName: Azure AKS
+    condition: or(eq('${{ parameters.cloud }}', 'azure'), eq('${{ parameters.cloud }}', 'all'))
+    jobs:
+      - job: Terraform_Azure
+        displayName: Terraform ${{ parameters.action }} — Azure AKS
+        timeoutInMinutes: 60
+        steps:
+          - task: TerraformInstaller@1
+            inputs:
+              terraformVersion: ${{ parameters.terraform_version }}
+
+          - task: AzureCLI@2
+            displayName: Configure Azure credentials
+            inputs:
+              azureSubscription: Azure-Service-Connection
+              scriptType: bash
+              scriptLocation: inlineScript
+              inlineScript: echo "Azure credentials configured via service connection"
+
+          - script: |
+              cd infra/terraform/azure/aks
+              terraform init \
+                -backend-config="resource_group_name=$(AZURE_TF_RG)" \
+                -backend-config="storage_account_name=$(AZURE_TF_SA)" \
+                -backend-config="container_name=tfstate" \
+                -backend-config="key=${{ parameters.environment }}/aks/terraform.tfstate"
+            displayName: Terraform Init (Azure)
+
+          - script: |
+              cd infra/terraform/azure/aks
+              terraform plan \
+                -var="environment=${{ parameters.environment }}" \
+                -var="subscription_id=$(ARM_SUBSCRIPTION_ID)" \
+                -var="location=$(AZURE_LOCATION)" \
+                -out=tfplan-azure.bin
+              terraform show -no-color tfplan-azure.bin > tfplan-azure.txt
+            displayName: Terraform Plan (Azure)
+
+          - task: PublishPipelineArtifact@1
+            inputs:
+              targetPath: infra/terraform/azure/aks/tfplan-azure.txt
+              artifact: tfplan-azure-${{ parameters.environment }}
+
+          - ${{ if eq(parameters.action, 'APPLY') }}:
+            - script: |
+                cd infra/terraform/azure/aks
+                terraform apply -auto-approve tfplan-azure.bin
+                echo "AKS Cluster: $(terraform output -raw cluster_name)"
+              displayName: Terraform Apply (Azure)
+
+          - ${{ if eq(parameters.action, 'DESTROY') }}:
+            - script: |
+                cd infra/terraform/azure/aks
+                terraform destroy -auto-approve \
+                  -var="environment=${{ parameters.environment }}"
+              displayName: Terraform Destroy (Azure)

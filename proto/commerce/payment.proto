@@ -1,0 +1,123 @@
+syntax = "proto3";
+
+package commerce;
+
+import "common/common.proto";
+
+option go_package = "github.com/shopos/proto/commerce";
+
+// ---------------------------------------------------------------------------
+// Enums
+// ---------------------------------------------------------------------------
+
+enum PaymentStatus {
+  PAYMENT_STATUS_UNSPECIFIED  = 0;
+  PAYMENT_STATUS_PENDING      = 1;
+  PAYMENT_STATUS_AUTHORIZED   = 2;
+  PAYMENT_STATUS_CAPTURED     = 3;
+  PAYMENT_STATUS_FAILED       = 4;
+  PAYMENT_STATUS_CANCELLED    = 5;
+  PAYMENT_STATUS_REFUNDED     = 6;
+  PAYMENT_STATUS_PARTIALLY_REFUNDED = 7;
+}
+
+enum PaymentMethod {
+  PAYMENT_METHOD_UNSPECIFIED   = 0;
+  PAYMENT_METHOD_CREDIT_CARD   = 1;
+  PAYMENT_METHOD_DEBIT_CARD    = 2;
+  PAYMENT_METHOD_BANK_TRANSFER = 3;
+  PAYMENT_METHOD_WALLET        = 4;
+  PAYMENT_METHOD_GIFT_CARD     = 5;
+  PAYMENT_METHOD_CRYPTO        = 6;
+  PAYMENT_METHOD_BUY_NOW_PAY_LATER = 7;
+}
+
+enum RefundStatus {
+  REFUND_STATUS_UNSPECIFIED = 0;
+  REFUND_STATUS_PENDING     = 1;
+  REFUND_STATUS_APPROVED    = 2;
+  REFUND_STATUS_PROCESSED   = 3;
+  REFUND_STATUS_REJECTED    = 4;
+}
+
+// ---------------------------------------------------------------------------
+// Messages
+// ---------------------------------------------------------------------------
+
+message Payment {
+  string         id                 = 1;
+  string         order_id           = 2;
+  string         customer_id        = 3;
+  Money          amount             = 4;
+  PaymentStatus  status             = 5;
+  PaymentMethod  method             = 6;
+  // Identifier returned by the payment gateway (e.g. Stripe charge ID).
+  string         gateway_payment_id = 7;
+  Timestamp      created_at         = 8;
+}
+
+message CreatePaymentRequest {
+  string        order_id    = 1;
+  string        customer_id = 2;
+  Money         amount      = 3;
+  PaymentMethod method      = 4;
+  // Gateway-specific token / nonce (e.g. Stripe PaymentMethod ID).
+  string        payment_token = 5;
+}
+
+message CapturePaymentRequest {
+  string payment_id = 1;
+}
+
+message CancelPaymentRequest {
+  string payment_id = 1;
+  string reason     = 2;
+}
+
+message GetPaymentRequest {
+  string payment_id = 1;
+}
+
+message ListPaymentsByOrderRequest {
+  string order_id = 1;
+}
+
+message ListPaymentsByOrderResponse {
+  repeated Payment payments = 1;
+}
+
+message RefundRequest {
+  string payment_id = 1;
+  Money  amount     = 2;
+  string reason     = 3;
+}
+
+message RefundResponse {
+  string       refund_id = 1;
+  RefundStatus status    = 2;
+  Money        amount    = 3;
+}
+
+// ---------------------------------------------------------------------------
+// Service
+// ---------------------------------------------------------------------------
+
+service PaymentService {
+  // Authorise (and optionally capture) a payment for an order.
+  rpc CreatePayment(CreatePaymentRequest) returns (Payment);
+
+  // Capture a previously-authorised payment.
+  rpc CapturePayment(CapturePaymentRequest) returns (Payment);
+
+  // Issue a full or partial refund for a captured payment.
+  rpc RefundPayment(RefundRequest) returns (RefundResponse);
+
+  // Cancel a payment that has not yet been captured.
+  rpc CancelPayment(CancelPaymentRequest) returns (Payment);
+
+  // Retrieve a single payment record by ID.
+  rpc GetPayment(GetPaymentRequest) returns (Payment);
+
+  // Retrieve all payments associated with an order.
+  rpc ListPaymentsByOrder(ListPaymentsByOrderRequest) returns (ListPaymentsByOrderResponse);
+}

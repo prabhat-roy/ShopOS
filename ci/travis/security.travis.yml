@@ -1,0 +1,74 @@
+# Security Infrastructure Pipeline — Travis CI
+language: minimal
+
+env:
+  global:
+    - ACTION=INSTALL
+
+install:
+  - curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
+  - mkdir -p ~/.kube && echo "$KUBECONFIG_CONTENT" | base64 -d > ~/.kube/config
+
+jobs:
+  include:
+    - name: cert-manager
+      script:
+        - |
+          [ "$CERT_MANAGER" = "true" ] || { echo "Skipped"; exit 0; }
+          helm repo add jetstack https://charts.jetstack.io --force-update
+          helm upgrade --install cert-manager jetstack/cert-manager \
+            --namespace cert-manager --create-namespace \
+            --set installCRDs=true --set replicaCount=2 --wait --timeout 5m
+
+    - name: vault
+      script:
+        - |
+          [ "$VAULT" = "true" ] || { echo "Skipped"; exit 0; }
+          helm repo add hashicorp https://helm.releases.hashicorp.com --force-update
+          helm upgrade --install vault hashicorp/vault \
+            --namespace vault --create-namespace \
+            --set server.ha.enabled=true --set server.ha.raft.enabled=true \
+            --set server.ha.replicas=3 --wait --timeout 10m
+
+    - name: keycloak
+      script:
+        - |
+          [ "$KEYCLOAK" = "true" ] || { echo "Skipped"; exit 0; }
+          helm repo add bitnami https://charts.bitnami.com/bitnami --force-update
+          helm upgrade --install keycloak bitnami/keycloak \
+            --namespace keycloak --create-namespace \
+            --set replicaCount=2 \
+            --set auth.adminPassword="$KEYCLOAK_ADMIN_PASSWORD" \
+            --set postgresql.enabled=true --wait --timeout 10m
+
+    - name: kyverno
+      script:
+        - |
+          [ "$KYVERNO" = "true" ] || { echo "Skipped"; exit 0; }
+          helm repo add kyverno https://kyverno.github.io/kyverno --force-update
+          helm upgrade --install kyverno kyverno/kyverno \
+            --namespace kyverno --create-namespace \
+            --set replicaCount=3 --wait --timeout 5m
+          kubectl apply -f security/kyverno/ 2>/dev/null || true
+
+    - name: falco
+      script:
+        - |
+          [ "$FALCO" = "true" ] || { echo "Skipped"; exit 0; }
+          helm repo add falcosecurity https://falcosecurity.github.io/charts --force-update
+          helm upgrade --install falco falcosecurity/falco \
+            --namespace falco --create-namespace \
+            --set driver.kind=ebpf \
+            --set falcosidekick.enabled=true \
+            --set falcosidekick.config.slack.webhookurl="$SLACK_WEBHOOK" \
+            --wait --timeout 8m
+
+    - name: opa
+      script:
+        - |
+          [ "$OPA" = "true" ] || { echo "Skipped"; exit 0; }
+          helm repo add gatekeeper https://open-policy-agent.github.io/gatekeeper/charts --force-update
+          helm upgrade --install gatekeeper gatekeeper/gatekeeper \
+            --namespace gatekeeper-system --create-namespace \
+            --set replicaCount=3 --wait --timeout 5m
+          kubectl apply -f security/opa/ 2>/dev/null || true

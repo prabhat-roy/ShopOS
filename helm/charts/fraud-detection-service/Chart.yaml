@@ -1,0 +1,19 @@
+apiVersion: v2
+name: fraud-detection-service
+description: ShopOS Fraud Detection Service — real-time fraud scoring
+type: application
+version: 0.1.0
+appVersion: "1.0.0"
+keywords:
+  - shopos
+  - fraud-detection-service
+  - commerce
+home: https://github.com/your-org/shopos
+sources:
+  - https://github.com/your-org/shopos/tree/main/src/commerce/fraud-detection-service
+maintainers:
+  - name: ShopOS Platform Team
+    email: platform@shopos.io
+annotations:
+  app.kubernetes.io/domain: commerce
+  app.kubernetes.io/language: Python

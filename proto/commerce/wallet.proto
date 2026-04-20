@@ -1,0 +1,42 @@
+syntax = "proto3";
+package commerce.wallet.v1;
+option go_package = "github.com/shopos/proto/commerce/wallet/v1;walletv1";
+
+import "google/protobuf/timestamp.proto";
+
+service WalletService {
+  rpc GetWallet(GetWalletRequest)               returns (GetWalletResponse);
+  rpc AddFunds(AddFundsRequest)                 returns (AddFundsResponse);
+  rpc Deduct(DeductRequest)                     returns (DeductResponse);
+  rpc GetTransactions(GetTransactionsRequest)   returns (GetTransactionsResponse);
+  rpc Refund(RefundRequest)                     returns (RefundResponse);
+}
+
+message Wallet {
+  string customer_id = 1;
+  string balance     = 2;
+  string currency    = 3;
+  google.protobuf.Timestamp updated_at = 4;
+}
+
+message WalletTransaction {
+  string id          = 1;
+  string customer_id = 2;
+  string type        = 3;
+  string amount      = 4;
+  string currency    = 5;
+  string reference   = 6;
+  string description = 7;
+  google.protobuf.Timestamp created_at = 8;
+}
+
+message GetWalletRequest        { string customer_id = 1; }
+message GetWalletResponse       { Wallet wallet = 1; }
+message AddFundsRequest         { string customer_id = 1; string amount = 2; string currency = 3; string reference = 4; }
+message AddFundsResponse        { Wallet wallet = 1; }
+message DeductRequest           { string customer_id = 1; string amount = 2; string order_id = 3; }
+message DeductResponse          { Wallet wallet = 1; }
+message GetTransactionsRequest  { string customer_id = 1; int32 page = 2; int32 page_size = 3; }
+message GetTransactionsResponse { repeated WalletTransaction transactions = 1; int32 total = 2; }
+message RefundRequest           { string customer_id = 1; string amount = 2; string order_id = 3; string reason = 4; }
+message RefundResponse          { Wallet wallet = 1; }

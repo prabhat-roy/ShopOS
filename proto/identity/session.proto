@@ -1,0 +1,36 @@
+syntax = "proto3";
+package identity.session.v1;
+option go_package = "github.com/shopos/proto/identity/session/v1;sessionv1";
+
+import "google/protobuf/timestamp.proto";
+
+service SessionService {
+  rpc CreateSession(CreateSessionRequest)         returns (CreateSessionResponse);
+  rpc GetSession(GetSessionRequest)               returns (GetSessionResponse);
+  rpc DeleteSession(DeleteSessionRequest)         returns (DeleteSessionResponse);
+  rpc ListUserSessions(ListUserSessionsRequest)   returns (ListUserSessionsResponse);
+  rpc RefreshSession(RefreshSessionRequest)       returns (RefreshSessionResponse);
+}
+
+message Session {
+  string id         = 1;
+  string user_id    = 2;
+  string device_id  = 3;
+  string ip_address = 4;
+  string user_agent = 5;
+  bool   active     = 6;
+  google.protobuf.Timestamp created_at = 7;
+  google.protobuf.Timestamp expires_at = 8;
+  google.protobuf.Timestamp last_used  = 9;
+}
+
+message CreateSessionRequest     { string user_id = 1; string device_id = 2; string ip_address = 3; string user_agent = 4; int32 ttl_seconds = 5; }
+message CreateSessionResponse    { Session session = 1; }
+message GetSessionRequest        { string id = 1; }
+message GetSessionResponse       { Session session = 1; }
+message DeleteSessionRequest     { string id = 1; }
+message DeleteSessionResponse    { bool success = 1; }
+message ListUserSessionsRequest  { string user_id = 1; bool active_only = 2; }
+message ListUserSessionsResponse { repeated Session sessions = 1; }
+message RefreshSessionRequest    { string id = 1; int32 ttl_seconds = 2; }
+message RefreshSessionResponse   { Session session = 1; }

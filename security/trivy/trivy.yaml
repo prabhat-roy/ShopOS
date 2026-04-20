@@ -1,0 +1,28 @@
+# Trivy configuration for ShopOS
+# Usage: trivy --config security/trivy/trivy.yaml fs src/
+
+scan:
+  severity:
+    - CRITICAL
+    - HIGH
+  ignore-unfixed: false
+  exit-code: 1
+
+vulnerability:
+  type:
+    - os
+    - library
+  ignore-policy: security/trivy/.trivyignore
+
+secret:
+  config: security/trivy/secret.yaml
+
+format: table
+
+cache:
+  dir: /tmp/trivy-cache
+  ttl: 24h
+
+db:
+  skip-update: false
+  light: false

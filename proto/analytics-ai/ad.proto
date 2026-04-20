@@ -1,0 +1,75 @@
+syntax = "proto3";
+package analyticsai.ad.v1;
+option go_package = "github.com/shopos/proto/analyticsai/ad/v1;adv1";
+
+import "google/protobuf/timestamp.proto";
+
+service AdService {
+  rpc CreateAd(CreateAdRequest) returns (CreateAdResponse);
+  rpc GetAd(GetAdRequest) returns (GetAdResponse);
+  rpc ServeAd(ServeAdRequest) returns (ServeAdResponse);
+  rpc RecordImpression(RecordImpressionRequest) returns (RecordImpressionResponse);
+  rpc RecordClick(RecordClickRequest) returns (RecordClickResponse);
+  rpc GetAdMetrics(GetAdMetricsRequest) returns (GetAdMetricsResponse);
+}
+
+message Ad {
+  string id = 1;
+  string advertiser_id = 2;
+  string title = 3;
+  string body = 4;
+  string image_url = 5;
+  string click_url = 6;
+  string placement = 7;
+  bool active = 8;
+  double bid_amount = 9;
+  google.protobuf.Timestamp start_date = 10;
+  google.protobuf.Timestamp end_date = 11;
+  google.protobuf.Timestamp created_at = 12;
+}
+
+message AdMetrics {
+  string ad_id = 1;
+  int64 impressions = 2;
+  int64 clicks = 3;
+  double ctr = 4;
+  double spend = 5;
+}
+
+message CreateAdRequest {
+  string advertiser_id = 1;
+  string title = 2;
+  string body = 3;
+  string image_url = 4;
+  string click_url = 5;
+  string placement = 6;
+  double bid_amount = 7;
+  google.protobuf.Timestamp start_date = 8;
+  google.protobuf.Timestamp end_date = 9;
+}
+
+message CreateAdResponse { Ad ad = 1; }
+message GetAdRequest { string id = 1; }
+message GetAdResponse { Ad ad = 1; }
+
+message ServeAdRequest {
+  string user_id = 1;
+  string placement = 2;
+  map<string, string> context = 3;
+}
+
+message ServeAdResponse { Ad ad = 1; }
+
+message RecordImpressionRequest { string ad_id = 1; string user_id = 2; }
+message RecordImpressionResponse { bool success = 1; }
+
+message RecordClickRequest { string ad_id = 1; string user_id = 2; }
+message RecordClickResponse { bool success = 1; }
+
+message GetAdMetricsRequest {
+  string ad_id = 1;
+  google.protobuf.Timestamp start_date = 2;
+  google.protobuf.Timestamp end_date = 3;
+}
+
+message GetAdMetricsResponse { AdMetrics metrics = 1; }

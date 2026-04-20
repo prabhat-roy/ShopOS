@@ -1,0 +1,29 @@
+# ---- build stage ----
+FROM golang:1.24-alpine AS builder
+
+WORKDIR /app
+
+COPY go.mod ./
+
+
+COPY go.mod go.sum* ./
+RUN --mount=type=cache,target=/go/pkg/mod,sharing=locked \
+    rm -f go.sum && GONOSUMDB=* go mod download
+
+COPY . .
+
+RUN --mount=type=cache,target=/go/pkg/mod,sharing=locked \
+    --mount=type=cache,target=/root/.cache/go-build \
+    rm -f go.sum && GONOSUMDB=* go mod tidy
+
+RUN CGO_ENABLED=0 GOOS=linux go build  -trimpath -ldflags="-s -w" -o /sitemap-service .
+
+# ---- runtime stage ----
+# Sitemap service is stateless and makes no outbound TLS calls; use scratch.
+
+
+FROM gcr.io/distroless/static-debian12:nonroot
+COPY --from=builder /sitemap-service /sitemap-service
+USER nonroot:nonroot
+EXPOSE 8605
+ENTRYPOINT ["/sitemap-service"]

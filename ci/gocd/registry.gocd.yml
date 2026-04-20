@@ -1,0 +1,69 @@
+# Registry Tools Pipeline — GoCD
+format_version: 10
+
+pipelines:
+  shopos-registry:
+    group: shopos-infra
+    label_template: "registry-${COUNT}"
+    lock_behavior: unlockWhenFinished
+    materials:
+      git:
+        git: https://github.com/prabhat-roy/ShopOS.git
+        branch: main
+
+    stages:
+      - install:
+          jobs:
+            harbor:
+              elastic_profile_id: helm-agent
+              tasks:
+                - exec:
+                    command: /bin/sh
+                    arguments:
+                      - -c
+                      - |
+                        mkdir -p ~/.kube && echo "$KUBECONFIG_CONTENT" | base64 -d > ~/.kube/config
+                        helm repo add harbor https://helm.goharbor.io --force-update
+                        helm upgrade --install harbor harbor/harbor \
+                          --namespace registry --create-namespace \
+                          --set expose.type=ingress \
+                          --set expose.ingress.className=traefik \
+                          --set expose.ingress.hosts.core=harbor.shopos.internal \
+                          --set externalURL=https://harbor.shopos.internal \
+                          --set harborAdminPassword="$HARBOR_ADMIN_PASSWORD" \
+                          --set trivy.enabled=true --set persistence.enabled=true \
+                          --wait --timeout 10m
+            minio:
+              elastic_profile_id: helm-agent
+              tasks:
+                - exec:
+                    command: /bin/sh
+                    arguments:
+                      - -c
+                      - |
+                        mkdir -p ~/.kube && echo "$KUBECONFIG_CONTENT" | base64 -d > ~/.kube/config
+                        helm repo add minio https://charts.min.io --force-update
+                        helm upgrade --install minio minio/minio \
+                          --namespace registry \
+                          --set rootUser="$MINIO_ROOT_USER" \
+                          --set rootPassword="$MINIO_ROOT_PASSWORD" \
+                          --set replicas=4 \
+                          --set persistence.enabled=true --set persistence.size=100Gi \
+                          --wait --timeout 8m
+
+      - configure:
+          approval:
+            type: manual
+          jobs:
+            buckets:
+              elastic_profile_id: minio-agent
+              tasks:
+                - exec:
+                    command: /bin/sh
+                    arguments:
+                      - -c
+                      - |
+                        mc alias set shopos http://minio.registry.svc:9000 "$MINIO_ROOT_USER" "$MINIO_ROOT_PASSWORD"
+                        for BUCKET in harbor-registry velero-backups loki-chunks tempo-traces thanos mlflow artifacts media-assets; do
+                          mc mb --ignore-existing "shopos/$BUCKET" || true
+                        done

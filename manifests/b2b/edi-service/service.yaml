@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: edi-service
+  namespace: b2b
+  labels:
+    app: edi-service
+    domain: b2b
+spec:
+  selector:
+    app: edi-service
+  type: ClusterIP
+  ports:
+    - name: grpc
+      port: 50165
+      targetPort: grpc
+      protocol: TCP

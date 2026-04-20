@@ -1,0 +1,34 @@
+replicaCount: 1
+
+image:
+  repository: quay.io/argoproj/argo-events
+  tag: "v1.9.2"
+  pullPolicy: IfNotPresent
+
+service:
+  type: ClusterIP
+  port: 7777
+  targetPort: 7777
+
+persistence:
+  enabled: true
+  storageClass: ""
+  size: 1Gi
+  accessMode: ReadWriteOnce
+  mountPath: /data
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 128Mi
+  limits:
+    cpu: "1"
+    memory: 512Mi
+
+env: {}
+
+ingress:
+  enabled: false
+  className: ""
+  host: ""
+  tls: []

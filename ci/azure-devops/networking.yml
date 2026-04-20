@@ -1,0 +1,190 @@
+name: Networking Infrastructure
+
+trigger: none
+
+parameters:
+  - name: environment
+    displayName: Target environment
+    type: string
+    default: dev
+    values: [dev, staging, prod]
+  - name: action
+    displayName: Action
+    type: string
+    default: INSTALL
+    values: [INSTALL, UPGRADE, UNINSTALL]
+  - name: cilium
+    type: boolean
+    default: false
+  - name: istio
+    type: boolean
+    default: true
+  - name: linkerd
+    type: boolean
+    default: false
+  - name: traefik
+    type: boolean
+    default: true
+  - name: consul
+    type: boolean
+    default: true
+  - name: external_dns
+    type: boolean
+    default: true
+  - name: metallb
+    type: boolean
+    default: false
+
+variables:
+  - group: shopos-secrets
+
+pool:
+  vmImage: ubuntu-latest
+
+jobs:
+  - job: Networking
+    displayName: Networking ${{ parameters.action }} on ${{ parameters.environment }}
+    timeoutInMinutes: 60
+    steps:
+      - task: KubectlInstaller@0
+
+      - script: |
+          curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
+        displayName: Install Helm
+
+      - script: |
+          mkdir -p ~/.kube
+          echo "$(KUBECONFIG_CONTENT)" | base64 -d > ~/.kube/config
+        displayName: Configure kubeconfig
+
+      # ── Cilium ────────────────────────────────────────────────────────────
+      - ${{ if eq(parameters.cilium, true) }}:
+        - script: |
+            helm repo add cilium https://helm.cilium.io --force-update
+            if [ "${{ parameters.action }}" = "UNINSTALL" ]; then
+              helm uninstall cilium -n kube-system 2>/dev/null || true
+            else
+              helm upgrade --install cilium cilium/cilium \
+                --namespace kube-system \
+                --set kubeProxyReplacement=true \
+                --set hubble.relay.enabled=true \
+                --set hubble.ui.enabled=true \
+                --set loadBalancer.algorithm=maglev \
+                --set prometheus.enabled=true \
+                --wait --timeout 8m
+              kubectl apply -f networking/cilium/ 2>/dev/null || true
+            fi
+          displayName: Cilium CNI
+
+      # ── Istio ─────────────────────────────────────────────────────────────
+      - ${{ if eq(parameters.istio, true) }}:
+        - script: |
+            helm repo add istio https://istio-release.storage.googleapis.com/charts --force-update
+            if [ "${{ parameters.action }}" = "UNINSTALL" ]; then
+              helm uninstall istio-ingressgateway -n istio-system 2>/dev/null || true
+              helm uninstall istiod -n istio-system 2>/dev/null || true
+              helm uninstall istio-base -n istio-system 2>/dev/null || true
+              kubectl delete ns istio-system 2>/dev/null || true
+            else
+              helm upgrade --install istio-base istio/base \
+                --namespace istio-system --create-namespace --wait --timeout 3m
+              helm upgrade --install istiod istio/istiod \
+                --namespace istio-system \
+                --set telemetry.enabled=true \
+                --set pilot.traceSampling=1.0 \
+                --wait --timeout 5m
+              helm upgrade --install istio-ingressgateway istio/gateway \
+                --namespace istio-system --wait --timeout 3m
+              kubectl apply -f networking/istio/ 2>/dev/null || true
+            fi
+          displayName: Istio Service Mesh
+
+      # ── Linkerd ───────────────────────────────────────────────────────────
+      - ${{ if eq(parameters.linkerd, true) }}:
+        - script: |
+            helm repo add linkerd https://helm.linkerd.io/stable --force-update
+            if [ "${{ parameters.action }}" = "UNINSTALL" ]; then
+              helm uninstall linkerd-viz -n linkerd-viz 2>/dev/null || true
+              helm uninstall linkerd-control-plane -n linkerd 2>/dev/null || true
+              helm uninstall linkerd-crds -n linkerd 2>/dev/null || true
+            else
+              helm upgrade --install linkerd-crds linkerd/linkerd-crds \
+                --namespace linkerd --create-namespace --wait --timeout 3m
+              helm upgrade --install linkerd-control-plane linkerd/linkerd-control-plane \
+                --namespace linkerd \
+                --set proxyInit.runAsRoot=true \
+                --wait --timeout 5m
+              helm upgrade --install linkerd-viz linkerd/linkerd-viz \
+                --namespace linkerd-viz --create-namespace --wait --timeout 5m
+            fi
+          displayName: Linkerd
+
+      # ── Traefik ───────────────────────────────────────────────────────────
+      - ${{ if eq(parameters.traefik, true) }}:
+        - script: |
+            helm repo add traefik https://traefik.github.io/charts --force-update
+            if [ "${{ parameters.action }}" = "UNINSTALL" ]; then
+              helm uninstall traefik -n networking 2>/dev/null || true
+            else
+              helm upgrade --install traefik traefik/traefik \
+                --namespace networking --create-namespace \
+                --set deployment.replicas=2 \
+                --set ports.websecure.tls.enabled=true \
+                --set ingressClass.enabled=true \
+                --set ingressClass.isDefaultClass=true \
+                --set metrics.prometheus.enabled=true \
+                --set tracing.jaeger.enabled=true \
+                --wait --timeout 5m
+              kubectl apply -f networking/traefik/ 2>/dev/null || true
+            fi
+          displayName: Traefik Edge Router
+
+      # ── Consul ────────────────────────────────────────────────────────────
+      - ${{ if eq(parameters.consul, true) }}:
+        - script: |
+            helm repo add hashicorp https://helm.releases.hashicorp.com --force-update
+            if [ "${{ parameters.action }}" = "UNINSTALL" ]; then
+              helm uninstall consul -n consul 2>/dev/null || true
+            else
+              helm upgrade --install consul hashicorp/consul \
+                --namespace consul --create-namespace \
+                --set global.name=consul \
+                --set server.replicas=3 \
+                --set server.bootstrapExpect=3 \
+                --set connectInject.enabled=true \
+                --set ui.enabled=true \
+                --wait --timeout 8m
+              kubectl apply -f networking/consul/ 2>/dev/null || true
+            fi
+          displayName: Consul
+
+      # ── ExternalDNS ───────────────────────────────────────────────────────
+      - ${{ if eq(parameters.external_dns, true) }}:
+        - script: |
+            helm repo add external-dns https://kubernetes-sigs.github.io/external-dns --force-update
+            if [ "${{ parameters.action }}" = "UNINSTALL" ]; then
+              helm uninstall external-dns -n networking 2>/dev/null || true
+            else
+              helm upgrade --install external-dns external-dns/external-dns \
+                --namespace networking --create-namespace \
+                --set provider=aws \
+                --set aws.region="$(AWS_REGION)" \
+                --set policy=sync \
+                --set txtOwnerId=shopos \
+                --wait --timeout 3m
+            fi
+          displayName: ExternalDNS
+
+      # ── MetalLB ───────────────────────────────────────────────────────────
+      - ${{ if eq(parameters.metallb, true) }}:
+        - script: |
+            helm repo add metallb https://metallb.github.io/metallb --force-update
+            if [ "${{ parameters.action }}" = "UNINSTALL" ]; then
+              helm uninstall metallb -n metallb-system 2>/dev/null || true
+            else
+              helm upgrade --install metallb metallb/metallb \
+                --namespace metallb-system --create-namespace \
+                --wait --timeout 5m
+              kubectl apply -f networking/metallb/ 2>/dev/null || true
+            fi
+          displayName: MetalLB

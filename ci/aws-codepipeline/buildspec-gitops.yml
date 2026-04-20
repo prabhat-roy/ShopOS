@@ -1,0 +1,190 @@
+version: 0.2
+
+# GitOps Tools — CodeBuild buildspec
+# Mirrors .github/workflows/gitops.yml
+# Parameters via environment variables:
+#   ENVIRONMENT, ACTION (INSTALL|UPGRADE|UNINSTALL|CONFIGURE)
+#   ARGOCD, ARGO_ROLLOUTS, ARGO_WORKFLOWS, ARGO_EVENTS, FLUXCD,
+#   SEALED_SECRETS, EXTERNAL_SECRETS, KEDA, VELERO
+
+env:
+  variables:
+    ENVIRONMENT: dev
+    ACTION: INSTALL
+    ARGOCD: "true"
+    ARGO_ROLLOUTS: "true"
+    ARGO_WORKFLOWS: "true"
+    ARGO_EVENTS: "true"
+    FLUXCD: "false"
+    SEALED_SECRETS: "true"
+    EXTERNAL_SECRETS: "true"
+    KEDA: "true"
+    VELERO: "true"
+  parameter-store:
+    MINIO_ENDPOINT: /shopos/minio/endpoint
+    MINIO_ACCESS_KEY: /shopos/minio/access-key
+  secrets-manager:
+    KUBECONFIG_CONTENT: shopos/kubeconfig:content
+    ARGOCD_ADMIN_PASSWORD_HASH: shopos/argocd:admin-password-hash
+    MINIO_SECRET_KEY: shopos/minio:secret-key
+
+phases:
+  install:
+    commands:
+      - curl -fsSL "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl" -o /usr/local/bin/kubectl && chmod +x /usr/local/bin/kubectl
+      - curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
+
+  pre_build:
+    commands:
+      - mkdir -p ~/.kube
+      - echo "$KUBECONFIG_CONTENT" | base64 -d > ~/.kube/config
+      - echo "GitOps $ACTION on $ENVIRONMENT"
+
+  build:
+    commands:
+      # ArgoCD
+      - |
+        if [ "$ARGOCD" = "true" ] && [ "$ACTION" != "CONFIGURE" ]; then
+          helm repo add argo https://argoproj.github.io/argo-helm --force-update
+          if [ "$ACTION" = "UNINSTALL" ]; then
+            helm uninstall argocd -n argocd 2>/dev/null || true
+          else
+            helm upgrade --install argocd argo/argo-cd \
+              --namespace argocd --create-namespace \
+              --set server.replicas=2 \
+              --set redis-ha.enabled=true \
+              --set controller.replicas=1 \
+              --set repoServer.replicas=2 \
+              --set applicationSet.replicas=2 \
+              --set configs.secret.argocdServerAdminPassword="$ARGOCD_ADMIN_PASSWORD_HASH" \
+              --wait --timeout 10m
+          fi
+        fi
+
+      # Argo Rollouts
+      - |
+        if [ "$ARGO_ROLLOUTS" = "true" ] && [ "$ACTION" != "CONFIGURE" ]; then
+          helm repo add argo https://argoproj.github.io/argo-helm --force-update
+          if [ "$ACTION" = "UNINSTALL" ]; then
+            helm uninstall argo-rollouts -n argo-rollouts 2>/dev/null || true
+          else
+            helm upgrade --install argo-rollouts argo/argo-rollouts \
+              --namespace argo-rollouts --create-namespace \
+              --set dashboard.enabled=true --wait --timeout 5m
+            kubectl apply -f gitops/argo-rollouts/ 2>/dev/null || true
+          fi
+        fi
+
+      # Argo Workflows
+      - |
+        if [ "$ARGO_WORKFLOWS" = "true" ] && [ "$ACTION" != "CONFIGURE" ]; then
+          helm repo add argo https://argoproj.github.io/argo-helm --force-update
+          if [ "$ACTION" = "UNINSTALL" ]; then
+            helm uninstall argo-workflows -n argo 2>/dev/null || true
+          else
+            helm upgrade --install argo-workflows argo/argo-workflows \
+              --namespace argo --create-namespace \
+              --set server.authModes[0]=server \
+              --wait --timeout 5m
+            kubectl apply -f gitops/argo-workflows/ 2>/dev/null || true
+          fi
+        fi
+
+      # Argo Events
+      - |
+        if [ "$ARGO_EVENTS" = "true" ] && [ "$ACTION" != "CONFIGURE" ]; then
+          helm repo add argo https://argoproj.github.io/argo-helm --force-update
+          if [ "$ACTION" = "UNINSTALL" ]; then
+            helm uninstall argo-events -n argo-events 2>/dev/null || true
+          else
+            helm upgrade --install argo-events argo/argo-events \
+              --namespace argo-events --create-namespace --wait --timeout 5m
+            kubectl apply -f gitops/argo-events/ 2>/dev/null || true
+          fi
+        fi
+
+      # Flux CD
+      - |
+        if [ "$FLUXCD" = "true" ] && [ "$ACTION" != "CONFIGURE" ]; then
+          curl -s https://fluxcd.io/install.sh | bash
+          if [ "$ACTION" = "UNINSTALL" ]; then
+            flux uninstall --silent 2>/dev/null || true
+          else
+            flux install --namespace=flux-system
+            kubectl apply -f gitops/flux/ 2>/dev/null || true
+          fi
+        fi
+
+      # Sealed Secrets
+      - |
+        if [ "$SEALED_SECRETS" = "true" ] && [ "$ACTION" != "CONFIGURE" ]; then
+          helm repo add sealed-secrets https://bitnami-labs.github.io/sealed-secrets --force-update
+          if [ "$ACTION" = "UNINSTALL" ]; then
+            helm uninstall sealed-secrets -n kube-system 2>/dev/null || true
+          else
+            helm upgrade --install sealed-secrets sealed-secrets/sealed-secrets \
+              --namespace kube-system --wait --timeout 3m
+          fi
+        fi
+
+      # External Secrets Operator
+      - |
+        if [ "$EXTERNAL_SECRETS" = "true" ] && [ "$ACTION" != "CONFIGURE" ]; then
+          helm repo add external-secrets https://charts.external-secrets.io --force-update
+          if [ "$ACTION" = "UNINSTALL" ]; then
+            helm uninstall external-secrets -n external-secrets 2>/dev/null || true
+          else
+            helm upgrade --install external-secrets external-secrets/external-secrets \
+              --namespace external-secrets --create-namespace \
+              --set installCRDs=true --wait --timeout 5m
+          fi
+        fi
+
+      # KEDA
+      - |
+        if [ "$KEDA" = "true" ] && [ "$ACTION" != "CONFIGURE" ]; then
+          helm repo add kedacore https://kedacore.github.io/charts --force-update
+          if [ "$ACTION" = "UNINSTALL" ]; then
+            helm uninstall keda -n keda 2>/dev/null || true
+          else
+            helm upgrade --install keda kedacore/keda \
+              --namespace keda --create-namespace \
+              --set metricsServer.replicaCount=2 --wait --timeout 5m
+            kubectl apply -f kubernetes/keda/ 2>/dev/null || true
+          fi
+        fi
+
+      # Velero
+      - |
+        if [ "$VELERO" = "true" ] && [ "$ACTION" != "CONFIGURE" ]; then
+          helm repo add vmware-tanzu https://vmware-tanzu.github.io/helm-charts --force-update
+          if [ "$ACTION" = "UNINSTALL" ]; then
+            helm uninstall velero -n velero 2>/dev/null || true
+          else
+            helm upgrade --install velero vmware-tanzu/velero \
+              --namespace velero --create-namespace \
+              --set configuration.backupStorageLocation[0].name=default \
+              --set configuration.backupStorageLocation[0].provider=aws \
+              --set configuration.backupStorageLocation[0].bucket=velero-backups \
+              --set configuration.backupStorageLocation[0].config.region=minio \
+              --set configuration.backupStorageLocation[0].config.s3ForcePathStyle=true \
+              --set "configuration.backupStorageLocation[0].config.s3Url=$MINIO_ENDPOINT" \
+              --set credentials.secretContents.cloud="[default]\naws_access_key_id=$MINIO_ACCESS_KEY\naws_secret_access_key=$MINIO_SECRET_KEY" \
+              --wait --timeout 5m
+            kubectl apply -f kubernetes/velero/ 2>/dev/null || true
+          fi
+        fi
+
+      # CONFIGURE: Bootstrap ArgoCD App-of-Apps
+      - |
+        if [ "$ACTION" = "CONFIGURE" ]; then
+          kubectl wait --for=condition=available deployment/argocd-server \
+            -n argocd --timeout=120s
+          kubectl apply -f gitops/argocd/app-of-apps.yaml
+          kubectl apply -f gitops/argocd/applicationsets/ 2>/dev/null || true
+          echo "ArgoCD App-of-Apps bootstrapped for $ENVIRONMENT"
+        fi
+
+  post_build:
+    commands:
+      - echo "GitOps $ACTION complete on $ENVIRONMENT"

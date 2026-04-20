@@ -1,0 +1,3456 @@
+# =============================================================================
+# ShopOS Enterprise Platform — Full Local Stack
+# 154 microservices + all infrastructure
+# =============================================================================
+
+services:
+
+  # ===========================================================================
+  # INFRASTRUCTURE — DATABASES
+  # ===========================================================================
+
+  postgres:
+    image: postgres:16-alpine
+    container_name: shopos-postgres
+    environment:
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_USER=postgres
+      - POSTGRES_DB=shopos
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+    networks:
+      - shopos
+
+  mongodb:
+    image: mongo:8.0
+    container_name: shopos-mongodb
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongodb_data:/data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+    networks:
+      - shopos
+
+  redis:
+    image: redis:7-alpine
+    container_name: shopos-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+    networks:
+      - shopos
+
+  cassandra:
+    image: cassandra:5.0
+    container_name: shopos-cassandra
+    ports:
+      - "9042:9042"
+    environment:
+      - CASSANDRA_CLUSTER_NAME=shopos
+    volumes:
+      - cassandra_data:/var/lib/cassandra
+    healthcheck:
+      test: ["CMD-SHELL", "nodetool status | grep -q UN"]
+      interval: 30s
+      timeout: 10s
+      retries: 10
+    restart: unless-stopped
+    networks:
+      - shopos
+
+  elasticsearch:
+    image: elasticsearch:8.15.3
+    container_name: shopos-elasticsearch
+    environment:
+      - ES_JAVA_OPTS=-Xms512m -Xmx512m
+      - discovery.type=single-node
+      - xpack.security.enabled=false
+    ports:
+      - "9200:9200"
+    volumes:
+      - elasticsearch_data:/usr/share/elasticsearch/data
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fs http://localhost:9200/_cluster/health || exit 1"]
+      interval: 15s
+      timeout: 10s
+      retries: 10
+    restart: unless-stopped
+    networks:
+      - shopos
+
+  minio:
+    image: minio/minio:latest
+    container_name: shopos-minio
+    command: server /data --console-address ":9001"
+    environment:
+      - MINIO_ROOT_USER=minioadmin
+      - MINIO_ROOT_PASSWORD=minioadmin
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - minio_data:/data
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fs http://localhost:9000/minio/health/live || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+    networks:
+      - shopos
+
+  # ===========================================================================
+  # INFRASTRUCTURE — MESSAGING
+  # ===========================================================================
+
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.7.1
+    container_name: shopos-zookeeper
+    environment:
+      - ZOOKEEPER_CLIENT_PORT=2181
+      - ZOOKEEPER_TICK_TIME=2000
+    ports:
+      - "2181:2181"
+    volumes:
+      - zookeeper_data:/var/lib/zookeeper/data
+    healthcheck:
+      test: ["CMD-SHELL", "echo ruok | nc localhost 2181 | grep imok"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+    networks:
+      - shopos
+
+  kafka:
+    image: confluentinc/cp-kafka:7.7.1
+    container_name: shopos-kafka
+    depends_on:
+      - zookeeper
+    environment:
+      - KAFKA_BROKER_ID=1
+      - KAFKA_ZOOKEEPER_CONNECT=zookeeper:2181
+      - KAFKA_ADVERTISED_LISTENERS=PLAINTEXT://kafka:9092
+      - KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR=1
+      - KAFKA_AUTO_CREATE_TOPICS_ENABLE=true
+    ports:
+      - "9092:9092"
+    volumes:
+      - kafka_data:/var/lib/kafka/data
+    healthcheck:
+      test: ["CMD-SHELL", "kafka-topics --bootstrap-server localhost:9092 --list"]
+      interval: 15s
+      timeout: 10s
+      retries: 10
+    restart: unless-stopped
+    networks:
+      - shopos
+
+  # ===========================================================================
+  # INFRASTRUCTURE — TOOLS
+  # ===========================================================================
+
+  etcd:
+    image: bitnami/etcd:3.5
+    container_name: shopos-etcd
+    environment:
+      - ALLOW_NONE_AUTHENTICATION=yes
+    ports:
+      - "2379:2379"
+    volumes:
+      - etcd_data:/bitnami/etcd
+    healthcheck:
+      test: ["CMD", "etcdctl", "endpoint", "health"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+    networks:
+      - shopos
+
+  # ===========================================================================
+  # DOMAIN: PLATFORM (22 services)
+  # ===========================================================================
+
+  api-gateway:
+    image: shopos/api-gateway:latest
+    build:
+      context: ./src/platform/api-gateway
+      dockerfile: Dockerfile
+    environment:
+      - PORT=8080
+      - KAFKA_BROKERS=kafka:9092
+      - REDIS_URL=redis://redis:6379
+      - LOG_LEVEL=info
+    ports:
+      - "8080:8080"
+    depends_on:
+      - kafka
+      - redis
+    restart: unless-stopped
+    networks:
+      - shopos
+
+  web-bff:
+    image: shopos/web-bff:latest
+    build:
+      context: ./src/platform/web-bff
+      dockerfile: Dockerfile
+    environment:
+      - PORT=8081
+      - LOG_LEVEL=info
+    ports:
+      - "8081:8081"
+    restart: unless-stopped
+    networks:
+      - shopos
+
+  mobile-bff:
+    image: shopos/mobile-bff:latest
+    build:
+      context: ./src/platform/mobile-bff
+      dockerfile: Dockerfile
+    environment:
+      - PORT=8082
+      - LOG_LEVEL=info
+    ports:
+      - "8082:8082"
+    restart: unless-stopped
+    networks:
+      - shopos
+
+  partner-bff:
+    image: shopos/partner-bff:latest
+    build:
+      context: ./src/platform/partner-bff
+      dockerfile: Dockerfile
+    environment:
+      - PORT=8083
+      - LOG_LEVEL=info
+    ports:
+      - "8083:8083"
+    restart: unless-stopped
+    networks:
+      - shopos
+
+  config-service:
+    image: shopos/config-service:latest
+    build:
+      context: ./src/platform/config-service
+      dockerfile: Dockerfile
+    environment:
+      - GRPC_PORT=50051
+      - ETCD_ENDPOINTS=etcd:2379
+      - LOG_LEVEL=info
+    ports:
+      - "50051:50051"
+    depends_on:
+      - etcd
+    restart: unless-stopped
+    networks:
+      - shopos
+
+  feature-flag-service:
+    image: shopos/feature-flag-service:latest
+    build:
+      context: ./src/platform/feature-flag-service
+      dockerfile: Dockerfile
+    environment:
+      - GRPC_PORT=50052
+      - DATABASE_URL=postgres://postgres:postgres@postgres:5432/featureflags?sslmode=disable
+      - LOG_LEVEL=info
+    ports:
+      - "50052:50052"
+    depends_on:
+      - postgres
+    restart: unless-stopped
+    networks:
+      - shopos
+
+  rate-limiter-service:
+    image: shopos/rate-limiter-service:latest
+    build:
+      context: ./src/platform/rate-limiter-service
+      dockerfile: Dockerfile
+    environment:
+      - GRPC_PORT=50053
+      - REDIS_URL=redis://redis:6379
+      - LOG_LEVEL=info
+    ports:
+      - "50053:50053"
+    depends_on:
+      - redis
+    restart: unless-stopped
+    networks:
+      - shopos
+
+  health-check-service:
+    image: shopos/health-check-service:latest
+    build:
+      context: ./src/platform/health-check-service
+      dockerfile: Dockerfile
+    environment:
+      - PORT=8090
+      - LOG_LEVEL=info
+    ports:
+      - "8090:8090"
+    restart: unless-stopped
+    networks:
+      - shopos
+
+  saga-orchestrator:
+    image: shopos/saga-orchestrator:latest
+    build:
+      context: ./src/platform/saga-orchestrator
+      dockerfile: Dockerfile
+    environment:
+      - GRPC_PORT=50054
+      - DATABASE_URL=postgres://postgres:postgres@postgres:5432/saga?sslmode=disable
+      - KAFKA_BROKERS=kafka:9092
+      - LOG_LEVEL=info
+    ports:
+      - "50054:50054"
+    depends_on:
+      - postgres
+      - kafka
+    restart: unless-stopped
+    networks:
+      - shopos
+
+  event-store-service:
+    image: shopos/event-store-service:latest
+    build:
+      context: ./src/platform/event-store-service
+      dockerfile: Dockerfile
+    environment:
+      - GRPC_PORT=50055
+      - DATABASE_URL=postgres://postgres:postgres@postgres:5432/eventstore?sslmode=disable
+      - LOG_LEVEL=info
+    ports:
+      - "50055:50055"
+    depends_on:
+      - postgres
+    restart: unless-stopped
+    networks:
+      - shopos
+
+  cache-warming-service:
+    image: shopos/cache-warming-service:latest
+    build:
+      context: ./src/platform/cache-warming-service
+      dockerfile: Dockerfile
+    environment:
+      - REDIS_URL=redis://redis:6379
+      - KAFKA_BROKERS=kafka:9092
+      - LOG_LEVEL=info
+    depends_on:
+      - redis
+      - kafka
+    restart: unless-stopped
+    networks:
+      - shopos
+
+  webhook-service:
+    image: shopos/webhook-service:latest
+    build:
+      context: ./src/platform/webhook-service
+      dockerfile: Dockerfile
+    environment:
+      - PORT=8091
+      - DATABASE_URL=postgres://postgres:postgres@postgres:5432/webhooks?sslmode=disable
+      - KAFKA_BROKERS=kafka:9092
+      - LOG_LEVEL=info
+    ports:
+      - "8091:8091"
+    depends_on:
+      - postgres
+      - kafka
+    restart: unless-stopped
+    networks:
+      - shopos
+
+  scheduler-service:
+    image: shopos/scheduler-service:latest
+    build:
+      context: ./src/platform/scheduler-service
+      dockerfile: Dockerfile
+    environment:
+      - HTTP_PORT=8095
+      - GRPC_PORT=50056
+      - DATABASE_URL=postgres://postgres:postgres@postgres:5432/scheduler?sslmode=disable
+      - LOG_LEVEL=info
+    ports:
+      - "8095:8095"
+      - "50056:50056"
+    depends_on:
+      - postgres
+    restart: unless-stopped
+    networks:
+      - shopos
+
+  worker-job-queue:
+    image: shopos/worker-job-queue:latest
+    build:
+      context: ./src/platform/worker-job-queue
+      dockerfile: Dockerfile
+    environment:
+      - GRPC_PORT=50057
+      - REDIS_URL=redis://redis:6379
+      - LOG_LEVEL=info
+    ports:
+      - "50057:50057"
+    depends_on:
+      - redis
+    restart: unless-stopped
+    networks:
+      - shopos
+
+  audit-service:
+    image: shopos/audit-service:latest
+    build:
+      context: ./src/platform/audit-service
+      dockerfile: Dockerfile
+    environment:
+      - DATABASE_URL=jdbc:postgresql://postgres:5432/audit
+      - DB_USERNAME=postgres
+      - DB_PASSWORD=postgres
+      - KAFKA_BOOTSTRAP_SERVERS=kafka:9092
+      - LOG_LEVEL=INFO
+    depends_on:
+      - postgres
+      - kafka
+    restart: unless-stopped
+    networks:
+      - shopos
+
+  load-generator:
+    image: shopos/load-generator:latest
+    build:
+      context: ./src/platform/load-generator
+      dockerfile: Dockerfile
+    environment:
+      - PORT=8089
+      - TARGET_HOST=api-gateway:8080
+      - LOG_LEVEL=info
+    ports:
+      - "8089:8089"
+    restart: unless-stopped
+    networks:
+      - shopos
+
+  admin-portal:
+    image: shopos/admin-portal:latest
+    build:
+      context: ./src/platform/admin-portal
+      dockerfile: Dockerfile
+    environment:
+      - PORT=8085
+      - DATABASE_URL=jdbc:postgresql://postgres:5432/admin
+      - DB_USERNAME=postgres
+      - DB_PASSWORD=postgres
+      - LOG_LEVEL=INFO
+    ports:
+      - "8085:8085"
+    depends_on:
+      - postgres
+    restart: unless-stopped
+    networks:
+      - shopos
+
+  graphql-gateway:
+    image: shopos/graphql-gateway:latest
+    build:
+      context: ./src/platform/graphql-gateway
+      dockerfile: Dockerfile
+    environment:
+      - PORT=8086
+      - LOG_LEVEL=info
+    ports:
+      - "8086:8086"
+    restart: unless-stopped
+    networks:
+      - shopos
+
+  dead-letter-service:
+    image: shopos/dead-letter-service:latest
+    build:
+      context: ./src/platform/dead-letter-service
+      dockerfile: Dockerfile
+    environment:
+      - KAFKA_BROKERS=kafka:9092
+      - DATABASE_URL=postgres://postgres:postgres@postgres:5432/deadletter?sslmode=disable
+      - LOG_LEVEL=info
+    depends_on:
+      - kafka
+      - postgres
+    restart: unless-stopped
+    networks:
+      - shopos
+
+  geolocation-service:
+    image: shopos/geolocation-service:latest
+    build:
+      context: ./src/platform/geolocation-service
+      dockerfile: Dockerfile
+    environment:
+      - GRPC_PORT=50058
+      - LOG_LEVEL=info
+    ports:
+      - "50058:50058"
+    restart: unless-stopped
+    networks:
+      - shopos
+
+  event-replay-service:
+    image: shopos/event-replay-service:latest
+    build:
+      context: ./src/platform/event-replay-service
+      dockerfile: Dockerfile
+    environment:
+      - GRPC_PORT=50059
+      - DATABASE_URL=postgres://postgres:postgres@postgres:5432/eventreplay?sslmode=disable
+      - LOG_LEVEL=info
+    ports:
+      - "50059:50059"
+    depends_on:
+      - postgres
+    restart: unless-stopped
+    networks:
+      - shopos
+
+  tenant-service:
+    image: shopos/tenant-service:latest
+    build:
+      context: ./src/platform/tenant-service
+      dockerfile: Dockerfile
+    environment:
+      - HTTP_PORT=8087
+      - GRPC_PORT=50068
+      - DATABASE_URL=postgres://postgres:postgres@postgres:5432/tenants?sslmode=disable
+      - LOG_LEVEL=info
+    ports:
+      - "8087:8087"
+      - "50068:50068"
+    depends_on:
+      - postgres
+    restart: unless-stopped
+    networks:
+      - shopos
+
+  # ===========================================================================
+  # DOMAIN: IDENTITY (8 services)
+  # ===========================================================================
+
+  auth-service:
+    image: shopos/auth-service:latest
+    build:
+      context: ./src/identity/auth-service
+      dockerfile: Dockerfile
+    environment:
+      - GRPC_PORT=50060
+      - DATABASE_URL=postgres://postgres:postgres@postgres:5432/auth?sslmode=disable
+      - JWT_SECRET=changeme-super-secret-jwt-key
+      - LOG_LEVEL=info
+    ports:
+      - "50060:50060"
+    depends_on:
+      - postgres
+    restart: unless-stopped
+    networks:
+      - shopos
+
+  user-service:
+    image: shopos/user-service:latest
+    build:
+      context: ./src/identity/user-service
+      dockerfile: Dockerfile
+    environment:
+      - GRPC_PORT=50061
+      - DATABASE_URL=jdbc:postgresql://postgres:5432/users
+      - DB_USERNAME=postgres
+      - DB_PASSWORD=postgres
+      - LOG_LEVEL=INFO
+    ports:
+      - "50061:50061"
+    depends_on:
+      - postgres
+    restart: unless-stopped
+    networks:
+      - shopos
+
+  session-service:
+    image: shopos/session-service:latest
+    build:
+      context: ./src/identity/session-service
+      dockerfile: Dockerfile
+    environment:
+      - GRPC_PORT=50062
+      - REDIS_URL=redis://redis:6379
+      - SESSION_TTL=3600
+      - LOG_LEVEL=info
+    ports:
+      - "50062:50062"
+    depends_on:
+      - redis
+    restart: unless-stopped
+    networks:
+      - shopos
+
+  permission-service:
+    image: shopos/permission-service:latest
+    build:
+      context: ./src/identity/permission-service
+      dockerfile: Dockerfile
+    environment:
+      - GRPC_PORT=50063
+      - DATABASE_URL=postgres://postgres:postgres@postgres:5432/permissions?sslmode=disable
+      - LOG_LEVEL=info
+    ports:
+      - "50063:50063"
+    depends_on:
+      - postgres
+    restart: unless-stopped
+    networks:
+      - shopos
+
+  mfa-service:
+    image: shopos/mfa-service:latest
+    build:
+      context: ./src/identity/mfa-service
+      dockerfile: Dockerfile
+    environment:
+      - GRPC_PORT=50064
+      - DATABASE_URL=postgres://postgres:postgres@postgres:5432/mfa?sslmode=disable
+      - LOG_LEVEL=info
+    ports:
+      - "50064:50064"
+    depends_on:
+      - postgres
+    restart: unless-stopped
+    networks:
+      - shopos
+
+  gdpr-service:
+    image: shopos/gdpr-service:latest
+    build:
+      context: ./src/identity/gdpr-service
+      dockerfile: Dockerfile
+    environment:
+      - GRPC_PORT=50065
+      - DATABASE_URL=postgres://postgres:postgres@postgres:5432/gdpr?sslmode=disable
+      - LOG_LEVEL=info
+    ports:
+      - "50065:50065"
+    depends_on:
+      - postgres
+    restart: unless-stopped
+    networks:
+      - shopos
+
+  api-key-service:
+    image: shopos/api-key-service:latest
+    build:
+      context: ./src/identity/api-key-service
+      dockerfile: Dockerfile
+    environment:
+      - GRPC_PORT=50066
+      - DATABASE_URL=postgres://postgres:postgres@postgres:5432/apikeys?sslmode=disable
+      - LOG_LEVEL=info
+    ports:
+      - "50066:50066"
+    depends_on:
+      - postgres
+    restart: unless-stopped
+    networks:
+      - shopos
+
+  device-fingerprint-service:
+    image: shopos/device-fingerprint-service:latest
+    build:
+      context: ./src/identity/device-fingerprint-service
+      dockerfile: Dockerfile
+    environment:
+      - GRPC_PORT=50067
+      - REDIS_URL=redis://redis:6379
+      - LOG_LEVEL=info
+    ports:
+      - "50067:50067"
+    depends_on:
+      - redis
+    restart: unless-stopped
+    networks:
+      - shopos
+
+  # ===========================================================================
+  # DOMAIN: CATALOG (12 services)
+  # ===========================================================================
+
+  product-catalog-service:
+    image: shopos/product-catalog-service:latest
+    build:
+      context: ./src/catalog/product-catalog-service
+      dockerfile: Dockerfile
+    environment:
+      - GRPC_PORT=50070
+      - MONGODB_URI=mongodb://mongodb:27017/catalog
+      - LOG_LEVEL=info
+    ports:
+      - "50070:50070"
+    depends_on:
+      - mongodb
+    restart: unless-stopped
+    networks:
+      - shopos
+
+  category-service:
+    image: shopos/category-service:latest
+    build:
+      context: ./src/catalog/category-service
+      dockerfile: Dockerfile
+    environment:
+      - GRPC_PORT=50071
+      - DATABASE_URL=postgres://postgres:postgres@postgres:5432/categories?sslmode=disable
+      - LOG_LEVEL=info
+    ports:
+      - "50071:50071"
+    depends_on:
+      - postgres
+    restart: unless-stopped
+    networks:
+      - shopos
+
+  brand-service:
+    image: shopos/brand-service:latest
+    build:
+      context: ./src/catalog/brand-service
+      dockerfile: Dockerfile
+    environment:
+      - GRPC_PORT=50072
+      - DATABASE_URL=postgres://postgres:postgres@postgres:5432/brands?sslmode=disable
+      - LOG_LEVEL=info
+    ports:
+      - "50072:50072"
+    depends_on:
+      - postgres
+    restart: unless-stopped
+    networks:
+      - shopos
+
+  pricing-service:
+    image: shopos/pricing-service:latest
+    build:
+      context: ./src/catalog/pricing-service
+      dockerfile: Dockerfile
+    environment:
+      - GRPC_PORT=50073
+      - DATABASE_URL=jdbc:postgresql://postgres:5432/pricing
+      - DB_USERNAME=postgres
+      - DB_PASSWORD=postgres
+      - LOG_LEVEL=INFO
+    ports:
+      - "50073:50073"
+    depends_on:
+      - postgres
+    restart: unless-stopped
+    networks:
+      - shopos
+
+  inventory-service:
+    image: shopos/inventory-service:latest
+    build:
+      context: ./src/catalog/inventory-service
+      dockerfile: Dockerfile
+    environment:
+      - GRPC_PORT=50074
+      - DATABASE_URL=postgres://postgres:postgres@postgres:5432/inventory?sslmode=disable
+      - KAFKA_BROKERS=kafka:9092
+      - LOG_LEVEL=info
+    ports:
+      - "50074:50074"
+    depends_on:
+      - postgres
+      - kafka
+    restart: unless-stopped
+    networks:
+      - shopos
+
+  bundle-service:
+    image: shopos/bundle-service:latest
+    build:
+      context: ./src/catalog/bundle-service
+      dockerfile: Dockerfile
+    environment:
+      - GRPC_PORT=50075
+      - DATABASE_URL=postgres://postgres:postgres@postgres:5432/bundles?sslmode=disable
+      - LOG_LEVEL=info
+    ports:
+      - "50075:50075"
+    depends_on:
+      - postgres
+    restart: unless-stopped
+    networks:
+      - shopos
+
+  configurator-service:
+    image: shopos/configurator-service:latest
+    build:
+      context: ./src/catalog/configurator-service
+      dockerfile: Dockerfile
+    environment:
+      - GRPC_PORT=50076
+      - MONGODB_URI=mongodb://mongodb:27017/configurator
+      - LOG_LEVEL=info
+    ports:
+      - "50076:50076"
+    depends_on:
+      - mongodb
+    restart: unless-stopped
+    networks:
+      - shopos
+
+  subscription-product-service:
+    image: shopos/subscription-product-service:latest
+    build:
+      context: ./src/catalog/subscription-product-service
+      dockerfile: Dockerfile
+    environment:
+      - GRPC_PORT=50077
+      - DATABASE_URL=jdbc:postgresql://postgres:5432/subscription_products
+      - DB_USERNAME=postgres
+      - DB_PASSWORD=postgres
+      - LOG_LEVEL=INFO
+    ports:
+      - "50077:50077"
+    depends_on:
+      - postgres
+    restart: unless-stopped
+    networks:
+      - shopos
+
+  search-service:
+    image: shopos/search-service:latest
+    build:
+      context: ./src/catalog/search-service
+      dockerfile: Dockerfile
+    environment:
+      - GRPC_PORT=50078
+      - ELASTICSEARCH_URL=http://elasticsearch:9200
+      - LOG_LEVEL=info
+    ports:
+      - "50078:50078"
+    depends_on:
+      - elasticsearch
+    restart: unless-stopped
+    networks:
+      - shopos
+
+  seo-service:
+    image: shopos/seo-service:latest
+    build:
+      context: ./src/catalog/seo-service
+      dockerfile: Dockerfile
+    environment:
+      - GRPC_PORT=50079
+      - LOG_LEVEL=info
+    ports:
+      - "50079:50079"
+    restart: unless-stopped
+    networks:
+      - shopos
+
+  product-import-service:
+    image: shopos/product-import-service:latest
+    build:
+      context: ./src/catalog/product-import-service
+      dockerfile: Dockerfile
+    environment:
+      - GRPC_PORT=50180
+      - DATABASE_URL=postgres://postgres:postgres@postgres:5432/product_imports?sslmode=disable
+      - KAFKA_BROKERS=kafka:9092
+      - LOG_LEVEL=info
+    ports:
+      - "50180:50180"
+    depends_on:
+      - postgres
+      - kafka
+    restart: unless-stopped
+    networks:
+      - shopos
+
+  price-list-service:
+    image: shopos/price-list-service:latest
+    build:
+      context: ./src/catalog/price-list-service
+      dockerfile: Dockerfile
+    environment:
+      - GRPC_PORT=50181
+      - DATABASE_URL=jdbc:postgresql://postgres:5432/price_lists
+      - DB_USERNAME=postgres
+      - DB_PASSWORD=postgres
+      - LOG_LEVEL=INFO
+    ports:
+      - "50181:50181"
+    depends_on:
+      - postgres
+    restart: unless-stopped
+    networks:
+      - shopos
+
+  # ===========================================================================
+  # DOMAIN: COMMERCE (18 services)
+  # ===========================================================================
+
+  cart-service:
+    image: shopos/cart-service:latest
+    build:
+      context: ./src/commerce/cart-service
+      dockerfile: Dockerfile
+    environment:
+      - GRPC_PORT=50080
+      - REDIS_URL=redis://redis:6379
+      - KAFKA_BROKERS=kafka:9092
+      - LOG_LEVEL=information
+    ports:
+      - "50080:50080"
+    depends_on:
+      - redis
+      - kafka
+    restart: unless-stopped
+    networks:
+      - shopos
+
+  checkout-service:
+    image: shopos/checkout-service:latest
+    build:
+      context: ./src/commerce/checkout-service
+      dockerfile: Dockerfile
+    environment:
+      - GRPC_PORT=50081
+      - KAFKA_BROKERS=kafka:9092
+      - LOG_LEVEL=info
+    ports:
+      - "50081:50081"
+    depends_on:
+      - kafka
+    restart: unless-stopped
+    networks:
+      - shopos
+
+  order-service:
+    image: shopos/order-service:latest
+    build:
+      context: ./src/commerce/order-service
+      dockerfile: Dockerfile
+    environment:
+      - GRPC_PORT=50082
+      - DATABASE_URL=jdbc:postgresql://postgres:5432/orders
+      - DB_USERNAME=postgres
+      - DB_PASSWORD=postgres
+      - KAFKA_BOOTSTRAP_SERVERS=kafka:9092
+      - LOG_LEVEL=INFO
+    ports:
+      - "50082:50082"
+    depends_on:
+      - postgres
+      - kafka
+    restart: unless-stopped
+    networks:
+      - shopos
+
+  payment-service:
+    image: shopos/payment-service:latest
+    build:
+      context: ./src/commerce/payment-service
+      dockerfile: Dockerfile
+    environment:
+      - GRPC_PORT=50083
+      - DATABASE_URL=jdbc:postgresql://postgres:5432/payments
+      - DB_USERNAME=postgres
+      - DB_PASSWORD=postgres
+      - KAFKA_BOOTSTRAP_SERVERS=kafka:9092
+      - LOG_LEVEL=INFO
+    ports:
+      - "50083:50083"
+    depends_on:
+      - postgres
+      - kafka
+    restart: unless-stopped
+    networks:
+      - shopos
+
+  shipping-service:
+    image: shopos/shipping-service:latest
+    build:
+      context: ./src/commerce/shipping-service
+      dockerfile: Dockerfile
+    environment:
+      - GRPC_PORT=50084
+      - DATABASE_URL=postgres://postgres:postgres@postgres:5432/shipping?sslmode=disable
+      - KAFKA_BROKERS=kafka:9092
+      - LOG_LEVEL=info
+    ports:
+      - "50084:50084"
+    depends_on:
+      - postgres
+      - kafka
+    restart: unless-stopped
+    networks:
+      - shopos
+
+  currency-service:
+    image: shopos/currency-service:latest
+    build:
+      context: ./src/commerce/currency-service
+      dockerfile: Dockerfile
+    environment:
+      - GRPC_PORT=50085
+      - LOG_LEVEL=info
+    ports:
+      - "50085:50085"
+    restart: unless-stopped
+    networks:
+      - shopos
+
+  tax-service:
+    image: shopos/tax-service:latest
+    build:
+      context: ./src/commerce/tax-service
+      dockerfile: Dockerfile
+    environment:
+      - GRPC_PORT=50086
+      - LOG_LEVEL=info
+    ports:
+      - "50086:50086"
+    restart: unless-stopped
+    networks:
+      - shopos
+
+  promotions-service:
+    image: shopos/promotions-service:latest
+    build:
+      context: ./src/commerce/promotions-service
+      dockerfile: Dockerfile
+    environment:
+      - GRPC_PORT=50087
+      - DATABASE_URL=jdbc:postgresql://postgres:5432/promotions
+      - DB_USERNAME=postgres
+      - DB_PASSWORD=postgres
+      - KAFKA_BOOTSTRAP_SERVERS=kafka:9092
+      - LOG_LEVEL=INFO
+    ports:
+      - "50087:50087"
+    depends_on:
+      - postgres
+      - kafka
+    restart: unless-stopped
+    networks:
+      - shopos
+
+  loyalty-service:
+    image: shopos/loyalty-service:latest
+    build:
+      context: ./src/commerce/loyalty-service
+      dockerfile: Dockerfile
+    environment:
+      - GRPC_PORT=50088
+      - DATABASE_URL=postgres://postgres:postgres@postgres:5432/loyalty?sslmode=disable
+      - KAFKA_BROKERS=kafka:9092
+      - LOG_LEVEL=info
+    ports:
+      - "50088:50088"
+    depends_on:
+      - postgres
+      - kafka
+    restart: unless-stopped
+    networks:
+      - shopos
+
+  return-refund-service:
+    image: shopos/return-refund-service:latest
+    build:
+      context: ./src/commerce/return-refund-service
+      dockerfile: Dockerfile
+    environment:
+      - GRPC_PORT=50089
+      - DATABASE_URL=Server=postgres;Port=5432;Database=returns;User Id=postgres;Password=postgres;
+      - KAFKA_BROKERS=kafka:9092
+      - LOG_LEVEL=Information
+    ports:
+      - "50089:50089"
+    depends_on:
+      - postgres
+      - kafka
+    restart: unless-stopped
+    networks:
+      - shopos
+
+  subscription-billing-service:
+    image: shopos/subscription-billing-service:latest
+    build:
+      context: ./src/commerce/subscription-billing-service
+      dockerfile: Dockerfile
+    environment:
+      - GRPC_PORT=50090
+      - DATABASE_URL=postgres://postgres:postgres@postgres:5432/subscription_billing?sslmode=disable
+      - KAFKA_BROKERS=kafka:9092
+      - LOG_LEVEL=info
+    ports:
+      - "50090:50090"
+    depends_on:
+      - postgres
+      - kafka
+    restart: unless-stopped
+    networks:
+      - shopos
+
+  fraud-detection-service:
+    image: shopos/fraud-detection-service:latest
+    build:
+      context: ./src/commerce/fraud-detection-service
+      dockerfile: Dockerfile
+    environment:
+      - GRPC_PORT=50091
+      - DATABASE_URL=postgresql://postgres:postgres@postgres:5432/fraud
+      - KAFKA_BROKERS=kafka:9092
+      - LOG_LEVEL=info
+    ports:
+      - "50091:50091"
+    depends_on:
+      - postgres
+      - kafka
+    restart: unless-stopped
+    networks:
+      - shopos
+
+  wallet-service:
+    image: shopos/wallet-service:latest
+    build:
+      context: ./src/commerce/wallet-service
+      dockerfile: Dockerfile
+    environment:
+      - GRPC_PORT=50092
+      - DATABASE_URL=postgres://postgres:postgres@postgres:5432/wallets?sslmode=disable
+      - LOG_LEVEL=info
+    ports:
+      - "50092:50092"
+    depends_on:
+      - postgres
+    restart: unless-stopped
+    networks:
+      - shopos
+
+  ab-testing-service:
+    image: shopos/ab-testing-service:latest
+    build:
+      context: ./src/commerce/ab-testing-service
+      dockerfile: Dockerfile
+    environment:
+      - GRPC_PORT=50093
+      - DATABASE_URL=postgres://postgres:postgres@postgres:5432/abtesting?sslmode=disable
+      - LOG_LEVEL=info
+    ports:
+      - "50093:50093"
+    depends_on:
+      - postgres
+    restart: unless-stopped
+    networks:
+      - shopos
+
+  gift-card-service:
+    image: shopos/gift-card-service:latest
+    build:
+      context: ./src/commerce/gift-card-service
+      dockerfile: Dockerfile
+    environment:
+      - GRPC_PORT=50094
+      - DATABASE_URL=postgres://postgres:postgres@postgres:5432/giftcards?sslmode=disable
+      - LOG_LEVEL=info
+    ports:
+      - "50094:50094"
+    depends_on:
+      - postgres
+    restart: unless-stopped
+    networks:
+      - shopos
+
+  address-validation-service:
+    image: shopos/address-validation-service:latest
+    build:
+      context: ./src/commerce/address-validation-service
+      dockerfile: Dockerfile
+    environment:
+      - GRPC_PORT=50095
+      - LOG_LEVEL=info
+    ports:
+      - "50095:50095"
+    restart: unless-stopped
+    networks:
+      - shopos
+
+  digital-goods-service:
+    image: shopos/digital-goods-service:latest
+    build:
+      context: ./src/commerce/digital-goods-service
+      dockerfile: Dockerfile
+    environment:
+      - GRPC_PORT=50096
+      - MINIO_ENDPOINT=minio:9000
+      - MINIO_ACCESS_KEY=minioadmin
+      - MINIO_SECRET_KEY=minioadmin
+      - MINIO_BUCKET=digital-goods
+      - LOG_LEVEL=info
+    ports:
+      - "50096:50096"
+    depends_on:
+      - minio
+    restart: unless-stopped
+    networks:
+      - shopos
+
+  voucher-service:
+    image: shopos/voucher-service:latest
+    build:
+      context: ./src/commerce/voucher-service
+      dockerfile: Dockerfile
+    environment:
+      - GRPC_PORT=50097
+      - DATABASE_URL=postgres://postgres:postgres@postgres:5432/vouchers?sslmode=disable
+      - LOG_LEVEL=info
+    ports:
+      - "50097:50097"
+    depends_on:
+      - postgres
+    restart: unless-stopped
+    networks:
+      - shopos
+
+  pre-order-service:
+    image: shopos/pre-order-service:latest
+    build:
+      context: ./src/commerce/pre-order-service
+      dockerfile: Dockerfile
+    environment:
+      - GRPC_PORT=50098
+      - DATABASE_URL=postgres://postgres:postgres@postgres:5432/preorders?sslmode=disable
+      - LOG_LEVEL=info
+    ports:
+      - "50098:50098"
+    depends_on:
+      - postgres
+    restart: unless-stopped
+    networks:
+      - shopos
+
+  backorder-service:
+    image: shopos/backorder-service:latest
+    build:
+      context: ./src/commerce/backorder-service
+      dockerfile: Dockerfile
+    environment:
+      - GRPC_PORT=50099
+      - DATABASE_URL=postgres://postgres:postgres@postgres:5432/backorders?sslmode=disable
+      - LOG_LEVEL=info
+    ports:
+      - "50099:50099"
+    depends_on:
+      - postgres
+    restart: unless-stopped
+    networks:
+      - shopos
+
+  waitlist-service:
+    image: shopos/waitlist-service:latest
+    build:
+      context: ./src/commerce/waitlist-service
+      dockerfile: Dockerfile
+    environment:
+      - GRPC_PORT=50183
+      - REDIS_URL=redis://redis:6379
+      - LOG_LEVEL=info
+    ports:
+      - "50183:50183"
+    depends_on:
+      - redis
+    restart: unless-stopped
+    networks:
+      - shopos
+
+  flash-sale-service:
+    image: shopos/flash-sale-service:latest
+    build:
+      context: ./src/commerce/flash-sale-service
+      dockerfile: Dockerfile
+    environment:
+      - GRPC_PORT=50184
+      - REDIS_URL=redis://redis:6379
+      - LOG_LEVEL=info
+    ports:
+      - "50184:50184"
+    depends_on:
+      - redis
+    restart: unless-stopped
+    networks:
+      - shopos
+
+  bnpl-service:
+    image: shopos/bnpl-service:latest
+    build:
+      context: ./src/commerce/bnpl-service
+      dockerfile: Dockerfile
+    environment:
+      - GRPC_PORT=50185
+      - DATABASE_URL=postgres://postgres:postgres@postgres:5432/bnpl?sslmode=disable
+      - LOG_LEVEL=info
+    ports:
+      - "50185:50185"
+    depends_on:
+      - postgres
+    restart: unless-stopped
+    networks:
+      - shopos
+
+  # ===========================================================================
+  # DOMAIN: SUPPLY CHAIN (13 services)
+  # ===========================================================================
+
+  vendor-service:
+    image: shopos/vendor-service:latest
+    build:
+      context: ./src/supply-chain/vendor-service
+      dockerfile: Dockerfile
+    environment:
+      - GRPC_PORT=50100
+      - DATABASE_URL=jdbc:postgresql://postgres:5432/vendors
+      - DB_USERNAME=postgres
+      - DB_PASSWORD=postgres
+      - LOG_LEVEL=INFO
+    ports:
+      - "50100:50100"
+    depends_on:
+      - postgres
+    restart: unless-stopped
+    networks:
+      - shopos
+
+  purchase-order-service:
+    image: shopos/purchase-order-service:latest
+    build:
+      context: ./src/supply-chain/purchase-order-service
+      dockerfile: Dockerfile
+    environment:
+      - GRPC_PORT=50101
+      - DATABASE_URL=jdbc:postgresql://postgres:5432/purchase_orders
+      - DB_USERNAME=postgres
+      - DB_PASSWORD=postgres
+      - KAFKA_BOOTSTRAP_SERVERS=kafka:9092
+      - LOG_LEVEL=INFO
+    ports:
+      - "50101:50101"
+    depends_on:
+      - postgres
+      - kafka
+    restart: unless-stopped
+    networks:
+      - shopos
+
+  warehouse-service:
+    image: shopos/warehouse-service:latest
+    build:
+      context: ./src/supply-chain/warehouse-service
+      dockerfile: Dockerfile
+    environment:
+      - GRPC_PORT=50102
+      - DATABASE_URL=postgres://postgres:postgres@postgres:5432/warehouse?sslmode=disable
+      - KAFKA_BROKERS=kafka:9092
+      - LOG_LEVEL=info
+    ports:
+      - "50102:50102"
+    depends_on:
+      - postgres
+      - kafka
+    restart: unless-stopped
+    networks:
+      - shopos
+
+  fulfillment-service:
+    image: shopos/fulfillment-service:latest
+    build:
+      context: ./src/supply-chain/fulfillment-service
+      dockerfile: Dockerfile
+    environment:
+      - GRPC_PORT=50103
+      - DATABASE_URL=postgres://postgres:postgres@postgres:5432/fulfillment?sslmode=disable
+      - KAFKA_BROKERS=kafka:9092
+      - LOG_LEVEL=info
+    ports:
+      - "50103:50103"
+    depends_on:
+      - postgres
+      - kafka
+    restart: unless-stopped
+    networks:
+      - shopos
+
+  tracking-service:
+    image: shopos/tracking-service:latest
+    build:
+      context: ./src/supply-chain/tracking-service
+      dockerfile: Dockerfile
+    environment:
+      - GRPC_PORT=50104
+      - MONGODB_URI=mongodb://mongodb:27017/tracking
+      - KAFKA_BROKERS=kafka:9092
+      - LOG_LEVEL=info
+    ports:
+      - "50104:50104"
+    depends_on:
+      - mongodb
+      - kafka
+    restart: unless-stopped
+    networks:
+      - shopos
+
+  label-service:
+    image: shopos/label-service:latest
+    build:
+      context: ./src/supply-chain/label-service
+      dockerfile: Dockerfile
+    environment:
+      - GRPC_PORT=50105
+      - LOG_LEVEL=info
+    ports:
+      - "50105:50105"
+    restart: unless-stopped
+    networks:
+      - shopos
+
+  carrier-integration-service:
+    image: shopos/carrier-integration-service:latest
+    build:
+      context: ./src/supply-chain/carrier-integration-service
+      dockerfile: Dockerfile
+    environment:
+      - GRPC_PORT=50106
+      - LOG_LEVEL=info
+    ports:
+      - "50106:50106"
+    restart: unless-stopped
+    networks:
+      - shopos
+
+  demand-forecast-service:
+    image: shopos/demand-forecast-service:latest
+    build:
+      context: ./src/supply-chain/demand-forecast-service
+      dockerfile: Dockerfile
+    environment:
+      - DATABASE_URL=postgresql://postgres:postgres@postgres:5432/demand_forecast
+      - KAFKA_BROKERS=kafka:9092
+      - LOG_LEVEL=info
+    depends_on:
+      - postgres
+      - kafka
+    restart: unless-stopped
+    networks:
+      - shopos
+
+  customs-duties-service:
+    image: shopos/customs-duties-service:latest
+    build:
+      context: ./src/supply-chain/customs-duties-service
+      dockerfile: Dockerfile
+    environment:
+      - GRPC_PORT=50107
+      - LOG_LEVEL=info
+    ports:
+      - "50107:50107"
+    restart: unless-stopped
+    networks:
+      - shopos
+
+  returns-logistics-service:
+    image: shopos/returns-logistics-service:latest
+    build:
+      context: ./src/supply-chain/returns-logistics-service
+      dockerfile: Dockerfile
+    environment:
+      - GRPC_PORT=50108
+      - DATABASE_URL=postgres://postgres:postgres@postgres:5432/returns_logistics?sslmode=disable
+      - KAFKA_BROKERS=kafka:9092
+      - LOG_LEVEL=info
+    ports:
+      - "50108:50108"
+    depends_on:
+      - postgres
+      - kafka
+    restart: unless-stopped
+    networks:
+      - shopos
+
+  supplier-portal-service:
+    image: shopos/supplier-portal-service:latest
+    build:
+      context: ./src/supply-chain/supplier-portal-service
+      dockerfile: Dockerfile
+    environment:
+      - PORT=8088
+      - DATABASE_URL=jdbc:postgresql://postgres:5432/supplier_portal
+      - DB_USERNAME=postgres
+      - DB_PASSWORD=postgres
+      - LOG_LEVEL=INFO
+    ports:
+      - "8088:8088"
+    depends_on:
+      - postgres
+    restart: unless-stopped
+    networks:
+      - shopos
+
+  cold-chain-service:
+    image: shopos/cold-chain-service:latest
+    build:
+      context: ./src/supply-chain/cold-chain-service
+      dockerfile: Dockerfile
+    environment:
+      - GRPC_PORT=50193
+      - MONGODB_URI=mongodb://mongodb:27017/coldchain
+      - KAFKA_BROKERS=kafka:9092
+      - LOG_LEVEL=info
+    ports:
+      - "50193:50193"
+    depends_on:
+      - mongodb
+      - kafka
+    restart: unless-stopped
+    networks:
+      - shopos
+
+  supplier-rating-service:
+    image: shopos/supplier-rating-service:latest
+    build:
+      context: ./src/supply-chain/supplier-rating-service
+      dockerfile: Dockerfile
+    environment:
+      - GRPC_PORT=50194
+      - DATABASE_URL=postgres://postgres:postgres@postgres:5432/supplier_ratings?sslmode=disable
+      - LOG_LEVEL=info
+    ports:
+      - "50194:50194"
+    depends_on:
+      - postgres
+    restart: unless-stopped
+    networks:
+      - shopos
+
+  # ===========================================================================
+  # DOMAIN: FINANCIAL (11 services)
+  # ===========================================================================
+
+  invoice-service:
+    image: shopos/invoice-service:latest
+    build:
+      context: ./src/financial/invoice-service
+      dockerfile: Dockerfile
+    environment:
+      - GRPC_PORT=50110
+      - DATABASE_URL=jdbc:postgresql://postgres:5432/invoices
+      - DB_USERNAME=postgres
+      - DB_PASSWORD=postgres
+      - KAFKA_BOOTSTRAP_SERVERS=kafka:9092
+      - LOG_LEVEL=INFO
+    ports:
+      - "50110:50110"
+    depends_on:
+      - postgres
+      - kafka
+    restart: unless-stopped
+    networks:
+      - shopos
+
+  accounting-service:
+    image: shopos/accounting-service:latest
+    build:
+      context: ./src/financial/accounting-service
+      dockerfile: Dockerfile
+    environment:
+      - GRPC_PORT=50111
+      - DATABASE_URL=jdbc:postgresql://postgres:5432/accounting
+      - DB_USERNAME=postgres
+      - DB_PASSWORD=postgres
+      - KAFKA_BOOTSTRAP_SERVERS=kafka:9092
+      - LOG_LEVEL=INFO
+    ports:
+      - "50111:50111"
+    depends_on:
+      - postgres
+      - kafka
+    restart: unless-stopped
+    networks:
+      - shopos
+
+  payout-service:
+    image: shopos/payout-service:latest
+    build:
+      context: ./src/financial/payout-service
+      dockerfile: Dockerfile
+    environment:
+      - GRPC_PORT=50112
+      - DATABASE_URL=jdbc:postgresql://postgres:5432/payouts
+      - DB_USERNAME=postgres
+      - DB_PASSWORD=postgres
+      - KAFKA_BOOTSTRAP_SERVERS=kafka:9092
+      - LOG_LEVEL=INFO
+    ports:
+      - "50112:50112"
+    depends_on:
+      - postgres
+      - kafka
+    restart: unless-stopped
+    networks:
+      - shopos
+
+  reconciliation-service:
+    image: shopos/reconciliation-service:latest
+    build:
+      context: ./src/financial/reconciliation-service
+      dockerfile: Dockerfile
+    environment:
+      - DATABASE_URL=jdbc:postgresql://postgres:5432/reconciliation
+      - DB_USERNAME=postgres
+      - DB_PASSWORD=postgres
+      - KAFKA_BOOTSTRAP_SERVERS=kafka:9092
+      - LOG_LEVEL=INFO
+    depends_on:
+      - postgres
+      - kafka
+    restart: unless-stopped
+    networks:
+      - shopos
+
+  tax-reporting-service:
+    image: shopos/tax-reporting-service:latest
+    build:
+      context: ./src/financial/tax-reporting-service
+      dockerfile: Dockerfile
+    environment:
+      - GRPC_PORT=50113
+      - DATABASE_URL=postgres://postgres:postgres@postgres:5432/tax_reporting?sslmode=disable
+      - LOG_LEVEL=info
+    ports:
+      - "50113:50113"
+    depends_on:
+      - postgres
+    restart: unless-stopped
+    networks:
+      - shopos
+
+  expense-management-service:
+    image: shopos/expense-management-service:latest
+    build:
+      context: ./src/financial/expense-management-service
+      dockerfile: Dockerfile
+    environment:
+      - GRPC_PORT=50114
+      - DATABASE_URL=postgres://postgres:postgres@postgres:5432/expenses?sslmode=disable
+      - LOG_LEVEL=info
+    ports:
+      - "50114:50114"
+    depends_on:
+      - postgres
+    restart: unless-stopped
+    networks:
+      - shopos
+
+  credit-service:
+    image: shopos/credit-service:latest
+    build:
+      context: ./src/financial/credit-service
+      dockerfile: Dockerfile
+    environment:
+      - GRPC_PORT=50115
+      - DATABASE_URL=postgres://postgres:postgres@postgres:5432/credit?sslmode=disable
+      - LOG_LEVEL=info
+    ports:
+      - "50115:50115"
+    depends_on:
+      - postgres
+    restart: unless-stopped
+    networks:
+      - shopos
+
+  kyc-aml-service:
+    image: shopos/kyc-aml-service:latest
+    build:
+      context: ./src/financial/kyc-aml-service
+      dockerfile: Dockerfile
+    environment:
+      - GRPC_PORT=50116
+      - DATABASE_URL=jdbc:postgresql://postgres:5432/kyc_aml
+      - DB_USERNAME=postgres
+      - DB_PASSWORD=postgres
+      - KAFKA_BOOTSTRAP_SERVERS=kafka:9092
+      - LOG_LEVEL=INFO
+    ports:
+      - "50116:50116"
+    depends_on:
+      - postgres
+      - kafka
+    restart: unless-stopped
+    networks:
+      - shopos
+
+  budget-service:
+    image: shopos/budget-service:latest
+    build:
+      context: ./src/financial/budget-service
+      dockerfile: Dockerfile
+    environment:
+      - GRPC_PORT=50117
+      - DATABASE_URL=postgres://postgres:postgres@postgres:5432/budgets?sslmode=disable
+      - LOG_LEVEL=info
+    ports:
+      - "50117:50117"
+    depends_on:
+      - postgres
+    restart: unless-stopped
+    networks:
+      - shopos
+
+  chargeback-service:
+    image: shopos/chargeback-service:latest
+    build:
+      context: ./src/financial/chargeback-service
+      dockerfile: Dockerfile
+    environment:
+      - SERVER_PORT=50191
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/chargebacks
+      - SPRING_DATASOURCE_USERNAME=postgres
+      - SPRING_DATASOURCE_PASSWORD=postgres
+      - LOG_LEVEL=INFO
+    ports:
+      - "50191:50191"
+    depends_on:
+      - postgres
+    restart: unless-stopped
+    networks:
+      - shopos
+
+  revenue-recognition-service:
+    image: shopos/revenue-recognition-service:latest
+    build:
+      context: ./src/financial/revenue-recognition-service
+      dockerfile: Dockerfile
+    environment:
+      - SERVER_PORT=50192
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/revenuerec
+      - SPRING_DATASOURCE_USERNAME=postgres
+      - SPRING_DATASOURCE_PASSWORD=postgres
+      - LOG_LEVEL=INFO
+    ports:
+      - "50192:50192"
+    depends_on:
+      - postgres
+    restart: unless-stopped
+    networks:
+      - shopos
+
+  # ===========================================================================
+  # DOMAIN: CUSTOMER EXPERIENCE (14 services)
+  # ===========================================================================
+
+  review-rating-service:
+    image: shopos/review-rating-service:latest
+    build:
+      context: ./src/customer-experience/review-rating-service
+      dockerfile: Dockerfile
+    environment:
+      - GRPC_PORT=50120
+      - MONGODB_URI=mongodb://mongodb:27017/reviews
+      - KAFKA_BROKERS=kafka:9092
+      - LOG_LEVEL=info
+    ports:
+      - "50120:50120"
+    depends_on:
+      - mongodb
+      - kafka
+    restart: unless-stopped
+    networks:
+      - shopos
+
+  qa-service:
+    image: shopos/qa-service:latest
+    build:
+      context: ./src/customer-experience/qa-service
+      dockerfile: Dockerfile
+    environment:
+      - GRPC_PORT=50121
+      - MONGODB_URI=mongodb://mongodb:27017/qa
+      - LOG_LEVEL=info
+    ports:
+      - "50121:50121"
+    depends_on:
+      - mongodb
+    restart: unless-stopped
+    networks:
+      - shopos
+
+  wishlist-service:
+    image: shopos/wishlist-service:latest
+    build:
+      context: ./src/customer-experience/wishlist-service
+      dockerfile: Dockerfile
+    environment:
+      - GRPC_PORT=50122
+      - DATABASE_URL=postgres://postgres:postgres@postgres:5432/wishlists?sslmode=disable
+      - LOG_LEVEL=info
+    ports:
+      - "50122:50122"
+    depends_on:
+      - postgres
+    restart: unless-stopped
+    networks:
+      - shopos
+
+  compare-service:
+    image: shopos/compare-service:latest
+    build:
+      context: ./src/customer-experience/compare-service
+      dockerfile: Dockerfile
+    environment:
+      - GRPC_PORT=50123
+      - REDIS_URL=redis://redis:6379
+      - LOG_LEVEL=info
+    ports:
+      - "50123:50123"
+    depends_on:
+      - redis
+    restart: unless-stopped
+    networks:
+      - shopos
+
+  recently-viewed-service:
+    image: shopos/recently-viewed-service:latest
+    build:
+      context: ./src/customer-experience/recently-viewed-service
+      dockerfile: Dockerfile
+    environment:
+      - GRPC_PORT=50124
+      - REDIS_URL=redis://redis:6379
+      - LOG_LEVEL=info
+    ports:
+      - "50124:50124"
+    depends_on:
+      - redis
+    restart: unless-stopped
+    networks:
+      - shopos
+
+  support-ticket-service:
+    image: shopos/support-ticket-service:latest
+    build:
+      context: ./src/customer-experience/support-ticket-service
+      dockerfile: Dockerfile
+    environment:
+      - GRPC_PORT=50125
+      - DATABASE_URL=jdbc:postgresql://postgres:5432/support_tickets
+      - DB_USERNAME=postgres
+      - DB_PASSWORD=postgres
+      - KAFKA_BOOTSTRAP_SERVERS=kafka:9092
+      - LOG_LEVEL=INFO
+    ports:
+      - "50125:50125"
+    depends_on:
+      - postgres
+      - kafka
+    restart: unless-stopped
+    networks:
+      - shopos
+
+  live-chat-service:
+    image: shopos/live-chat-service:latest
+    build:
+      context: ./src/customer-experience/live-chat-service
+      dockerfile: Dockerfile
+    environment:
+      - GRPC_PORT=50126
+      - REDIS_URL=redis://redis:6379
+      - LOG_LEVEL=info
+    ports:
+      - "50126:50126"
+    depends_on:
+      - redis
+    restart: unless-stopped
+    networks:
+      - shopos
+
+  consent-management-service:
+    image: shopos/consent-management-service:latest
+    build:
+      context: ./src/customer-experience/consent-management-service
+      dockerfile: Dockerfile
+    environment:
+      - GRPC_PORT=50127
+      - DATABASE_URL=postgresql://postgres:postgres@postgres:5432/consent
+      - LOG_LEVEL=info
+    ports:
+      - "50127:50127"
+    depends_on:
+      - postgres
+    restart: unless-stopped
+    networks:
+      - shopos
+
+  age-verification-service:
+    image: shopos/age-verification-service:latest
+    build:
+      context: ./src/customer-experience/age-verification-service
+      dockerfile: Dockerfile
+    environment:
+      - GRPC_PORT=50128
+      - LOG_LEVEL=info
+    ports:
+      - "50128:50128"
+    restart: unless-stopped
+    networks:
+      - shopos
+
+  survey-service:
+    image: shopos/survey-service:latest
+    build:
+      context: ./src/customer-experience/survey-service
+      dockerfile: Dockerfile
+    environment:
+      - GRPC_PORT=50129
+      - DATABASE_URL=postgresql://postgres:postgres@postgres:5432/surveys
+      - LOG_LEVEL=info
+    ports:
+      - "50129:50129"
+    depends_on:
+      - postgres
+    restart: unless-stopped
+    networks:
+      - shopos
+
+  feedback-service:
+    image: shopos/feedback-service:latest
+    build:
+      context: ./src/customer-experience/feedback-service
+      dockerfile: Dockerfile
+    environment:
+      - GRPC_PORT=50182
+      - DATABASE_URL=postgresql://postgres:postgres@postgres:5432/feedback
+      - KAFKA_BROKERS=kafka:9092
+      - LOG_LEVEL=info
+    ports:
+      - "50182:50182"
+    depends_on:
+      - postgres
+      - kafka
+    restart: unless-stopped
+    networks:
+      - shopos
+
+  price-alert-service:
+    image: shopos/price-alert-service:latest
+    build:
+      context: ./src/customer-experience/price-alert-service
+      dockerfile: Dockerfile
+    environment:
+      - GRPC_PORT=50186
+      - REDIS_URL=redis://redis:6379
+      - LOG_LEVEL=info
+    ports:
+      - "50186:50186"
+    depends_on:
+      - redis
+    restart: unless-stopped
+    networks:
+      - shopos
+
+  back-in-stock-service:
+    image: shopos/back-in-stock-service:latest
+    build:
+      context: ./src/customer-experience/back-in-stock-service
+      dockerfile: Dockerfile
+    environment:
+      - GRPC_PORT=50187
+      - REDIS_URL=redis://redis:6379
+      - LOG_LEVEL=info
+    ports:
+      - "50187:50187"
+    depends_on:
+      - redis
+    restart: unless-stopped
+    networks:
+      - shopos
+
+  gift-registry-service:
+    image: shopos/gift-registry-service:latest
+    build:
+      context: ./src/customer-experience/gift-registry-service
+      dockerfile: Dockerfile
+    environment:
+      - GRPC_PORT=50188
+      - DATABASE_URL=postgres://postgres:postgres@postgres:5432/gift_registry?sslmode=disable
+      - LOG_LEVEL=info
+    ports:
+      - "50188:50188"
+    depends_on:
+      - postgres
+    restart: unless-stopped
+    networks:
+      - shopos
+
+  # ===========================================================================
+  # DOMAIN: COMMUNICATIONS (9 services)
+  # ===========================================================================
+
+  notification-orchestrator:
+    image: shopos/notification-orchestrator:latest
+    build:
+      context: ./src/communications/notification-orchestrator
+      dockerfile: Dockerfile
+    environment:
+      - KAFKA_BROKERS=kafka:9092
+      - LOG_LEVEL=info
+    depends_on:
+      - kafka
+    restart: unless-stopped
+    networks:
+      - shopos
+
+  email-service:
+    image: shopos/email-service:latest
+    build:
+      context: ./src/communications/email-service
+      dockerfile: Dockerfile
+    environment:
+      - KAFKA_BROKERS=kafka:9092
+      - SMTP_HOST=localhost
+      - SMTP_PORT=25
+      - LOG_LEVEL=info
+    depends_on:
+      - kafka
+    restart: unless-stopped
+    networks:
+      - shopos
+
+  sms-service:
+    image: shopos/sms-service:latest
+    build:
+      context: ./src/communications/sms-service
+      dockerfile: Dockerfile
+    environment:
+      - KAFKA_BROKERS=kafka:9092
+      - LOG_LEVEL=info
+    depends_on:
+      - kafka
+    restart: unless-stopped
+    networks:
+      - shopos
+
+  push-notification-service:
+    image: shopos/push-notification-service:latest
+    build:
+      context: ./src/communications/push-notification-service
+      dockerfile: Dockerfile
+    environment:
+      - KAFKA_BROKERS=kafka:9092
+      - LOG_LEVEL=info
+    depends_on:
+      - kafka
+    restart: unless-stopped
+    networks:
+      - shopos
+
+  template-service:
+    image: shopos/template-service:latest
+    build:
+      context: ./src/communications/template-service
+      dockerfile: Dockerfile
+    environment:
+      - GRPC_PORT=50131
+      - MONGODB_URI=mongodb://mongodb:27017/templates
+      - LOG_LEVEL=info
+    ports:
+      - "50131:50131"
+    depends_on:
+      - mongodb
+    restart: unless-stopped
+    networks:
+      - shopos
+
+  in-app-notification-service:
+    image: shopos/in-app-notification-service:latest
+    build:
+      context: ./src/communications/in-app-notification-service
+      dockerfile: Dockerfile
+    environment:
+      - GRPC_PORT=50132
+      - REDIS_URL=redis://redis:6379
+      - KAFKA_BROKERS=kafka:9092
+      - LOG_LEVEL=info
+    ports:
+      - "50132:50132"
+    depends_on:
+      - redis
+      - kafka
+    restart: unless-stopped
+    networks:
+      - shopos
+
+  digest-service:
+    image: shopos/digest-service:latest
+    build:
+      context: ./src/communications/digest-service
+      dockerfile: Dockerfile
+    environment:
+      - DATABASE_URL=postgres://postgres:postgres@postgres:5432/digests?sslmode=disable
+      - KAFKA_BROKERS=kafka:9092
+      - LOG_LEVEL=info
+    depends_on:
+      - postgres
+      - kafka
+    restart: unless-stopped
+    networks:
+      - shopos
+
+  whatsapp-service:
+    image: shopos/whatsapp-service:latest
+    build:
+      context: ./src/communications/whatsapp-service
+      dockerfile: Dockerfile
+    environment:
+      - HTTP_PORT=3020
+      - KAFKA_BROKERS=kafka:9092
+      - WHATSAPP_API_URL=https://api.whatsapp.com
+      - WHATSAPP_API_TOKEN=changeme
+      - LOG_LEVEL=info
+    ports:
+      - "3020:3020"
+    depends_on:
+      - kafka
+    restart: unless-stopped
+    networks:
+      - shopos
+
+  chatbot-service:
+    image: shopos/chatbot-service:latest
+    build:
+      context: ./src/communications/chatbot-service
+      dockerfile: Dockerfile
+    environment:
+      - HTTP_PORT=8193
+      - REDIS_URL=redis://redis:6379
+      - LOG_LEVEL=info
+    ports:
+      - "8198:8193"
+    depends_on:
+      - redis
+    restart: unless-stopped
+    networks:
+      - shopos
+
+  # ===========================================================================
+  # DOMAIN: CONTENT (8 services)
+  # ===========================================================================
+
+  media-asset-service:
+    image: shopos/media-asset-service:latest
+    build:
+      context: ./src/content/media-asset-service
+      dockerfile: Dockerfile
+    environment:
+      - GRPC_PORT=50140
+      - MINIO_ENDPOINT=minio:9000
+      - MINIO_ACCESS_KEY=minioadmin
+      - MINIO_SECRET_KEY=minioadmin
+      - MINIO_BUCKET=media-assets
+      - LOG_LEVEL=info
+    ports:
+      - "50140:50140"
+    depends_on:
+      - minio
+    restart: unless-stopped
+    networks:
+      - shopos
+
+  image-processing-service:
+    image: shopos/image-processing-service:latest
+    build:
+      context: ./src/content/image-processing-service
+      dockerfile: Dockerfile
+    environment:
+      - GRPC_PORT=50141
+      - MINIO_ENDPOINT=minio:9000
+      - MINIO_ACCESS_KEY=minioadmin
+      - MINIO_SECRET_KEY=minioadmin
+      - LOG_LEVEL=info
+    ports:
+      - "50141:50141"
+    depends_on:
+      - minio
+    restart: unless-stopped
+    networks:
+      - shopos
+
+  document-service:
+    image: shopos/document-service:latest
+    build:
+      context: ./src/content/document-service
+      dockerfile: Dockerfile
+    environment:
+      - GRPC_PORT=50142
+      - DATABASE_URL=jdbc:postgresql://postgres:5432/documents
+      - DB_USERNAME=postgres
+      - DB_PASSWORD=postgres
+      - MINIO_ENDPOINT=minio:9000
+      - MINIO_ACCESS_KEY=minioadmin
+      - MINIO_SECRET_KEY=minioadmin
+      - MINIO_BUCKET=documents
+      - LOG_LEVEL=INFO
+    ports:
+      - "50142:50142"
+    depends_on:
+      - postgres
+      - minio
+    restart: unless-stopped
+    networks:
+      - shopos
+
+  cms-service:
+    image: shopos/cms-service:latest
+    build:
+      context: ./src/content/cms-service
+      dockerfile: Dockerfile
+    environment:
+      - GRPC_PORT=50143
+      - MONGODB_URI=mongodb://mongodb:27017/cms
+      - LOG_LEVEL=info
+    ports:
+      - "50143:50143"
+    depends_on:
+      - mongodb
+    restart: unless-stopped
+    networks:
+      - shopos
+
+  video-service:
+    image: shopos/video-service:latest
+    build:
+      context: ./src/content/video-service
+      dockerfile: Dockerfile
+    environment:
+      - GRPC_PORT=50144
+      - MINIO_ENDPOINT=minio:9000
+      - MINIO_ACCESS_KEY=minioadmin
+      - MINIO_SECRET_KEY=minioadmin
+      - MINIO_BUCKET=videos
+      - LOG_LEVEL=info
+    ports:
+      - "50144:50144"
+    depends_on:
+      - minio
+    restart: unless-stopped
+    networks:
+      - shopos
+
+  sitemap-service:
+    image: shopos/sitemap-service:latest
+    build:
+      context: ./src/content/sitemap-service
+      dockerfile: Dockerfile
+    environment:
+      - GRPC_PORT=50145
+      - LOG_LEVEL=info
+    ports:
+      - "50145:50145"
+    restart: unless-stopped
+    networks:
+      - shopos
+
+  i18n-l10n-service:
+    image: shopos/i18n-l10n-service:latest
+    build:
+      context: ./src/content/i18n-l10n-service
+      dockerfile: Dockerfile
+    environment:
+      - GRPC_PORT=50146
+      - DATABASE_URL=postgres://postgres:postgres@postgres:5432/i18n?sslmode=disable
+      - LOG_LEVEL=info
+    ports:
+      - "50146:50146"
+    depends_on:
+      - postgres
+    restart: unless-stopped
+    networks:
+      - shopos
+
+  data-export-service:
+    image: shopos/data-export-service:latest
+    build:
+      context: ./src/content/data-export-service
+      dockerfile: Dockerfile
+    environment:
+      - GRPC_PORT=50147
+      - MINIO_ENDPOINT=minio:9000
+      - MINIO_ACCESS_KEY=minioadmin
+      - MINIO_SECRET_KEY=minioadmin
+      - MINIO_BUCKET=exports
+      - LOG_LEVEL=info
+    ports:
+      - "50147:50147"
+    depends_on:
+      - minio
+    restart: unless-stopped
+    networks:
+      - shopos
+
+  # ===========================================================================
+  # DOMAIN: ANALYTICS/AI (10 services)
+  # ===========================================================================
+
+  analytics-service:
+    image: shopos/analytics-service:latest
+    build:
+      context: ./src/analytics-ai/analytics-service
+      dockerfile: Dockerfile
+    environment:
+      - CASSANDRA_HOSTS=cassandra
+      - CASSANDRA_PORT=9042
+      - CASSANDRA_KEYSPACE=analytics
+      - KAFKA_BROKERS=kafka:9092
+      - LOG_LEVEL=info
+    depends_on:
+      - cassandra
+      - kafka
+    restart: unless-stopped
+    networks:
+      - shopos
+
+  reporting-service:
+    image: shopos/reporting-service:latest
+    build:
+      context: ./src/analytics-ai/reporting-service
+      dockerfile: Dockerfile
+    environment:
+      - CASSANDRA_HOSTS=cassandra
+      - CASSANDRA_PORT=9042
+      - CASSANDRA_KEYSPACE=reporting
+      - KAFKA_BOOTSTRAP_SERVERS=kafka:9092
+      - LOG_LEVEL=INFO
+    depends_on:
+      - cassandra
+      - kafka
+    restart: unless-stopped
+    networks:
+      - shopos
+
+  recommendation-service:
+    image: shopos/recommendation-service:latest
+    build:
+      context: ./src/analytics-ai/recommendation-service
+      dockerfile: Dockerfile
+    environment:
+      - GRPC_PORT=50150
+      - LOG_LEVEL=info
+    ports:
+      - "50150:50150"
+    restart: unless-stopped
+    networks:
+      - shopos
+
+  sentiment-analysis-service:
+    image: shopos/sentiment-analysis-service:latest
+    build:
+      context: ./src/analytics-ai/sentiment-analysis-service
+      dockerfile: Dockerfile
+    environment:
+      - DATABASE_URL=postgresql://postgres:postgres@postgres:5432/sentiment
+      - KAFKA_BROKERS=kafka:9092
+      - LOG_LEVEL=info
+    depends_on:
+      - postgres
+      - kafka
+    restart: unless-stopped
+    networks:
+      - shopos
+
+  price-optimization-service:
+    image: shopos/price-optimization-service:latest
+    build:
+      context: ./src/analytics-ai/price-optimization-service
+      dockerfile: Dockerfile
+    environment:
+      - GRPC_PORT=50151
+      - DATABASE_URL=postgresql://postgres:postgres@postgres:5432/price_optimization
+      - LOG_LEVEL=info
+    ports:
+      - "50151:50151"
+    depends_on:
+      - postgres
+    restart: unless-stopped
+    networks:
+      - shopos
+
+  ml-feature-store:
+    image: shopos/ml-feature-store:latest
+    build:
+      context: ./src/analytics-ai/ml-feature-store
+      dockerfile: Dockerfile
+    environment:
+      - GRPC_PORT=50152
+      - DATABASE_URL=postgresql://postgres:postgres@postgres:5432/feature_store
+      - LOG_LEVEL=info
+    ports:
+      - "50152:50152"
+    depends_on:
+      - postgres
+    restart: unless-stopped
+    networks:
+      - shopos
+
+  personalization-service:
+    image: shopos/personalization-service:latest
+    build:
+      context: ./src/analytics-ai/personalization-service
+      dockerfile: Dockerfile
+    environment:
+      - GRPC_PORT=50153
+      - MONGODB_URI=mongodb://mongodb:27017/personalization
+      - LOG_LEVEL=info
+    ports:
+      - "50153:50153"
+    depends_on:
+      - mongodb
+    restart: unless-stopped
+    networks:
+      - shopos
+
+  data-pipeline-service:
+    image: shopos/data-pipeline-service:latest
+    build:
+      context: ./src/analytics-ai/data-pipeline-service
+      dockerfile: Dockerfile
+    environment:
+      - CASSANDRA_HOSTS=cassandra
+      - CASSANDRA_PORT=9042
+      - CASSANDRA_KEYSPACE=pipeline
+      - KAFKA_BROKERS=kafka:9092
+      - LOG_LEVEL=info
+    depends_on:
+      - cassandra
+      - kafka
+    restart: unless-stopped
+    networks:
+      - shopos
+
+  ad-service:
+    image: shopos/ad-service:latest
+    build:
+      context: ./src/analytics-ai/ad-service
+      dockerfile: Dockerfile
+    environment:
+      - GRPC_PORT=50154
+      - DATABASE_URL=jdbc:postgresql://postgres:5432/ads
+      - DB_USERNAME=postgres
+      - DB_PASSWORD=postgres
+      - LOG_LEVEL=INFO
+    ports:
+      - "50154:50154"
+    depends_on:
+      - postgres
+    restart: unless-stopped
+    networks:
+      - shopos
+
+  event-tracking-service:
+    image: shopos/event-tracking-service:latest
+    build:
+      context: ./src/analytics-ai/event-tracking-service
+      dockerfile: Dockerfile
+    environment:
+      - CASSANDRA_HOSTS=cassandra
+      - CASSANDRA_PORT=9042
+      - CASSANDRA_KEYSPACE=event_tracking
+      - KAFKA_BROKERS=kafka:9092
+      - LOG_LEVEL=info
+    depends_on:
+      - cassandra
+      - kafka
+    restart: unless-stopped
+    networks:
+      - shopos
+
+  attribution-service:
+    image: shopos/attribution-service:latest
+    build:
+      context: ./src/analytics-ai/attribution-service
+      dockerfile: Dockerfile
+    environment:
+      - HTTP_PORT=8194
+      - CASSANDRA_HOSTS=cassandra
+      - CASSANDRA_PORT=9042
+      - KAFKA_BROKERS=kafka:9092
+      - LOG_LEVEL=info
+    ports:
+      - "8194:8194"
+    depends_on:
+      - cassandra
+      - kafka
+    restart: unless-stopped
+    networks:
+      - shopos
+
+  clv-service:
+    image: shopos/clv-service:latest
+    build:
+      context: ./src/analytics-ai/clv-service
+      dockerfile: Dockerfile
+    environment:
+      - HTTP_PORT=8195
+      - GRPC_PORT=50190
+      - DATABASE_URL=postgres://postgres:postgres@postgres:5432/clv?sslmode=disable
+      - LOG_LEVEL=info
+    ports:
+      - "8195:8195"
+      - "50190:50190"
+    depends_on:
+      - postgres
+    restart: unless-stopped
+    networks:
+      - shopos
+
+  search-analytics-service:
+    image: shopos/search-analytics-service:latest
+    build:
+      context: ./src/analytics-ai/search-analytics-service
+      dockerfile: Dockerfile
+    environment:
+      - HTTP_PORT=8196
+      - CASSANDRA_HOSTS=cassandra
+      - CASSANDRA_PORT=9042
+      - KAFKA_BROKERS=kafka:9092
+      - LOG_LEVEL=info
+    ports:
+      - "8196:8196"
+    depends_on:
+      - cassandra
+      - kafka
+    restart: unless-stopped
+    networks:
+      - shopos
+
+  # ===========================================================================
+  # DOMAIN: B2B (7 services)
+  # ===========================================================================
+
+  organization-service:
+    image: shopos/organization-service:latest
+    build:
+      context: ./src/b2b/organization-service
+      dockerfile: Dockerfile
+    environment:
+      - GRPC_PORT=50160
+      - DATABASE_URL=jdbc:postgresql://postgres:5432/organizations
+      - DB_USERNAME=postgres
+      - DB_PASSWORD=postgres
+      - LOG_LEVEL=INFO
+    ports:
+      - "50160:50160"
+    depends_on:
+      - postgres
+    restart: unless-stopped
+    networks:
+      - shopos
+
+  contract-service:
+    image: shopos/contract-service:latest
+    build:
+      context: ./src/b2b/contract-service
+      dockerfile: Dockerfile
+    environment:
+      - GRPC_PORT=50161
+      - DATABASE_URL=jdbc:postgresql://postgres:5432/contracts
+      - DB_USERNAME=postgres
+      - DB_PASSWORD=postgres
+      - LOG_LEVEL=INFO
+    ports:
+      - "50161:50161"
+    depends_on:
+      - postgres
+    restart: unless-stopped
+    networks:
+      - shopos
+
+  quote-rfq-service:
+    image: shopos/quote-rfq-service:latest
+    build:
+      context: ./src/b2b/quote-rfq-service
+      dockerfile: Dockerfile
+    environment:
+      - GRPC_PORT=50162
+      - DATABASE_URL=postgres://postgres:postgres@postgres:5432/quotes?sslmode=disable
+      - KAFKA_BROKERS=kafka:9092
+      - LOG_LEVEL=info
+    ports:
+      - "50162:50162"
+    depends_on:
+      - postgres
+      - kafka
+    restart: unless-stopped
+    networks:
+      - shopos
+
+  approval-workflow-service:
+    image: shopos/approval-workflow-service:latest
+    build:
+      context: ./src/b2b/approval-workflow-service
+      dockerfile: Dockerfile
+    environment:
+      - GRPC_PORT=50163
+      - DATABASE_URL=postgres://postgres:postgres@postgres:5432/approvals?sslmode=disable
+      - KAFKA_BROKERS=kafka:9092
+      - LOG_LEVEL=info
+    ports:
+      - "50163:50163"
+    depends_on:
+      - postgres
+      - kafka
+    restart: unless-stopped
+    networks:
+      - shopos
+
+  b2b-credit-limit-service:
+    image: shopos/b2b-credit-limit-service:latest
+    build:
+      context: ./src/b2b/b2b-credit-limit-service
+      dockerfile: Dockerfile
+    environment:
+      - GRPC_PORT=50164
+      - DATABASE_URL=postgres://postgres:postgres@postgres:5432/b2b_credit?sslmode=disable
+      - LOG_LEVEL=info
+    ports:
+      - "50164:50164"
+    depends_on:
+      - postgres
+    restart: unless-stopped
+    networks:
+      - shopos
+
+  edi-service:
+    image: shopos/edi-service:latest
+    build:
+      context: ./src/b2b/edi-service
+      dockerfile: Dockerfile
+    environment:
+      - GRPC_PORT=50165
+      - KAFKA_BOOTSTRAP_SERVERS=kafka:9092
+      - LOG_LEVEL=INFO
+    ports:
+      - "50165:50165"
+    depends_on:
+      - kafka
+    restart: unless-stopped
+    networks:
+      - shopos
+
+  marketplace-seller-service:
+    image: shopos/marketplace-seller-service:latest
+    build:
+      context: ./src/b2b/marketplace-seller-service
+      dockerfile: Dockerfile
+    environment:
+      - GRPC_PORT=50166
+      - DATABASE_URL=jdbc:postgresql://postgres:5432/marketplace_sellers
+      - DB_USERNAME=postgres
+      - DB_PASSWORD=postgres
+      - KAFKA_BOOTSTRAP_SERVERS=kafka:9092
+      - LOG_LEVEL=INFO
+    ports:
+      - "50166:50166"
+    depends_on:
+      - postgres
+      - kafka
+    restart: unless-stopped
+    networks:
+      - shopos
+
+  # ===========================================================================
+  # DOMAIN: INTEGRATIONS (10 services)
+  # ===========================================================================
+
+  erp-integration-service:
+    image: shopos/erp-integration-service:latest
+    build:
+      context: ./src/integrations/erp-integration-service
+      dockerfile: Dockerfile
+    environment:
+      - GRPC_PORT=50170
+      - KAFKA_BOOTSTRAP_SERVERS=kafka:9092
+      - LOG_LEVEL=INFO
+    ports:
+      - "50170:50170"
+    depends_on:
+      - kafka
+    restart: unless-stopped
+    networks:
+      - shopos
+
+  marketplace-connector-service:
+    image: shopos/marketplace-connector-service:latest
+    build:
+      context: ./src/integrations/marketplace-connector-service
+      dockerfile: Dockerfile
+    environment:
+      - KAFKA_BROKERS=kafka:9092
+      - LOG_LEVEL=info
+    depends_on:
+      - kafka
+    restart: unless-stopped
+    networks:
+      - shopos
+
+  social-commerce-service:
+    image: shopos/social-commerce-service:latest
+    build:
+      context: ./src/integrations/social-commerce-service
+      dockerfile: Dockerfile
+    environment:
+      - GRPC_PORT=50171
+      - KAFKA_BROKERS=kafka:9092
+      - LOG_LEVEL=info
+    ports:
+      - "50171:50171"
+    depends_on:
+      - kafka
+    restart: unless-stopped
+    networks:
+      - shopos
+
+  crm-integration-service:
+    image: shopos/crm-integration-service:latest
+    build:
+      context: ./src/integrations/crm-integration-service
+      dockerfile: Dockerfile
+    environment:
+      - GRPC_PORT=50172
+      - KAFKA_BROKERS=kafka:9092
+      - LOG_LEVEL=info
+    ports:
+      - "50172:50172"
+    depends_on:
+      - kafka
+    restart: unless-stopped
+    networks:
+      - shopos
+
+  payment-gateway-integration:
+    image: shopos/payment-gateway-integration:latest
+    build:
+      context: ./src/integrations/payment-gateway-integration
+      dockerfile: Dockerfile
+    environment:
+      - GRPC_PORT=50173
+      - KAFKA_BROKERS=kafka:9092
+      - LOG_LEVEL=info
+    ports:
+      - "50173:50173"
+    depends_on:
+      - kafka
+    restart: unless-stopped
+    networks:
+      - shopos
+
+  logistics-provider-integration:
+    image: shopos/logistics-provider-integration:latest
+    build:
+      context: ./src/integrations/logistics-provider-integration
+      dockerfile: Dockerfile
+    environment:
+      - GRPC_PORT=50174
+      - KAFKA_BROKERS=kafka:9092
+      - LOG_LEVEL=info
+    ports:
+      - "50174:50174"
+    depends_on:
+      - kafka
+    restart: unless-stopped
+    networks:
+      - shopos
+
+  tax-provider-integration:
+    image: shopos/tax-provider-integration:latest
+    build:
+      context: ./src/integrations/tax-provider-integration
+      dockerfile: Dockerfile
+    environment:
+      - GRPC_PORT=50175
+      - KAFKA_BROKERS=kafka:9092
+      - LOG_LEVEL=info
+    ports:
+      - "50175:50175"
+    depends_on:
+      - kafka
+    restart: unless-stopped
+    networks:
+      - shopos
+
+  pim-integration-service:
+    image: shopos/pim-integration-service:latest
+    build:
+      context: ./src/integrations/pim-integration-service
+      dockerfile: Dockerfile
+    environment:
+      - GRPC_PORT=50195
+      - PIM_API_URL=http://pim:8080
+      - PIM_API_KEY=changeme
+      - LOG_LEVEL=info
+    ports:
+      - "50195:50195"
+    restart: unless-stopped
+    networks:
+      - shopos
+
+  cdp-integration-service:
+    image: shopos/cdp-integration-service:latest
+    build:
+      context: ./src/integrations/cdp-integration-service
+      dockerfile: Dockerfile
+    environment:
+      - HTTP_PORT=8080
+      - KAFKA_BROKERS=kafka:9092
+      - CDP_WEBHOOK_URL=http://cdp:8080
+      - LOG_LEVEL=info
+    ports:
+      - "8197:8080"
+    depends_on:
+      - kafka
+    restart: unless-stopped
+    networks:
+      - shopos
+
+  accounting-integration-service:
+    image: shopos/accounting-integration-service:latest
+    build:
+      context: ./src/integrations/accounting-integration-service
+      dockerfile: Dockerfile
+    environment:
+      - SERVER_PORT=50196
+      - LOG_LEVEL=INFO
+    ports:
+      - "50196:50196"
+    restart: unless-stopped
+    networks:
+      - shopos
+
+  # ===========================================================================
+  # DOMAIN: AFFILIATE (4 services)
+  # ===========================================================================
+
+  affiliate-service:
+    image: shopos/affiliate-service:latest
+    build:
+      context: ./src/affiliate/affiliate-service
+      dockerfile: Dockerfile
+    environment:
+      - GRPC_PORT=50200
+      - DATABASE_URL=postgres://postgres:postgres@postgres:5432/affiliates?sslmode=disable
+      - LOG_LEVEL=info
+    ports:
+      - "50200:50200"
+    depends_on:
+      - postgres
+    restart: unless-stopped
+    networks:
+      - shopos
+
+  referral-service:
+    image: shopos/referral-service:latest
+    build:
+      context: ./src/affiliate/referral-service
+      dockerfile: Dockerfile
+    environment:
+      - GRPC_PORT=50201
+      - DATABASE_URL=postgres://postgres:postgres@postgres:5432/referrals?sslmode=disable
+      - LOG_LEVEL=info
+    ports:
+      - "50201:50201"
+    depends_on:
+      - postgres
+    restart: unless-stopped
+    networks:
+      - shopos
+
+  influencer-service:
+    image: shopos/influencer-service:latest
+    build:
+      context: ./src/affiliate/influencer-service
+      dockerfile: Dockerfile
+    environment:
+      - GRPC_PORT=50202
+      - DATABASE_URL=postgres://postgres:postgres@postgres:5432/influencers?sslmode=disable
+      - LOG_LEVEL=info
+    ports:
+      - "50202:50202"
+    depends_on:
+      - postgres
+    restart: unless-stopped
+    networks:
+      - shopos
+
+  commission-payout-service:
+    image: shopos/commission-payout-service:latest
+    build:
+      context: ./src/affiliate/commission-payout-service
+      dockerfile: Dockerfile
+    environment:
+      - GRPC_PORT=50203
+      - DATABASE_URL=postgres://postgres:postgres@postgres:5432/commissions?sslmode=disable
+      - LOG_LEVEL=info
+    ports:
+      - "50203:50203"
+    depends_on:
+      - postgres
+    restart: unless-stopped
+    networks:
+      - shopos
+
+# =============================================================================
+# ADDITIONAL OPEN-SOURCE INFRASTRUCTURE
+# =============================================================================
+
+  # ── Message Brokers ─────────────────────────────────────────────────────────
+  rabbitmq:
+    image: rabbitmq:3.13-management-alpine
+    container_name: shopos-rabbitmq
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:-shopos}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASS:-shopos}
+      RABBITMQ_DEFAULT_VHOST: /
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    healthcheck:
+      test: rabbitmq-diagnostics -q ping
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    networks:
+      - shopos
+
+  nats:
+    image: nats:2.10-alpine
+    container_name: shopos-nats
+    command: ["-js", "-m", "8222", "--store_dir=/data"]
+    ports:
+      - "4222:4222"
+      - "8222:8222"
+    volumes:
+      - nats_data:/data
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8222/healthz | grep -q ok"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+    networks:
+      - shopos
+
+  # ── Workflow Engine ──────────────────────────────────────────────────────────
+  temporal:
+    image: temporalio/auto-setup:1.24.2
+    container_name: shopos-temporal
+    environment:
+      DB: postgresql
+      DB_PORT: 5432
+      POSTGRES_USER: ${DB_USER:-postgres}
+      POSTGRES_PWD: ${DB_PASSWORD:-postgres}
+      POSTGRES_SEEDS: postgres
+    ports:
+      - "7233:7233"
+    depends_on:
+      - postgres
+    healthcheck:
+      test: ["CMD-SHELL", "temporal --address localhost:7233 operator cluster health 2>/dev/null | grep -q SERVING || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 10
+      start_period: 60s
+    networks:
+      - shopos
+
+  temporal-ui:
+    image: temporalio/ui:2.28.0
+    container_name: shopos-temporal-ui
+    environment:
+      TEMPORAL_ADDRESS: temporal:7233
+    ports:
+      - "8383:8080"
+    depends_on:
+      - temporal
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8080/ | grep -q Temporal || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+    networks:
+      - shopos
+
+  # ── Change Data Capture ──────────────────────────────────────────────────────
+  debezium:
+    image: debezium/connect:2.7
+    container_name: shopos-debezium
+    environment:
+      BOOTSTRAP_SERVERS: kafka:9092
+      GROUP_ID: debezium-connect
+      CONFIG_STORAGE_TOPIC: debezium_configs
+      OFFSET_STORAGE_TOPIC: debezium_offsets
+      STATUS_STORAGE_TOPIC: debezium_statuses
+    ports:
+      - "8193:8083"
+    depends_on:
+      - kafka
+      - postgres
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:8083/connectors | grep -q '\\[' || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 10
+      start_period: 60s
+    networks:
+      - shopos
+
+  # ── Stream Processing ────────────────────────────────────────────────────────
+  flink-jobmanager:
+    image: flink:1.20-scala_2.12
+    container_name: shopos-flink-jobmanager
+    command: jobmanager
+    environment:
+      FLINK_PROPERTIES: |
+        jobmanager.rpc.address: flink-jobmanager
+        state.backend: rocksdb
+        state.checkpoints.dir: file:///tmp/flink-checkpoints
+    ports:
+      - "8192:8081"
+    volumes:
+      - flink_data:/tmp/flink-checkpoints
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:8081/overview | grep -q 'flink-version' || exit 1"]
+      interval: 20s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+    networks:
+      - shopos
+
+  flink-taskmanager:
+    image: flink:1.20-scala_2.12
+    container_name: shopos-flink-taskmanager
+    command: taskmanager
+    environment:
+      FLINK_PROPERTIES: |
+        jobmanager.rpc.address: flink-jobmanager
+        taskmanager.numberOfTaskSlots: 4
+    depends_on:
+      - flink-jobmanager
+    networks:
+      - shopos
+
+  # ── OLAP Database ────────────────────────────────────────────────────────────
+  clickhouse:
+    image: clickhouse/clickhouse-server:24.8-alpine
+    container_name: shopos-clickhouse
+    environment:
+      CLICKHOUSE_DB: shopos_analytics
+      CLICKHOUSE_USER: ${CLICKHOUSE_USER:-shopos}
+      CLICKHOUSE_PASSWORD: ${CLICKHOUSE_PASSWORD:-shopos}
+    ports:
+      - "8123:8123"
+      - "9900:9000"
+    volumes:
+      - clickhouse_data:/var/lib/clickhouse
+    ulimits:
+      nofile:
+        soft: 262144
+        hard: 262144
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8123/ping | grep -q Ok || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+    networks:
+      - shopos
+
+  # ── Vector Database ──────────────────────────────────────────────────────────
+  weaviate:
+    image: semitechnologies/weaviate:1.26.4
+    container_name: shopos-weaviate
+    environment:
+      QUERY_DEFAULTS_LIMIT: 25
+      AUTHENTICATION_ANONYMOUS_ACCESS_ENABLED: "true"
+      PERSISTENCE_DATA_PATH: /var/lib/weaviate
+      DEFAULT_VECTORIZER_MODULE: none
+      ENABLE_MODULES: text2vec-openai,generative-openai,text2vec-cohere
+      CLUSTER_HOSTNAME: weaviate
+    ports:
+      - "8180:8080"
+    volumes:
+      - weaviate_data:/var/lib/weaviate
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8080/v1/.well-known/ready | grep -q '{}' || exit 1"]
+      interval: 20s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+    networks:
+      - shopos
+
+  # ── Graph Database ───────────────────────────────────────────────────────────
+  neo4j:
+    image: neo4j:5.23-community
+    container_name: shopos-neo4j
+    environment:
+      NEO4J_AUTH: neo4j/${NEO4J_PASSWORD:-shopos}
+      NEO4J_PLUGINS: '["apoc", "graph-data-science"]'
+    ports:
+      - "7474:7474"
+      - "7687:7687"
+    volumes:
+      - neo4j_data:/data
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:7474/ | grep -q neo4j || exit 1"]
+      interval: 20s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+    networks:
+      - shopos
+
+  # ── High-Performance Cache ───────────────────────────────────────────────────
+  memcached:
+    image: memcached:1.6-alpine
+    container_name: shopos-memcached
+    command: ["-m", "256", "-c", "1024"]
+    ports:
+      - "11211:11211"
+    healthcheck:
+      test: ["CMD-SHELL", "echo stats | nc localhost 11211 | grep -q uptime"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+    networks:
+      - shopos
+
+  # ── OpenSearch ───────────────────────────────────────────────────────────────
+  opensearch:
+    image: opensearchproject/opensearch:2.17.0
+    container_name: shopos-opensearch
+    environment:
+      discovery.type: single-node
+      OPENSEARCH_JAVA_OPTS: "-Xms512m -Xmx512m"
+      DISABLE_SECURITY_PLUGIN: "true"
+    ports:
+      - "9202:9200"
+    volumes:
+      - opensearch_data:/usr/share/opensearch/data
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:9200/_cluster/health | grep -q '\"status\":\"green\"\\|\"status\":\"yellow\"' || exit 1"]
+      interval: 20s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+    networks:
+      - shopos
+
+  # ── ScyllaDB ─────────────────────────────────────────────────────────────────
+  scylladb:
+    image: scylladb/scylla:6.1
+    container_name: shopos-scylladb
+    command: --smp 1 --memory 512M --overprovisioned 1
+    ports:
+      - "9042:9042"
+      - "9160:9160"
+    volumes:
+      - scylladb_data:/var/lib/scylla
+    healthcheck:
+      test: ["CMD", "cqlsh", "-e", "describe keyspaces"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+    networks:
+      - shopos
+
+  # ── Edge Router ──────────────────────────────────────────────────────────────
+  traefik:
+    image: traefik:3.1
+    container_name: shopos-traefik
+    command:
+      - "--api.insecure=true"
+      - "--providers.docker=true"
+      - "--providers.docker.exposedbydefault=false"
+      - "--entrypoints.web.address=:80"
+      - "--entrypoints.websecure.address=:443"
+      - "--metrics.prometheus=true"
+    ports:
+      - "80:80"
+      - "443:443"
+      - "8888:8080"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8080/ping | grep -q OK || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+    networks:
+      - shopos
+
+  # ── Service Discovery ────────────────────────────────────────────────────────
+  consul:
+    image: hashicorp/consul:1.19
+    container_name: shopos-consul
+    command: agent -dev -client=0.0.0.0
+    environment:
+      CONSUL_BIND_INTERFACE: eth0
+    ports:
+      - "8500:8500"
+      - "8600:8600/udp"
+    volumes:
+      - consul_data:/consul/data
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:8500/v1/status/leader | grep -q '.' || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+    networks:
+      - shopos
+
+  # ── Identity Provider ────────────────────────────────────────────────────────
+  keycloak:
+    image: quay.io/keycloak/keycloak:25.0.6
+    container_name: shopos-keycloak
+    command: start-dev
+    environment:
+      KC_DB: postgres
+      KC_DB_URL: jdbc:postgresql://postgres:5432/keycloak
+      KC_DB_USERNAME: ${DB_USER:-postgres}
+      KC_DB_PASSWORD: ${DB_PASSWORD:-postgres}
+      KEYCLOAK_ADMIN: admin
+      KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:-admin}
+    ports:
+      - "8480:8080"
+    depends_on:
+      - postgres
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:8080/health/ready | grep -q UP || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 10
+      start_period: 60s
+    networks:
+      - shopos
+
+  # ── ML Experiment Tracking ───────────────────────────────────────────────────
+  mlflow:
+    image: ghcr.io/mlflow/mlflow:v2.16.0
+    container_name: shopos-mlflow
+    command: mlflow server --host 0.0.0.0 --port 5000 --backend-store-uri postgresql://${DB_USER:-postgres}:${DB_PASSWORD:-postgres}@postgres:5432/mlflow --default-artifact-root s3://mlflow --serve-artifacts
+    environment:
+      MLFLOW_S3_ENDPOINT_URL: http://minio:9000
+      AWS_ACCESS_KEY_ID: ${MINIO_ROOT_USER:-minioadmin}
+      AWS_SECRET_ACCESS_KEY: ${MINIO_ROOT_PASSWORD:-minioadmin}
+    ports:
+      - "5001:5000"
+    depends_on:
+      - postgres
+      - minio
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:5000/health | grep -q ok || exit 1"]
+      interval: 20s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+    networks:
+      - shopos
+
+  # ── Continuous Profiling ─────────────────────────────────────────────────────
+  pyroscope:
+    image: grafana/pyroscope:1.7.0
+    container_name: shopos-pyroscope
+    ports:
+      - "4040:4040"
+    volumes:
+      - pyroscope_data:/data
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:4040/ready | grep -q ready || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+    networks:
+      - shopos
+
+  # ── Distributed Tracing (lightweight) ───────────────────────────────────────
+  zipkin:
+    image: openzipkin/zipkin:3.4
+    container_name: shopos-zipkin
+    ports:
+      - "9411:9411"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:9411/health | grep -q UP || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+    networks:
+      - shopos
+
+  # ── Uptime Monitoring ────────────────────────────────────────────────────────
+  uptime-kuma:
+    image: louislam/uptime-kuma:1.23
+    container_name: shopos-uptime-kuma
+    ports:
+      - "3002:3001"
+    volumes:
+      - uptime_kuma_data:/app/data
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:3001/api/status-page/heartbeat/default || exit 0"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    networks:
+      - shopos
+
+  # ── Artifact Registry ────────────────────────────────────────────────────────
+  nexus:
+    image: sonatype/nexus3:3.71.0
+    container_name: shopos-nexus
+    ports:
+      - "8181:8081"
+    volumes:
+      - nexus_data:/nexus-data
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:8081/service/rest/v1/status | grep -q '\"edition\"' || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 10
+      start_period: 120s
+    networks:
+      - shopos
+
+  # ── Self-hosted Git ──────────────────────────────────────────────────────────
+  gitea:
+    image: gitea/gitea:1.22.2
+    container_name: shopos-gitea
+    environment:
+      USER_UID: 1000
+      USER_GID: 1000
+      GITEA__database__DB_TYPE: postgres
+      GITEA__database__HOST: postgres:5432
+      GITEA__database__NAME: gitea
+      GITEA__database__USER: ${DB_USER:-postgres}
+      GITEA__database__PASSWD: ${DB_PASSWORD:-postgres}
+    ports:
+      - "3001:3000"
+      - "2222:22"
+    volumes:
+      - gitea_data:/data
+    depends_on:
+      - postgres
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:3000/api/healthz | grep -q alive || exit 1"]
+      interval: 20s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+    networks:
+      - shopos
+
+  # ── Code Quality ─────────────────────────────────────────────────────────────
+  sonarqube:
+    image: sonarqube:10.6-community
+    container_name: shopos-sonarqube
+    environment:
+      SONAR_JDBC_URL: jdbc:postgresql://postgres:5432/sonarqube
+      SONAR_JDBC_USERNAME: ${DB_USER:-postgres}
+      SONAR_JDBC_PASSWORD: ${DB_PASSWORD:-postgres}
+    ports:
+      - "9010:9000"
+    volumes:
+      - sonarqube_data:/opt/sonarqube/data
+      - sonarqube_extensions:/opt/sonarqube/extensions
+      - sonarqube_logs:/opt/sonarqube/logs
+    depends_on:
+      - postgres
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:9000/api/system/status | grep -q UP || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 10
+      start_period: 120s
+    networks:
+      - shopos
+
+# =============================================================================
+# NETWORKS
+# =============================================================================
+
+networks:
+  shopos:
+    driver: bridge
+
+# =============================================================================
+# VOLUMES
+# =============================================================================
+
+volumes:
+  postgres_data:
+  mongodb_data:
+  redis_data:
+  cassandra_data:
+  elasticsearch_data:
+  minio_data:
+  kafka_data:
+  zookeeper_data:
+  etcd_data:
+  rabbitmq_data:
+  nats_data:
+  clickhouse_data:
+  weaviate_data:
+  neo4j_data:
+  opensearch_data:
+  consul_data:
+  flink_data:
+  pyroscope_data:
+  nexus_data:
+  gitea_data:
+  sonarqube_data:
+  sonarqube_extensions:
+  sonarqube_logs:
+  uptime_kuma_data:
+  scylladb_data:
+  mlflow_data:

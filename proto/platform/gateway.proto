@@ -1,0 +1,48 @@
+syntax = "proto3";
+
+package platform;
+
+import "common/common.proto";
+
+option go_package = "github.com/shopos/proto/platform";
+
+// ---------------------------------------------------------------------------
+// HealthCheck RPC
+// ---------------------------------------------------------------------------
+
+// HealthResponse is returned by HealthCheck; mirrors the /healthz HTTP shape.
+message HealthResponse {
+  // "ok", "degraded", or "down"
+  string status  = 1;
+  // Semantic version of the running binary, e.g. "1.4.2"
+  string version = 2;
+  // Seconds the process has been running
+  int64  uptime  = 3;
+}
+
+// ---------------------------------------------------------------------------
+// GetConfig RPC
+// ---------------------------------------------------------------------------
+
+message GetConfigRequest {
+  // The configuration key to retrieve
+  string key = 1;
+}
+
+message GetConfigResponse {
+  // Raw string value for the requested key
+  string               value    = 1;
+  // Optional opaque metadata (e.g. source, version, ttl)
+  map<string, string>  metadata = 2;
+}
+
+// ---------------------------------------------------------------------------
+// GatewayService — exposed by the api-gateway (port 8080)
+// ---------------------------------------------------------------------------
+service GatewayService {
+  // Liveness / readiness check
+  rpc HealthCheck(common.Empty) returns (HealthResponse);
+
+  // Fetch a single runtime configuration value by key
+  rpc GetConfig(GetConfigRequest) returns (GetConfigResponse);
+}

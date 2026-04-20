@@ -1,0 +1,35 @@
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: shopos-customer-experience
+  namespace: argocd
+spec:
+  description: ShopOS customer-experience domain services
+  sourceRepos:
+    - 'https://github.com/your-org/shopos.git'
+  destinations:
+    - namespace: shopos-customer-experience
+      server: https://kubernetes.default.svc
+  clusterResourceWhitelist:
+    - group: ''
+      kind: Namespace
+  namespaceResourceWhitelist:
+    - group: 'apps'
+      kind: Deployment
+    - group: ''
+      kind: Service
+    - group: ''
+      kind: ConfigMap
+    - group: ''
+      kind: Secret
+    - group: 'autoscaling'
+      kind: HorizontalPodAutoscaler
+    - group: 'networking.k8s.io'
+      kind: NetworkPolicy
+  roles:
+    - name: customer-experience-admin
+      description: customer-experience team full access
+      policies:
+        - p, proj:shopos-customer-experience:customer-experience-admin, applications, *, shopos-customer-experience/*, allow
+      groups:
+        - customerexperience-team

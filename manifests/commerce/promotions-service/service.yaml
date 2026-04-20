@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: promotions-service
+  namespace: commerce
+  labels:
+    app: promotions-service
+    domain: commerce
+spec:
+  selector:
+    app: promotions-service
+  type: ClusterIP
+  ports:
+    - name: grpc
+      port: 50087
+      targetPort: grpc
+      protocol: TCP

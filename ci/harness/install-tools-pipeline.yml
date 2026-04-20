@@ -1,0 +1,109 @@
+# Install CI Tools — Harness CI
+pipeline:
+  identifier: shopos_install_tools
+  name: ShopOS Install Tools
+  projectIdentifier: shopos
+  orgIdentifier: default
+
+  stages:
+    - stage:
+        identifier: runtimes
+        name: Verify Runtimes
+        type: CI
+        spec:
+          cloneCodebase: false
+          execution:
+            steps:
+              - step:
+                  identifier: golang
+                  name: Go
+                  type: Run
+                  spec:
+                    image: golang:1.23
+                    command: go version
+              - step:
+                  identifier: java
+                  name: Java
+                  type: Run
+                  spec:
+                    image: eclipse-temurin:21
+                    command: java -version
+              - step:
+                  identifier: nodejs
+                  name: Node.js
+                  type: Run
+                  spec:
+                    image: node:22
+                    command: node --version && npm --version
+              - step:
+                  identifier: python
+                  name: Python
+                  type: Run
+                  spec:
+                    image: python:3.13
+                    command: python --version
+              - step:
+                  identifier: dotnet
+                  name: .NET
+                  type: Run
+                  spec:
+                    image: mcr.microsoft.com/dotnet/sdk:8.0
+                    command: dotnet --version
+              - step:
+                  identifier: rust
+                  name: Rust
+                  type: Run
+                  spec:
+                    image: rust:latest
+                    command: rustc --version && cargo --version
+
+    - stage:
+        identifier: cli_tools
+        name: Verify CLI Tools
+        type: CI
+        spec:
+          cloneCodebase: false
+          execution:
+            steps:
+              - step:
+                  identifier: helm
+                  name: Helm
+                  type: Run
+                  spec:
+                    image: alpine/helm:latest
+                    command: helm version --short
+              - step:
+                  identifier: terraform
+                  name: Terraform
+                  type: Run
+                  spec:
+                    image: hashicorp/terraform:1.9.0
+                    command: terraform version
+
+    - stage:
+        identifier: security_tools
+        name: Verify Security Tools
+        type: CI
+        spec:
+          cloneCodebase: false
+          execution:
+            steps:
+              - step:
+                  identifier: install_verify
+                  name: Install + Verify Security Tools
+                  type: Run
+                  spec:
+                    image: ubuntu:24.04
+                    command: |
+                      apt-get update -qq && apt-get install -y curl python3-pip --quiet
+                      curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh -s -- -b /usr/local/bin
+                      curl -sSfL https://raw.githubusercontent.com/anchore/grype/main/install.sh | sh -s -- -b /usr/local/bin
+                      curl -sSfL https://raw.githubusercontent.com/anchore/syft/main/install.sh | sh -s -- -b /usr/local/bin
+                      curl -fsSL "https://github.com/sigstore/cosign/releases/download/v2.4.0/cosign-linux-amd64" \
+                        -o /usr/local/bin/cosign && chmod +x /usr/local/bin/cosign
+                      pip3 install semgrep checkov --quiet
+                      trivy --version | head -1
+                      grype version | head -1
+                      syft --version
+                      cosign version
+                      semgrep --version

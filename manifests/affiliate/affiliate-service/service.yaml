@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: affiliate-service
+  namespace: affiliate
+  labels:
+    app: affiliate-service
+    domain: affiliate
+spec:
+  selector:
+    app: affiliate-service
+  type: ClusterIP
+  ports:
+    - name: grpc
+      port: 50200
+      targetPort: grpc
+      protocol: TCP

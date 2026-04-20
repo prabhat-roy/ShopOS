@@ -1,0 +1,64 @@
+syntax = "proto3";
+package integrations.marketplace.v1;
+option go_package = "github.com/shopos/proto/integrations/marketplace/v1;marketplacev1";
+
+import "google/protobuf/timestamp.proto";
+
+service MarketplaceConnectorService {
+  rpc PublishProduct(PublishProductRequest) returns (PublishProductResponse);
+  rpc SyncOrders(SyncOrdersRequest) returns (SyncOrdersResponse);
+  rpc UpdateInventory(UpdateInventoryRequest) returns (UpdateInventoryResponse);
+  rpc GetListingStatus(GetListingStatusRequest) returns (GetListingStatusResponse);
+}
+
+enum ListingStatus {
+  LISTING_STATUS_UNSPECIFIED = 0;
+  LISTING_STATUS_ACTIVE = 1;
+  LISTING_STATUS_INACTIVE = 2;
+  LISTING_STATUS_PENDING = 3;
+  LISTING_STATUS_REJECTED = 4;
+}
+
+message Listing {
+  string id = 1;
+  string product_id = 2;
+  string marketplace = 3;
+  string external_id = 4;
+  ListingStatus status = 5;
+  string url = 6;
+  google.protobuf.Timestamp listed_at = 7;
+  google.protobuf.Timestamp updated_at = 8;
+}
+
+message PublishProductRequest {
+  string product_id = 1;
+  string marketplace = 2;
+  map<string, string> overrides = 3;
+}
+
+message PublishProductResponse { Listing listing = 1; }
+
+message SyncOrdersRequest {
+  string marketplace = 1;
+  google.protobuf.Timestamp since = 2;
+}
+
+message SyncOrdersResponse {
+  int32 synced_count = 1;
+  int32 error_count = 2;
+}
+
+message UpdateInventoryRequest {
+  string product_id = 1;
+  string marketplace = 2;
+  int32 quantity = 3;
+}
+
+message UpdateInventoryResponse { bool success = 1; }
+
+message GetListingStatusRequest {
+  string product_id = 1;
+  string marketplace = 2;
+}
+
+message GetListingStatusResponse { Listing listing = 1; }

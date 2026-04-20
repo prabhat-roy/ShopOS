@@ -1,0 +1,166 @@
+# Deploy Pipeline — Harness CI (Open Source / Self-Hosted)
+# Secrets: harbor_password, sonar_token, kubeconfig_content, slack_webhook
+pipeline:
+  identifier: shopos_deploy
+  name: ShopOS Deploy
+  projectIdentifier: shopos
+  orgIdentifier: default
+  tags:
+    domain: delivery
+
+  variables:
+    - name: SERVICE_NAME
+      type: String
+      value: <+input>
+    - name: ENVIRONMENT
+      type: String
+      value: staging
+    - name: K8S_NAMESPACE
+      type: String
+      value: default
+
+  stages:
+    - stage:
+        identifier: preflight
+        name: Preflight
+        type: CI
+        spec:
+          cloneCodebase: true
+          execution:
+            steps:
+              - step:
+                  identifier: secret_scan
+                  name: Secret Scan (Gitleaks)
+                  type: Run
+                  spec:
+                    image: zricethezav/gitleaks:latest
+                    command: gitleaks detect --source . --exit-code 1 || true
+              - step:
+                  identifier: iac_scan
+                  name: IaC Scan (Checkov)
+                  type: Run
+                  spec:
+                    image: python:3.13
+                    command: |
+                      pip install checkov --quiet
+                      checkov -d infra/ --quiet || true
+
+    - stage:
+        identifier: sast
+        name: SAST
+        type: CI
+        spec:
+          cloneCodebase: true
+          execution:
+            steps:
+              - step:
+                  identifier: semgrep
+                  name: Semgrep
+                  type: Run
+                  spec:
+                    image: returntocorp/semgrep:latest
+                    command: |
+                      semgrep --config=auto --json --output=/tmp/semgrep.json \
+                        src/<+pipeline.variables.SERVICE_NAME> || true
+              - step:
+                  identifier: sonarqube
+                  name: SonarQube
+                  type: Run
+                  spec:
+                    image: sonarsource/sonar-scanner-cli:latest
+                    envVariables:
+                      SONAR_TOKEN: <+secrets.getValue("sonar_token")>
+                      SONAR_HOST_URL: <+pipeline.variables.SONAR_HOST_URL>
+                    command: |
+                      cd src/<+pipeline.variables.SERVICE_NAME>
+                      sonar-scanner \
+                        -Dsonar.projectKey=<+pipeline.variables.SERVICE_NAME> \
+                        -Dsonar.host.url=$SONAR_HOST_URL \
+                        -Dsonar.login=$SONAR_TOKEN \
+                        -Dsonar.qualitygate.wait=true || true
+
+    - stage:
+        identifier: build_scan
+        name: Build & Scan
+        type: CI
+        spec:
+          cloneCodebase: true
+          execution:
+            steps:
+              - step:
+                  identifier: docker_build
+                  name: Docker Build (Kaniko)
+                  type: BuildAndPushDockerRegistry
+                  spec:
+                    connectorRef: harbor_connector
+                    repo: <+pipeline.variables.HARBOR_REGISTRY>/shopos/<+pipeline.variables.SERVICE_NAME>
+                    tags:
+                      - <+pipeline.sequenceId>
+                      - latest
+                    context: src/<+pipeline.variables.SERVICE_NAME>
+                    dockerfile: src/<+pipeline.variables.SERVICE_NAME>/Dockerfile
+              - step:
+                  identifier: trivy_scan
+                  name: Trivy Image Scan
+                  type: Run
+                  spec:
+                    image: aquasec/trivy:latest
+                    command: |
+                      trivy image --exit-code 1 --severity CRITICAL \
+                        <+pipeline.variables.HARBOR_REGISTRY>/shopos/<+pipeline.variables.SERVICE_NAME>:<+pipeline.sequenceId> || true
+                      trivy image --format cyclonedx --output /harness/sbom.json \
+                        <+pipeline.variables.HARBOR_REGISTRY>/shopos/<+pipeline.variables.SERVICE_NAME>:<+pipeline.sequenceId> || true
+
+    - stage:
+        identifier: deploy
+        name: Deploy
+        type: Deployment
+        spec:
+          deploymentType: Kubernetes
+          service:
+            serviceRef: <+pipeline.variables.SERVICE_NAME>
+            serviceInputs:
+              serviceDefinition:
+                type: Kubernetes
+                spec:
+                  artifacts:
+                    primary:
+                      primaryArtifactRef: harbor_image
+                      sources:
+                        - identifier: harbor_image
+                          spec:
+                            connectorRef: harbor_connector
+                            imagePath: shopos/<+pipeline.variables.SERVICE_NAME>
+                            tag: <+pipeline.sequenceId>
+          environment:
+            environmentRef: <+pipeline.variables.ENVIRONMENT>
+            deployToAll: false
+            infrastructureDefinitions:
+              - identifier: k8s_infra
+          execution:
+            steps:
+              - step:
+                  identifier: helm_deploy
+                  name: Helm Deploy
+                  type: K8sRollingDeploy
+                  spec:
+                    skipDryRun: false
+                    pruningEnabled: false
+              - step:
+                  identifier: notify_slack
+                  name: Slack Notification
+                  type: Run
+                  spec:
+                    image: curlimages/curl:latest
+                    envVariables:
+                      SLACK_WEBHOOK: <+secrets.getValue("slack_webhook")>
+                    command: |
+                      curl -sf -X POST "$SLACK_WEBHOOK" \
+                        -H 'Content-type: application/json' \
+                        --data "{\"text\":\":white_check_mark: Deployed *<+pipeline.variables.SERVICE_NAME>:<+pipeline.sequenceId>* to *<+pipeline.variables.ENVIRONMENT>*\"}"
+            rollbackSteps:
+              - step:
+                  identifier: rollback
+                  name: K8s Rollback
+                  type: K8sRollingRollback
+                  spec: {}

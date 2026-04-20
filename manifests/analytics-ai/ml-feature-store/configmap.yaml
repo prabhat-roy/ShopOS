@@ -1,0 +1,21 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: ml-feature-store
+  namespace: analytics-ai
+  labels:
+    app: ml-feature-store
+    domain: analytics-ai
+data:
+  APP_ENV: production
+  LOG_LEVEL: info
+  LOG_FORMAT: json
+  SERVICE_NAME: ml-feature-store
+  SERVICE_DOMAIN: analytics-ai
+  GRPC_PORT: "50152"
+  METRICS_PORT: "9090"
+  HEALTH_PORT: "50152"
+  OTEL_SERVICE_NAME: ml-feature-store
+  OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector.monitoring:4317
+  KAFKA_BROKERS: kafka.infra:9092
+  SCHEMA_REGISTRY_URL: http://schema-registry.infra:8081

@@ -1,0 +1,167 @@
+syntax = "proto3";
+
+package platform;
+
+option go_package = "github.com/shopos/proto/platform";
+
+// ---------------------------------------------------------------------------
+// Shared enums
+// ---------------------------------------------------------------------------
+
+enum JobStatus {
+  JOB_STATUS_UNSPECIFIED = 0;
+  JOB_STATUS_ACTIVE      = 1;
+  JOB_STATUS_PAUSED      = 2;
+  JOB_STATUS_DELETED     = 3;
+}
+
+enum JobRunStatus {
+  JOB_RUN_STATUS_UNSPECIFIED = 0;
+  JOB_RUN_STATUS_PENDING     = 1;
+  JOB_RUN_STATUS_RUNNING     = 2;
+  JOB_RUN_STATUS_SUCCESS     = 3;
+  JOB_RUN_STATUS_FAILED      = 4;
+}
+
+// ---------------------------------------------------------------------------
+// Core domain messages
+// ---------------------------------------------------------------------------
+
+// Job describes a scheduled task that calls an HTTP endpoint on a cron schedule.
+message Job {
+  // Unique identifier (UUID)
+  string    id          = 1;
+  // Human-readable name
+  string    name        = 2;
+  // Standard cron expression, e.g. "0 */6 * * *"
+  string    cron_expr   = 3;
+  // Target URL the scheduler will call
+  string    http_url    = 4;
+  // HTTP method: GET, POST, PUT, PATCH, DELETE
+  string    http_method = 5;
+  // Optional JSON body sent with the request
+  string    http_body   = 6;
+  // Current lifecycle status
+  JobStatus status      = 7;
+  // Next scheduled execution time (Unix seconds UTC)
+  int64     next_run_at = 8;
+  // Last execution time (Unix seconds UTC); 0 if never run
+  int64     last_run_at = 9;
+  // Creation time (Unix seconds UTC)
+  int64     created_at  = 10;
+}
+
+// JobRun is a single execution record for a Job.
+message JobRun {
+  // Unique identifier (UUID)
+  string       id          = 1;
+  // Parent job identifier
+  string       job_id      = 2;
+  // Execution outcome
+  JobRunStatus status      = 3;
+  // Captured stdout / response body (truncated if large)
+  string       output      = 4;
+  // When the run began (Unix seconds UTC)
+  int64        started_at  = 5;
+  // When the run ended (Unix seconds UTC); 0 if still running
+  int64        finished_at = 6;
+}
+
+// ---------------------------------------------------------------------------
+// Request / response messages
+// ---------------------------------------------------------------------------
+
+message CreateJobRequest {
+  string name        = 1;
+  string cron_expr   = 2;
+  string http_url    = 3;
+  string http_method = 4;
+  string http_body   = 5;
+}
+
+message UpdateJobRequest {
+  string    id         = 1;
+  string    name       = 2;
+  string    cron_expr  = 3;
+  string    http_url   = 4;
+  string    http_method = 5;
+  string    http_body  = 6;
+  JobStatus status     = 7;
+}
+
+message GetJobRequest {
+  string id = 1;
+}
+
+message DeleteJobRequest {
+  string id = 1;
+}
+
+message DeleteJobResponse {
+  bool   success = 1;
+  string message = 2;
+}
+
+message TriggerJobRequest {
+  string id = 1;
+}
+
+message TriggerJobResponse {
+  // The JobRun created for this manual trigger
+  JobRun run = 1;
+}
+
+message ListJobsRequest {
+  // Filter by status; JOB_STATUS_UNSPECIFIED means return all
+  JobStatus status    = 1;
+  int32     page      = 2;
+  int32     page_size = 3;
+}
+
+message ListJobsResponse {
+  repeated Job jobs       = 1;
+  int32        page       = 2;
+  int32        page_size  = 3;
+  int32        total      = 4;
+  int32        total_pages = 5;
+}
+
+message ListJobRunsRequest {
+  string job_id    = 1;
+  int32  page      = 2;
+  int32  page_size = 3;
+}
+
+message ListJobRunsResponse {
+  repeated JobRun runs        = 1;
+  int32           page        = 2;
+  int32           page_size   = 3;
+  int32           total       = 4;
+  int32           total_pages = 5;
+}
+
+// ---------------------------------------------------------------------------
+// SchedulerService — scheduler-service (port 50056)
+// ---------------------------------------------------------------------------
+service SchedulerService {
+  // Create a new scheduled job
+  rpc CreateJob(CreateJobRequest) returns (Job);
+
+  // Retrieve a job by ID
+  rpc GetJob(GetJobRequest) returns (Job);
+
+  // Update an existing job's definition or status
+  rpc UpdateJob(UpdateJobRequest) returns (Job);
+
+  // Soft-delete a job (sets status to JOB_STATUS_DELETED)
+  rpc DeleteJob(DeleteJobRequest) returns (DeleteJobResponse);
+
+  // List jobs with optional status filter and pagination
+  rpc ListJobs(ListJobsRequest) returns (ListJobsResponse);
+
+  // List execution history for a specific job
+  rpc ListJobRuns(ListJobRunsRequest) returns (ListJobRunsResponse);
+
+  // Manually trigger an immediate job execution outside the schedule
+  rpc TriggerJob(TriggerJobRequest) returns (TriggerJobResponse);
+}

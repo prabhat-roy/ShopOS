@@ -1,0 +1,34 @@
+replicaCount: 1
+
+image:
+  repository: goharbor/harbor-core
+  tag: "v2.11.0"
+  pullPolicy: IfNotPresent
+
+service:
+  type: ClusterIP
+  port: 8080
+  targetPort: 8080
+
+persistence:
+  enabled: true
+  storageClass: ""
+  size: 50Gi
+  accessMode: ReadWriteOnce
+  mountPath: /data
+
+resources:
+  requests:
+    cpu: 250m
+    memory: 512Mi
+  limits:
+    cpu: "1"
+    memory: 2Gi
+
+env: {}
+
+ingress:
+  enabled: false
+  className: ""
+  host: ""
+  tls: []

@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: cms-service
+  namespace: content
+  labels:
+    app: cms-service
+    domain: content
+spec:
+  selector:
+    app: cms-service
+  type: ClusterIP
+  ports:
+    - name: grpc
+      port: 50143
+      targetPort: grpc
+      protocol: TCP

@@ -1,0 +1,28 @@
+target: all
+
+server:
+  http_listen_port: 4040
+  log_level: info
+
+memberlist:
+  cluster_label: shopos-pyroscope
+
+storage:
+  backend: filesystem
+  filesystem:
+    dir: /data
+
+ingester:
+  lifecycler:
+    ring:
+      kvstore:
+        store: inmemory
+      replication_factor: 1
+
+pyroscopedb:
+  max_block_duration: 1h
+
+limits:
+  ingestion_rate_mb: 4
+  ingestion_burst_size_mb: 8
+  max_query_range: 168h

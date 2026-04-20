@@ -1,0 +1,20 @@
+apiVersion: chaos-mesh.org/v1alpha1
+kind: NetworkChaos
+metadata:
+  name: network-delay-commerce
+  namespace: chaos-mesh
+  labels:
+    app.kubernetes.io/part-of: shopos-chaos
+    chaos.shopos.io/tier: commerce
+spec:
+  action: delay
+  mode: all
+  selector:
+    namespaces:
+      - commerce
+  delay:
+    latency: 100ms
+    correlation: "25"
+    jitter: 20ms
+  direction: to
+  duration: 5m

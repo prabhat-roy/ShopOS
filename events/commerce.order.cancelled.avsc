@@ -1,0 +1,14 @@
+{
+  "type": "record",
+  "name": "OrderCancelled",
+  "namespace": "com.shopos.commerce.order",
+  "doc": "Emitted when an order is cancelled",
+  "fields": [
+    { "name": "event_id",     "type": "string" },
+    { "name": "order_id",     "type": "string" },
+    { "name": "customer_id",  "type": "string" },
+    { "name": "reason",       "type": "string", "default": "" },
+    { "name": "cancelled_by", "type": "string", "default": "customer" },
+    { "name": "occurred_at",  "type": { "type": "long", "logicalType": "timestamp-millis" } }
+  ]
+}

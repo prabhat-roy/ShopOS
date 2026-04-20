@@ -1,0 +1,19 @@
+apiVersion: v2
+name: waitlist-service
+description: ShopOS waitlist-service — Customer waitlists for out-of-stock items
+type: application
+version: 0.1.0
+appVersion: "1.0.0"
+keywords:
+  - shopos
+  - waitlist-service
+  - commerce
+home: https://github.com/your-org/shopos
+sources:
+  - https://github.com/your-org/shopos/tree/main/src/commerce/waitlist-service
+maintainers:
+  - name: ShopOS Platform Team
+    email: platform@shopos.io
+annotations:
+  app.kubernetes.io/domain: commerce
+  app.kubernetes.io/language: go

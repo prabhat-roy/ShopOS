@@ -1,0 +1,76 @@
+# Post-Deploy Validation Pipeline — Travis CI
+language: minimal
+
+install:
+  - curl -fsSL "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl" -o /usr/local/bin/kubectl && chmod +x /usr/local/bin/kubectl
+  - mkdir -p ~/.kube && echo "$KUBECONFIG_CONTENT" | base64 -d > ~/.kube/config
+
+stages:
+  - health-check
+  - load-test
+  - dast
+  - kube-audit
+  - notify
+
+jobs:
+  include:
+    - stage: health-check
+      name: Service Health Check
+      script:
+        - |
+          FAILED=0
+          for PATH in /healthz /api/v1/products; do
+            STATUS=$(curl -sf --max-time 10 "$BASE_URL$PATH" -o /dev/null -w "%{http_code}" || echo "000")
+            echo "$BASE_URL$PATH → $STATUS"
+            [ "$STATUS" = "000" ] && FAILED=1
+          done
+          [ "$FAILED" = "1" ] && exit 1
+          echo "All health checks passed"
+
+    - stage: load-test
+      name: k6 Load Test
+      if: env(RUN_LOAD_TEST) = true
+      install: skip
+      script:
+        - |
+          docker run --rm grafana/k6:latest run - << 'EOF'
+          import http from 'k6/http';
+          import { check, sleep } from 'k6';
+          export let options = { vus: 10, duration: '60s',
+            thresholds: { http_req_failed: ['rate<0.05'], http_req_duration: ['p(95)<500'] } };
+          export default function() {
+            let res = http.get(`${__ENV.BASE_URL}/healthz`);
+            check(res, { 'status 200': (r) => r.status === 200 });
+            sleep(1);
+          }
+          EOF
+
+    - stage: dast
+      name: OWASP ZAP Scan
+      if: env(RUN_DAST) = true
+      install: skip
+      script:
+        - docker run --rm ghcr.io/zaproxy/zaproxy:stable zap-baseline.py -t "$BASE_URL" || true
+
+    - stage: kube-audit
+      name: kube-bench + Kubescape
+      script:
+        - docker run --rm aquasec/kube-bench:latest run --targets node,policies || true
+        - |
+          curl -s https://raw.githubusercontent.com/kubescape/kubescape/master/install.sh | /bin/bash
+          kubescape scan framework nsa,mitre 2>/dev/null || true
+
+    - stage: notify
+      name: Slack Notification
+      script:
+        - |
+          curl -sf -X POST "$SLACK_WEBHOOK" \
+            -H 'Content-type: application/json' \
+            --data "{\"text\":\":white_check_mark: Post-deploy validation passed for *$ENVIRONMENT*\"}" || true
+
+notifications:
+  slack:
+    rooms:
+      - secure: "$SLACK_WEBHOOK_ENCRYPTED"
+    on_success: always
+    on_failure: always

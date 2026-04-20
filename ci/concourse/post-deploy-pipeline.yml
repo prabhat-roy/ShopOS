@@ -1,0 +1,155 @@
+# Post-Deploy Validation Pipeline — Concourse CI
+# Credentials: kubeconfig, slack-webhook
+---
+resource_types:
+  - name: slack-notification
+    type: docker-image
+    source:
+      repository: cfcommunity/slack-notification-resource
+
+resources:
+  - name: trigger-manual
+    type: time
+    source:
+      interval: 8760h
+
+  - name: slack-alert
+    type: slack-notification
+    source:
+      url: ((slack.webhook_url))
+
+jobs:
+  - name: health-check
+    plan:
+      - get: trigger-manual
+        trigger: false
+      - task: check
+        config:
+          platform: linux
+          image_resource:
+            type: registry-image
+            source: {repository: curlimages/curl}
+          params:
+            BASE_URL: ((base_url))
+          run:
+            path: sh
+            args:
+              - -c
+              - |
+                FAILED=0
+                for PATH in /healthz /api/v1/products; do
+                  STATUS=$(curl -sf --max-time 10 "$BASE_URL$PATH" -o /dev/null -w "%{http_code}" || echo "000")
+                  echo "$BASE_URL$PATH → $STATUS"
+                  [ "$STATUS" = "000" ] && FAILED=1
+                done
+                [ "$FAILED" = "1" ] && echo "Health check FAILED" && exit 1
+                echo "All health checks passed"
+        on_failure:
+          put: slack-alert
+          params:
+            text: ":x: Health check FAILED for *((environment))*"
+
+  - name: load-test
+    plan:
+      - get: trigger-manual
+        trigger: false
+        passed: [health-check]
+      - task: k6
+        config:
+          platform: linux
+          image_resource:
+            type: registry-image
+            source: {repository: grafana/k6}
+          params:
+            BASE_URL: ((base_url))
+            RUN_LOAD_TEST: ((run_load_test))
+          run:
+            path: sh
+            args:
+              - -c
+              - |
+                [ "$RUN_LOAD_TEST" = "true" ] || { echo "Skipped"; exit 0; }
+                cat > /tmp/load.js << 'EOF'
+                import http from 'k6/http';
+                import { check, sleep } from 'k6';
+                export let options = {
+                  vus: 10, duration: '60s',
+                  thresholds: { http_req_failed: ['rate<0.05'], http_req_duration: ['p(95)<500'] },
+                };
+                export default function() {
+                  let res = http.get(`${__ENV.BASE_URL}/healthz`);
+                  check(res, { 'status 200': (r) => r.status === 200 });
+                  sleep(1);
+                }
+                EOF
+                k6 run /tmp/load.js -e BASE_URL="$BASE_URL"
+
+  - name: dast-zap
+    plan:
+      - get: trigger-manual
+        trigger: false
+        passed: [health-check]
+      - task: zap-scan
+        config:
+          platform: linux
+          image_resource:
+            type: registry-image
+            source: {repository: ghcr.io/zaproxy/zaproxy, tag: stable}
+          params:
+            BASE_URL: ((base_url))
+            RUN_DAST: ((run_dast))
+          run:
+            path: sh
+            args:
+              - -c
+              - |
+                [ "$RUN_DAST" = "true" ] || { echo "Skipped"; exit 0; }
+                zap-baseline.py -t "$BASE_URL" -r /tmp/zap-report.html || true
+                echo "ZAP DAST scan complete"
+
+  - name: kube-audit
+    plan:
+      - get: trigger-manual
+        trigger: false
+        passed: [health-check]
+      - task: bench
+        config:
+          platform: linux
+          image_resource:
+            type: registry-image
+            source: {repository: aquasec/kube-bench}
+          params:
+            KUBECONFIG_CONTENT: ((kubeconfig.content))
+          run:
+            path: sh
+            args:
+              - -c
+              - |
+                mkdir -p ~/.kube && echo "$KUBECONFIG_CONTENT" | base64 -d > ~/.kube/config
+                kube-bench run --targets node,policies --json > /tmp/kube-bench.json 2>/dev/null || true
+                echo "kube-bench complete"
+      - task: kubescape
+        config:
+          platform: linux
+          image_resource:
+            type: registry-image
+            source: {repository: kubescape/kubescape}
+          params:
+            KUBECONFIG_CONTENT: ((kubeconfig.content))
+          run:
+            path: sh
+            args:
+              - -c
+              - |
+                mkdir -p ~/.kube && echo "$KUBECONFIG_CONTENT" | base64 -d > ~/.kube/config
+                kubescape scan framework nsa,mitre --format json --output /tmp/kubescape.json 2>/dev/null || true
+                echo "Kubescape complete"
+
+  - name: notify-success
+    plan:
+      - get: trigger-manual
+        trigger: false
+        passed: [load-test, dast-zap, kube-audit]
+      - put: slack-alert
+        params:
+          text: ":white_check_mark: Post-deploy validation passed for *((environment))*"

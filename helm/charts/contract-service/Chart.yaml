@@ -1,0 +1,19 @@
+apiVersion: v2
+name: contract-service
+description: ShopOS Contract Service — B2B contract lifecycle
+type: application
+version: 0.1.0
+appVersion: "1.0.0"
+keywords:
+  - shopos
+  - contract-service
+  - b2b
+home: https://github.com/your-org/shopos
+sources:
+  - https://github.com/your-org/shopos/tree/main/src/b2b/contract-service
+maintainers:
+  - name: ShopOS Platform Team
+    email: platform@shopos.io
+annotations:
+  app.kubernetes.io/domain: b2b
+  app.kubernetes.io/language: Kotlin

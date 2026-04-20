@@ -1,0 +1,21 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: pim-integration-service
+  namespace: integrations
+  labels:
+    app: pim-integration-service
+    domain: integrations
+data:
+  APP_ENV: production
+  LOG_LEVEL: info
+  LOG_FORMAT: json
+  SERVICE_NAME: pim-integration-service
+  SERVICE_DOMAIN: integrations
+  GRPC_PORT: "50195"
+  METRICS_PORT: "9090"
+  HEALTH_PORT: "50195"
+  OTEL_SERVICE_NAME: pim-integration-service
+  OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector.monitoring:4317
+  KAFKA_BROKERS: kafka.infra:9092
+  SCHEMA_REGISTRY_URL: http://schema-registry.infra:8081

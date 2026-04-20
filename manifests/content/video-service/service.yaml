@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: video-service
+  namespace: content
+  labels:
+    app: video-service
+    domain: content
+spec:
+  selector:
+    app: video-service
+  type: ClusterIP
+  ports:
+    - name: grpc
+      port: 50144
+      targetPort: grpc
+      protocol: TCP

@@ -1,0 +1,128 @@
+# Install CI Tools — GitLab CI
+# Verifies all required tools are available in the runner environment
+
+workflow:
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "web"
+
+stages:
+  - runtimes
+  - cli-tools
+  - security-tools
+  - verify
+
+golang:
+  stage: runtimes
+  image: golang:1.23
+  script: [go version]
+
+java:
+  stage: runtimes
+  image: eclipse-temurin:21
+  script: [java -version]
+
+nodejs:
+  stage: runtimes
+  image: node:22
+  script: [node --version, npm --version]
+
+python:
+  stage: runtimes
+  image: python:3.13
+  script: [python --version, pip --version]
+
+dotnet:
+  stage: runtimes
+  image: mcr.microsoft.com/dotnet/sdk:8.0
+  script: [dotnet --version]
+
+rust:
+  stage: runtimes
+  image: rust:latest
+  script: [rustc --version, cargo --version]
+
+kubectl-helm:
+  stage: cli-tools
+  image: alpine:latest
+  script:
+    - apk add --no-cache curl bash
+    - curl -fsSL "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl" -o /usr/local/bin/kubectl && chmod +x /usr/local/bin/kubectl
+    - curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
+    - kubectl version --client
+    - helm version --short
+
+terraform:
+  stage: cli-tools
+  image: hashicorp/terraform:1.9.0
+  script: [terraform version]
+
+cosign-buf:
+  stage: cli-tools
+  image: ubuntu:24.04
+  script:
+    - apt-get update -qq && apt-get install -y curl --quiet
+    - curl -fsSL "https://github.com/sigstore/cosign/releases/download/v2.4.0/cosign-linux-amd64" -o /usr/local/bin/cosign && chmod +x /usr/local/bin/cosign
+    - curl -fsSL "https://github.com/bufbuild/buf/releases/download/v1.35.1/buf-Linux-x86_64" -o /usr/local/bin/buf && chmod +x /usr/local/bin/buf
+    - cosign version
+    - buf --version
+
+trivy-grype-syft:
+  stage: security-tools
+  image: ubuntu:24.04
+  script:
+    - apt-get update -qq && apt-get install -y curl --quiet
+    - curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh -s -- -b /usr/local/bin
+    - curl -sSfL https://raw.githubusercontent.com/anchore/grype/main/install.sh | sh -s -- -b /usr/local/bin
+    - curl -sSfL https://raw.githubusercontent.com/anchore/syft/main/install.sh | sh -s -- -b /usr/local/bin
+    - trivy --version | head -1
+    - grype version | head -1
+    - syft --version
+
+semgrep-checkov:
+  stage: security-tools
+  image: python:3.13
+  script:
+    - pip install semgrep checkov --quiet
+    - semgrep --version
+    - checkov --version
+
+gitleaks:
+  stage: security-tools
+  image: zricethezav/gitleaks:latest
+  script: [gitleaks version]
+
+k6:
+  stage: security-tools
+  image: grafana/k6:latest
+  script: [k6 version]
+
+ansible:
+  stage: security-tools
+  image: python:3.13
+  script:
+    - pip install ansible ansible-lint --quiet
+    - ansible --version | head -1
+
+all-versions:
+  stage: verify
+  image: ubuntu:24.04
+  script:
+    - echo "=== All tools verified across stages ==="
+    - echo "Runtimes Go/Java/Node/Python/Dotnet/Rust - OK"
+    - echo "CLI kubectl/helm/terraform/cosign/buf - OK"
+    - echo "Security trivy/grype/syft/semgrep/checkov/gitleaks/k6 - OK"
+  needs:
+    - golang
+    - java
+    - nodejs
+    - python
+    - dotnet
+    - rust
+    - kubectl-helm
+    - terraform
+    - cosign-buf
+    - trivy-grype-syft
+    - semgrep-checkov
+    - gitleaks
+    - k6
+    - ansible

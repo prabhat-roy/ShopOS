@@ -1,0 +1,19 @@
+apiVersion: v2
+name: category-service
+description: ShopOS Category Service — product category hierarchy
+type: application
+version: 0.1.0
+appVersion: "1.0.0"
+keywords:
+  - shopos
+  - category-service
+  - catalog
+home: https://github.com/your-org/shopos
+sources:
+  - https://github.com/your-org/shopos/tree/main/src/catalog/category-service
+maintainers:
+  - name: ShopOS Platform Team
+    email: platform@shopos.io
+annotations:
+  app.kubernetes.io/domain: catalog
+  app.kubernetes.io/language: Go

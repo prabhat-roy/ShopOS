@@ -1,0 +1,157 @@
+# Deploy Service — Woodpecker CI
+# Mirrors ci/jenkins/deploy.Jenkinsfile
+# Woodpecker CI is Drone-compatible; this uses the same step/pipeline format.
+# Secrets (set in Woodpecker UI → Secrets):
+#   harbor_registry, harbor_user, harbor_password
+#   sonar_host_url, sonar_token
+#   kubeconfig_content (base64-encoded)
+#   slack_webhook
+
+when:
+  event: [custom, manual]
+
+variables: &defaults
+  SERVICE_NAME: api-gateway
+  DOMAIN: platform
+  IMAGE_TAG: ${CI_COMMIT_SHA}
+  ENVIRONMENT: dev
+  SKIP_TESTS: "false"
+  SCAN_SEVERITY: HIGH,CRITICAL
+
+steps:
+  secret-scan:
+    image: zricethezav/gitleaks:latest
+    commands:
+      - mkdir -p reports
+      - gitleaks detect --source . --no-git --exit-code 0 --report-format json --report-path reports/gitleaks.json || true
+    when:
+      event: [custom, manual]
+
+  iac-scan:
+    image: bridgecrew/checkov:latest
+    commands:
+      - mkdir -p reports
+      - checkov -d . --output json --output-file-path reports/ --soft-fail || true
+    when:
+      event: [custom, manual]
+
+  sast-semgrep:
+    image: returntocorp/semgrep:latest
+    commands:
+      - mkdir -p reports
+      - semgrep --config=auto --json --output=reports/semgrep.json --error --severity=ERROR src/$DOMAIN/$SERVICE_NAME || true
+    depends_on: [secret-scan]
+
+  build-test:
+    image: ubuntu:24.04
+    environment:
+      DEBIAN_FRONTEND: noninteractive
+    commands:
+      - apt-get update -qq && apt-get install -y curl git --quiet
+      - cd src/$DOMAIN/$SERVICE_NAME
+      - |
+        if [ -f "go.mod" ]; then
+          apt-get install -y golang-go --quiet
+          go test ./... 2>&1 | tee /tmp/test.txt || [ "$SKIP_TESTS" = "true" ]
+        elif [ -f "pom.xml" ]; then
+          apt-get install -y default-jdk maven --quiet
+          mvn test -q 2>&1 | tee /tmp/test.txt || [ "$SKIP_TESTS" = "true" ]
+        elif [ -f "package.json" ]; then
+          apt-get install -y nodejs npm --quiet
+          npm ci --quiet && npm test 2>&1 | tee /tmp/test.txt || [ "$SKIP_TESTS" = "true" ]
+        elif [ -f "requirements.txt" ]; then
+          apt-get install -y python3 python3-pip --quiet
+          pip3 install -r requirements.txt --quiet
+          python3 -m pytest --tb=short 2>&1 | tee /tmp/test.txt || [ "$SKIP_TESTS" = "true" ]
+        fi
+    depends_on: [sast-semgrep]
+
+  docker-build:
+    image: woodpeckerci/plugin-docker-buildx
+    settings:
+      repo: ${HARBOR_REGISTRY}/${DOMAIN}/${SERVICE_NAME}
+      tags:
+        - ${CI_COMMIT_SHA}
+        - latest
+      context: src/${DOMAIN}/${SERVICE_NAME}
+      dockerfile: src/${DOMAIN}/${SERVICE_NAME}/Dockerfile
+      registry:
+        from_secret: harbor_registry
+      username:
+        from_secret: harbor_user
+      password:
+        from_secret: harbor_password
+    depends_on: [build-test]
+
+  trivy-scan:
+    image: aquasec/trivy:latest
+    environment:
+      HARBOR_REGISTRY:
+        from_secret: harbor_registry
+    commands:
+      - mkdir -p reports
+      - trivy image --exit-code 0 --severity $SCAN_SEVERITY --format json
+          --output reports/trivy-$SERVICE_NAME.json
+          $HARBOR_REGISTRY/$DOMAIN/$SERVICE_NAME:$IMAGE_TAG || true
+      - trivy image --exit-code 1 --severity CRITICAL
+          $HARBOR_REGISTRY/$DOMAIN/$SERVICE_NAME:$IMAGE_TAG || echo "WARN Critical vulns found"
+    depends_on: [docker-build]
+
+  sbom:
+    image: anchore/syft:latest
+    environment:
+      HARBOR_REGISTRY:
+        from_secret: harbor_registry
+    commands:
+      - mkdir -p reports
+      - syft $HARBOR_REGISTRY/$DOMAIN/$SERVICE_NAME:$IMAGE_TAG
+          -o cyclonedx-json > reports/sbom-$SERVICE_NAME.json || true
+    depends_on: [docker-build]
+
+  cosign-sign:
+    image: gcr.io/projectsigstore/cosign:latest
+    environment:
+      HARBOR_REGISTRY:
+        from_secret: harbor_registry
+    commands:
+      - cosign sign --yes $HARBOR_REGISTRY/$DOMAIN/$SERVICE_NAME:$IMAGE_TAG || true
+      - cosign attest --yes
+          --predicate reports/sbom-$SERVICE_NAME.json
+          --type cyclonedx
+          $HARBOR_REGISTRY/$DOMAIN/$SERVICE_NAME:$IMAGE_TAG || true
+    depends_on: [trivy-scan, sbom]
+
+  deploy:
+    image: alpine/helm:latest
+    environment:
+      KUBECONFIG_CONTENT:
+        from_secret: kubeconfig_content
+    commands:
+      - apk add --no-cache curl bash
+      - curl -fsSL "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl" -o /usr/local/bin/kubectl && chmod +x /usr/local/bin/kubectl
+      - mkdir -p ~/.kube
+      - echo "$KUBECONFIG_CONTENT" | base64 -d > ~/.kube/config
+      - |
+        helm upgrade --install "$SERVICE_NAME" "helm/charts/$SERVICE_NAME" \
+          --namespace "$DOMAIN" \
+          --set image.repository="$HARBOR_REGISTRY/$DOMAIN/$SERVICE_NAME" \
+          --set image.tag="$IMAGE_TAG" \
+          --set environment="$ENVIRONMENT" \
+          -f "helm/charts/$SERVICE_NAME/values-$ENVIRONMENT.yaml" \
+          --wait --timeout 5m
+      - kubectl rollout status deploy/"$SERVICE_NAME" -n "$DOMAIN" --timeout=120s
+    depends_on: [cosign-sign]
+
+  notify:
+    image: curlimages/curl:latest
+    environment:
+      SLACK_WEBHOOK:
+        from_secret: slack_webhook
+    commands:
+      - |
+        curl -sf -X POST "$SLACK_WEBHOOK" \
+          -H "Content-Type: application/json" \
+          -d "{\"text\":\"Deployed *$SERVICE_NAME* @ $IMAGE_TAG to *$ENVIRONMENT*\"}" || true
+    depends_on: [deploy]
+    when:
+      status: [success, failure]

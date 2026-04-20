@@ -1,0 +1,15 @@
+{
+  "type": "record",
+  "name": "SearchPerformed",
+  "namespace": "com.shopos.analytics.search",
+  "doc": "Emitted when a user performs a product search",
+  "fields": [
+    { "name": "event_id",     "type": "string" },
+    { "name": "session_id",   "type": "string" },
+    { "name": "user_id",      "type": ["null", "string"], "default": null },
+    { "name": "query",        "type": "string" },
+    { "name": "result_count", "type": "int" },
+    { "name": "filters",      "type": { "type": "map", "values": "string" }, "default": {} },
+    { "name": "occurred_at",  "type": { "type": "long", "logicalType": "timestamp-millis" } }
+  ]
+}

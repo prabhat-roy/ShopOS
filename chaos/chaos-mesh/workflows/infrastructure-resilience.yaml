@@ -1,0 +1,75 @@
+apiVersion: chaos-mesh.org/v1alpha1
+kind: Workflow
+metadata:
+  name: infrastructure-resilience-workflow
+  namespace: chaos-mesh
+  labels:
+    app.kubernetes.io/part-of: shopos-chaos
+    chaos.shopos.io/domain: infrastructure
+spec:
+  entry: entry
+  templates:
+    - name: entry
+      templateType: Serial
+      deadline: 45m
+      children:
+        - baseline-pause
+        - kafka-disruption
+        - kafka-recovery-pause
+        - database-disruption
+        - database-recovery-pause
+        - network-partition-test
+
+    - name: baseline-pause
+      templateType: Suspend
+      deadline: 2m
+
+    - name: kafka-disruption
+      templateType: PodChaos
+      deadline: 5m
+      podChaos:
+        action: pod-kill
+        mode: fixed-percent
+        value: "33"
+        selector:
+          namespaces: [messaging]
+          labelSelectors:
+            app.kubernetes.io/name: kafka
+
+    - name: kafka-recovery-pause
+      templateType: Suspend
+      deadline: 8m
+
+    - name: database-disruption
+      templateType: PodChaos
+      deadline: 3m
+      podChaos:
+        action: pod-failure
+        mode: one
+        selector:
+          namespaces: [databases]
+          labelSelectors:
+            app.kubernetes.io/name: postgresql
+            role: primary
+
+    - name: database-recovery-pause
+      templateType: Suspend
+      deadline: 5m
+
+    - name: network-partition-test
+      templateType: NetworkChaos
+      deadline: 5m
+      networkChaos:
+        action: partition
+        mode: all
+        selector:
+          namespaces: [commerce]
+          labelSelectors:
+            app.kubernetes.io/name: payment-service
+        direction: both
+        target:
+          mode: all
+          selector:
+            namespaces: [databases]
+            labelSelectors:
+              app.kubernetes.io/name: postgresql

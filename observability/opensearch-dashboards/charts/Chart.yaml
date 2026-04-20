@@ -1,0 +1,6 @@
+apiVersion: v2
+name: opensearch-dashboards
+description: OpenSearch Dashboards — visualization UI for OpenSearch
+type: application
+version: 1.0.0
+appVersion: "2.17.0"

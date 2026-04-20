@@ -1,0 +1,19 @@
+apiVersion: v2
+name: sentiment-analysis-service
+description: ShopOS Sentiment Analysis Service — NLP sentiment scoring
+type: application
+version: 0.1.0
+appVersion: "1.0.0"
+keywords:
+  - shopos
+  - sentiment-analysis-service
+  - analytics-ai
+home: https://github.com/your-org/shopos
+sources:
+  - https://github.com/your-org/shopos/tree/main/src/analytics-ai/sentiment-analysis-service
+maintainers:
+  - name: ShopOS Platform Team
+    email: platform@shopos.io
+annotations:
+  app.kubernetes.io/domain: analytics-ai
+  app.kubernetes.io/language: Python

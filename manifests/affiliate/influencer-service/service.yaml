@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: influencer-service
+  namespace: affiliate
+  labels:
+    app: influencer-service
+    domain: affiliate
+spec:
+  selector:
+    app: influencer-service
+  type: ClusterIP
+  ports:
+    - name: grpc
+      port: 50202
+      targetPort: grpc
+      protocol: TCP

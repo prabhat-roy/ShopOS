@@ -1,0 +1,21 @@
+apiVersion: v2
+name: api-gateway
+description: ShopOS API Gateway — HTTP/gRPC reverse proxy and entry point for all client traffic
+type: application
+version: 0.1.0
+appVersion: "1.0.0"
+keywords:
+  - shopos
+  - api-gateway
+  - platform
+  - grpc
+  - http
+home: https://github.com/your-org/shopos
+sources:
+  - https://github.com/your-org/shopos/tree/main/src/platform/api-gateway
+maintainers:
+  - name: ShopOS Platform Team
+    email: platform@shopos.io
+annotations:
+  app.kubernetes.io/domain: platform
+  app.kubernetes.io/language: go

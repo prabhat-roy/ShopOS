@@ -1,0 +1,54 @@
+syntax = "proto3";
+package financial.accounting.v1;
+option go_package = "github.com/shopos/proto/financial/accounting/v1;accountingv1";
+
+import "google/protobuf/timestamp.proto";
+
+service AccountingService {
+  rpc CreateJournalEntry(CreateJournalEntryRequest)   returns (CreateJournalEntryResponse);
+  rpc GetJournalEntry(GetJournalEntryRequest)         returns (GetJournalEntryResponse);
+  rpc ListJournalEntries(ListJournalEntriesRequest)   returns (ListJournalEntriesResponse);
+  rpc GetAccountBalance(GetAccountBalanceRequest)     returns (GetAccountBalanceResponse);
+  rpc GetTrialBalance(GetTrialBalanceRequest)         returns (GetTrialBalanceResponse);
+}
+
+enum EntryType {
+  ENTRY_TYPE_UNSPECIFIED = 0;
+  ENTRY_TYPE_DEBIT       = 1;
+  ENTRY_TYPE_CREDIT      = 2;
+}
+
+message JournalLine {
+  string    account_code = 1;
+  string    account_name = 2;
+  EntryType type         = 3;
+  string    amount       = 4;
+  string    currency     = 5;
+}
+
+message JournalEntry {
+  string id          = 1;
+  string reference   = 2;
+  string description = 3;
+  repeated JournalLine lines = 4;
+  google.protobuf.Timestamp posted_at  = 5;
+  google.protobuf.Timestamp created_at = 6;
+}
+
+message AccountBalance {
+  string account_code = 1;
+  string account_name = 2;
+  string balance      = 3;
+  string currency     = 4;
+}
+
+message CreateJournalEntryRequest  { string reference = 1; string description = 2; repeated JournalLine lines = 3; }
+message CreateJournalEntryResponse { JournalEntry entry = 1; }
+message GetJournalEntryRequest     { string id = 1; }
+message GetJournalEntryResponse    { JournalEntry entry = 1; }
+message ListJournalEntriesRequest  { string reference = 1; google.protobuf.Timestamp start_date = 2; google.protobuf.Timestamp end_date = 3; int32 page = 4; int32 page_size = 5; }
+message ListJournalEntriesResponse { repeated JournalEntry entries = 1; int32 total = 2; }
+message GetAccountBalanceRequest   { string account_code = 1; }
+message GetAccountBalanceResponse  { AccountBalance balance = 1; }
+message GetTrialBalanceRequest     { google.protobuf.Timestamp as_of = 1; }
+message GetTrialBalanceResponse    { repeated AccountBalance balances = 1; string total_debits = 2; string total_credits = 3; }

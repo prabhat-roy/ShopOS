@@ -1,0 +1,24 @@
+{
+  "services": [
+    {
+      "id": "api-gateway",
+      "name": "api-gateway",
+      "tags": ["platform", "gateway", "traefik.enable=true"],
+      "address": "api-gateway",
+      "port": 8080,
+      "checks": [
+        {"http": "http://api-gateway:8080/healthz", "interval": "10s", "timeout": "3s"}
+      ]
+    },
+    {
+      "id": "order-service",
+      "name": "order-service",
+      "tags": ["commerce", "grpc"],
+      "address": "order-service",
+      "port": 50082,
+      "checks": [
+        {"grpc": "order-service:50082", "interval": "10s"}
+      ]
+    }
+  ]
+}

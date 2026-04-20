@@ -1,0 +1,25 @@
+apiVersion: chaos-mesh.org/v1alpha1
+kind: NetworkChaos
+metadata:
+  name: network-partition-payment
+  namespace: chaos-mesh
+  labels:
+    app.kubernetes.io/part-of: shopos-chaos
+    chaos.shopos.io/tier: commerce
+spec:
+  action: partition
+  mode: all
+  selector:
+    namespaces:
+      - commerce
+    labelSelectors:
+      app.kubernetes.io/name: payment-service
+  direction: both
+  target:
+    mode: all
+    selector:
+      namespaces:
+        - commerce
+      labelSelectors:
+        app.kubernetes.io/name: fraud-detection-service
+  duration: 2m

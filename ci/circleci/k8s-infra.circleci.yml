@@ -1,0 +1,93 @@
+# Kubernetes Infrastructure (Terraform) Pipeline — CircleCI
+# Context: shopos-aws, shopos-gcp, shopos-azure
+version: 2.1
+
+executors:
+  terraform-executor:
+    docker:
+      - image: hashicorp/terraform:1.9.0
+    resource_class: medium
+
+jobs:
+  terraform-eks:
+    executor: terraform-executor
+    steps:
+      - checkout
+      - run:
+          name: Terraform EKS
+          command: |
+            [ "$CLOUD" = "aws" ] || [ "$CLOUD" = "all" ] || { echo "Skipped"; exit 0; }
+            cd infra/terraform/aws/eks
+            terraform init \
+              -backend-config="bucket=shopos-tfstate" \
+              -backend-config="key=infra/terraform/aws/eks/terraform.tfstate" \
+              -backend-config="region=$AWS_DEFAULT_REGION"
+            if [ "$TF_ACTION" = "APPLY" ]; then
+              terraform apply -auto-approve
+            elif [ "$TF_ACTION" = "DESTROY" ]; then
+              terraform destroy -auto-approve
+            else
+              terraform plan
+            fi
+          environment:
+            AWS_DEFAULT_REGION: us-east-1
+
+  terraform-gke:
+    executor: terraform-executor
+    steps:
+      - checkout
+      - run:
+          name: Write GCP SA key
+          command: echo "$GCP_SA_KEY" > /tmp/gcp-key.json
+      - run:
+          name: Terraform GKE
+          command: |
+            [ "$CLOUD" = "gcp" ] || [ "$CLOUD" = "all" ] || { echo "Skipped"; exit 0; }
+            export GOOGLE_APPLICATION_CREDENTIALS=/tmp/gcp-key.json
+            cd infra/opentofu/gcp/gke
+            terraform init \
+              -backend-config="bucket=shopos-tfstate-gcp" \
+              -backend-config="prefix=infra/opentofu/gcp/gke"
+            if [ "$TF_ACTION" = "APPLY" ]; then
+              terraform apply -auto-approve
+            elif [ "$TF_ACTION" = "DESTROY" ]; then
+              terraform destroy -auto-approve
+            else
+              terraform plan
+            fi
+      - run:
+          name: Cleanup GCP key
+          command: rm -f /tmp/gcp-key.json
+          when: always
+
+  terraform-aks:
+    executor: terraform-executor
+    steps:
+      - checkout
+      - run:
+          name: Terraform AKS
+          command: |
+            [ "$CLOUD" = "azure" ] || [ "$CLOUD" = "all" ] || { echo "Skipped"; exit 0; }
+            cd infra/opentofu/azure/aks
+            terraform init \
+              -backend-config="resource_group_name=shopos-tfstate-rg" \
+              -backend-config="storage_account_name=shoposterraform" \
+              -backend-config="container_name=tfstate" \
+              -backend-config="key=infra/opentofu/azure/aks/terraform.tfstate"
+            if [ "$TF_ACTION" = "APPLY" ]; then
+              terraform apply -auto-approve
+            elif [ "$TF_ACTION" = "DESTROY" ]; then
+              terraform destroy -auto-approve
+            else
+              terraform plan
+            fi
+
+workflows:
+  k8s-infra-workflow:
+    jobs:
+      - terraform-eks:
+          context: shopos-aws
+      - terraform-gke:
+          context: shopos-gcp
+      - terraform-aks:
+          context: shopos-azure
