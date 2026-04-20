@@ -17,7 +17,7 @@ your environment supports.
 | Tekton | `tekton/` | 12 YAML | Kubernetes CRD-native (Task + Pipeline + PipelineRun) |
 | Concourse CI | `concourse/` | 12 YAML | Resource/job DAG pipelines |
 | GitLab CI | `gitlab-ci/` | 12 YAML | `.gitlab-ci.yml` — native GitLab SCM integration |
-| GitHub Actions | `.github/workflows/` | 12 YAML | Native GitHub CI — triggers on push/PR/manual |
+| GitHub Actions | `github-actions/` | 12 YAML | Stored in `ci/github-actions/` — **not** in `.github/` so auto-triggering is disabled |
 | CircleCI | `circleci/` | 12 YAML | `version: 2.1` orb-based pipelines |
 | GoCD | `gocd/` | 12 YAML | Stage/job pipelines with manual approval gates |
 | Travis CI | `travis/` | 12 YAML | Stage-based pipelines with branch filters |
@@ -50,7 +50,9 @@ ci/
 ├── woodpecker/                       ← Woodpecker CI (same 12 pipelines, *.woodpecker.yml)
 ├── gitlab-ci/                        ← GitLab CI (same 12 pipelines, *.gitlab-ci.yml)
 │
-├── .github/workflows/                ← GitHub Actions (same 12 pipelines, *.yml)
+├── github-actions/                   ← GitHub Actions (same 12 pipelines, *.yml)
+│   │                                   Stored here (NOT in .github/) — auto-triggering disabled.
+│   │                                   To enable: copy files to .github/workflows/ and add secrets.
 │   ├── deploy.yml
 │   ├── post-deploy.yml
 │   ├── k8s-infra.yml

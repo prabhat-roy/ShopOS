@@ -87,7 +87,7 @@ ShopOS/
 ├── proto/                      ← gRPC .proto files (58 files, 14 domains)
 ├── events/                     ← Kafka Avro schemas (20 event types)
 │
-├── .github/workflows/          ← GitHub Actions (15th platform — 12 workflows)
+├── ci/github-actions/          ← GitHub Actions (15th platform — 12 workflows, auto-trigger disabled)
 │
 ├── ci/                         ← 14 other CI platforms × 12 pipelines = 168 files
 │   ├── jenkins/                ← 12 Jenkinsfiles (deploy, security, networking …)
@@ -529,8 +529,14 @@ dagger run go run main.go
 
 ### GitHub Actions
 
-Workflows already live at `.github/workflows/` — they are active as-is when the repository
-is hosted on GitHub. Secrets are set in repository Settings → Secrets and variables → Actions.
+Workflow files live at `ci/github-actions/` (NOT `.github/workflows/`), so they do **not**
+auto-trigger on push or PR. To activate them, copy the files into `.github/workflows/` and
+add the required secrets in repository Settings → Secrets and variables → Actions.
+
+```bash
+# Activate GitHub Actions
+mkdir -p .github/workflows && cp ci/github-actions/*.yml .github/workflows/
+```
 
 ```bash
 # List workflows
