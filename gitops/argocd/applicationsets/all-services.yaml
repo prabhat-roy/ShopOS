@@ -489,7 +489,7 @@ spec:
     spec:
       project: shopos-{{domain}}
       source:
-        repoURL: https://github.com/your-org/shopos.git
+        repoURL: https://github.com/prabhat-roy/ShopOS.git
         targetRevision: HEAD
         path: 'helm/charts/{{service}}'
       destination:

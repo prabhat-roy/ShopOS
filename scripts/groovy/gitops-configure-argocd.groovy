@@ -28,17 +28,21 @@ def call() {
             GITEA_URL=$(grep '^GITEA_URL=' infra.env 2>/dev/null | cut -d= -f2)
             GITEA_TOKEN=$(grep '^GITEA_TOKEN=' infra.env 2>/dev/null | cut -d= -f2)
             if [ -n "$GITEA_URL" ] && [ -n "$GITEA_TOKEN" ]; then
-                argocd repo add "${GITEA_URL}/shopos/enterprise-platform.git" \
+                argocd repo add "${GITEA_URL}/shopos/ShopOS.git" \
                     --username gitea \
                     --password "${GITEA_TOKEN}" \
                     --insecure-skip-server-verification 2>/dev/null || true
                 echo "  Git repo registered with ArgoCD"
             fi
 
-            # Create App-of-Apps pointing to gitops/argocd/
+            # Register GitHub repo as well (primary source)
+            argocd repo add https://github.com/prabhat-roy/ShopOS.git \
+                --insecure-skip-server-verification 2>/dev/null || true
+
+            # Create App-of-Apps pointing to gitops/argocd/applicationsets/
             argocd app create app-of-apps \
-                --repo "${GITEA_URL}/shopos/enterprise-platform.git" \
-                --path gitops/argocd \
+                --repo https://github.com/prabhat-roy/ShopOS.git \
+                --path gitops/argocd/applicationsets \
                 --dest-server https://kubernetes.default.svc \
                 --dest-namespace argocd \
                 --sync-policy automated \

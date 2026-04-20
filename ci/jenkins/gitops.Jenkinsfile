@@ -122,6 +122,12 @@ pipeline {
                     if (params.EXTERNAL_SECRETS)     { def s = load 'scripts/groovy/gitops-configure-external-secrets.groovy';     s() }
                     // Sealed Secrets — export controller public key to infra.env
                     if (params.SEALED_SECRETS)       { def s = load 'scripts/groovy/gitops-configure-sealed-secrets.groovy';       s() }
+                    // Weave GitOps — dashboard admin credentials, Flux connection
+                    if (params.WEAVE_GITOPS)         { def s = load 'scripts/groovy/gitops-configure-weave-gitops.groovy';         s() }
+                    // vCluster — extract kubeconfig, create domain namespaces inside virtual cluster
+                    if (params.VCLUSTER)             { def s = load 'scripts/groovy/gitops-configure-vcluster.groovy';             s() }
+                    // Gimlet — register repo, generate API token, connect to ArgoCD
+                    if (params.GIMLET)               { def s = load 'scripts/groovy/gitops-configure-gimlet.groovy';               s() }
                 }
             }
         }

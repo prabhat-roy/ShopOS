@@ -6,7 +6,7 @@ metadata:
 spec:
   description: ShopOS catalog domain services
   sourceRepos:
-    - 'https://github.com/your-org/shopos.git'
+    - 'https://github.com/prabhat-roy/ShopOS.git'
   destinations:
     - namespace: shopos-catalog
       server: https://kubernetes.default.svc

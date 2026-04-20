@@ -1,4 +1,15 @@
 apiVersion: argoproj.io/v1alpha1
+kind: EventBus
+metadata:
+  name: default
+  namespace: argo-events
+spec:
+  nats:
+    native:
+      replicas: 3
+      auth: token
+---
+apiVersion: argoproj.io/v1alpha1
 kind: EventSource
 metadata:
   name: github-eventsource
@@ -7,9 +18,9 @@ spec:
   github:
     shopos-push:
       repositories:
-        - owner: your-org
+        - owner: prabhat-roy
           names:
-            - shopos
+            - ShopOS
       webhook:
         endpoint: /push
         port: "12000"
@@ -17,6 +28,12 @@ spec:
       events:
         - push
         - pull_request
+      filter:
+        branches:
+          - main
+          - develop
+          - "feature/*"
+          - "release/*"
       apiToken:
         name: github-access
         key: token
@@ -27,10 +44,11 @@ spec:
       active: true
       contentType: json
 ---
+# Sensor 1: GitHub push → trigger Argo Workflow (CI build)
 apiVersion: argoproj.io/v1alpha1
 kind: Sensor
 metadata:
-  name: github-sensor
+  name: github-ci-sensor
   namespace: argo-events
 spec:
   template:
@@ -39,31 +57,90 @@ spec:
     - name: push-dep
       eventSourceName: github-eventsource
       eventName: shopos-push
+      filters:
+        data:
+          - path: body.ref
+            type: string
+            value:
+              - refs/heads/main
+              - refs/heads/develop
   triggers:
     - template:
-        name: trigger-tekton-pipeline
-        k8s:
-          operation: create
+        name: trigger-argo-workflow
+        argoWorkflow:
+          operation: submit
           source:
             resource:
-              apiVersion: tekton.dev/v1beta1
-              kind: PipelineRun
+              apiVersion: argoproj.io/v1alpha1
+              kind: Workflow
               metadata:
-                generateName: shopos-triggered-run-
-                namespace: tekton-pipelines
+                generateName: ci-triggered-
+                namespace: argo-workflows
               spec:
-                pipelineRef:
-                  name: shopos-build-pipeline
-                params:
-                  - name: repo-url
-                    value: "https://github.com/your-org/shopos.git"
-                  - name: revision
-                    value: "main"
-                workspaces:
-                  - name: source
-                    volumeClaimTemplate:
-                      spec:
-                        accessModes: [ReadWriteOnce]
-                        resources:
-                          requests:
-                            storage: 1Gi
+                workflowTemplateRef:
+                  name: shopos-ci-build
+                arguments:
+                  parameters:
+                    - name: repo-url
+                      value: "https://github.com/prabhat-roy/ShopOS.git"
+                    - name: revision
+                      value: "main"
+                    - name: service
+                      value: "api-gateway"
+                    - name: domain
+                      value: "platform"
+                    - name: registry
+                      value: "harbor-harbor.harbor.svc.cluster.local:8080"
+      retryStrategy:
+        steps: 3
+---
+# Sensor 2: Scheduled trigger → ML training workflow (daily at 02:00 UTC)
+apiVersion: argoproj.io/v1alpha1
+kind: Sensor
+metadata:
+  name: ml-training-sensor
+  namespace: argo-events
+spec:
+  template:
+    serviceAccountName: argo-events-sa
+  dependencies:
+    - name: schedule-dep
+      eventSourceName: calendar-eventsource
+      eventName: daily-ml-training
+  triggers:
+    - template:
+        name: trigger-ml-training
+        argoWorkflow:
+          operation: submit
+          source:
+            resource:
+              apiVersion: argoproj.io/v1alpha1
+              kind: Workflow
+              metadata:
+                generateName: ml-training-scheduled-
+                namespace: argo-workflows
+              spec:
+                workflowTemplateRef:
+                  name: shopos-ml-training
+                arguments:
+                  parameters:
+                    - name: model-name
+                      value: "recommendation-model"
+                    - name: data-date
+                      value: "today"
+---
+# Calendar EventSource for scheduled ML training
+apiVersion: argoproj.io/v1alpha1
+kind: EventSource
+metadata:
+  name: calendar-eventsource
+  namespace: argo-events
+spec:
+  calendar:
+    daily-ml-training:
+      schedule: "0 2 * * *"
+      timezone: "UTC"
+      persistence:
+        catchup:
+          enabled: true
+          maxDuration: "24h"

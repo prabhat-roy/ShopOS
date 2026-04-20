@@ -6,7 +6,7 @@ metadata:
 spec:
   description: ShopOS Platform domain services
   sourceRepos:
-    - 'https://github.com/your-org/shopos.git'
+    - 'https://github.com/prabhat-roy/ShopOS.git'
     - 'https://charts.shopos.io'
   destinations:
     - namespace: shopos-platform
