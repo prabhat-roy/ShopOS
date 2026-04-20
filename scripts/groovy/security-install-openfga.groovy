@@ -30,9 +30,9 @@ def call() {
     '''
     sh "kubectl rollout status deployment/openfga -n openfga --timeout=5m"
     sh "sed -i '/^OPENFGA_/d' infra.env || true"
-    sh "echo 'OPENFGA_URL=http://openfga.openfga.svc.cluster.local:8080' >> infra.env"
-    sh "echo 'OPENFGA_GRPC_URL=openfga.openfga.svc.cluster.local:8081' >> infra.env"
-    sh "echo 'OPENFGA_PLAYGROUND_URL=http://openfga.openfga.svc.cluster.local:3000' >> infra.env"
+    sh "sed -i '/^OPENFGA_URL=/d' infra.env 2>/dev/null || true; echo 'OPENFGA_URL=http://openfga.openfga.svc.cluster.local:8080' >> infra.env" 
+    sh "sed -i '/^OPENFGA_GRPC_URL=/d' infra.env 2>/dev/null || true; echo 'OPENFGA_GRPC_URL=openfga.openfga.svc.cluster.local:8081' >> infra.env" 
+    sh "sed -i '/^OPENFGA_PLAYGROUND_URL=/d' infra.env 2>/dev/null || true; echo 'OPENFGA_PLAYGROUND_URL=http://openfga.openfga.svc.cluster.local:3000' >> infra.env" 
     echo 'OpenFGA installed — Zanzibar-based authorization with PostgreSQL, gRPC+HTTP, playground UI'
 }
 return this

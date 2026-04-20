@@ -46,9 +46,17 @@ pipeline {
         stage('Load Kubeconfig') {
             steps {
                 script {
+                    if (!fileExists('infra.env')) {
+                        error "infra.env not found — run the k8s-infra pipeline first to provision a cluster"
+                    }
                     def kubeconfigContent = readFile('infra.env').trim()
-                        .split('\n').find { it.startsWith('KUBECONFIG_CONTENT=') }?.split('=', 2)?.last()
-                    sh "echo '${kubeconfigContent}' | base64 -d > ${env.WORKSPACE}/kubeconfig"
+                        .split('
+').find { it.startsWith('KUBECONFIG_CONTENT=') }?.split('=', 2)?.last()
+                    if (!kubeconfigContent) {
+                        error "KUBECONFIG_CONTENT missing from infra.env — run the k8s-infra pipeline first"
+                    }
+                    writeFile file: "${env.WORKSPACE}/kubeconfig-b64", text: kubeconfigContent
+                    sh "base64 -d ${env.WORKSPACE}/kubeconfig-b64 > ${env.WORKSPACE}/kubeconfig && rm -f ${env.WORKSPACE}/kubeconfig-b64"
                     env.KUBECONFIG = "${env.WORKSPACE}/kubeconfig"
                 }
             }

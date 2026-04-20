@@ -6,7 +6,7 @@ def call() {
             --wait --timeout 5m
     """
     sh "sed -i '/^FLUXCD_/d' infra.env || true"
-    sh "echo 'FLUXCD_URL=http://fluxcd-fluxcd.flux-system.svc.cluster.local:9292' >> infra.env"
+    sh "sed -i '/^FLUXCD_URL=/d' infra.env 2>/dev/null || true; echo 'FLUXCD_URL=http://fluxcd-fluxcd.flux-system.svc.cluster.local:9292' >> infra.env" 
     echo 'fluxcd installed'
 }
 return this

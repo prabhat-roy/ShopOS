@@ -34,8 +34,8 @@ def call() {
     '''
     sh "kubectl rollout status statefulset/vault -n vault --timeout=5m"
     sh "sed -i '/^VAULT_/d' infra.env || true"
-    sh "echo 'VAULT_URL=http://vault.vault.svc.cluster.local:8200' >> infra.env"
-    sh "echo 'VAULT_INJECTOR_URL=http://vault-agent-injector.vault.svc.cluster.local:8080' >> infra.env"
+    sh "sed -i '/^VAULT_URL=/d' infra.env 2>/dev/null || true; echo 'VAULT_URL=http://vault.vault.svc.cluster.local:8200' >> infra.env" 
+    sh "sed -i '/^VAULT_INJECTOR_URL=/d' infra.env 2>/dev/null || true; echo 'VAULT_INJECTOR_URL=http://vault-agent-injector.vault.svc.cluster.local:8080' >> infra.env" 
     echo 'Vault installed — HA Raft mode with 3 replicas, agent injector, CSI driver, and UI'
 }
 return this

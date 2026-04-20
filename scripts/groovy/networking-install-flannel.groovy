@@ -13,7 +13,7 @@ def call() {
     '''
     sh "kubectl rollout status daemonset/kube-flannel-ds -n kube-flannel --timeout=5m"
     sh "sed -i '/^FLANNEL_/d' infra.env || true"
-    sh "echo 'FLANNEL_POD_CIDR=10.244.0.0/16' >> infra.env"
+    sh "sed -i '/^FLANNEL_POD_CIDR=/d' infra.env 2>/dev/null || true; echo 'FLANNEL_POD_CIDR=10.244.0.0/16' >> infra.env" 
     echo 'Flannel CNI installed with VXLAN backend and 10.244.0.0/16 pod CIDR'
 }
 return this

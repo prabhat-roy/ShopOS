@@ -8,9 +8,9 @@ def call() {
 
     def url = 'http://forgejo-forgejo.forgejo.svc.cluster.local:3000'
     sh "sed -i '/^FORGEJO_/d' infra.env || true"
-    sh "echo 'FORGEJO_URL=http://forgejo-forgejo.forgejo.svc.cluster.local:3000' >> infra.env"
-    sh "echo 'FORGEJO_USER=forgejo_admin' >> infra.env"
-    sh "echo 'FORGEJO_PASSWORD=forgejo_admin' >> infra.env"
+    sh "sed -i '/^FORGEJO_URL=/d' infra.env 2>/dev/null || true; echo 'FORGEJO_URL=http://forgejo-forgejo.forgejo.svc.cluster.local:3000' >> infra.env" 
+    sh "sed -i '/^FORGEJO_USER=/d' infra.env 2>/dev/null || true; echo 'FORGEJO_USER=forgejo_admin' >> infra.env" 
+    sh "sed -i '/^FORGEJO_PASSWORD=/d' infra.env 2>/dev/null || true; echo 'FORGEJO_PASSWORD=forgejo_admin' >> infra.env" 
 
     echo 'forgejo installed — ${url}'
 }

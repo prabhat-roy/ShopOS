@@ -8,7 +8,7 @@ def call() {
 
     def url = 'http://goproxy-goproxy.goproxy.svc.cluster.local:8081'
     sh "sed -i '/^GOPROXY_/d' infra.env || true"
-    sh "echo 'GOPROXY_URL=http://goproxy-goproxy.goproxy.svc.cluster.local:8081' >> infra.env"
+    sh "sed -i '/^GOPROXY_URL=/d' infra.env 2>/dev/null || true; echo 'GOPROXY_URL=http://goproxy-goproxy.goproxy.svc.cluster.local:8081' >> infra.env" 
 
     echo 'goproxy installed — ${url}'
 }

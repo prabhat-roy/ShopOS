@@ -26,9 +26,9 @@ def call() {
     '''
     sh "kubectl rollout status deployment/anchore-api -n anchore --timeout=5m"
     sh "sed -i '/^ANCHORE_/d' infra.env || true"
-    sh "echo 'ANCHORE_URL=http://anchore-api.anchore.svc.cluster.local:8228' >> infra.env"
-    sh "echo 'ANCHORE_USER=admin' >> infra.env"
-    sh "echo 'ANCHORE_PASSWORD=foobar' >> infra.env"
+    sh "sed -i '/^ANCHORE_URL=/d' infra.env 2>/dev/null || true; echo 'ANCHORE_URL=http://anchore-api.anchore.svc.cluster.local:8228' >> infra.env" 
+    sh "sed -i '/^ANCHORE_USER=/d' infra.env 2>/dev/null || true; echo 'ANCHORE_USER=admin' >> infra.env" 
+    sh "sed -i '/^ANCHORE_PASSWORD=/d' infra.env 2>/dev/null || true; echo 'ANCHORE_PASSWORD=foobar' >> infra.env" 
     echo 'Anchore Engine installed — HA API, analyzer, policy engine, catalog with PostgreSQL'
 }
 return this

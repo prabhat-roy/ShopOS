@@ -8,7 +8,7 @@ def call() {
 
     def url = 'http://terrareg-terrareg.terrareg.svc.cluster.local:5000'
     sh "sed -i '/^TERRAREG_/d' infra.env || true"
-    sh "echo 'TERRAREG_URL=http://terrareg-terrareg.terrareg.svc.cluster.local:5000' >> infra.env"
+    sh "sed -i '/^TERRAREG_URL=/d' infra.env 2>/dev/null || true; echo 'TERRAREG_URL=http://terrareg-terrareg.terrareg.svc.cluster.local:5000' >> infra.env" 
 
     echo 'terrareg installed — ${url}'
 }

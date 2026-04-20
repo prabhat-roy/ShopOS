@@ -25,7 +25,7 @@ def call() {
     '''
     sh "kubectl rollout status daemonset/zeek -n zeek --timeout=5m"
     sh "sed -i '/^ZEEK_/d' infra.env || true"
-    sh "echo 'ZEEK_METRICS_URL=http://zeek.zeek.svc.cluster.local:47761/metrics' >> infra.env"
+    sh "sed -i '/^ZEEK_METRICS_URL=/d' infra.env 2>/dev/null || true; echo 'ZEEK_METRICS_URL=http://zeek.zeek.svc.cluster.local:47761/metrics' >> infra.env" 
     echo 'Zeek network security monitor installed — DaemonSet, JSON streaming logs, AF_PACKET'
 }
 return this

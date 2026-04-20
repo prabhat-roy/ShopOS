@@ -62,16 +62,11 @@ pipeline {
         stage('Load Environment') {
             steps {
                 script {
-                    // Kubeconfig
-                    def kubeconfigContent = readFile('infra.env').trim()
-                        .split('\n').find { it.startsWith('KUBECONFIG_CONTENT=') }
-                        ?.split('=', 2)?.last()
-                    if (kubeconfigContent) {
-                        sh "echo '${kubeconfigContent}' | base64 -d > ${env.WORKSPACE}/kubeconfig"
-                        env.KUBECONFIG = "${env.WORKSPACE}/kubeconfig"
+                    if (!fileExists('infra.env')) {
+                        error "infra.env not found — run k8s-infra and registry pipelines first to provision the cluster"
                     }
 
-                    // Parse infra.env
+                    // Parse infra.env once
                     def envMap = [:]
                     readFile('infra.env').trim().split('\n').each { line ->
                         def idx = line.indexOf('=')
@@ -108,6 +103,14 @@ pipeline {
                     // SIEM
                     env.WAZUH_URL           = envMap['WAZUH_URL']                  ?: ''
                     env.WAZUH_TOKEN         = envMap['WAZUH_TOKEN']                ?: ''
+
+                    // Kubeconfig
+                    def kubeconfigContent = envMap['KUBECONFIG_CONTENT'] ?: ''
+                    if (kubeconfigContent) {
+                        writeFile file: "${env.WORKSPACE}/kubeconfig-b64", text: kubeconfigContent
+                        sh "base64 -d ${env.WORKSPACE}/kubeconfig-b64 > ${env.WORKSPACE}/kubeconfig && rm -f ${env.WORKSPACE}/kubeconfig-b64"
+                        env.KUBECONFIG = "${env.WORKSPACE}/kubeconfig"
+                    }
 
                     sh 'mkdir -p reports/sast reports/sca reports/secrets reports/iac reports/image-scan reports/license reports/k8s-audit reports/dast'
 

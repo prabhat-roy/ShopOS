@@ -9,10 +9,10 @@ def call() {
             --wait --timeout 5m
     """
     sh "sed -i '/^RABBITMQ_/d' infra.env || true"
-    sh "echo 'RABBITMQ_URL=amqp://rabbitmq-rabbitmq.rabbitmq.svc.cluster.local:5672' >> infra.env"
-    sh "echo 'RABBITMQ_MANAGEMENT_URL=http://rabbitmq-rabbitmq.rabbitmq.svc.cluster.local:15672' >> infra.env"
-    sh "echo 'RABBITMQ_USER=admin' >> infra.env"
-    sh "echo 'RABBITMQ_PASSWORD=admin' >> infra.env"
+    sh "sed -i '/^RABBITMQ_URL=/d' infra.env 2>/dev/null || true; echo 'RABBITMQ_URL=amqp://rabbitmq-rabbitmq.rabbitmq.svc.cluster.local:5672' >> infra.env" 
+    sh "sed -i '/^RABBITMQ_MANAGEMENT_URL=/d' infra.env 2>/dev/null || true; echo 'RABBITMQ_MANAGEMENT_URL=http://rabbitmq-rabbitmq.rabbitmq.svc.cluster.local:15672' >> infra.env" 
+    sh "sed -i '/^RABBITMQ_USER=/d' infra.env 2>/dev/null || true; echo 'RABBITMQ_USER=admin' >> infra.env" 
+    sh "sed -i '/^RABBITMQ_PASSWORD=/d' infra.env 2>/dev/null || true; echo 'RABBITMQ_PASSWORD=admin' >> infra.env" 
     echo 'rabbitmq installed'
 }
 return this

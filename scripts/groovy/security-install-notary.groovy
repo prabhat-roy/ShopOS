@@ -18,7 +18,7 @@ def call() {
     '''
     sh "kubectl rollout status deployment/notation-server -n notation --timeout=5m || true"
     sh "sed -i '/^NOTARY_/d' infra.env || true"
-    sh "echo 'NOTARY_URL=https://notation.notation.svc.cluster.local:443' >> infra.env"
+    sh "sed -i '/^NOTARY_URL=/d' infra.env 2>/dev/null || true; echo 'NOTARY_URL=https://notation.notation.svc.cluster.local:443' >> infra.env" 
     echo 'Notary/Notation installed — image signing service with PostgreSQL storage'
 }
 return this

@@ -28,6 +28,10 @@ pipeline {
                 script {
                     def detectCloud = load 'scripts/groovy/k8s-detect-cloud.groovy'
                     detectCloud()
+                    // Cache TF_DIR in env so all subsequent stages reuse without re-reading the file
+                    env.TF_DIR = readFile('infra.env').trim()
+                        .split('\n').find { it.startsWith('TF_DIR=') }?.split('=', 2)?.last()
+                    echo "TF_DIR=${env.TF_DIR}"
                 }
             }
         }
@@ -35,10 +39,8 @@ pipeline {
         stage('Terraform Init') {
             steps {
                 script {
-                    def tfDir = readFile('infra.env').trim()
-                        .split('\n').find { it.startsWith('TF_DIR=') }?.split('=', 2)?.last()
                     def tfInit = load 'scripts/groovy/k8s-tf-init.groovy'
-                    tfInit(tfDir)
+                    tfInit(env.TF_DIR)
                 }
             }
         }
@@ -47,10 +49,8 @@ pipeline {
             when { expression { params.ACTION == 'CREATE' } }
             steps {
                 script {
-                    def tfDir = readFile('infra.env').trim()
-                        .split('\n').find { it.startsWith('TF_DIR=') }?.split('=', 2)?.last()
                     def vpc = load 'scripts/groovy/k8s-vpc.groovy'
-                    vpc(tfDir)
+                    vpc(env.TF_DIR)
                 }
             }
         }
@@ -59,10 +59,8 @@ pipeline {
             when { expression { params.ACTION == 'CREATE' } }
             steps {
                 script {
-                    def tfDir = readFile('infra.env').trim()
-                        .split('\n').find { it.startsWith('TF_DIR=') }?.split('=', 2)?.last()
                     def subnets = load 'scripts/groovy/k8s-subnets.groovy'
-                    subnets(tfDir)
+                    subnets(env.TF_DIR)
                 }
             }
         }
@@ -71,10 +69,8 @@ pipeline {
             when { expression { params.ACTION == 'CREATE' } }
             steps {
                 script {
-                    def tfDir = readFile('infra.env').trim()
-                        .split('\n').find { it.startsWith('TF_DIR=') }?.split('=', 2)?.last()
                     def igw = load 'scripts/groovy/k8s-igw.groovy'
-                    igw(tfDir)
+                    igw(env.TF_DIR)
                 }
             }
         }
@@ -83,10 +79,8 @@ pipeline {
             when { expression { params.ACTION == 'CREATE' } }
             steps {
                 script {
-                    def tfDir = readFile('infra.env').trim()
-                        .split('\n').find { it.startsWith('TF_DIR=') }?.split('=', 2)?.last()
                     def nat = load 'scripts/groovy/k8s-nat-gateway.groovy'
-                    nat(tfDir)
+                    nat(env.TF_DIR)
                 }
             }
         }
@@ -95,10 +89,8 @@ pipeline {
             when { expression { params.ACTION == 'CREATE' } }
             steps {
                 script {
-                    def tfDir = readFile('infra.env').trim()
-                        .split('\n').find { it.startsWith('TF_DIR=') }?.split('=', 2)?.last()
                     def rt = load 'scripts/groovy/k8s-route-tables.groovy'
-                    rt(tfDir)
+                    rt(env.TF_DIR)
                 }
             }
         }
@@ -107,10 +99,8 @@ pipeline {
             when { expression { params.ACTION == 'CREATE' } }
             steps {
                 script {
-                    def tfDir = readFile('infra.env').trim()
-                        .split('\n').find { it.startsWith('TF_DIR=') }?.split('=', 2)?.last()
                     def sg = load 'scripts/groovy/k8s-security-groups.groovy'
-                    sg(tfDir)
+                    sg(env.TF_DIR)
                 }
             }
         }
@@ -119,10 +109,8 @@ pipeline {
             when { expression { params.ACTION == 'CREATE' } }
             steps {
                 script {
-                    def tfDir = readFile('infra.env').trim()
-                        .split('\n').find { it.startsWith('TF_DIR=') }?.split('=', 2)?.last()
                     def iam = load 'scripts/groovy/k8s-iam.groovy'
-                    iam(tfDir)
+                    iam(env.TF_DIR)
                 }
             }
         }
@@ -131,10 +119,8 @@ pipeline {
             when { expression { params.ACTION == 'CREATE' } }
             steps {
                 script {
-                    def tfDir = readFile('infra.env').trim()
-                        .split('\n').find { it.startsWith('TF_DIR=') }?.split('=', 2)?.last()
                     def cluster = load 'scripts/groovy/k8s-cluster.groovy'
-                    cluster(tfDir)
+                    cluster(env.TF_DIR)
                 }
             }
         }
@@ -153,10 +139,8 @@ pipeline {
             when { expression { params.ACTION == 'DESTROY' } }
             steps {
                 script {
-                    def tfDir = readFile('infra.env').trim()
-                        .split('\n').find { it.startsWith('TF_DIR=') }?.split('=', 2)?.last()
                     def destroy = load 'scripts/groovy/k8s-destroy.groovy'
-                    destroy(tfDir)
+                    destroy(env.TF_DIR)
                 }
             }
         }

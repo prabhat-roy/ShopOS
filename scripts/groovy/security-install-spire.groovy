@@ -23,9 +23,9 @@ def call() {
     '''
     sh "kubectl rollout status statefulset/spire-server -n spire-system --timeout=5m"
     sh "sed -i '/^SPIRE_/d' infra.env || true"
-    sh "echo 'SPIRE_SERVER_URL=spire-server.spire-system.svc.cluster.local:8081' >> infra.env"
-    sh "echo 'SPIRE_TRUST_DOMAIN=shopos.cluster.local' >> infra.env"
-    sh "echo 'SPIRE_OIDC_URL=http://spiffe-oidc-discovery-provider.spire-system.svc.cluster.local' >> infra.env"
+    sh "sed -i '/^SPIRE_SERVER_URL=/d' infra.env 2>/dev/null || true; echo 'SPIRE_SERVER_URL=spire-server.spire-system.svc.cluster.local:8081' >> infra.env" 
+    sh "sed -i '/^SPIRE_TRUST_DOMAIN=/d' infra.env 2>/dev/null || true; echo 'SPIRE_TRUST_DOMAIN=shopos.cluster.local' >> infra.env" 
+    sh "sed -i '/^SPIRE_OIDC_URL=/d' infra.env 2>/dev/null || true; echo 'SPIRE_OIDC_URL=http://spiffe-oidc-discovery-provider.spire-system.svc.cluster.local' >> infra.env" 
     echo 'SPIRE installed — HA server (3 replicas), SPIFFE CSI driver, OIDC discovery provider'
 }
 return this

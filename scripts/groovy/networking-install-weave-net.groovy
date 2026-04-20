@@ -12,7 +12,7 @@ def call() {
     '''
     sh "kubectl rollout status daemonset/weave-net -n weave --timeout=5m"
     sh "sed -i '/^WEAVE_/d' infra.env || true"
-    sh "echo 'WEAVE_METRICS_URL=http://weave-net.weave.svc.cluster.local:6782/metrics' >> infra.env"
+    sh "sed -i '/^WEAVE_METRICS_URL=/d' infra.env 2>/dev/null || true; echo 'WEAVE_METRICS_URL=http://weave-net.weave.svc.cluster.local:6782/metrics' >> infra.env" 
     echo 'Weave Net CNI installed with mesh networking and 10.32.0.0/12 IPALLOC range'
 }
 return this

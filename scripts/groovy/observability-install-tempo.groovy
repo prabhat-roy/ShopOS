@@ -3,7 +3,7 @@ def call() {
         helm upgrade --install tempo observability/tempo/charts             --namespace tempo             --create-namespace             --wait --timeout 5m
     """
     sh "sed -i '/^TEMPO_/d' infra.env || true"
-    sh "echo 'TEMPO_URL=http://tempo-tempo.tempo.svc.cluster.local:3200' >> infra.env"
+    sh "sed -i '/^TEMPO_URL=/d' infra.env 2>/dev/null || true; echo 'TEMPO_URL=http://tempo-tempo.tempo.svc.cluster.local:3200' >> infra.env" 
     echo 'tempo installed'
 }
 return this

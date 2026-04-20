@@ -1,0 +1,183 @@
+name: GitOps Tools
+
+on:
+  workflow_dispatch:
+    inputs:
+      action:
+        description: 'INSTALL, UNINSTALL, or CONFIGURE GitOps tools'
+        required: true
+        default: 'INSTALL'
+        type: choice
+        options: [INSTALL, UNINSTALL, CONFIGURE]
+      argocd:             { description: 'ArgoCD — GitOps continuous delivery',              type: boolean, default: false }
+      argo_rollouts:      { description: 'Argo Rollouts — canary/blue-green delivery',       type: boolean, default: false }
+      argo_workflows:     { description: 'Argo Workflows — K8s-native workflow engine',      type: boolean, default: false }
+      argo_events:        { description: 'Argo Events — event-driven workflow automation',   type: boolean, default: false }
+      argocd_image_updater: { description: 'ArgoCD Image Updater — auto-update images',     type: boolean, default: false }
+      fluxcd:             { description: 'Flux CD — GitOps toolkit (CNCF)',                  type: boolean, default: false }
+      flagger:            { description: 'Flagger — progressive delivery operator',          type: boolean, default: false }
+      sealed_secrets:     { description: 'Sealed Secrets — encrypted secrets for GitOps',   type: boolean, default: false }
+      external_secrets:   { description: 'External Secrets Operator — sync from Vault/SSM', type: boolean, default: false }
+      keda:               { description: 'KEDA — event-driven autoscaling',                  type: boolean, default: false }
+      velero:             { description: 'Velero — cluster backup and restore',              type: boolean, default: false }
+      backstage:          { description: 'Backstage — developer portal',                     type: boolean, default: false }
+
+jobs:
+  gitops-tools:
+    name: ${{ inputs.action }} GitOps Tools
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Decode kubeconfig
+        run: |
+          mkdir -p ~/.kube
+          echo "${{ secrets.KUBECONFIG_CONTENT }}" | base64 -d > ~/.kube/config
+
+      - name: Install Helm
+        uses: azure/setup-helm@v4
+
+      - name: Add Helm repos
+        run: |
+          helm repo add argo          https://argoproj.github.io/argo-helm
+          helm repo add fluxcd        https://fluxcd-community.github.io/helm-charts
+          helm repo add flagger       https://flagger.app
+          helm repo add bitnami       https://charts.bitnami.com/bitnami
+          helm repo add external-secrets https://charts.external-secrets.io
+          helm repo add kedacore      https://kedacore.github.io/charts
+          helm repo add vmware-tanzu  https://vmware-tanzu.github.io/helm-charts
+          helm repo add backstage     https://backstage.github.io/charts
+          helm repo update
+
+      - name: Install — ArgoCD (HA mode)
+        if: ${{ inputs.action == 'INSTALL' && inputs.argocd == true }}
+        run: |
+          helm upgrade --install argocd argo/argo-cd \
+            --namespace argocd --create-namespace \
+            --set server.replicas=2 \
+            --set repoServer.replicas=2 \
+            --set applicationSet.replicaCount=2 \
+            --set redis-ha.enabled=true \
+            --set server.metrics.enabled=true \
+            --set configs.params."server\.insecure"=false \
+            --wait --timeout 15m
+          echo "ArgoCD admin password:"
+          kubectl -n argocd get secret argocd-initial-admin-secret \
+            -o jsonpath="{.data.password}" | base64 -d
+
+      - name: Configure — ArgoCD App-of-Apps
+        if: ${{ inputs.action == 'CONFIGURE' && inputs.argocd == true }}
+        run: |
+          kubectl apply -f gitops/argocd/app-of-apps.yaml -n argocd || true
+          kubectl apply -f gitops/argocd/applicationsets/ -n argocd || true
+
+      - name: Install — Argo Rollouts
+        if: ${{ inputs.action == 'INSTALL' && inputs.argo_rollouts == true }}
+        run: |
+          helm upgrade --install argo-rollouts argo/argo-rollouts \
+            --namespace argo-rollouts --create-namespace \
+            --set installCRDs=true \
+            --set controller.metrics.enabled=true \
+            --set dashboard.enabled=true \
+            --wait --timeout 10m
+
+      - name: Install — Argo Workflows
+        if: ${{ inputs.action == 'INSTALL' && inputs.argo_workflows == true }}
+        run: |
+          helm upgrade --install argo-workflows argo/argo-workflows \
+            --namespace argo-workflows --create-namespace \
+            --set server.authModes[0]=server \
+            --set workflow.serviceAccount.create=true \
+            --set workflow.rbac.create=true \
+            --wait --timeout 10m
+
+      - name: Install — Argo Events
+        if: ${{ inputs.action == 'INSTALL' && inputs.argo_events == true }}
+        run: |
+          helm upgrade --install argo-events argo/argo-events \
+            --namespace argo-events --create-namespace \
+            --wait --timeout 10m
+          kubectl apply -f gitops/argo-events/ -n argo-events || true
+
+      - name: Install — Flux CD
+        if: ${{ inputs.action == 'INSTALL' && inputs.fluxcd == true }}
+        run: |
+          helm upgrade --install flux-operator fluxcd/flux-operator \
+            --namespace flux-system --create-namespace \
+            --wait --timeout 10m
+          helm upgrade --install flux-instance fluxcd/flux-instance \
+            --namespace flux-system \
+            --set instance.distribution.version=">=2.0.0" \
+            --wait --timeout 10m
+          kubectl apply -f gitops/flux/ -n flux-system || true
+
+      - name: Install — Flagger (progressive delivery)
+        if: ${{ inputs.action == 'INSTALL' && inputs.flagger == true }}
+        run: |
+          helm upgrade --install flagger flagger/flagger \
+            --namespace flagger-system --create-namespace \
+            --set metricsServer=http://kube-prometheus-stack-prometheus.observability:9090 \
+            --set meshProvider=istio \
+            --wait --timeout 10m
+
+      - name: Install — Sealed Secrets
+        if: ${{ inputs.action == 'INSTALL' && inputs.sealed_secrets == true }}
+        run: |
+          helm upgrade --install sealed-secrets bitnami/sealed-secrets \
+            --namespace kube-system \
+            --set fullnameOverride=sealed-secrets-controller \
+            --wait --timeout 5m
+
+      - name: Install — External Secrets Operator
+        if: ${{ inputs.action == 'INSTALL' && inputs.external_secrets == true }}
+        run: |
+          helm upgrade --install external-secrets external-secrets/external-secrets \
+            --namespace external-secrets --create-namespace \
+            --set installCRDs=true \
+            --set replicaCount=2 \
+            --set metrics.service.enabled=true \
+            --wait --timeout 10m
+
+      - name: Install — KEDA (event-driven autoscaling)
+        if: ${{ inputs.action == 'INSTALL' && inputs.keda == true }}
+        run: |
+          helm upgrade --install keda kedacore/keda \
+            --namespace keda --create-namespace \
+            --set metricsServer.replicaCount=2 \
+            --wait --timeout 10m
+          kubectl apply -f kubernetes/keda/ || true
+
+      - name: Install — Velero (backup to MinIO/S3)
+        if: ${{ inputs.action == 'INSTALL' && inputs.velero == true }}
+        run: |
+          helm upgrade --install velero vmware-tanzu/velero \
+            --namespace velero --create-namespace \
+            --set configuration.backupStorageLocation[0].name=minio \
+            --set configuration.backupStorageLocation[0].provider=aws \
+            --set configuration.backupStorageLocation[0].bucket=velero-backups \
+            --set configuration.backupStorageLocation[0].config.region=minio \
+            --set configuration.backupStorageLocation[0].config.s3Url="${{ secrets.MINIO_ENDPOINT }}" \
+            --set configuration.backupStorageLocation[0].config.s3ForcePathStyle=true \
+            --set credentials.secretContents.cloud="[default]\naws_access_key_id=${{ secrets.MINIO_ACCESS_KEY }}\naws_secret_access_key=${{ secrets.MINIO_SECRET_KEY }}" \
+            --set initContainers[0].name=velero-plugin-for-aws \
+            --set initContainers[0].image=velero/velero-plugin-for-aws:v1.9.0 \
+            --set initContainers[0].volumeMounts[0].mountPath=/target \
+            --set initContainers[0].volumeMounts[0].name=plugins \
+            --wait --timeout 10m
+          kubectl apply -f kubernetes/velero/ || true
+
+      # ── UNINSTALL ──────────────────────────────────────────────────────
+      - name: Uninstall tools
+        if: ${{ inputs.action == 'UNINSTALL' }}
+        run: |
+          ${{ inputs.argocd             && 'helm uninstall argocd              -n argocd          --ignore-not-found || true' || '' }}
+          ${{ inputs.argo_rollouts      && 'helm uninstall argo-rollouts       -n argo-rollouts   --ignore-not-found || true' || '' }}
+          ${{ inputs.argo_workflows     && 'helm uninstall argo-workflows      -n argo-workflows  --ignore-not-found || true' || '' }}
+          ${{ inputs.argo_events        && 'helm uninstall argo-events         -n argo-events     --ignore-not-found || true' || '' }}
+          ${{ inputs.fluxcd             && 'helm uninstall flux-instance flux-operator -n flux-system --ignore-not-found || true' || '' }}
+          ${{ inputs.flagger            && 'helm uninstall flagger             -n flagger-system  --ignore-not-found || true' || '' }}
+          ${{ inputs.sealed_secrets     && 'helm uninstall sealed-secrets      -n kube-system     --ignore-not-found || true' || '' }}
+          ${{ inputs.external_secrets   && 'helm uninstall external-secrets    -n external-secrets --ignore-not-found || true' || '' }}
+          ${{ inputs.keda               && 'helm uninstall keda                -n keda            --ignore-not-found || true' || '' }}
+          ${{ inputs.velero             && 'helm uninstall velero              -n velero          --ignore-not-found || true' || '' }}
+          echo "Uninstall complete."

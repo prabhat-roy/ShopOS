@@ -24,10 +24,10 @@ def call() {
     '''
     sh "kubectl rollout status statefulset/wazuh-manager -n wazuh --timeout=10m"
     sh "sed -i '/^WAZUH_/d' infra.env || true"
-    sh "echo 'WAZUH_URL=https://wazuh-manager.wazuh.svc.cluster.local:55000' >> infra.env"
-    sh "echo 'WAZUH_DASHBOARD_URL=https://wazuh-dashboard.wazuh.svc.cluster.local:443' >> infra.env"
-    sh "echo 'WAZUH_USER=admin' >> infra.env"
-    sh "echo 'WAZUH_PASSWORD=SecretPassword' >> infra.env"
+    sh "sed -i '/^WAZUH_URL=/d' infra.env 2>/dev/null || true; echo 'WAZUH_URL=https://wazuh-manager.wazuh.svc.cluster.local:55000' >> infra.env" 
+    sh "sed -i '/^WAZUH_DASHBOARD_URL=/d' infra.env 2>/dev/null || true; echo 'WAZUH_DASHBOARD_URL=https://wazuh-dashboard.wazuh.svc.cluster.local:443' >> infra.env" 
+    sh "sed -i '/^WAZUH_USER=/d' infra.env 2>/dev/null || true; echo 'WAZUH_USER=admin' >> infra.env" 
+    sh "sed -i '/^WAZUH_PASSWORD=/d' infra.env 2>/dev/null || true; echo 'WAZUH_PASSWORD=SecretPassword' >> infra.env" 
     echo 'Wazuh XDR/SIEM installed — manager, indexer, dashboard with persistent storage'
 }
 return this

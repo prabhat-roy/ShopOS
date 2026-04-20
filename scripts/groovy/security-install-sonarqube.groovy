@@ -29,9 +29,9 @@ def call() {
     '''
     sh "kubectl rollout status statefulset/sonarqube-sonarqube -n sonarqube --timeout=10m"
     sh "sed -i '/^SONARQUBE_/d' infra.env || true"
-    sh "echo 'SONARQUBE_URL=http://sonarqube-sonarqube.sonarqube.svc.cluster.local:9000' >> infra.env"
-    sh "echo 'SONARQUBE_USER=admin' >> infra.env"
-    sh "echo 'SONARQUBE_PASSWORD=admin' >> infra.env"
+    sh "sed -i '/^SONARQUBE_URL=/d' infra.env 2>/dev/null || true; echo 'SONARQUBE_URL=http://sonarqube-sonarqube.sonarqube.svc.cluster.local:9000' >> infra.env" 
+    sh "sed -i '/^SONARQUBE_USER=/d' infra.env 2>/dev/null || true; echo 'SONARQUBE_USER=admin' >> infra.env" 
+    sh "sed -i '/^SONARQUBE_PASSWORD=/d' infra.env 2>/dev/null || true; echo 'SONARQUBE_PASSWORD=admin' >> infra.env" 
     echo 'SonarQube Community installed — forced auth, PostgreSQL, 10Gi persistence'
 }
 return this

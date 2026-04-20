@@ -23,7 +23,7 @@ def call() {
     '''
     sh "kubectl rollout status deployment/rekor-server -n sigstore-system --timeout=5m || true"
     sh "sed -i '/^REKOR_/d' infra.env || true"
-    sh "echo 'REKOR_URL=http://rekor-server.sigstore-system.svc.cluster.local:3000' >> infra.env"
+    sh "sed -i '/^REKOR_URL=/d' infra.env 2>/dev/null || true; echo 'REKOR_URL=http://rekor-server.sigstore-system.svc.cluster.local:3000' >> infra.env" 
     echo 'Rekor transparency log installed — HA server with Trillian, MySQL, Redis for supply chain'
 }
 return this

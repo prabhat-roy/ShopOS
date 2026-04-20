@@ -17,7 +17,7 @@ def call() {
     '''
     sh "kubectl rollout status daemonset/antrea-agent -n kube-system --timeout=5m"
     sh "sed -i '/^ANTREA_/d' infra.env || true"
-    sh "echo 'ANTREA_CONTROLLER_URL=https://antrea-controller.kube-system.svc.cluster.local:10349' >> infra.env"
+    sh "sed -i '/^ANTREA_CONTROLLER_URL=/d' infra.env 2>/dev/null || true; echo 'ANTREA_CONTROLLER_URL=https://antrea-controller.kube-system.svc.cluster.local:10349' >> infra.env" 
     echo 'Antrea CNI installed with AntreaProxy, Traceflow, and NetworkPolicyStats'
 }
 return this

@@ -25,8 +25,8 @@ def call() {
     '''
     sh "kubectl rollout status deployment/coraza-waf -n coraza-waf --timeout=5m"
     sh "sed -i '/^CORAZA_WAF_/d' infra.env || true"
-    sh "echo 'CORAZA_WAF_URL=http://coraza-waf.coraza-waf.svc.cluster.local:8080' >> infra.env"
-    sh "echo 'CORAZA_WAF_METRICS_URL=http://coraza-waf.coraza-waf.svc.cluster.local:9090/metrics' >> infra.env"
+    sh "sed -i '/^CORAZA_WAF_URL=/d' infra.env 2>/dev/null || true; echo 'CORAZA_WAF_URL=http://coraza-waf.coraza-waf.svc.cluster.local:8080' >> infra.env" 
+    sh "sed -i '/^CORAZA_WAF_METRICS_URL=/d' infra.env 2>/dev/null || true; echo 'CORAZA_WAF_METRICS_URL=http://coraza-waf.coraza-waf.svc.cluster.local:9090/metrics' >> infra.env" 
     echo 'Coraza WAF installed — OWASP CRS v4 in DetectionOnly mode, paranoia level 1, audit logging'
 }
 return this

@@ -32,7 +32,7 @@ def call() {
     '''
     sh "kubectl rollout status deployment/polaris-dashboard -n polaris --timeout=5m"
     sh "sed -i '/^POLARIS_/d' infra.env || true"
-    sh "echo 'POLARIS_URL=http://polaris-dashboard.polaris.svc.cluster.local:8080' >> infra.env"
+    sh "sed -i '/^POLARIS_URL=/d' infra.env 2>/dev/null || true; echo 'POLARIS_URL=http://polaris-dashboard.polaris.svc.cluster.local:8080' >> infra.env" 
     echo 'Polaris installed — dashboard and validating webhook with security check configuration'
 }
 return this

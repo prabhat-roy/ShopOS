@@ -1,7 +1,10 @@
 def call() {
-    def envVars = readFile('infra.env').trim().split('\n').collectEntries { line ->
-        def parts = line.split('=', 2)
-        parts.length == 2 ? [(parts[0]): parts[1]] : [:]
+    def envVars = [:]
+    if (fileExists('infra.env')) {
+        readFile('infra.env').trim().split('\n').each { line ->
+            def parts = line.split('=', 2)
+            if (parts.length == 2) envVars[parts[0]] = parts[1]
+        }
     }
 
     def region = sh(script: """
@@ -86,8 +89,8 @@ def call() {
     }
 
     def registryUrl = "${accountId}.dkr.ecr.${region}.amazonaws.com"
-    sh "echo 'ECR_REGISTRY=${registryUrl}' >> infra.env"
-    sh "echo 'ECR_REGION=${region}' >> infra.env"
+    sh "sed -i '/^ECR_REGISTRY=/d' infra.env 2>/dev/null || true; echo 'ECR_REGISTRY=${registryUrl}' >> infra.env" 
+    sh "sed -i '/^ECR_REGION=/d' infra.env 2>/dev/null || true; echo 'ECR_REGION=${region}' >> infra.env" 
     echo "ECR registry: ${registryUrl}"
 }
 

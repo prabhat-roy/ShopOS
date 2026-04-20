@@ -24,8 +24,8 @@ def call() {
     '''
     sh "kubectl rollout status deployment/pomerium -n pomerium --timeout=5m"
     sh "sed -i '/^POMERIUM_/d' infra.env || true"
-    sh "echo 'POMERIUM_URL=http://pomerium.pomerium.svc.cluster.local:80' >> infra.env"
-    sh "echo 'POMERIUM_AUTHENTICATE_URL=https://authenticate.shopos.local' >> infra.env"
+    sh "sed -i '/^POMERIUM_URL=/d' infra.env 2>/dev/null || true; echo 'POMERIUM_URL=http://pomerium.pomerium.svc.cluster.local:80' >> infra.env" 
+    sh "sed -i '/^POMERIUM_AUTHENTICATE_URL=/d' infra.env 2>/dev/null || true; echo 'POMERIUM_AUTHENTICATE_URL=https://authenticate.shopos.local' >> infra.env" 
     echo 'Pomerium installed — identity-aware proxy with Keycloak OIDC, zero-trust access'
 }
 return this

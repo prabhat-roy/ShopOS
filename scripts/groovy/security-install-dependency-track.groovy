@@ -25,10 +25,10 @@ def call() {
     '''
     sh "kubectl rollout status deployment/dependency-track-apiserver -n dependency-track --timeout=10m"
     sh "sed -i '/^DEPENDENCY_TRACK_/d' infra.env || true"
-    sh "echo 'DEPENDENCY_TRACK_URL=http://dependency-track-apiserver.dependency-track.svc.cluster.local:8080' >> infra.env"
-    sh "echo 'DEPENDENCY_TRACK_FRONTEND_URL=http://dependency-track-frontend.dependency-track.svc.cluster.local:8080' >> infra.env"
-    sh "echo 'DEPENDENCY_TRACK_USER=admin' >> infra.env"
-    sh "echo 'DEPENDENCY_TRACK_PASSWORD=admin' >> infra.env"
+    sh "sed -i '/^DEPENDENCY_TRACK_URL=/d' infra.env 2>/dev/null || true; echo 'DEPENDENCY_TRACK_URL=http://dependency-track-apiserver.dependency-track.svc.cluster.local:8080' >> infra.env" 
+    sh "sed -i '/^DEPENDENCY_TRACK_FRONTEND_URL=/d' infra.env 2>/dev/null || true; echo 'DEPENDENCY_TRACK_FRONTEND_URL=http://dependency-track-frontend.dependency-track.svc.cluster.local:8080' >> infra.env" 
+    sh "sed -i '/^DEPENDENCY_TRACK_USER=/d' infra.env 2>/dev/null || true; echo 'DEPENDENCY_TRACK_USER=admin' >> infra.env" 
+    sh "sed -i '/^DEPENDENCY_TRACK_PASSWORD=/d' infra.env 2>/dev/null || true; echo 'DEPENDENCY_TRACK_PASSWORD=admin' >> infra.env" 
     echo 'OWASP Dependency-Track installed — HA API server, frontend, PostgreSQL for SBOM management'
 }
 return this

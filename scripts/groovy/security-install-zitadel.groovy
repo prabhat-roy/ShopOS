@@ -24,9 +24,9 @@ def call() {
     '''
     sh "kubectl rollout status deployment/zitadel -n zitadel --timeout=5m"
     sh "sed -i '/^ZITADEL_/d' infra.env || true"
-    sh "echo 'ZITADEL_URL=http://zitadel.zitadel.svc.cluster.local:8080' >> infra.env"
-    sh "echo 'ZITADEL_USER=admin' >> infra.env"
-    sh "echo 'ZITADEL_PASSWORD=RootPassword1!' >> infra.env"
+    sh "sed -i '/^ZITADEL_URL=/d' infra.env 2>/dev/null || true; echo 'ZITADEL_URL=http://zitadel.zitadel.svc.cluster.local:8080' >> infra.env" 
+    sh "sed -i '/^ZITADEL_USER=/d' infra.env 2>/dev/null || true; echo 'ZITADEL_USER=admin' >> infra.env" 
+    sh "sed -i '/^ZITADEL_PASSWORD=/d' infra.env 2>/dev/null || true; echo 'ZITADEL_PASSWORD=RootPassword1!' >> infra.env" 
     echo 'ZITADEL installed — 2 replicas, PostgreSQL, PDB, Prometheus metrics'
 }
 return this

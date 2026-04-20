@@ -29,7 +29,7 @@ def call() {
     '''
     sh "kubectl rollout status deployment/trivy-operator -n trivy-system --timeout=5m"
     sh "sed -i '/^TRIVY_OPERATOR_/d' infra.env || true"
-    sh "echo 'TRIVY_OPERATOR_URL=http://trivy-operator.trivy-system.svc.cluster.local:80' >> infra.env"
+    sh "sed -i '/^TRIVY_OPERATOR_URL=/d' infra.env 2>/dev/null || true; echo 'TRIVY_OPERATOR_URL=http://trivy-operator.trivy-system.svc.cluster.local:80' >> infra.env" 
     echo 'Trivy Operator installed — continuous vulnerability, config audit, RBAC assessment scans'
 }
 return this

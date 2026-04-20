@@ -21,8 +21,8 @@ def call() {
     '''
     sh "kubectl rollout status deployment/haproxy-ingress -n haproxy-ingress --timeout=5m"
     sh "sed -i '/^HAPROXY_INGRESS_/d' infra.env || true"
-    sh "echo 'HAPROXY_INGRESS_URL=http://haproxy-ingress.haproxy-ingress.svc.cluster.local:80' >> infra.env"
-    sh "echo 'HAPROXY_INGRESS_CLASS=haproxy' >> infra.env"
+    sh "sed -i '/^HAPROXY_INGRESS_URL=/d' infra.env 2>/dev/null || true; echo 'HAPROXY_INGRESS_URL=http://haproxy-ingress.haproxy-ingress.svc.cluster.local:80' >> infra.env" 
+    sh "sed -i '/^HAPROXY_INGRESS_CLASS=/d' infra.env 2>/dev/null || true; echo 'HAPROXY_INGRESS_CLASS=haproxy' >> infra.env" 
     echo 'HAProxy Ingress Controller installed with metrics, SSL redirect, and ForwardFor'
 }
 return this

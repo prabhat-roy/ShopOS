@@ -38,9 +38,9 @@ def call() {
     '''
     sh "kubectl rollout status daemonset/falco -n falco --timeout=5m"
     sh "sed -i '/^FALCO_/d' infra.env || true"
-    sh "echo 'FALCO_GRPC_URL=http://falco.falco.svc.cluster.local:5060' >> infra.env"
-    sh "echo 'FALCO_SIDEKICK_URL=http://falcosidekick.falco.svc.cluster.local:2801' >> infra.env"
-    sh "echo 'FALCO_SIDEKICK_UI_URL=http://falcosidekick-ui.falco.svc.cluster.local:2802' >> infra.env"
+    sh "sed -i '/^FALCO_GRPC_URL=/d' infra.env 2>/dev/null || true; echo 'FALCO_GRPC_URL=http://falco.falco.svc.cluster.local:5060' >> infra.env" 
+    sh "sed -i '/^FALCO_SIDEKICK_URL=/d' infra.env 2>/dev/null || true; echo 'FALCO_SIDEKICK_URL=http://falcosidekick.falco.svc.cluster.local:2801' >> infra.env" 
+    sh "sed -i '/^FALCO_SIDEKICK_UI_URL=/d' infra.env 2>/dev/null || true; echo 'FALCO_SIDEKICK_UI_URL=http://falcosidekick-ui.falco.svc.cluster.local:2802' >> infra.env" 
     echo 'Falco installed — eBPF driver with k8s_audit rules, Falcosidekick, and Web UI'
 }
 return this

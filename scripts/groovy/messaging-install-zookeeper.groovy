@@ -8,7 +8,7 @@ def call() {
             --wait --timeout 5m
     """
     sh "sed -i '/^ZOOKEEPER_/d' infra.env || true"
-    sh "echo 'ZOOKEEPER_URL=zookeeper-zookeeper.zookeeper.svc.cluster.local:2181' >> infra.env"
+    sh "sed -i '/^ZOOKEEPER_URL=/d' infra.env 2>/dev/null || true; echo 'ZOOKEEPER_URL=zookeeper-zookeeper.zookeeper.svc.cluster.local:2181' >> infra.env" 
     echo 'zookeeper installed'
 }
 return this

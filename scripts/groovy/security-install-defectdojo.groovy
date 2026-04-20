@@ -31,9 +31,9 @@ def call() {
     '''
     sh "kubectl rollout status deployment/defectdojo-django -n defectdojo --timeout=15m"
     sh "sed -i '/^DEFECTDOJO_/d' infra.env || true"
-    sh "echo 'DEFECTDOJO_URL=http://defectdojo.defectdojo.svc.cluster.local:80' >> infra.env"
-    sh "echo 'DEFECTDOJO_USER=admin' >> infra.env"
-    sh "echo 'DEFECTDOJO_PASSWORD=defectdojo' >> infra.env"
+    sh "sed -i '/^DEFECTDOJO_URL=/d' infra.env 2>/dev/null || true; echo 'DEFECTDOJO_URL=http://defectdojo.defectdojo.svc.cluster.local:80' >> infra.env" 
+    sh "sed -i '/^DEFECTDOJO_USER=/d' infra.env 2>/dev/null || true; echo 'DEFECTDOJO_USER=admin' >> infra.env" 
+    sh "sed -i '/^DEFECTDOJO_PASSWORD=/d' infra.env 2>/dev/null || true; echo 'DEFECTDOJO_PASSWORD=defectdojo' >> infra.env" 
     echo 'DefectDojo installed — HA Django+Celery workers, PostgreSQL, Redis for vulnerability management'
 }
 return this

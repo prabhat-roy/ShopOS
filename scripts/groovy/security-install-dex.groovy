@@ -32,8 +32,8 @@ def call() {
     '''
     sh "kubectl rollout status deployment/dex -n dex --timeout=5m"
     sh "sed -i '/^DEX_/d' infra.env || true"
-    sh "echo 'DEX_URL=http://dex.dex.svc.cluster.local:5556' >> infra.env"
-    sh "echo 'DEX_GRPC_URL=dex.dex.svc.cluster.local:5557' >> infra.env"
+    sh "sed -i '/^DEX_URL=/d' infra.env 2>/dev/null || true; echo 'DEX_URL=http://dex.dex.svc.cluster.local:5556' >> infra.env" 
+    sh "sed -i '/^DEX_GRPC_URL=/d' infra.env 2>/dev/null || true; echo 'DEX_GRPC_URL=dex.dex.svc.cluster.local:5557' >> infra.env" 
     echo 'Dex OIDC federation installed — Kubernetes storage, Keycloak connector, gRPC API'
 }
 return this

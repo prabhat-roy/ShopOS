@@ -20,8 +20,8 @@ def call() {
     '''
     sh "kubectl rollout status deployment/fulcio-server -n sigstore-system --timeout=5m"
     sh "sed -i '/^FULCIO_/d' infra.env || true"
-    sh "echo 'FULCIO_URL=http://fulcio-server.sigstore-system.svc.cluster.local:5555' >> infra.env"
-    sh "echo 'FULCIO_GRPC_URL=fulcio-server.sigstore-system.svc.cluster.local:5554' >> infra.env"
+    sh "sed -i '/^FULCIO_URL=/d' infra.env 2>/dev/null || true; echo 'FULCIO_URL=http://fulcio-server.sigstore-system.svc.cluster.local:5555' >> infra.env" 
+    sh "sed -i '/^FULCIO_GRPC_URL=/d' infra.env 2>/dev/null || true; echo 'FULCIO_GRPC_URL=fulcio-server.sigstore-system.svc.cluster.local:5554' >> infra.env" 
     echo 'Fulcio CA installed — Sigstore certificate authority with Keycloak OIDC and CT log'
 }
 return this

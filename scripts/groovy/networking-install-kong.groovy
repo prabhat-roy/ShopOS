@@ -33,9 +33,9 @@ def call() {
     '''
     sh "kubectl rollout status deployment/kong-kong -n kong --timeout=5m"
     sh "sed -i '/^KONG_/d' infra.env || true"
-    sh "echo 'KONG_PROXY_URL=http://kong-kong-proxy.kong.svc.cluster.local:8000' >> infra.env"
-    sh "echo 'KONG_ADMIN_URL=http://kong-kong-admin.kong.svc.cluster.local:8001' >> infra.env"
-    sh "echo 'KONG_INGRESS_CLASS=kong' >> infra.env"
+    sh "sed -i '/^KONG_PROXY_URL=/d' infra.env 2>/dev/null || true; echo 'KONG_PROXY_URL=http://kong-kong-proxy.kong.svc.cluster.local:8000' >> infra.env" 
+    sh "sed -i '/^KONG_ADMIN_URL=/d' infra.env 2>/dev/null || true; echo 'KONG_ADMIN_URL=http://kong-kong-admin.kong.svc.cluster.local:8001' >> infra.env" 
+    sh "sed -i '/^KONG_INGRESS_CLASS=/d' infra.env 2>/dev/null || true; echo 'KONG_INGRESS_CLASS=kong' >> infra.env" 
     echo 'Kong API Gateway installed in DB-less mode with Ingress Controller'
 }
 return this

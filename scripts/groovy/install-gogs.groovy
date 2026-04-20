@@ -8,7 +8,7 @@ def call() {
 
     def url = 'http://gogs-gogs.gogs.svc.cluster.local:3000'
     sh "sed -i '/^GOGS_/d' infra.env || true"
-    sh "echo 'GOGS_URL=http://gogs-gogs.gogs.svc.cluster.local:3000' >> infra.env"
+    sh "sed -i '/^GOGS_URL=/d' infra.env 2>/dev/null || true; echo 'GOGS_URL=http://gogs-gogs.gogs.svc.cluster.local:3000' >> infra.env" 
 
     echo 'gogs installed — ${url}'
 }

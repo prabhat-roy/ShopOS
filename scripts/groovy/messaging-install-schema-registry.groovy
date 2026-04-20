@@ -9,7 +9,7 @@ def call() {
             --wait --timeout 5m
     """
     sh "sed -i '/^SCHEMA_REGISTRY_/d' infra.env || true"
-    sh "echo 'SCHEMA_REGISTRY_URL=http://schema-registry-schema-registry.schema-registry.svc.cluster.local:8081' >> infra.env"
+    sh "sed -i '/^SCHEMA_REGISTRY_URL=/d' infra.env 2>/dev/null || true; echo 'SCHEMA_REGISTRY_URL=http://schema-registry-schema-registry.schema-registry.svc.cluster.local:8081' >> infra.env" 
     echo 'schema-registry installed'
 }
 return this

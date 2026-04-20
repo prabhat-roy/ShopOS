@@ -18,8 +18,8 @@ def call() {
     '''
     sh "kubectl rollout status deployment/zap -n zap --timeout=5m"
     sh "sed -i '/^ZAP_/d' infra.env || true"
-    sh "echo 'ZAP_URL=http://zap.zap.svc.cluster.local:8080' >> infra.env"
-    sh "echo 'ZAP_API_KEY=zapapikey' >> infra.env"
+    sh "sed -i '/^ZAP_URL=/d' infra.env 2>/dev/null || true; echo 'ZAP_URL=http://zap.zap.svc.cluster.local:8080' >> infra.env" 
+    sh "sed -i '/^ZAP_API_KEY=/d' infra.env 2>/dev/null || true; echo 'ZAP_API_KEY=zapapikey' >> infra.env" 
     echo 'OWASP ZAP installed — daemon mode, API key enabled, 2Gi persistence for session data'
 }
 return this

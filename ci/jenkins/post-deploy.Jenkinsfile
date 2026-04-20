@@ -85,16 +85,11 @@ pipeline {
                         error 'SERVICE_NAME is required'
                     }
 
-                    // Kubeconfig
-                    def kubeconfigContent = readFile('infra.env').trim()
-                        .split('\n').find { it.startsWith('KUBECONFIG_CONTENT=') }
-                        ?.split('=', 2)?.last()
-                    if (kubeconfigContent) {
-                        sh "echo '${kubeconfigContent}' | base64 -d > ${env.WORKSPACE}/kubeconfig"
-                        env.KUBECONFIG = "${env.WORKSPACE}/kubeconfig"
+                    if (!fileExists('infra.env')) {
+                        error "infra.env not found — run k8s-infra and observability pipelines first"
                     }
 
-                    // Parse infra.env
+                    // Parse infra.env once
                     def envMap = [:]
                     readFile('infra.env').trim().split('\n').each { line ->
                         def idx = line.indexOf('=')
@@ -111,6 +106,14 @@ pipeline {
                     // Reporting
                     env.DEFECTDOJO_URL   = envMap['DEFECTDOJO_URL']   ?: ''
                     env.DEFECTDOJO_TOKEN = envMap['DEFECTDOJO_TOKEN']  ?: ''
+
+                    // Kubeconfig
+                    def kubeconfigContent = envMap['KUBECONFIG_CONTENT'] ?: ''
+                    if (kubeconfigContent) {
+                        writeFile file: "${env.WORKSPACE}/kubeconfig-b64", text: kubeconfigContent
+                        sh "base64 -d ${env.WORKSPACE}/kubeconfig-b64 > ${env.WORKSPACE}/kubeconfig && rm -f ${env.WORKSPACE}/kubeconfig-b64"
+                        env.KUBECONFIG = "${env.WORKSPACE}/kubeconfig"
+                    }
 
                     sh 'mkdir -p reports/smoke reports/integration reports/load/k6 reports/load/locust reports/load/gatling reports/load/baseline reports/chaos reports/slo reports/summary'
                 }

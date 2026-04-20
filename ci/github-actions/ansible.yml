@@ -1,0 +1,115 @@
+name: Ansible Playbooks
+
+on:
+  workflow_dispatch:
+    inputs:
+      playbook:
+        description: 'Ansible playbook to run'
+        required: true
+        default: 'k8s-node'
+        type: choice
+        options: [jenkins, k8s-node, common]
+      inventory:
+        description: 'Target cloud inventory'
+        required: true
+        default: 'aws'
+        type: choice
+        options: [aws, gcp, azure]
+      limit:
+        description: 'Limit to specific host or group (e.g. role_jenkins). Leave blank for all.'
+        required: false
+        default: ''
+      extra_vars:
+        description: 'Extra Ansible variables (e.g. key=value key2=value2)'
+        required: false
+        default: ''
+      check_mode:
+        description: 'Dry run — no changes will be made'
+        type: boolean
+        default: false
+
+env:
+  ANSIBLE_DIR: infra/ansible
+  ANSIBLE_FORCE_COLOR: '1'
+  ANSIBLE_HOST_KEY_CHECKING: 'False'
+  ANSIBLE_STDOUT_CALLBACK: yaml
+
+jobs:
+  ansible:
+    name: Ansible ${{ inputs.playbook }} on ${{ inputs.inventory }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Python & Ansible
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+
+      - name: Install Ansible + dependencies
+        run: |
+          pip install ansible ansible-lint boto3 botocore google-auth msrest msrestazure --quiet
+          ansible-galaxy collection install amazon.aws google.cloud azure.azcollection community.kubernetes --quiet
+
+      - name: Write SSH private key
+        run: |
+          echo "${{ secrets.ANSIBLE_SSH_PRIVATE_KEY }}" > /tmp/ansible_key
+          chmod 600 /tmp/ansible_key
+
+      # ── Cloud credentials for dynamic inventory ────────────────────────
+      - name: Configure AWS credentials
+        if: ${{ inputs.inventory == 'aws' }}
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ANSIBLE_ROLE_ARN }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      - name: Authenticate to GCP
+        if: ${{ inputs.inventory == 'gcp' }}
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.GCP_ANSIBLE_SA }}
+
+      - name: Login to Azure
+        if: ${{ inputs.inventory == 'azure' }}
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Ansible lint
+        run: |
+          ansible-lint "$ANSIBLE_DIR/playbooks/${{ inputs.playbook }}.yml" \
+            -c "$ANSIBLE_DIR/.ansible-lint" || true
+        continue-on-error: true
+
+      - name: Run Ansible playbook
+        run: |
+          LIMIT_ARG=""
+          if [ -n "${{ inputs.limit }}" ]; then
+            LIMIT_ARG="--limit ${{ inputs.limit }}"
+          fi
+          EXTRA_VARS_ARG=""
+          if [ -n "${{ inputs.extra_vars }}" ]; then
+            EXTRA_VARS_ARG="--extra-vars '${{ inputs.extra_vars }}'"
+          fi
+          CHECK_ARG=""
+          if [ "${{ inputs.check_mode }}" = "true" ]; then
+            CHECK_ARG="--check --diff"
+          fi
+
+          ansible-playbook \
+            -i "$ANSIBLE_DIR/inventories/${{ inputs.inventory }}/hosts.yml" \
+            "$ANSIBLE_DIR/playbooks/${{ inputs.playbook }}.yml" \
+            --private-key /tmp/ansible_key \
+            --user "${{ secrets.ANSIBLE_SSH_USER }}" \
+            $LIMIT_ARG \
+            $EXTRA_VARS_ARG \
+            $CHECK_ARG \
+            -v
+
+      - name: Clean up SSH key
+        if: always()
+        run: rm -f /tmp/ansible_key

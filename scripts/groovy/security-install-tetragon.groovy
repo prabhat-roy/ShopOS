@@ -23,8 +23,8 @@ def call() {
     '''
     sh "kubectl rollout status daemonset/tetragon -n kube-system --timeout=5m"
     sh "sed -i '/^TETRAGON_/d' infra.env || true"
-    sh "echo 'TETRAGON_GRPC_URL=localhost:54321' >> infra.env"
-    sh "echo 'TETRAGON_METRICS_URL=http://tetragon.kube-system.svc.cluster.local:2112/metrics' >> infra.env"
+    sh "sed -i '/^TETRAGON_GRPC_URL=/d' infra.env 2>/dev/null || true; echo 'TETRAGON_GRPC_URL=localhost:54321' >> infra.env" 
+    sh "sed -i '/^TETRAGON_METRICS_URL=/d' infra.env 2>/dev/null || true; echo 'TETRAGON_METRICS_URL=http://tetragon.kube-system.svc.cluster.local:2112/metrics' >> infra.env" 
     echo 'Tetragon installed — eBPF enforcement, gRPC export, Prometheus metrics at :2112'
 }
 return this

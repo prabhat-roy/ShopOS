@@ -25,7 +25,7 @@ def call() {
     '''
     sh "kubectl rollout status daemonset/tracee -n tracee --timeout=5m"
     sh "sed -i '/^TRACEE_/d' infra.env || true"
-    sh "echo 'TRACEE_METRICS_URL=http://tracee.tracee.svc.cluster.local:3366/metrics' >> infra.env"
+    sh "sed -i '/^TRACEE_METRICS_URL=/d' infra.env 2>/dev/null || true; echo 'TRACEE_METRICS_URL=http://tracee.tracee.svc.cluster.local:3366/metrics' >> infra.env" 
     echo 'Tracee installed — eBPF event collection with container scope, JSON output, ring-buf cache'
 }
 return this

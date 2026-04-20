@@ -21,7 +21,7 @@ def call() {
     '''
     sh "kubectl rollout status deployment/infisical -n infisical --timeout=5m"
     sh "sed -i '/^INFISICAL_/d' infra.env || true"
-    sh "echo 'INFISICAL_URL=http://infisical.infisical.svc.cluster.local:8080' >> infra.env"
+    sh "sed -i '/^INFISICAL_URL=/d' infra.env 2>/dev/null || true; echo 'INFISICAL_URL=http://infisical.infisical.svc.cluster.local:8080' >> infra.env" 
     echo 'Infisical installed — 2 replicas, MongoDB persistence, Redis, auto schema migration'
 }
 return this

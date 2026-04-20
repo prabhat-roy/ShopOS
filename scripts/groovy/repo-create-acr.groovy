@@ -1,7 +1,10 @@
 def call() {
-    def envVars = readFile('infra.env').trim().split('\n').collectEntries { line ->
-        def parts = line.split('=', 2)
-        parts.length == 2 ? [(parts[0]): parts[1]] : [:]
+    def envVars = [:]
+    if (fileExists('infra.env')) {
+        readFile('infra.env').trim().split('\n').each { line ->
+            def parts = line.split('=', 2)
+            if (parts.length == 2) envVars[parts[0]] = parts[1]
+        }
     }
 
     def acrName       = 'shoposregistry'
@@ -51,9 +54,9 @@ def call() {
         returnStdout: true
     ).trim()
 
-    sh "echo 'ACR_REGISTRY=${loginServer}' >> infra.env"
-    sh "echo 'ACR_NAME=${acrName}' >> infra.env"
-    sh "echo 'ACR_RESOURCE_GROUP=${resourceGroup}' >> infra.env"
+    sh "sed -i '/^ACR_REGISTRY=/d' infra.env 2>/dev/null || true; echo 'ACR_REGISTRY=${loginServer}' >> infra.env" 
+    sh "sed -i '/^ACR_NAME=/d' infra.env 2>/dev/null || true; echo 'ACR_NAME=${acrName}' >> infra.env" 
+    sh "sed -i '/^ACR_RESOURCE_GROUP=/d' infra.env 2>/dev/null || true; echo 'ACR_RESOURCE_GROUP=${resourceGroup}' >> infra.env" 
     echo "ACR login server: ${loginServer}"
 }
 

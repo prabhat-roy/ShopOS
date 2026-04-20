@@ -8,7 +8,7 @@ def call() {
 
     def url = 'http://baget-baget.baget.svc.cluster.local:8080'
     sh "sed -i '/^BAGET_/d' infra.env || true"
-    sh "echo 'BAGET_URL=http://baget-baget.baget.svc.cluster.local:8080' >> infra.env"
+    sh "sed -i '/^BAGET_URL=/d' infra.env 2>/dev/null || true; echo 'BAGET_URL=http://baget-baget.baget.svc.cluster.local:8080' >> infra.env" 
 
     echo 'baget installed — ${url}'
 }

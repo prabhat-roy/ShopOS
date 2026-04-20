@@ -26,9 +26,9 @@ def call() {
     '''
     sh "kubectl rollout status deployment/openvas-gsad -n openvas --timeout=10m || true"
     sh "sed -i '/^OPENVAS_/d' infra.env || true"
-    sh "echo 'OPENVAS_URL=http://openvas.openvas.svc.cluster.local:9392' >> infra.env"
-    sh "echo 'OPENVAS_USER=admin' >> infra.env"
-    sh "echo 'OPENVAS_PASSWORD=admin' >> infra.env"
+    sh "sed -i '/^OPENVAS_URL=/d' infra.env 2>/dev/null || true; echo 'OPENVAS_URL=http://openvas.openvas.svc.cluster.local:9392' >> infra.env" 
+    sh "sed -i '/^OPENVAS_USER=/d' infra.env 2>/dev/null || true; echo 'OPENVAS_USER=admin' >> infra.env" 
+    sh "sed -i '/^OPENVAS_PASSWORD=/d' infra.env 2>/dev/null || true; echo 'OPENVAS_PASSWORD=admin' >> infra.env" 
     echo 'OpenVAS/Greenbone installed — GVMD, GSAD, OSPD scanner with NVT sync and PostgreSQL'
 }
 return this

@@ -30,8 +30,8 @@ def call() {
     '''
     sh "kubectl rollout status statefulset/consul-server -n consul --timeout=5m"
     sh "sed -i '/^CONSUL_/d' infra.env || true"
-    sh "echo 'CONSUL_URL=http://consul-server.consul.svc.cluster.local:8500' >> infra.env"
-    sh "echo 'CONSUL_DNS_URL=consul-dns.consul.svc.cluster.local:53' >> infra.env"
+    sh "sed -i '/^CONSUL_URL=/d' infra.env 2>/dev/null || true; echo 'CONSUL_URL=http://consul-server.consul.svc.cluster.local:8500' >> infra.env" 
+    sh "sed -i '/^CONSUL_DNS_URL=/d' infra.env 2>/dev/null || true; echo 'CONSUL_DNS_URL=consul-dns.consul.svc.cluster.local:53' >> infra.env" 
     echo 'Consul installed with ACLs, TLS, Connect service mesh, metrics, and DNS'
 }
 return this

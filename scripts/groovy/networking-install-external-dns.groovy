@@ -27,7 +27,7 @@ def call() {
     """
     sh "kubectl rollout status deployment/external-dns -n external-dns --timeout=5m"
     sh "sed -i '/^EXTERNAL_DNS_/d' infra.env || true"
-    sh "echo 'EXTERNAL_DNS_METRICS_URL=http://external-dns.external-dns.svc.cluster.local:7979/metrics' >> infra.env"
+    sh "sed -i '/^EXTERNAL_DNS_METRICS_URL=/d' infra.env 2>/dev/null || true; echo 'EXTERNAL_DNS_METRICS_URL=http://external-dns.external-dns.svc.cluster.local:7979/metrics' >> infra.env" 
     echo "ExternalDNS installed with provider=${provider}, upsert-only policy, Istio sources"
 }
 return this

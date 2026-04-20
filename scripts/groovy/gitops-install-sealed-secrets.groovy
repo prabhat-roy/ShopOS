@@ -6,7 +6,7 @@ def call() {
             --wait --timeout 5m
     """
     sh "sed -i '/^SEALED_SECRETS_/d' infra.env || true"
-    sh "echo 'SEALED_SECRETS_URL=http://sealed-secrets-sealed-secrets.sealed-secrets.svc.cluster.local:8080' >> infra.env"
+    sh "sed -i '/^SEALED_SECRETS_URL=/d' infra.env 2>/dev/null || true; echo 'SEALED_SECRETS_URL=http://sealed-secrets-sealed-secrets.sealed-secrets.svc.cluster.local:8080' >> infra.env" 
     echo 'sealed-secrets installed'
 }
 return this

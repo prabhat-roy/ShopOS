@@ -16,8 +16,8 @@ def call() {
     '''
     sh "kubectl rollout status daemonset/calico-node -n calico-system --timeout=5m"
     sh "sed -i '/^CALICO_/d' infra.env || true"
-    sh "echo 'CALICO_NODE_METRICS_URL=http://calico-node.calico-system.svc.cluster.local:9091' >> infra.env"
-    sh "echo 'CALICO_TYPHA_URL=http://calico-typha.calico-system.svc.cluster.local:9093' >> infra.env"
+    sh "sed -i '/^CALICO_NODE_METRICS_URL=/d' infra.env 2>/dev/null || true; echo 'CALICO_NODE_METRICS_URL=http://calico-node.calico-system.svc.cluster.local:9091' >> infra.env" 
+    sh "sed -i '/^CALICO_TYPHA_URL=/d' infra.env 2>/dev/null || true; echo 'CALICO_TYPHA_URL=http://calico-typha.calico-system.svc.cluster.local:9093' >> infra.env" 
     echo 'Calico CNI installed with VXLAN encapsulation and NetworkPolicy enforcement'
 }
 return this

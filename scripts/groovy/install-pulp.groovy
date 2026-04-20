@@ -8,9 +8,9 @@ def call() {
 
     def url = 'http://pulp-pulp.pulp.svc.cluster.local:80'
     sh "sed -i '/^PULP_/d' infra.env || true"
-    sh "echo 'PULP_URL=http://pulp-pulp.pulp.svc.cluster.local:80' >> infra.env"
-    sh "echo 'PULP_USER=admin' >> infra.env"
-    sh "echo 'PULP_PASSWORD=password' >> infra.env"
+    sh "sed -i '/^PULP_URL=/d' infra.env 2>/dev/null || true; echo 'PULP_URL=http://pulp-pulp.pulp.svc.cluster.local:80' >> infra.env" 
+    sh "sed -i '/^PULP_USER=/d' infra.env 2>/dev/null || true; echo 'PULP_USER=admin' >> infra.env" 
+    sh "sed -i '/^PULP_PASSWORD=/d' infra.env 2>/dev/null || true; echo 'PULP_PASSWORD=password' >> infra.env" 
 
     echo 'pulp installed — ${url}'
 }

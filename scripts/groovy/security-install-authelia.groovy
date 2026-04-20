@@ -30,7 +30,7 @@ def call() {
     '''
     sh "kubectl rollout status deployment/authelia -n authelia --timeout=5m"
     sh "sed -i '/^AUTHELIA_/d' infra.env || true"
-    sh "echo 'AUTHELIA_URL=http://authelia.authelia.svc.cluster.local:9091' >> infra.env"
+    sh "sed -i '/^AUTHELIA_URL=/d' infra.env 2>/dev/null || true; echo 'AUTHELIA_URL=http://authelia.authelia.svc.cluster.local:9091' >> infra.env" 
     echo 'Authelia installed — SSO+2FA proxy, Redis session store, TOTP, default-deny policy'
 }
 return this

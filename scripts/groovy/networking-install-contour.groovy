@@ -23,8 +23,8 @@ def call() {
     '''
     sh "kubectl rollout status deployment/contour -n projectcontour --timeout=5m"
     sh "sed -i '/^CONTOUR_/d' infra.env || true"
-    sh "echo 'CONTOUR_URL=http://envoy.projectcontour.svc.cluster.local:80' >> infra.env"
-    sh "echo 'CONTOUR_INGRESS_CLASS=contour' >> infra.env"
+    sh "sed -i '/^CONTOUR_URL=/d' infra.env 2>/dev/null || true; echo 'CONTOUR_URL=http://envoy.projectcontour.svc.cluster.local:80' >> infra.env" 
+    sh "sed -i '/^CONTOUR_INGRESS_CLASS=/d' infra.env 2>/dev/null || true; echo 'CONTOUR_INGRESS_CLASS=contour' >> infra.env" 
     echo 'Contour (Envoy-based) ingress installed with HTTPProxy CRD and access logging'
 }
 return this

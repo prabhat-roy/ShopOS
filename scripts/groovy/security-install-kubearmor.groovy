@@ -24,8 +24,8 @@ def call() {
     '''
     sh "kubectl rollout status daemonset/kubearmor -n kubearmor --timeout=5m"
     sh "sed -i '/^KUBEARMOR_/d' infra.env || true"
-    sh "echo 'KUBEARMOR_GRPC_URL=kubearmor.kubearmor.svc.cluster.local:32767' >> infra.env"
-    sh "echo 'KUBEARMOR_RELAY_URL=kubearmor-relay.kubearmor.svc.cluster.local:32767' >> infra.env"
+    sh "sed -i '/^KUBEARMOR_GRPC_URL=/d' infra.env 2>/dev/null || true; echo 'KUBEARMOR_GRPC_URL=kubearmor.kubearmor.svc.cluster.local:32767' >> infra.env" 
+    sh "sed -i '/^KUBEARMOR_RELAY_URL=/d' infra.env 2>/dev/null || true; echo 'KUBEARMOR_RELAY_URL=kubearmor-relay.kubearmor.svc.cluster.local:32767' >> infra.env" 
     echo 'KubeArmor installed — LSM+eBPF enforcement, relay, operator, default block file posture'
 }
 return this

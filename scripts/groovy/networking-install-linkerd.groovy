@@ -35,8 +35,8 @@ def call() {
     '''
     sh "kubectl rollout status deployment/linkerd-controller -n linkerd --timeout=5m"
     sh "sed -i '/^LINKERD_/d' infra.env || true"
-    sh "echo 'LINKERD_URL=http://linkerd-controller.linkerd.svc.cluster.local:8086' >> infra.env"
-    sh "echo 'LINKERD_VIZ_URL=http://web.linkerd-viz.svc.cluster.local:8084' >> infra.env"
+    sh "sed -i '/^LINKERD_URL=/d' infra.env 2>/dev/null || true; echo 'LINKERD_URL=http://linkerd-controller.linkerd.svc.cluster.local:8086' >> infra.env" 
+    sh "sed -i '/^LINKERD_VIZ_URL=/d' infra.env 2>/dev/null || true; echo 'LINKERD_VIZ_URL=http://web.linkerd-viz.svc.cluster.local:8084' >> infra.env" 
     echo 'Linkerd service mesh installed — CRDs, control plane, and Viz dashboard'
 }
 return this

@@ -53,9 +53,9 @@ def call() {
     }
 
     def registryUrl = "${region}-docker.pkg.dev/${projectId}/${repoId}"
-    sh "echo 'ARTIFACT_REGISTRY=${registryUrl}' >> infra.env"
-    sh "echo 'ARTIFACT_REGISTRY_REGION=${region}' >> infra.env"
-    sh "echo 'ARTIFACT_REGISTRY_PROJECT=${projectId}' >> infra.env"
+    sh "sed -i '/^ARTIFACT_REGISTRY=/d' infra.env 2>/dev/null || true; echo 'ARTIFACT_REGISTRY=${registryUrl}' >> infra.env" 
+    sh "sed -i '/^ARTIFACT_REGISTRY_REGION=/d' infra.env 2>/dev/null || true; echo 'ARTIFACT_REGISTRY_REGION=${region}' >> infra.env" 
+    sh "sed -i '/^ARTIFACT_REGISTRY_PROJECT=/d' infra.env 2>/dev/null || true; echo 'ARTIFACT_REGISTRY_PROJECT=${projectId}' >> infra.env" 
     echo "Artifact Registry: ${registryUrl}"
 }
 

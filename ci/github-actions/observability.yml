@@ -1,0 +1,191 @@
+name: Observability Stack
+
+on:
+  workflow_dispatch:
+    inputs:
+      action:
+        description: 'INSTALL, UNINSTALL, or CONFIGURE observability tools'
+        required: true
+        default: 'INSTALL'
+        type: choice
+        options: [INSTALL, UNINSTALL, CONFIGURE]
+      prometheus:         { description: 'Prometheus + Alertmanager',              type: boolean, default: false }
+      grafana:            { description: 'Grafana — dashboards',                   type: boolean, default: false }
+      loki:               { description: 'Grafana Loki — log aggregation',         type: boolean, default: false }
+      jaeger:             { description: 'Jaeger — distributed tracing',           type: boolean, default: false }
+      tempo:              { description: 'Grafana Tempo — tracing backend',        type: boolean, default: false }
+      otel_collector:     { description: 'OpenTelemetry Collector',                type: boolean, default: false }
+      thanos:             { description: 'Thanos — long-term metrics storage',     type: boolean, default: false }
+      victoria_metrics:   { description: 'VictoriaMetrics — metrics alternative', type: boolean, default: false }
+      pyroscope:          { description: 'Grafana Pyroscope — continuous profiling', type: boolean, default: false }
+      sentry:             { description: 'Sentry OSS — error tracking',            type: boolean, default: false }
+      uptime_kuma:        { description: 'Uptime Kuma — uptime monitoring',        type: boolean, default: false }
+      opensearch:         { description: 'OpenSearch + Dashboards',                type: boolean, default: false }
+      elasticsearch:      { description: 'Elasticsearch + Kibana',                 type: boolean, default: false }
+      fluent_bit:         { description: 'Fluent Bit — log shipping',              type: boolean, default: false }
+      kube_state_metrics: { description: 'kube-state-metrics',                    type: boolean, default: false }
+      metrics_server:     { description: 'metrics-server — resource metrics API',  type: boolean, default: false }
+
+jobs:
+  observability-tools:
+    name: ${{ inputs.action }} Observability Tools
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Decode kubeconfig
+        run: |
+          mkdir -p ~/.kube
+          echo "${{ secrets.KUBECONFIG_CONTENT }}" | base64 -d > ~/.kube/config
+
+      - name: Install Helm
+        uses: azure/setup-helm@v4
+
+      - name: Add Helm repos
+        run: |
+          helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
+          helm repo add grafana            https://grafana.github.io/helm-charts
+          helm repo add jaegertracing      https://jaegertracing.github.io/helm-charts
+          helm repo add open-telemetry     https://open-telemetry.github.io/opentelemetry-helm-charts
+          helm repo add thanos             https://charts.bitnami.com/bitnami
+          helm repo add victoria-metrics   https://victoriametrics.github.io/helm-charts/
+          helm repo add sentry             https://sentry-kubernetes.github.io/charts
+          helm repo add opensearch         https://opensearch-project.github.io/helm-charts/
+          helm repo add elastic            https://helm.elastic.co
+          helm repo update
+
+      - name: Install — kube-prometheus-stack (Prometheus + Alertmanager + Grafana)
+        if: ${{ inputs.action == 'INSTALL' && inputs.prometheus == true }}
+        run: |
+          helm upgrade --install kube-prometheus-stack prometheus-community/kube-prometheus-stack \
+            --namespace observability --create-namespace \
+            --set prometheus.prometheusSpec.retention=30d \
+            --set prometheus.prometheusSpec.retentionSize=50GB \
+            --set prometheus.prometheusSpec.replicas=2 \
+            --set alertmanager.alertmanagerSpec.replicas=2 \
+            --set grafana.enabled=true \
+            --set grafana.adminPassword="${{ secrets.GRAFANA_ADMIN_PASSWORD }}" \
+            --set grafana.persistence.enabled=true \
+            --set grafana.sidecar.dashboards.enabled=true \
+            --set grafana.sidecar.datasources.enabled=true \
+            --wait --timeout 15m
+
+      - name: Install — Grafana Loki (distributed mode)
+        if: ${{ inputs.action == 'INSTALL' && inputs.loki == true }}
+        run: |
+          helm upgrade --install loki grafana/loki \
+            --namespace observability --create-namespace \
+            --set loki.auth_enabled=false \
+            --set loki.storage.type=s3 \
+            --set loki.storage.s3.endpoint="${{ secrets.MINIO_ENDPOINT }}" \
+            --set loki.storage.s3.accessKeyId="${{ secrets.MINIO_ACCESS_KEY }}" \
+            --set loki.storage.s3.secretAccessKey="${{ secrets.MINIO_SECRET_KEY }}" \
+            --set loki.storage.s3.bucketnames=loki-chunks \
+            --set loki.storage.s3.s3ForcePathStyle=true \
+            --set loki.storage.s3.insecure=true \
+            --wait --timeout 10m
+
+      - name: Install — Fluent Bit (log shipping to Loki + Elasticsearch)
+        if: ${{ inputs.action == 'INSTALL' && inputs.fluent_bit == true }}
+        run: |
+          helm upgrade --install fluent-bit grafana/fluent-bit \
+            --namespace observability --create-namespace \
+            --set config.outputs.loki.host=loki.observability.svc.cluster.local \
+            --set config.outputs.loki.port=3100 \
+            --set daemonset.enabled=true \
+            --wait --timeout 10m
+
+      - name: Install — Jaeger (all-in-one for dev, production mode for prod)
+        if: ${{ inputs.action == 'INSTALL' && inputs.jaeger == true }}
+        run: |
+          helm upgrade --install jaeger jaegertracing/jaeger \
+            --namespace observability --create-namespace \
+            --set provisionDataStore.cassandra=false \
+            --set storage.type=elasticsearch \
+            --set storage.elasticsearch.host=elasticsearch-master.observability.svc.cluster.local \
+            --set query.enabled=true \
+            --set collector.enabled=true \
+            --wait --timeout 10m
+
+      - name: Install — Grafana Tempo
+        if: ${{ inputs.action == 'INSTALL' && inputs.tempo == true }}
+        run: |
+          helm upgrade --install tempo grafana/tempo-distributed \
+            --namespace observability --create-namespace \
+            --set storage.trace.backend=s3 \
+            --set storage.trace.s3.endpoint="${{ secrets.MINIO_ENDPOINT }}" \
+            --set storage.trace.s3.bucket=tempo-traces \
+            --set storage.trace.s3.access_key="${{ secrets.MINIO_ACCESS_KEY }}" \
+            --set storage.trace.s3.secret_key="${{ secrets.MINIO_SECRET_KEY }}" \
+            --set storage.trace.s3.insecure=true \
+            --wait --timeout 10m
+
+      - name: Install — OpenTelemetry Collector
+        if: ${{ inputs.action == 'INSTALL' && inputs.otel_collector == true }}
+        run: |
+          helm upgrade --install otel-collector open-telemetry/opentelemetry-collector \
+            --namespace observability --create-namespace \
+            --set mode=daemonset \
+            --set config.receivers.otlp.protocols.grpc.endpoint="0.0.0.0:4317" \
+            --set config.receivers.otlp.protocols.http.endpoint="0.0.0.0:4318" \
+            --set config.exporters.prometheusremotewrite.endpoint="http://kube-prometheus-stack-prometheus.observability:9090/api/v1/write" \
+            --wait --timeout 10m
+
+      - name: Install — Thanos
+        if: ${{ inputs.action == 'INSTALL' && inputs.thanos == true }}
+        run: |
+          helm upgrade --install thanos thanos/thanos \
+            --namespace observability --create-namespace \
+            --set query.enabled=true \
+            --set queryFrontend.enabled=true \
+            --set ruler.enabled=true \
+            --set storegateway.enabled=true \
+            --set compactor.enabled=true \
+            --set objstoreConfig.type=s3 \
+            --set objstoreConfig.config.endpoint="${{ secrets.MINIO_ENDPOINT }}" \
+            --set objstoreConfig.config.bucket=thanos-metrics \
+            --wait --timeout 10m
+
+      - name: Install — Grafana Pyroscope (continuous profiling)
+        if: ${{ inputs.action == 'INSTALL' && inputs.pyroscope == true }}
+        run: |
+          helm upgrade --install pyroscope grafana/pyroscope \
+            --namespace observability --create-namespace \
+            --set pyroscope.replicaCount=2 \
+            --wait --timeout 10m
+
+      - name: Install — OpenSearch + Dashboards
+        if: ${{ inputs.action == 'INSTALL' && inputs.opensearch == true }}
+        run: |
+          helm upgrade --install opensearch opensearch/opensearch \
+            --namespace observability --create-namespace \
+            --set replicas=3 \
+            --set persistence.size=30Gi \
+            --wait --timeout 15m
+          helm upgrade --install opensearch-dashboards opensearch/opensearch-dashboards \
+            --namespace observability \
+            --set replicas=1 \
+            --wait --timeout 10m
+
+      - name: Install — metrics-server
+        if: ${{ inputs.action == 'INSTALL' && inputs.metrics_server == true }}
+        run: |
+          helm upgrade --install metrics-server prometheus-community/prometheus-adapter \
+            --namespace kube-system \
+            --set replicas=2 \
+            --wait --timeout 5m
+
+      # ── UNINSTALL ──────────────────────────────────────────────────────
+      - name: Uninstall tools
+        if: ${{ inputs.action == 'UNINSTALL' }}
+        run: |
+          ${{ inputs.prometheus       && 'helm uninstall kube-prometheus-stack -n observability --ignore-not-found || true' || '' }}
+          ${{ inputs.loki             && 'helm uninstall loki                  -n observability --ignore-not-found || true' || '' }}
+          ${{ inputs.jaeger           && 'helm uninstall jaeger                -n observability --ignore-not-found || true' || '' }}
+          ${{ inputs.tempo            && 'helm uninstall tempo                 -n observability --ignore-not-found || true' || '' }}
+          ${{ inputs.otel_collector   && 'helm uninstall otel-collector        -n observability --ignore-not-found || true' || '' }}
+          ${{ inputs.thanos           && 'helm uninstall thanos                -n observability --ignore-not-found || true' || '' }}
+          ${{ inputs.pyroscope        && 'helm uninstall pyroscope             -n observability --ignore-not-found || true' || '' }}
+          ${{ inputs.opensearch       && 'helm uninstall opensearch-dashboards opensearch -n observability --ignore-not-found || true' || '' }}
+          ${{ inputs.fluent_bit       && 'helm uninstall fluent-bit            -n observability --ignore-not-found || true' || '' }}
+          echo "Uninstall complete."

@@ -7,7 +7,7 @@ def call() {
             --wait --timeout 5m
     """
     sh "sed -i '/^STRIMZI_/d' infra.env || true"
-    sh "echo 'STRIMZI_URL=http://strimzi-strimzi.strimzi.svc.cluster.local:8080' >> infra.env"
+    sh "sed -i '/^STRIMZI_URL=/d' infra.env 2>/dev/null || true; echo 'STRIMZI_URL=http://strimzi-strimzi.strimzi.svc.cluster.local:8080' >> infra.env" 
     echo 'strimzi installed'
 }
 return this

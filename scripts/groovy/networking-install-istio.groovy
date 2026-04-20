@@ -40,8 +40,8 @@ def call() {
     '''
     sh "kubectl rollout status deployment/istiod -n istio-system --timeout=5m"
     sh "sed -i '/^ISTIO_/d' infra.env || true"
-    sh "echo 'ISTIO_URL=http://istiod.istio-system.svc.cluster.local:15010' >> infra.env"
-    sh "echo 'ISTIO_PILOT_URL=http://istiod.istio-system.svc.cluster.local:15014' >> infra.env"
+    sh "sed -i '/^ISTIO_URL=/d' infra.env 2>/dev/null || true; echo 'ISTIO_URL=http://istiod.istio-system.svc.cluster.local:15010' >> infra.env" 
+    sh "sed -i '/^ISTIO_PILOT_URL=/d' infra.env 2>/dev/null || true; echo 'ISTIO_PILOT_URL=http://istiod.istio-system.svc.cluster.local:15014' >> infra.env" 
     echo 'Istio service mesh installed — base CRDs, istiod control plane, ingress gateway'
 }
 return this

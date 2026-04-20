@@ -8,7 +8,7 @@ def call() {
 
     def url = 'http://chartmuseum-chartmuseum.chartmuseum.svc.cluster.local:8080'
     sh "sed -i '/^CHARTMUSEUM_/d' infra.env || true"
-    sh "echo 'CHARTMUSEUM_URL=http://chartmuseum-chartmuseum.chartmuseum.svc.cluster.local:8080' >> infra.env"
+    sh "sed -i '/^CHARTMUSEUM_URL=/d' infra.env 2>/dev/null || true; echo 'CHARTMUSEUM_URL=http://chartmuseum-chartmuseum.chartmuseum.svc.cluster.local:8080' >> infra.env" 
 
     echo 'chartmuseum installed — ${url}'
 }

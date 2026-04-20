@@ -22,8 +22,8 @@ def call() {
     '''
     sh "kubectl rollout status daemonset/cilium -n cilium --timeout=5m"
     sh "sed -i '/^CILIUM_/d' infra.env || true"
-    sh "echo 'CILIUM_HUBBLE_URL=http://hubble-relay.cilium.svc.cluster.local:80' >> infra.env"
-    sh "echo 'CILIUM_METRICS_URL=http://cilium.cilium.svc.cluster.local:9962/metrics' >> infra.env"
+    sh "sed -i '/^CILIUM_HUBBLE_URL=/d' infra.env 2>/dev/null || true; echo 'CILIUM_HUBBLE_URL=http://hubble-relay.cilium.svc.cluster.local:80' >> infra.env" 
+    sh "sed -i '/^CILIUM_METRICS_URL=/d' infra.env 2>/dev/null || true; echo 'CILIUM_METRICS_URL=http://cilium.cilium.svc.cluster.local:9962/metrics' >> infra.env" 
     echo 'Cilium CNI installed with Hubble observability and kube-proxy replacement'
 }
 return this

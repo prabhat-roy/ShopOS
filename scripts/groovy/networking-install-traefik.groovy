@@ -31,9 +31,9 @@ def call() {
     '''
     sh "kubectl rollout status deployment/traefik -n traefik --timeout=5m"
     sh "sed -i '/^TRAEFIK_/d' infra.env || true"
-    sh "echo 'TRAEFIK_URL=http://traefik.traefik.svc.cluster.local:80' >> infra.env"
-    sh "echo 'TRAEFIK_DASHBOARD_URL=http://traefik.traefik.svc.cluster.local:9000/dashboard/' >> infra.env"
-    sh "echo 'TRAEFIK_INGRESS_CLASS=traefik' >> infra.env"
+    sh "sed -i '/^TRAEFIK_URL=/d' infra.env 2>/dev/null || true; echo 'TRAEFIK_URL=http://traefik.traefik.svc.cluster.local:80' >> infra.env" 
+    sh "sed -i '/^TRAEFIK_DASHBOARD_URL=/d' infra.env 2>/dev/null || true; echo 'TRAEFIK_DASHBOARD_URL=http://traefik.traefik.svc.cluster.local:9000/dashboard/' >> infra.env" 
+    sh "sed -i '/^TRAEFIK_INGRESS_CLASS=/d' infra.env 2>/dev/null || true; echo 'TRAEFIK_INGRESS_CLASS=traefik' >> infra.env" 
     echo 'Traefik installed as default IngressClass with dashboard and Prometheus metrics'
 }
 return this

@@ -14,7 +14,7 @@ def call() {
             --wait --timeout 5m
     """
     sh "sed -i '/^KAFKA_CONNECT_/d' infra.env || true"
-    sh "echo 'KAFKA_CONNECT_URL=http://kafka-connect-kafka-connect.kafka-connect.svc.cluster.local:8083' >> infra.env"
+    sh "sed -i '/^KAFKA_CONNECT_URL=/d' infra.env 2>/dev/null || true; echo 'KAFKA_CONNECT_URL=http://kafka-connect-kafka-connect.kafka-connect.svc.cluster.local:8083' >> infra.env" 
     echo 'kafka-connect installed'
 }
 return this

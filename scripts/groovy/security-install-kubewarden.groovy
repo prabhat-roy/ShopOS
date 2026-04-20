@@ -35,8 +35,8 @@ def call() {
     '''
     sh "kubectl rollout status deployment/kubewarden-controller -n kubewarden --timeout=5m"
     sh "sed -i '/^KUBEWARDEN_/d' infra.env || true"
-    sh "echo 'KUBEWARDEN_URL=http://kubewarden-controller.kubewarden.svc.cluster.local:443' >> infra.env"
-    sh "echo 'KUBEWARDEN_METRICS_URL=http://kubewarden-controller.kubewarden.svc.cluster.local:8080' >> infra.env"
+    sh "sed -i '/^KUBEWARDEN_URL=/d' infra.env 2>/dev/null || true; echo 'KUBEWARDEN_URL=http://kubewarden-controller.kubewarden.svc.cluster.local:443' >> infra.env" 
+    sh "sed -i '/^KUBEWARDEN_METRICS_URL=/d' infra.env 2>/dev/null || true; echo 'KUBEWARDEN_METRICS_URL=http://kubewarden-controller.kubewarden.svc.cluster.local:8080' >> infra.env" 
     echo 'Kubewarden installed — CRDs, controller, default PolicyServer with recommended policies in monitor mode'
 }
 return this

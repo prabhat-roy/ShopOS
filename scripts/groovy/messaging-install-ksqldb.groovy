@@ -9,7 +9,7 @@ def call() {
             --wait --timeout 5m
     """
     sh "sed -i '/^KSQLDB_/d' infra.env || true"
-    sh "echo 'KSQLDB_URL=http://ksqldb-ksqldb.ksqldb.svc.cluster.local:8088' >> infra.env"
+    sh "sed -i '/^KSQLDB_URL=/d' infra.env 2>/dev/null || true; echo 'KSQLDB_URL=http://ksqldb-ksqldb.ksqldb.svc.cluster.local:8088' >> infra.env" 
     echo 'ksqldb installed'
 }
 return this

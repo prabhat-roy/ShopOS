@@ -8,9 +8,9 @@ def call() {
 
     def url = 'http://gitbucket-gitbucket.gitbucket.svc.cluster.local:8080'
     sh "sed -i '/^GITBUCKET_/d' infra.env || true"
-    sh "echo 'GITBUCKET_URL=http://gitbucket-gitbucket.gitbucket.svc.cluster.local:8080' >> infra.env"
-    sh "echo 'GITBUCKET_USER=root' >> infra.env"
-    sh "echo 'GITBUCKET_PASSWORD=root' >> infra.env"
+    sh "sed -i '/^GITBUCKET_URL=/d' infra.env 2>/dev/null || true; echo 'GITBUCKET_URL=http://gitbucket-gitbucket.gitbucket.svc.cluster.local:8080' >> infra.env" 
+    sh "sed -i '/^GITBUCKET_USER=/d' infra.env 2>/dev/null || true; echo 'GITBUCKET_USER=root' >> infra.env" 
+    sh "sed -i '/^GITBUCKET_PASSWORD=/d' infra.env 2>/dev/null || true; echo 'GITBUCKET_PASSWORD=root' >> infra.env" 
 
     echo 'gitbucket installed — ${url}'
 }

@@ -28,8 +28,8 @@ def call() {
     '''
     sh "kubectl rollout status deployment/nuclei -n nuclei --timeout=5m"
     sh "sed -i '/^NUCLEI_/d' infra.env || true"
-    sh "echo 'NUCLEI_URL=http://nuclei.nuclei.svc.cluster.local:9090' >> infra.env"
-    sh "echo 'NUCLEI_TOKEN=nucleitoken' >> infra.env"
+    sh "sed -i '/^NUCLEI_URL=/d' infra.env 2>/dev/null || true; echo 'NUCLEI_URL=http://nuclei.nuclei.svc.cluster.local:9090' >> infra.env" 
+    sh "sed -i '/^NUCLEI_TOKEN=/d' infra.env 2>/dev/null || true; echo 'NUCLEI_TOKEN=nucleitoken' >> infra.env" 
     echo 'Nuclei scanner installed — server mode, auto template updates, crit/high/medium severity'
 }
 return this

@@ -30,7 +30,7 @@ def call() {
     '''
     sh "kubectl rollout status deployment/kubescape -n kubescape --timeout=5m"
     sh "sed -i '/^KUBESCAPE_/d' infra.env || true"
-    sh "echo 'KUBESCAPE_URL=http://kubescape.kubescape.svc.cluster.local:8080' >> infra.env"
+    sh "sed -i '/^KUBESCAPE_URL=/d' infra.env 2>/dev/null || true; echo 'KUBESCAPE_URL=http://kubescape.kubescape.svc.cluster.local:8080' >> infra.env" 
     echo 'Kubescape installed — NSA/MITRE compliance operator with continuous scan and network policy generation'
 }
 return this

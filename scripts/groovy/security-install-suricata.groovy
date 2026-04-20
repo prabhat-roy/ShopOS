@@ -27,7 +27,7 @@ def call() {
     '''
     sh "kubectl rollout status daemonset/suricata -n suricata --timeout=5m"
     sh "sed -i '/^SURICATA_/d' infra.env || true"
-    sh "echo 'SURICATA_METRICS_URL=http://suricata.suricata.svc.cluster.local:8080/metrics' >> infra.env"
+    sh "sed -i '/^SURICATA_METRICS_URL=/d' infra.env 2>/dev/null || true; echo 'SURICATA_METRICS_URL=http://suricata.suricata.svc.cluster.local:8080/metrics' >> infra.env" 
     echo 'Suricata IDS/IPS installed — DaemonSet, EVE JSON logs, Emerging Threats rules, Prometheus metrics'
 }
 return this

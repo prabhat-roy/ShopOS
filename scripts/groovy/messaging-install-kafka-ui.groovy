@@ -11,7 +11,7 @@ def call() {
             --wait --timeout 5m
     """
     sh "sed -i '/^KAFKA_UI_/d' infra.env || true"
-    sh "echo 'KAFKA_UI_URL=http://kafka-ui-kafka-ui.kafka-ui.svc.cluster.local:8080' >> infra.env"
+    sh "sed -i '/^KAFKA_UI_URL=/d' infra.env 2>/dev/null || true; echo 'KAFKA_UI_URL=http://kafka-ui-kafka-ui.kafka-ui.svc.cluster.local:8080' >> infra.env" 
     echo 'kafka-ui installed'
 }
 return this

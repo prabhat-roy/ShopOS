@@ -41,7 +41,7 @@ spec:
 EOF
     '''
     sh "sed -i '/^CERT_MANAGER_/d' infra.env || true"
-    sh "echo 'CERT_MANAGER_URL=http://cert-manager.cert-manager.svc.cluster.local:9402' >> infra.env"
+    sh "sed -i '/^CERT_MANAGER_URL=/d' infra.env 2>/dev/null || true; echo 'CERT_MANAGER_URL=http://cert-manager.cert-manager.svc.cluster.local:9402' >> infra.env" 
     echo 'cert-manager installed — CRDs, 2 replicas, Prometheus metrics, selfsigned ClusterIssuer'
 }
 return this

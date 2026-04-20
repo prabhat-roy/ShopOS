@@ -24,8 +24,8 @@ def call() {
     '''
     sh "kubectl rollout status deployment/gatekeeper-controller-manager -n gatekeeper-system --timeout=5m"
     sh "sed -i '/^OPA_/d' infra.env || true"
-    sh "echo 'OPA_GATEKEEPER_URL=https://gatekeeper-webhook-service.gatekeeper-system.svc.cluster.local:443' >> infra.env"
-    sh "echo 'OPA_METRICS_URL=http://gatekeeper-controller-manager.gatekeeper-system.svc.cluster.local:8888/metrics' >> infra.env"
+    sh "sed -i '/^OPA_GATEKEEPER_URL=/d' infra.env 2>/dev/null || true; echo 'OPA_GATEKEEPER_URL=https://gatekeeper-webhook-service.gatekeeper-system.svc.cluster.local:443' >> infra.env" 
+    sh "sed -i '/^OPA_METRICS_URL=/d' infra.env 2>/dev/null || true; echo 'OPA_METRICS_URL=http://gatekeeper-controller-manager.gatekeeper-system.svc.cluster.local:8888/metrics' >> infra.env" 
     echo 'OPA Gatekeeper installed — 3 replicas, 60s audit interval, Prometheus metrics, external data enabled'
 }
 return this

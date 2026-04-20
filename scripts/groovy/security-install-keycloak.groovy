@@ -33,9 +33,9 @@ def call() {
     '''
     sh "kubectl rollout status statefulset/keycloak -n keycloak --timeout=10m"
     sh "sed -i '/^KEYCLOAK_/d' infra.env || true"
-    sh "echo 'KEYCLOAK_URL=http://keycloak.keycloak.svc.cluster.local:8080' >> infra.env"
-    sh "echo 'KEYCLOAK_USER=admin' >> infra.env"
-    sh "echo 'KEYCLOAK_PASSWORD=changeme' >> infra.env"
+    sh "sed -i '/^KEYCLOAK_URL=/d' infra.env 2>/dev/null || true; echo 'KEYCLOAK_URL=http://keycloak.keycloak.svc.cluster.local:8080' >> infra.env" 
+    sh "sed -i '/^KEYCLOAK_USER=/d' infra.env 2>/dev/null || true; echo 'KEYCLOAK_USER=admin' >> infra.env" 
+    sh "sed -i '/^KEYCLOAK_PASSWORD=/d' infra.env 2>/dev/null || true; echo 'KEYCLOAK_PASSWORD=changeme' >> infra.env" 
     echo 'Keycloak installed — HA mode with PostgreSQL, metrics, and token-exchange feature'
 }
 return this

@@ -26,9 +26,9 @@ def call() {
     '''
     sh "kubectl rollout status deployment/authentik-server -n authentik --timeout=10m"
     sh "sed -i '/^AUTHENTIK_/d' infra.env || true"
-    sh "echo 'AUTHENTIK_URL=http://authentik.authentik.svc.cluster.local:80' >> infra.env"
-    sh "echo 'AUTHENTIK_USER=akadmin' >> infra.env"
-    sh "echo 'AUTHENTIK_PASSWORD=changeme' >> infra.env"
+    sh "sed -i '/^AUTHENTIK_URL=/d' infra.env 2>/dev/null || true; echo 'AUTHENTIK_URL=http://authentik.authentik.svc.cluster.local:80' >> infra.env" 
+    sh "sed -i '/^AUTHENTIK_USER=/d' infra.env 2>/dev/null || true; echo 'AUTHENTIK_USER=akadmin' >> infra.env" 
+    sh "sed -i '/^AUTHENTIK_PASSWORD=/d' infra.env 2>/dev/null || true; echo 'AUTHENTIK_PASSWORD=changeme' >> infra.env" 
     echo 'Authentik installed — HA server+worker, PostgreSQL, Redis, Prometheus metrics'
 }
 return this

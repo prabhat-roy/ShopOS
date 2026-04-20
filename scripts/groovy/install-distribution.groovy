@@ -8,7 +8,7 @@ def call() {
 
     def url = 'http://distribution-distribution.distribution.svc.cluster.local:5000'
     sh "sed -i '/^DISTRIBUTION_/d' infra.env || true"
-    sh "echo 'DISTRIBUTION_URL=http://distribution-distribution.distribution.svc.cluster.local:5000' >> infra.env"
+    sh "sed -i '/^DISTRIBUTION_URL=/d' infra.env 2>/dev/null || true; echo 'DISTRIBUTION_URL=http://distribution-distribution.distribution.svc.cluster.local:5000' >> infra.env" 
 
     echo 'distribution installed — ${url}'
 }
