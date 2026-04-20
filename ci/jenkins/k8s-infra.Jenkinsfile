@@ -51,82 +51,22 @@ pipeline {
             }
         }
 
-        stage('VPC') {
-            when { expression { params.ACTION == 'CREATE' && env.CLOUD_PROVIDER == 'AWS' } }
-            steps {
-                script {
-                    def vpc = load 'scripts/groovy/k8s-vpc.groovy'
-                    vpc(env.TF_DIR)
-                }
-            }
-        }
-
-        stage('Subnets') {
-            when { expression { params.ACTION == 'CREATE' && env.CLOUD_PROVIDER == 'AWS' } }
-            steps {
-                script {
-                    def subnets = load 'scripts/groovy/k8s-subnets.groovy'
-                    subnets(env.TF_DIR)
-                }
-            }
-        }
-
-        stage('Internet Gateway') {
-            when { expression { params.ACTION == 'CREATE' && env.CLOUD_PROVIDER == 'AWS' } }
-            steps {
-                script {
-                    def igw = load 'scripts/groovy/k8s-igw.groovy'
-                    igw(env.TF_DIR)
-                }
-            }
-        }
-
-        stage('NAT Gateway') {
-            when { expression { params.ACTION == 'CREATE' && env.CLOUD_PROVIDER == 'AWS' } }
-            steps {
-                script {
-                    def nat = load 'scripts/groovy/k8s-nat-gateway.groovy'
-                    nat(env.TF_DIR)
-                }
-            }
-        }
-
-        stage('Route Tables') {
-            when { expression { params.ACTION == 'CREATE' && env.CLOUD_PROVIDER == 'AWS' } }
-            steps {
-                script {
-                    def rt = load 'scripts/groovy/k8s-route-tables.groovy'
-                    rt(env.TF_DIR)
-                }
-            }
-        }
-
-        stage('Security Groups') {
-            when { expression { params.ACTION == 'CREATE' && env.CLOUD_PROVIDER == 'AWS' } }
-            steps {
-                script {
-                    def sg = load 'scripts/groovy/k8s-security-groups.groovy'
-                    sg(env.TF_DIR)
-                }
-            }
-        }
-
-        stage('IAM Roles') {
-            when { expression { params.ACTION == 'CREATE' && env.CLOUD_PROVIDER == 'AWS' } }
-            steps {
-                script {
-                    def iam = load 'scripts/groovy/k8s-iam.groovy'
-                    iam(env.TF_DIR)
-                }
-            }
-        }
-
-        stage('Kubernetes Cluster') {
+        stage('Provision Cluster') {
             when { expression { params.ACTION == 'CREATE' } }
             steps {
                 script {
-                    def cluster = load 'scripts/groovy/k8s-cluster.groovy'
-                    cluster(env.TF_DIR, params.ENVIRONMENT)
+                    if (env.CLOUD_PROVIDER == 'GCP') {
+                        def gke = load 'scripts/groovy/k8s-gke.groovy'
+                        gke(env.TF_DIR, params.ENVIRONMENT)
+                    } else if (env.CLOUD_PROVIDER == 'AWS') {
+                        def eks = load 'scripts/groovy/k8s-eks.groovy'
+                        eks(env.TF_DIR, params.ENVIRONMENT)
+                    } else if (env.CLOUD_PROVIDER == 'AZURE') {
+                        def aks = load 'scripts/groovy/k8s-aks.groovy'
+                        aks(env.TF_DIR, params.ENVIRONMENT)
+                    } else {
+                        error "Unknown CLOUD_PROVIDER: ${env.CLOUD_PROVIDER}"
+                    }
                 }
             }
         }
