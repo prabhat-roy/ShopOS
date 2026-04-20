@@ -109,7 +109,7 @@ ci/
 |---|---|---|---|
 | **deploy** | manual | ~25 min | Build → scan → sign → push → Helm deploy |
 | **post-deploy** | manual | ~45 min | Smoke, load tests, ZAP DAST, SLO validation |
-| **k8s-infra** | manual | ~90 min | Provision / destroy EKS / GKE / AKS via Terraform |
+| **k8s-infra** | manual | ~90 min | Provision / destroy EKS / GKE / AKS via Terraform. Parameters: ACTION, CLOUD_PROVIDER (AUTO/GCP/AWS/AZURE), ENVIRONMENT. AWS-only stages (VPC, Subnets, IGW, NAT, Route Tables, SG, IAM) are skipped for GKE/AKS. |
 | **gitops** | manual | ~20 min | Install ArgoCD, Flux, Argo Rollouts, KEDA, Velero |
 | **security** | manual | ~30 min | Install Vault, Keycloak, Falco, Kyverno, cert-manager |
 | **observability** | manual | ~30 min | Install Prometheus, Grafana, Loki, Jaeger, OTel |
