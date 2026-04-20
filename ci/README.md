@@ -1,7 +1,7 @@
 # CI Pipelines — ShopOS
 
-ShopOS ships **12 pipelines** implemented across **15 CI/CD platforms**. Every platform covers
-the same 12 pipeline types — same stages, same logic, different syntax. Use whichever CI engine
+ShopOS ships **11 pipelines** implemented across **15 CI/CD platforms**. Every platform covers
+the same 11 pipeline types — same stages, same logic, different syntax. Use whichever CI engine
 your environment supports.
 
 ---
@@ -32,7 +32,7 @@ your environment supports.
 
 ```
 ci/
-├── jenkins/                          ← 12 Jenkinsfiles
+├── jenkins/                          ← 11 Jenkinsfiles
 │   ├── deploy.Jenkinsfile
 │   ├── post-deploy.Jenkinsfile
 │   ├── k8s-infra.Jenkinsfile
@@ -62,7 +62,6 @@ ci/
 │   ├── networking.yml
 │   ├── registry.yml
 │   ├── install-tools.yml
-│   ├── ansible.yml
 │   └── cluster-bootstrap.yml
 │
 ├── dagger/                           ← Dagger Go SDK — one subdirectory per pipeline
@@ -76,7 +75,6 @@ ci/
 │   ├── gitops/main.go
 │   ├── registry/main.go
 │   ├── install-tools/main.go
-│   ├── ansible/main.go
 │   ├── cluster-bootstrap/main.go
 │   └── post-deploy/main.go
 │
@@ -90,7 +88,6 @@ ci/
 │   ├── gitops-pipeline.yml
 │   ├── registry-pipeline.yml
 │   ├── install-tools-pipeline.yml
-│   ├── ansible-pipeline.yml
 │   ├── cluster-bootstrap-pipeline.yml
 │   └── post-deploy-pipeline.yml
 │

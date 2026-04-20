@@ -1,6 +1,0 @@
----
-java_version: "21"
-jenkins_port: 8080
-jenkins_admin_user: admin
-jenkins_admin_password: admin
-jenkins_plugins: []
