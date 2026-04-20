@@ -7,8 +7,9 @@ def call() {
             return 0
         fi
 
+        sudo rm -rf /tmp/awscliv2.zip /tmp/awscli-install
         curl -sf "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o /tmp/awscliv2.zip
-        sudo unzip -q /tmp/awscliv2.zip -d /tmp/awscli-install
+        sudo unzip -oq /tmp/awscliv2.zip -d /tmp/awscli-install
         sudo /tmp/awscli-install/aws/install --update
         sudo rm -rf /tmp/awscliv2.zip /tmp/awscli-install
 
