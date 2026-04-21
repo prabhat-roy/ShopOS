@@ -1,10 +1,15 @@
 #!/usr/bin/env groovy
 
-def call(String tfDir, String environment = 'dev') {
-    def cloud = ''
-    if (fileExists('infra.env')) {
-        cloud = readFile('infra.env').trim().split('\n').find { it.startsWith('CLOUD_PROVIDER=') }?.split('=', 2)?.last() ?: ''
+def call(String tfDir) {
+    if (!fileExists('infra.env')) error "infra.env not found — nothing to destroy"
+
+    def props = readFile('infra.env').trim().split('\n').collectEntries { line ->
+        def parts = line.split('=', 2)
+        parts.length == 2 ? [(parts[0]): parts[1]] : [:]
     }
+    def cloud       = props['CLOUD_PROVIDER'] ?: ''
+    def environment = props['ENVIRONMENT']    ?: 'dev'
+    echo "Destroying ${cloud} cluster (environment=${environment})"
 
     if (cloud == 'GCP') {
         def projectId = sh(

@@ -41,6 +41,15 @@ def call(String tfDir, String environment = 'dev') {
         echo "=== GKE outputs ==="
         terraform output
     """
+
+    def lines = fileExists('infra.env') ? readFile('infra.env').readLines() : []
+    def updated = false
+    lines = lines.collect { line ->
+        if (line.startsWith('ENVIRONMENT=')) { updated = true; return "ENVIRONMENT=${environment}" }
+        return line
+    }
+    if (!updated) lines.add("ENVIRONMENT=${environment}")
+    writeFile file: 'infra.env', text: lines.join('\n') + '\n'
 }
 
 return this
