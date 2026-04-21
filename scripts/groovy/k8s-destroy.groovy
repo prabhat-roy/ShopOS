@@ -1,6 +1,6 @@
 #!/usr/bin/env groovy
 
-def call(String tfDir) {
+def call(String tfDir, String environment = 'dev') {
     def cloud = ''
     if (fileExists('infra.env')) {
         cloud = readFile('infra.env').trim().split('\n').find { it.startsWith('CLOUD_PROVIDER=') }?.split('=', 2)?.last() ?: ''
@@ -40,6 +40,7 @@ def call(String tfDir) {
             terraform destroy \
                 -var project_id=${projectId} \
                 -var region=${region} \
+                -var environment=${environment} \
                 -auto-approve -input=false
         """
 
@@ -54,13 +55,16 @@ def call(String tfDir) {
             cd ${tfDir}
             terraform destroy \
                 -var subscription_id=${subscriptionId} \
+                -var environment=${environment} \
                 -auto-approve -input=false
         """
 
     } else {
         sh """
             cd ${tfDir}
-            terraform destroy -auto-approve -input=false
+            terraform destroy \
+                -var environment=${environment} \
+                -auto-approve -input=false
         """
     }
 }

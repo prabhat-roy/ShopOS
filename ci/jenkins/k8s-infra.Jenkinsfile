@@ -97,7 +97,7 @@ pipeline {
             steps {
                 script {
                     def s = load 'scripts/groovy/k8s-destroy.groovy'
-                    s(env.TF_DIR)
+                    s(env.TF_DIR, params.ENVIRONMENT)
                 }
             }
         }
