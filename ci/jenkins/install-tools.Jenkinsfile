@@ -204,6 +204,15 @@ pipeline {
             }
         }
 
+        stage('Install gke-gcloud-auth-plugin') {
+            steps {
+                script {
+                    def installPlugin = load 'scripts/groovy/install-gke-gcloud-auth-plugin.groovy'
+                    installPlugin()
+                }
+            }
+        }
+
         stage('Install Azure CLI') {
             steps {
                 script {
