@@ -11,7 +11,8 @@ def call() {
             --set env.CONNECT_STATUS_STORAGE_TOPIC=connect-status \
             --set env.CONNECT_KEY_CONVERTER=org.apache.kafka.connect.json.JsonConverter \
             --set env.CONNECT_VALUE_CONVERTER=org.apache.kafka.connect.json.JsonConverter \
-            --wait --timeout 5m
+            --set env.CONNECT_REST_ADVERTISED_HOST_NAME=kafka-connect-kafka-connect.kafka-connect.svc.cluster.local \
+            --wait --timeout 10m
     """
     sh "sed -i '/^KAFKA_CONNECT_/d' infra.env || true"
     sh "sed -i '/^KAFKA_CONNECT_URL=/d' infra.env 2>/dev/null || true; echo 'KAFKA_CONNECT_URL=http://kafka-connect-kafka-connect.kafka-connect.svc.cluster.local:8083' >> infra.env" 
