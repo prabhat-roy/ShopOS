@@ -42,6 +42,7 @@ pipeline {
         stage('Git Fetch') {
             steps {
                 checkout scm
+                sh 'test -f /var/lib/jenkins/infra.env && cp /var/lib/jenkins/infra.env . || true'
             }
         }
 

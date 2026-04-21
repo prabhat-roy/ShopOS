@@ -40,6 +40,7 @@ pipeline {
         stage('Git Fetch') {
             steps {
                 checkout scm
+                sh 'test -f /var/lib/jenkins/infra.env && cp /var/lib/jenkins/infra.env . || true'
             }
         }
 
@@ -50,8 +51,7 @@ pipeline {
                         error "infra.env not found — run the k8s-infra pipeline first to provision a cluster"
                     }
                     def kubeconfigContent = readFile('infra.env').trim()
-                        .split('
-').find { it.startsWith('KUBECONFIG_CONTENT=') }?.split('=', 2)?.last()
+                        .split('\n').find { it.startsWith('KUBECONFIG_CONTENT=') }?.split('=', 2)?.last()
                     if (!kubeconfigContent) {
                         error "KUBECONFIG_CONTENT missing from infra.env — run the k8s-infra pipeline first"
                     }
