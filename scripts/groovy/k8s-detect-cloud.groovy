@@ -7,10 +7,21 @@ def call() {
         AZURE : 'infra/terraform/azure/aks',
     ]
 
-    def detector = load 'scripts/groovy/CloudProviderDetector.groovy'
-    detector.detectAndSaveCloudProvider('infra.env')
+    // Re-use previously detected cloud — only detect if not already in infra.env
+    def cloud = ''
+    if (fileExists('infra.env')) {
+        cloud = readFile('infra.env').trim().split('\n')
+            .find { it.startsWith('CLOUD_PROVIDER=') }?.split('=', 2)?.last() ?: ''
+    }
 
-    def cloud = env.CLOUD_PROVIDER
+    if (cloud) {
+        echo "CLOUD_PROVIDER=${cloud} (loaded from infra.env — skipping detection)"
+        env.CLOUD_PROVIDER = cloud
+    } else {
+        def detector = load 'scripts/groovy/CloudProviderDetector.groovy'
+        detector.detectAndSaveCloudProvider('infra.env')
+        cloud = env.CLOUD_PROVIDER
+    }
     def tfDir = tfDirMap[cloud]
 
     if (!tfDir) {
