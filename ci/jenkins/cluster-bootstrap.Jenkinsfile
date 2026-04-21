@@ -265,6 +265,9 @@ pipeline {
     }
 
     post {
+        always {
+            sh 'test -f infra.env && cp infra.env /var/lib/jenkins/infra.env || true'
+        }
         failure {
             echo 'Bootstrap failed — check the failed stage above. Fix the issue and re-run with SKIP_* flags to resume from where it stopped.'
         }

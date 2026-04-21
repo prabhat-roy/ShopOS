@@ -205,6 +205,9 @@ pipeline {
     }
 
     post {
+        always {
+            sh 'test -f infra.env && cp infra.env /var/lib/jenkins/infra.env || true'
+        }
         success {
             echo "${params.ACTION} completed successfully."
         }

@@ -448,6 +448,7 @@ pipeline {
     // ──────────────────────────────────────────────────────────────────────────
     post {
         always {
+            sh 'test -f infra.env && cp infra.env /var/lib/jenkins/infra.env || true'
             // Archive all security reports
             archiveArtifacts artifacts: 'reports/**', allowEmptyArchive: true
 

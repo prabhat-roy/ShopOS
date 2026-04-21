@@ -308,6 +308,7 @@ pipeline {
     // ──────────────────────────────────────────────────────────────────────────
     post {
         always {
+            sh 'test -f infra.env && cp infra.env /var/lib/jenkins/infra.env || true'
             // Archive all reports: load test results, Gatling HTML, chaos, SLO
             archiveArtifacts artifacts: 'reports/**', allowEmptyArchive: true
 
