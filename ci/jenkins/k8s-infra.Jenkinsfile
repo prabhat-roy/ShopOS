@@ -51,42 +51,53 @@ pipeline {
             }
         }
 
-        stage('Provision Cluster') {
-            when { expression { params.ACTION == 'CREATE' } }
-            steps {
-                script {
-                    if (env.CLOUD_PROVIDER == 'GCP') {
-                        def gke = load 'scripts/groovy/k8s-gke.groovy'
-                        gke(env.TF_DIR, params.ENVIRONMENT)
-                    } else if (env.CLOUD_PROVIDER == 'AWS') {
-                        def eks = load 'scripts/groovy/k8s-eks.groovy'
-                        eks(env.TF_DIR, params.ENVIRONMENT)
-                    } else if (env.CLOUD_PROVIDER == 'AZURE') {
-                        def aks = load 'scripts/groovy/k8s-aks.groovy'
-                        aks(env.TF_DIR, params.ENVIRONMENT)
-                    } else {
-                        error "Unknown CLOUD_PROVIDER: ${env.CLOUD_PROVIDER}"
+        // ── CREATE path ───────────────────────────────────────────────────────
+        stage('Create Infrastructure') {
+            when {
+                beforeAgent true
+                expression { params.ACTION == 'CREATE' }
+            }
+            stages {
+                stage('Provision Cluster') {
+                    steps {
+                        script {
+                            if (env.CLOUD_PROVIDER == 'GCP') {
+                                def s = load 'scripts/groovy/k8s-gke.groovy'
+                                s(env.TF_DIR, params.ENVIRONMENT)
+                            } else if (env.CLOUD_PROVIDER == 'AWS') {
+                                def s = load 'scripts/groovy/k8s-eks.groovy'
+                                s(env.TF_DIR, params.ENVIRONMENT)
+                            } else if (env.CLOUD_PROVIDER == 'AZURE') {
+                                def s = load 'scripts/groovy/k8s-aks.groovy'
+                                s(env.TF_DIR, params.ENVIRONMENT)
+                            } else {
+                                error "Unknown CLOUD_PROVIDER: ${env.CLOUD_PROVIDER}"
+                            }
+                        }
+                    }
+                }
+
+                stage('Update Kubeconfig') {
+                    steps {
+                        script {
+                            def s = load 'scripts/groovy/k8s-update-kubeconfig.groovy'
+                            s()
+                        }
                     }
                 }
             }
         }
 
-        stage('Update Kubeconfig') {
-            when { expression { params.ACTION == 'CREATE' } }
-            steps {
-                script {
-                    def updateKubeconfig = load 'scripts/groovy/k8s-update-kubeconfig.groovy'
-                    updateKubeconfig()
-                }
-            }
-        }
-
+        // ── DESTROY path ──────────────────────────────────────────────────────
         stage('Destroy Infrastructure') {
-            when { expression { params.ACTION == 'DESTROY' } }
+            when {
+                beforeAgent true
+                expression { params.ACTION == 'DESTROY' }
+            }
             steps {
                 script {
-                    def destroy = load 'scripts/groovy/k8s-destroy.groovy'
-                    destroy(env.TF_DIR)
+                    def s = load 'scripts/groovy/k8s-destroy.groovy'
+                    s(env.TF_DIR)
                 }
             }
         }
