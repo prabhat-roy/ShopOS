@@ -38,3 +38,7 @@ output "nodes_security_group_id" {
 output "kubeconfig_command" {
   value = "aws eks update-kubeconfig --region ${var.region} --name ${aws_eks_cluster.this.name}"
 }
+
+output "region" {
+  value = var.region
+}

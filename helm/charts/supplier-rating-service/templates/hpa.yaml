@@ -6,15 +6,15 @@ Only rendered when autoscaling.enabled=true
 apiVersion: autoscaling/v2
 kind: HorizontalPodAutoscaler
 metadata:
-  name: {{ include "api-gateway.fullname" . }}-hpa
+  name: {{ include "supplier-rating-service.fullname" . }}-hpa
   namespace: {{ .Values.namespaceOverride | default .Release.Namespace }}
   labels:
-    {{- include "api-gateway.labels" . | nindent 4 }}
+    {{- include "supplier-rating-service.labels" . | nindent 4 }}
 spec:
   scaleTargetRef:
     apiVersion: apps/v1
     kind: Deployment
-    name: {{ include "api-gateway.fullname" . }}
+    name: {{ include "supplier-rating-service.fullname" . }}
   minReplicas: {{ .Values.autoscaling.minReplicas }}
   maxReplicas: {{ .Values.autoscaling.maxReplicas }}
   metrics:

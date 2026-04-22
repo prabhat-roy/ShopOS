@@ -1,18 +1,18 @@
 {{/*
-ShopOS — api-gateway Helm helper templates
+ShopOS — supplier-rating-service Helm helper templates
 */}}
 
 {{/*
 Expand the name of the chart.
 */}}
-{{- define "api-gateway.name" -}}
+{{- define "supplier-rating-service.name" -}}
 {{- default .Chart.Name .Values.nameOverride | trunc 63 | trimSuffix "-" }}
 {{- end }}
 
 {{/*
 Create a default fully qualified app name.
 */}}
-{{- define "api-gateway.fullname" -}}
+{{- define "supplier-rating-service.fullname" -}}
 {{- if .Values.fullnameOverride }}
 {{- .Values.fullnameOverride | trunc 63 | trimSuffix "-" }}
 {{- else }}
@@ -28,16 +28,16 @@ Create a default fully qualified app name.
 {{/*
 Create chart version label.
 */}}
-{{- define "api-gateway.chart" -}}
+{{- define "supplier-rating-service.chart" -}}
 {{- printf "%s-%s" .Chart.Name .Chart.Version | replace "+" "_" | trunc 63 | trimSuffix "-" }}
 {{- end }}
 
 {{/*
 Common labels applied to all resources.
 */}}
-{{- define "api-gateway.labels" -}}
-helm.sh/chart: {{ include "api-gateway.chart" . }}
-{{ include "api-gateway.selectorLabels" . }}
+{{- define "supplier-rating-service.labels" -}}
+helm.sh/chart: {{ include "supplier-rating-service.chart" . }}
+{{ include "supplier-rating-service.selectorLabels" . }}
 {{- if .Chart.AppVersion }}
 app.kubernetes.io/version: {{ .Chart.AppVersion | quote }}
 {{- end }}
@@ -49,8 +49,8 @@ app.kubernetes.io/domain: platform
 {{/*
 Selector labels — used in matchLabels and Service selector.
 */}}
-{{- define "api-gateway.selectorLabels" -}}
-app: {{ include "api-gateway.name" . }}
-app.kubernetes.io/name: {{ include "api-gateway.name" . }}
+{{- define "supplier-rating-service.selectorLabels" -}}
+app: {{ include "supplier-rating-service.name" . }}
+app.kubernetes.io/name: {{ include "supplier-rating-service.name" . }}
 app.kubernetes.io/instance: {{ .Release.Name }}
 {{- end }}

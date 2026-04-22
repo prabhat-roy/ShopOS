@@ -1,18 +1,18 @@
 {{/*
-ShopOS — api-gateway Helm helper templates
+ShopOS — chatbot-service Helm helper templates
 */}}
 
 {{/*
 Expand the name of the chart.
 */}}
-{{- define "api-gateway.name" -}}
+{{- define "chatbot-service.name" -}}
 {{- default .Chart.Name .Values.nameOverride | trunc 63 | trimSuffix "-" }}
 {{- end }}
 
 {{/*
 Create a default fully qualified app name.
 */}}
-{{- define "api-gateway.fullname" -}}
+{{- define "chatbot-service.fullname" -}}
 {{- if .Values.fullnameOverride }}
 {{- .Values.fullnameOverride | trunc 63 | trimSuffix "-" }}
 {{- else }}
@@ -28,16 +28,16 @@ Create a default fully qualified app name.
 {{/*
 Create chart version label.
 */}}
-{{- define "api-gateway.chart" -}}
+{{- define "chatbot-service.chart" -}}
 {{- printf "%s-%s" .Chart.Name .Chart.Version | replace "+" "_" | trunc 63 | trimSuffix "-" }}
 {{- end }}
 
 {{/*
 Common labels applied to all resources.
 */}}
-{{- define "api-gateway.labels" -}}
-helm.sh/chart: {{ include "api-gateway.chart" . }}
-{{ include "api-gateway.selectorLabels" . }}
+{{- define "chatbot-service.labels" -}}
+helm.sh/chart: {{ include "chatbot-service.chart" . }}
+{{ include "chatbot-service.selectorLabels" . }}
 {{- if .Chart.AppVersion }}
 app.kubernetes.io/version: {{ .Chart.AppVersion | quote }}
 {{- end }}
@@ -49,8 +49,8 @@ app.kubernetes.io/domain: platform
 {{/*
 Selector labels — used in matchLabels and Service selector.
 */}}
-{{- define "api-gateway.selectorLabels" -}}
-app: {{ include "api-gateway.name" . }}
-app.kubernetes.io/name: {{ include "api-gateway.name" . }}
+{{- define "chatbot-service.selectorLabels" -}}
+app: {{ include "chatbot-service.name" . }}
+app.kubernetes.io/name: {{ include "chatbot-service.name" . }}
 app.kubernetes.io/instance: {{ .Release.Name }}
 {{- end }}

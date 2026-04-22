@@ -105,6 +105,10 @@ pipeline {
                     env.WAZUH_URL           = envMap['WAZUH_URL']                  ?: ''
                     env.WAZUH_TOKEN         = envMap['WAZUH_TOKEN']                ?: ''
 
+                    // Cloud provider
+                    env.CLOUD_PROVIDER = readFile('infra.env').trim()
+                        .split('\n').find { it.startsWith('CLOUD_PROVIDER=') }?.split('=', 2)?.last() ?: 'GCP'
+
                     // Kubeconfig
                     def kubeconfigContent = envMap['KUBECONFIG_CONTENT'] ?: ''
                     if (kubeconfigContent) {
@@ -363,6 +367,9 @@ pipeline {
             when { expression { !params.SKIP_DEPLOY } }
             steps {
                 script {
+                    def sc = load('scripts/groovy/cloud-storage-class.groovy').call()
+                    env.STORAGE_CLASS = sc
+
                     env.SERVICES.split(',').each { svc ->
                         svc = svc.trim()
                         def ns         = params.DOMAIN
@@ -377,6 +384,7 @@ pipeline {
                                 --set image.repository=${imageRepo} \
                                 --set image.tag=${env.IMAGE_TAG} \
                                 --set environment=${params.ENVIRONMENT} \
+                                --set persistence.storageClass=\${STORAGE_CLASS} \
                                 \$([ -f ${valuesFile} ] && echo "-f ${valuesFile}" || true) \
                                 --wait \
                                 --timeout 5m
