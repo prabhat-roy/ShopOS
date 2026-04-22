@@ -209,9 +209,17 @@ pipeline {
             when { expression { params.ACTION == 'UNINSTALL' } }
             steps {
                 sh """
-                    kubectl delete namespace databases --ignore-not-found || true
-                    kubectl delete namespace cert-manager --ignore-not-found || true
-                    kubectl delete namespace scylla-operator --ignore-not-found || true
+                    for ns in databases temporal-system cert-manager scylla-operator; do
+                        kubectl delete all --all -n \$ns --ignore-not-found || true
+                        kubectl delete pvc --all -n \$ns --ignore-not-found || true
+                        kubectl delete configmap --all -n \$ns --ignore-not-found || true
+                        kubectl delete secret --all -n \$ns --ignore-not-found || true
+                        kubectl delete namespace \$ns --ignore-not-found || true
+                    done
+                    kubectl delete pv --all --ignore-not-found || true
+                    kubectl delete clusterrolebinding -l app.kubernetes.io/instance=neo4j --ignore-not-found || true
+                    kubectl delete clusterrolebinding -l app.kubernetes.io/instance=temporal --ignore-not-found || true
+                    echo "Cleanup complete"
                 """
             }
         }
