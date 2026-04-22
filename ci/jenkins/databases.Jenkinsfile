@@ -126,6 +126,8 @@ pipeline {
                             --set installCRDs=true \
                             --set startupapicheck.enabled=false \
                             --wait --timeout=5m
+                        kubectl rollout status deployment/cert-manager-webhook -n cert-manager --timeout=120s
+                        sleep 30
                         helm upgrade --install scylla-operator scylla/scylla-operator \
                             --namespace scylla-operator --create-namespace \
                             --wait --timeout=5m
