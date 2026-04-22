@@ -14,3 +14,21 @@ spec:
     - name: transport
       port: {{ .Values.service.transportPort }}
       targetPort: {{ .Values.service.transportPort }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "elasticsearch.fullname" . }}-headless
+  namespace: {{ .Release.Namespace }}
+  labels: {{ include "elasticsearch.labels" . | nindent 4 }}
+spec:
+  clusterIP: None
+  publishNotReadyAddresses: true
+  selector: {{ include "elasticsearch.labels" . | nindent 4 }}
+  ports:
+    - name: http
+      port: {{ .Values.service.httpPort }}
+      targetPort: {{ .Values.service.httpPort }}
+    - name: transport
+      port: {{ .Values.service.transportPort }}
+      targetPort: {{ .Values.service.transportPort }}

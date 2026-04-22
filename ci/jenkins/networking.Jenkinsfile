@@ -191,72 +191,143 @@ pipeline {
 
         stage('Uninstall External DNS') {
             when { expression { params.ACTION == 'UNINSTALL' } }
-            steps { sh 'helm uninstall external-dns -n external-dns --ignore-not-found || true' }
+            steps {
+                sh '''
+                    helm uninstall external-dns -n external-dns --ignore-not-found || true
+                    kubectl delete namespace external-dns --ignore-not-found || true
+                '''
+            }
         }
 
         stage('Uninstall Consul') {
             when { expression { params.ACTION == 'UNINSTALL' } }
-            steps { sh 'helm uninstall consul -n consul --ignore-not-found || true' }
+            steps {
+                sh '''
+                    helm uninstall consul -n consul --ignore-not-found || true
+                    kubectl delete pvc --all -n consul --ignore-not-found || true
+                    kubectl delete namespace consul --ignore-not-found || true
+                '''
+            }
         }
 
         stage('Uninstall Linkerd') {
             when { expression { params.ACTION == 'UNINSTALL' } }
-            steps { sh 'helm uninstall linkerd -n linkerd --ignore-not-found || true' }
+            steps {
+                sh '''
+                    helm uninstall linkerd -n linkerd --ignore-not-found || true
+                    kubectl delete namespace linkerd --ignore-not-found || true
+                '''
+            }
         }
 
         stage('Uninstall Istio') {
             when { expression { params.ACTION == 'UNINSTALL' } }
-            steps { sh 'helm uninstall istio -n istio-system --ignore-not-found || true' }
+            steps {
+                sh '''
+                    helm uninstall istio -n istio-system --ignore-not-found || true
+                    kubectl delete namespace istio-system --ignore-not-found || true
+                '''
+            }
         }
 
         stage('Uninstall Kong') {
             when { expression { params.ACTION == 'UNINSTALL' } }
-            steps { sh 'helm uninstall kong -n kong --ignore-not-found || true' }
+            steps {
+                sh '''
+                    helm uninstall kong -n kong --ignore-not-found || true
+                    kubectl delete namespace kong --ignore-not-found || true
+                '''
+            }
         }
 
         stage('Uninstall Contour') {
             when { expression { params.ACTION == 'UNINSTALL' } }
-            steps { sh 'helm uninstall contour -n projectcontour --ignore-not-found || true' }
+            steps {
+                sh '''
+                    helm uninstall contour -n projectcontour --ignore-not-found || true
+                    kubectl delete namespace projectcontour --ignore-not-found || true
+                '''
+            }
         }
 
         stage('Uninstall HAProxy Ingress') {
             when { expression { params.ACTION == 'UNINSTALL' } }
-            steps { sh 'helm uninstall haproxy-ingress -n haproxy-ingress --ignore-not-found || true' }
+            steps {
+                sh '''
+                    helm uninstall haproxy-ingress -n haproxy-ingress --ignore-not-found || true
+                    kubectl delete namespace haproxy-ingress --ignore-not-found || true
+                '''
+            }
         }
 
         stage('Uninstall Traefik') {
             when { expression { params.ACTION == 'UNINSTALL' } }
-            steps { sh 'helm uninstall traefik -n traefik --ignore-not-found || true' }
+            steps {
+                sh '''
+                    helm uninstall traefik -n traefik --ignore-not-found || true
+                    kubectl delete namespace traefik --ignore-not-found || true
+                '''
+            }
         }
 
         stage('Uninstall Nginx Ingress') {
             when { expression { params.ACTION == 'UNINSTALL' } }
-            steps { sh 'helm uninstall nginx-ingress -n nginx-ingress --ignore-not-found || true' }
+            steps {
+                sh '''
+                    helm uninstall nginx-ingress -n nginx-ingress --ignore-not-found || true
+                    kubectl delete namespace nginx-ingress --ignore-not-found || true
+                '''
+            }
         }
 
         stage('Uninstall Antrea') {
             when { expression { params.ACTION == 'UNINSTALL' } }
-            steps { sh 'helm uninstall antrea -n antrea --ignore-not-found || true' }
+            steps {
+                sh '''
+                    helm uninstall antrea -n antrea --ignore-not-found || true
+                    kubectl delete namespace antrea --ignore-not-found || true
+                '''
+            }
         }
 
         stage('Uninstall Weave Net') {
             when { expression { params.ACTION == 'UNINSTALL' } }
-            steps { sh 'helm uninstall weave-net -n weave-net --ignore-not-found || true' }
+            steps {
+                sh '''
+                    helm uninstall weave-net -n weave-net --ignore-not-found || true
+                    kubectl delete namespace weave-net --ignore-not-found || true
+                '''
+            }
         }
 
         stage('Uninstall Flannel') {
             when { expression { params.ACTION == 'UNINSTALL' } }
-            steps { sh 'helm uninstall flannel -n kube-flannel --ignore-not-found || true' }
+            steps {
+                sh '''
+                    helm uninstall flannel -n kube-flannel --ignore-not-found || true
+                    kubectl delete namespace kube-flannel --ignore-not-found || true
+                '''
+            }
         }
 
         stage('Uninstall Calico') {
             when { expression { params.ACTION == 'UNINSTALL' } }
-            steps { sh 'helm uninstall calico -n calico-system --ignore-not-found || true' }
+            steps {
+                sh '''
+                    helm uninstall calico -n calico-system --ignore-not-found || true
+                    kubectl delete namespace calico-system --ignore-not-found || true
+                '''
+            }
         }
 
         stage('Uninstall Cilium') {
             when { expression { params.ACTION == 'UNINSTALL' } }
-            steps { sh 'helm uninstall cilium -n cilium --ignore-not-found || true' }
+            steps {
+                sh '''
+                    helm uninstall cilium -n cilium --ignore-not-found || true
+                    kubectl delete namespace cilium --ignore-not-found || true
+                '''
+            }
         }
     }
 

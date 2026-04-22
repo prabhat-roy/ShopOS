@@ -11,11 +11,11 @@ service:
   targetPort: 8500
 
 persistence:
-  enabled: false
-  storageClass: ""
-  size: 1Gi
+  enabled: true
+  storageClass: "standard-rwo"
+  size: 10Gi
   accessMode: ReadWriteOnce
-  mountPath: /data
+  mountPath: /consul/data
 
 resources:
   requests:

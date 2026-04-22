@@ -12,10 +12,10 @@ service:
 
 persistence:
   enabled: true
-  storageClass: ""
-  size: 10Gi
+  storageClass: "standard-rwo"
+  size: 20Gi
   accessMode: ReadWriteOnce
-  mountPath: /var/lib/data
+  mountPath: /thanos
 
 resources:
   requests:

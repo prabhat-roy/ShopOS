@@ -28,8 +28,8 @@ resources:
 
 persistence:
   enabled: true
-  size: 50Gi
-  storageClass: ""
+  size: 30Gi
+  storageClass: "standard-rwo"
 
 ingress:
   enabled: false

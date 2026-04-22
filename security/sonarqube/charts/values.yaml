@@ -12,10 +12,10 @@ service:
 
 persistence:
   enabled: true
-  storageClass: ""
-  size: 5Gi
+  storageClass: "standard-rwo"
+  size: 20Gi
   accessMode: ReadWriteOnce
-  mountPath: /data
+  mountPath: /opt/sonarqube/data
 
 resources:
   requests:

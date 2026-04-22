@@ -337,137 +337,280 @@ pipeline {
 
         stage('Uninstall Pyroscope') {
             when { expression { params.ACTION == 'UNINSTALL' } }
-            steps { sh 'helm uninstall pyroscope -n pyroscope --ignore-not-found || true' }
+            steps {
+                sh '''
+                    helm uninstall pyroscope -n pyroscope --ignore-not-found || true
+                    kubectl delete namespace pyroscope --ignore-not-found || true
+                '''
+            }
         }
 
         stage('Uninstall Uptime Kuma') {
             when { expression { params.ACTION == 'UNINSTALL' } }
-            steps { sh 'helm uninstall uptime-kuma -n uptime-kuma --ignore-not-found || true' }
+            steps {
+                sh '''
+                    helm uninstall uptime-kuma -n uptime-kuma --ignore-not-found || true
+                    kubectl delete namespace uptime-kuma --ignore-not-found || true
+                '''
+            }
         }
 
         stage('Uninstall Sloth') {
             when { expression { params.ACTION == 'UNINSTALL' } }
-            steps { sh 'helm uninstall sloth -n sloth --ignore-not-found || true' }
+            steps {
+                sh '''
+                    helm uninstall sloth -n sloth --ignore-not-found || true
+                    kubectl delete namespace sloth --ignore-not-found || true
+                '''
+            }
         }
 
         stage('Uninstall Pyrra') {
             when { expression { params.ACTION == 'UNINSTALL' } }
-            steps { sh 'helm uninstall pyrra -n pyrra --ignore-not-found || true' }
+            steps {
+                sh '''
+                    helm uninstall pyrra -n pyrra --ignore-not-found || true
+                    kubectl delete namespace pyrra --ignore-not-found || true
+                '''
+            }
         }
 
         stage('Uninstall GlitchTip') {
             when { expression { params.ACTION == 'UNINSTALL' } }
-            steps { sh 'helm uninstall glitchtip -n glitchtip --ignore-not-found || true' }
+            steps {
+                sh '''
+                    helm uninstall glitchtip -n glitchtip --ignore-not-found || true
+                    kubectl delete namespace glitchtip --ignore-not-found || true
+                '''
+            }
         }
 
         stage('Uninstall Sentry') {
             when { expression { params.ACTION == 'UNINSTALL' } }
-            steps { sh 'helm uninstall sentry -n sentry --ignore-not-found || true' }
+            steps {
+                sh '''
+                    helm uninstall sentry -n sentry --ignore-not-found || true
+                    kubectl delete namespace sentry --ignore-not-found || true
+                '''
+            }
         }
 
         stage('Uninstall OTel Collector') {
             when { expression { params.ACTION == 'UNINSTALL' } }
-            steps { sh 'helm uninstall otel-collector -n otel-collector --ignore-not-found || true' }
+            steps {
+                sh '''
+                    helm uninstall otel-collector -n otel-collector --ignore-not-found || true
+                    kubectl delete namespace otel-collector --ignore-not-found || true
+                '''
+            }
         }
 
         stage('Uninstall OpenSearch Dashboards') {
             when { expression { params.ACTION == 'UNINSTALL' } }
-            steps { sh 'helm uninstall opensearch-dashboards -n opensearch-dashboards --ignore-not-found || true' }
+            steps {
+                sh '''
+                    helm uninstall opensearch-dashboards -n opensearch-dashboards --ignore-not-found || true
+                    kubectl delete namespace opensearch-dashboards --ignore-not-found || true
+                '''
+            }
         }
 
         stage('Uninstall Kibana') {
             when { expression { params.ACTION == 'UNINSTALL' } }
-            steps { sh 'helm uninstall kibana -n kibana --ignore-not-found || true' }
+            steps {
+                sh '''
+                    helm uninstall kibana -n kibana --ignore-not-found || true
+                    kubectl delete namespace kibana --ignore-not-found || true
+                '''
+            }
         }
 
         stage('Uninstall Grafana') {
             when { expression { params.ACTION == 'UNINSTALL' } }
-            steps { sh 'helm uninstall grafana -n grafana --ignore-not-found || true' }
+            steps {
+                sh '''
+                    helm uninstall grafana -n grafana --ignore-not-found || true
+                    kubectl delete pvc --all -n grafana --ignore-not-found || true
+                    kubectl delete namespace grafana --ignore-not-found || true
+                '''
+            }
         }
 
         stage('Uninstall Zipkin') {
             when { expression { params.ACTION == 'UNINSTALL' } }
-            steps { sh 'helm uninstall zipkin -n zipkin --ignore-not-found || true' }
+            steps {
+                sh '''
+                    helm uninstall zipkin -n zipkin --ignore-not-found || true
+                    kubectl delete namespace zipkin --ignore-not-found || true
+                '''
+            }
         }
 
         stage('Uninstall Tempo') {
             when { expression { params.ACTION == 'UNINSTALL' } }
-            steps { sh 'helm uninstall tempo -n tempo --ignore-not-found || true' }
+            steps {
+                sh '''
+                    helm uninstall tempo -n tempo --ignore-not-found || true
+                    kubectl delete namespace tempo --ignore-not-found || true
+                '''
+            }
         }
 
         stage('Uninstall Jaeger') {
             when { expression { params.ACTION == 'UNINSTALL' } }
-            steps { sh 'helm uninstall jaeger -n jaeger --ignore-not-found || true' }
+            steps {
+                sh '''
+                    helm uninstall jaeger -n jaeger --ignore-not-found || true
+                    kubectl delete namespace jaeger --ignore-not-found || true
+                '''
+            }
         }
 
         stage('Uninstall Logstash') {
             when { expression { params.ACTION == 'UNINSTALL' } }
-            steps { sh 'helm uninstall logstash -n logstash --ignore-not-found || true' }
+            steps {
+                sh '''
+                    helm uninstall logstash -n logstash --ignore-not-found || true
+                    kubectl delete namespace logstash --ignore-not-found || true
+                '''
+            }
         }
 
         stage('Uninstall Fluent Bit') {
             when { expression { params.ACTION == 'UNINSTALL' } }
-            steps { sh 'helm uninstall fluent-bit -n fluent-bit --ignore-not-found || true' }
+            steps {
+                sh '''
+                    helm uninstall fluent-bit -n fluent-bit --ignore-not-found || true
+                    kubectl delete namespace fluent-bit --ignore-not-found || true
+                '''
+            }
         }
 
         stage('Uninstall Fluentd') {
             when { expression { params.ACTION == 'UNINSTALL' } }
-            steps { sh 'helm uninstall fluentd -n fluentd --ignore-not-found || true' }
+            steps {
+                sh '''
+                    helm uninstall fluentd -n fluentd --ignore-not-found || true
+                    kubectl delete namespace fluentd --ignore-not-found || true
+                '''
+            }
         }
 
         stage('Uninstall Loki') {
             when { expression { params.ACTION == 'UNINSTALL' } }
-            steps { sh 'helm uninstall loki -n loki --ignore-not-found || true' }
+            steps {
+                sh '''
+                    helm uninstall loki -n loki --ignore-not-found || true
+                    kubectl delete pvc --all -n loki --ignore-not-found || true
+                    kubectl delete namespace loki --ignore-not-found || true
+                '''
+            }
         }
 
         stage('Uninstall OpenSearch') {
             when { expression { params.ACTION == 'UNINSTALL' } }
-            steps { sh 'helm uninstall opensearch -n opensearch --ignore-not-found || true' }
+            steps {
+                sh '''
+                    helm uninstall opensearch -n opensearch --ignore-not-found || true
+                    kubectl delete pvc --all -n opensearch --ignore-not-found || true
+                    kubectl delete namespace opensearch --ignore-not-found || true
+                '''
+            }
         }
 
         stage('Uninstall Elasticsearch') {
             when { expression { params.ACTION == 'UNINSTALL' } }
-            steps { sh 'helm uninstall elasticsearch -n elasticsearch --ignore-not-found || true' }
+            steps {
+                sh '''
+                    helm uninstall elasticsearch -n elasticsearch --ignore-not-found || true
+                    kubectl delete pvc --all -n elasticsearch --ignore-not-found || true
+                    kubectl delete namespace elasticsearch --ignore-not-found || true
+                '''
+            }
         }
 
         stage('Uninstall Node Exporter') {
             when { expression { params.ACTION == 'UNINSTALL' } }
-            steps { sh 'helm uninstall node-exporter -n node-exporter --ignore-not-found || true' }
+            steps {
+                sh '''
+                    helm uninstall node-exporter -n node-exporter --ignore-not-found || true
+                    kubectl delete namespace node-exporter --ignore-not-found || true
+                '''
+            }
         }
 
         stage('Uninstall Kube State Metrics') {
             when { expression { params.ACTION == 'UNINSTALL' } }
-            steps { sh 'helm uninstall kube-state-metrics -n kube-state-metrics --ignore-not-found || true' }
+            steps {
+                sh '''
+                    helm uninstall kube-state-metrics -n kube-state-metrics --ignore-not-found || true
+                    kubectl delete namespace kube-state-metrics --ignore-not-found || true
+                '''
+            }
         }
 
         stage('Uninstall Blackbox Exporter') {
             when { expression { params.ACTION == 'UNINSTALL' } }
-            steps { sh 'helm uninstall blackbox-exporter -n blackbox-exporter --ignore-not-found || true' }
+            steps {
+                sh '''
+                    helm uninstall blackbox-exporter -n blackbox-exporter --ignore-not-found || true
+                    kubectl delete namespace blackbox-exporter --ignore-not-found || true
+                '''
+            }
         }
 
         stage('Uninstall Pushgateway') {
             when { expression { params.ACTION == 'UNINSTALL' } }
-            steps { sh 'helm uninstall pushgateway -n pushgateway --ignore-not-found || true' }
+            steps {
+                sh '''
+                    helm uninstall pushgateway -n pushgateway --ignore-not-found || true
+                    kubectl delete namespace pushgateway --ignore-not-found || true
+                '''
+            }
         }
 
         stage('Uninstall Victoria Metrics') {
             when { expression { params.ACTION == 'UNINSTALL' } }
-            steps { sh 'helm uninstall victoria-metrics -n victoria-metrics --ignore-not-found || true' }
+            steps {
+                sh '''
+                    helm uninstall victoria-metrics -n victoria-metrics --ignore-not-found || true
+                    kubectl delete pvc --all -n victoria-metrics --ignore-not-found || true
+                    kubectl delete namespace victoria-metrics --ignore-not-found || true
+                '''
+            }
         }
 
         stage('Uninstall Thanos') {
             when { expression { params.ACTION == 'UNINSTALL' } }
-            steps { sh 'helm uninstall thanos -n thanos --ignore-not-found || true' }
+            steps {
+                sh '''
+                    helm uninstall thanos -n thanos --ignore-not-found || true
+                    kubectl delete pvc --all -n thanos --ignore-not-found || true
+                    kubectl delete namespace thanos --ignore-not-found || true
+                '''
+            }
         }
 
         stage('Uninstall Alertmanager') {
             when { expression { params.ACTION == 'UNINSTALL' } }
-            steps { sh 'helm uninstall alertmanager -n alertmanager --ignore-not-found || true' }
+            steps {
+                sh '''
+                    helm uninstall alertmanager -n alertmanager --ignore-not-found || true
+                    kubectl delete pvc --all -n alertmanager --ignore-not-found || true
+                    kubectl delete namespace alertmanager --ignore-not-found || true
+                '''
+            }
         }
 
         stage('Uninstall Prometheus') {
             when { expression { params.ACTION == 'UNINSTALL' } }
-            steps { sh 'helm uninstall prometheus -n prometheus --ignore-not-found || true' }
+            steps {
+                sh '''
+                    helm uninstall prometheus -n prometheus --ignore-not-found || true
+                    kubectl delete pvc --all -n prometheus --ignore-not-found || true
+                    kubectl delete namespace prometheus --ignore-not-found || true
+                '''
+            }
         }
     }
 

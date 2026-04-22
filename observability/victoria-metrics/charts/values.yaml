@@ -12,10 +12,10 @@ service:
 
 persistence:
   enabled: true
-  storageClass: ""
-  size: 10Gi
+  storageClass: "standard-rwo"
+  size: 50Gi
   accessMode: ReadWriteOnce
-  mountPath: /var/lib/data
+  mountPath: /victoria-metrics-data
 
 resources:
   requests:
