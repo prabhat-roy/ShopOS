@@ -130,17 +130,18 @@ pipeline {
                             --wait --timeout=5m
                         kubectl rollout status deployment/cert-manager-webhook -n cert-manager --timeout=180s
                         kubectl rollout status deployment/cert-manager-cainjector -n cert-manager --timeout=180s
-                        echo "Waiting for cert-manager CA bundle injection (up to 10m)..."
-                        for i in \$(seq 1 60); do
+                        echo "Waiting for cert-manager CA bundle injection (up to 3m)..."
+                        for i in \$(seq 1 18); do
                             CA=\$(kubectl get validatingwebhookconfiguration cert-manager-webhook -o jsonpath='{.webhooks[0].clientConfig.caBundle}' 2>/dev/null || echo "")
                             if [ -n "\$CA" ]; then echo "CA bundle injected after \$i attempts"; break; fi
-                            if [ "\$i" -eq 18 ]; then
-                                echo "Restarting cainjector to force CA bundle injection..."
-                                kubectl rollout restart deployment/cert-manager-cainjector -n cert-manager || true
-                                kubectl rollout status deployment/cert-manager-cainjector -n cert-manager --timeout=120s || true
-                            fi
-                            echo "Waiting (\$i/60)..."; sleep 10
+                            echo "Waiting (\$i/18)..."; sleep 10
                         done
+                        CA=\$(kubectl get validatingwebhookconfiguration cert-manager-webhook -o jsonpath='{.webhooks[0].clientConfig.caBundle}' 2>/dev/null || echo "")
+                        if [ -z "\$CA" ]; then
+                            echo "CA bundle not injected — removing cert-manager webhook to unblock scylla-operator..."
+                            kubectl delete validatingwebhookconfiguration cert-manager-webhook --ignore-not-found || true
+                            kubectl delete mutatingwebhookconfiguration cert-manager-webhook --ignore-not-found || true
+                        fi
                         helm upgrade --install scylla-operator scylla/scylla-operator \
                             --namespace scylla-operator --create-namespace \
                             --wait --timeout=5m
