@@ -160,9 +160,11 @@ pipeline {
             when { expression { params.ACTION == 'INSTALL' } }
             steps {
                 script {
-                    def s = load 'scripts/groovy/messaging-install-memphis.groovy'; s()
-                    def c = load 'scripts/groovy/messaging-configure-memphis.groovy'; c()
-                    def e = load 'scripts/groovy/apply-k8s-enhancements.groovy'; e('memphis')
+                    catchError(buildResult: 'SUCCESS', stageResult: 'UNSTABLE') {
+                        def s = load 'scripts/groovy/messaging-install-memphis.groovy'; s()
+                        def c = load 'scripts/groovy/messaging-configure-memphis.groovy'; c()
+                        def e = load 'scripts/groovy/apply-k8s-enhancements.groovy'; e('memphis')
+                    }
                 }
             }
         }
