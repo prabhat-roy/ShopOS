@@ -124,6 +124,7 @@ pipeline {
                         helm upgrade --install cert-manager jetstack/cert-manager \
                             --namespace cert-manager --create-namespace \
                             --set installCRDs=true \
+                            --set startupapicheck.enabled=false \
                             --wait --timeout=5m
                         helm upgrade --install scylla-operator scylla/scylla-operator \
                             --namespace scylla-operator --create-namespace \
@@ -156,7 +157,8 @@ pipeline {
                             --set elasticsearch.enabled=false \
                             --set grafana.enabled=false \
                             --set prometheus.enabled=false \
-                            --wait --timeout=10m
+                            --set schema.setup.enabled=false \
+                            --set schema.update.enabled=false
                         kubectl apply -f workflow/temporal/ -n temporal-system 2>/dev/null || true
                         echo "Temporal installed"
                     """
