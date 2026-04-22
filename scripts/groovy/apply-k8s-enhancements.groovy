@@ -32,9 +32,13 @@ def call(String namespace) {
         returnStdout: true
     ).trim() == 'yes'
 
+    // Single-instance brokers that must not scale horizontally (shared PVC / broker ID conflicts)
+    def singleInstanceNamespaces = ['kafka', 'zookeeper', 'pulsar', 'redpanda', 'memphis', 'activemq-artemis'] as Set
+
     // ── HPA / KEDA ScaledObject for Deployments ───────────────────────────────
     for (d in deployList) {
         def rname = shortName(d)
+        def maxRep = singleInstanceNamespaces.contains(namespace) ? 1 : 5
         if (kedaInstalled) {
             writeFile file: "/tmp/keda-so-${rname}.yaml", text: """\
 apiVersion: keda.sh/v1alpha1
@@ -48,7 +52,7 @@ spec:
     kind: Deployment
     name: ${d}
   minReplicaCount: 1
-  maxReplicaCount: 5
+  maxReplicaCount: ${maxRep}
   triggers:
   - type: cpu
     metricType: Utilization
@@ -74,7 +78,7 @@ spec:
     kind: Deployment
     name: ${d}
   minReplicas: 1
-  maxReplicas: 5
+  maxReplicas: ${maxRep}
   metrics:
   - type: Resource
     resource:

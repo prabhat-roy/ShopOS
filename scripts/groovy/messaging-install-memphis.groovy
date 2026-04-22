@@ -5,6 +5,8 @@ def call() {
             --create-namespace \
             --set fullnameOverride=memphis \
             --set env.ROOT_PASSWORD=memphis \
+            --set env.MEMPHIS_METADATA_DB_HOST=127.0.0.1 \
+            --set env.MEMPHIS_METADATA_DB_PORT=5005 \
             --set persistence.enabled=false \
             --wait --timeout 5m
     """
