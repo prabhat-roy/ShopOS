@@ -50,16 +50,14 @@ pipeline {
             when { allOf { expression { params.ACTION == 'INSTALL' }; expression { params.CLICKHOUSE } } }
             steps {
                 sh """
-                    helm repo add bitnami https://charts.bitnami.com/bitnami || true
+                    helm repo add pascaliske https://charts.pascaliske.dev || true
                     helm repo update
                     helm uninstall clickhouse -n databases --ignore-not-found || true
-                    kubectl delete pvc -l app.kubernetes.io/name=clickhouse -n databases --ignore-not-found || true
-                    helm upgrade --install clickhouse bitnami/clickhouse \
-                        --version 6.2.23 \
+                    kubectl delete pvc -l app.kubernetes.io/instance=clickhouse -n databases --ignore-not-found || true
+                    helm upgrade --install clickhouse pascaliske/clickhouse \
                         --namespace databases \
-                        --set shards=1 \
-                        --set replicaCount=1 \
-                        --set persistence.size=20Gi \
+                        --set image.tag=24.8-alpine \
+                        --set persistentVolumeClaim.size=20Gi \
                         --set resources.requests.memory=1Gi \
                         --set resources.requests.cpu=500m \
                         --wait --timeout=8m
