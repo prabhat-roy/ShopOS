@@ -1,0 +1,551 @@
+openapi: "3.1.0"
+info:
+  title: ShopOS API Gateway
+  description: Central entry point for all ShopOS client traffic. Routes to downstream gRPC microservices.
+  version: "1.0.0"
+  contact:
+    name: Platform Team
+    email: platform@shopos.internal
+servers:
+  - url: https://api.shopos.com/v1
+    description: Production
+  - url: https://api-staging.shopos.com/v1
+    description: Staging
+  - url: http://localhost:8080/v1
+    description: Local
+
+tags:
+  - name: health
+  - name: auth
+  - name: catalog
+  - name: cart
+  - name: orders
+  - name: payments
+
+paths:
+  /healthz:
+    get:
+      tags: [health]
+      summary: Health check
+      operationId: healthCheck
+      security: []
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthResponse"
+
+  /auth/login:
+    post:
+      tags: [auth]
+      summary: Authenticate user
+      operationId: login
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LoginRequest"
+      responses:
+        "200":
+          description: Authentication successful
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /auth/refresh:
+    post:
+      tags: [auth]
+      summary: Refresh access token
+      operationId: refreshToken
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [refresh_token]
+              properties:
+                refresh_token:
+                  type: string
+      responses:
+        "200":
+          description: Token refreshed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthResponse"
+
+  /auth/logout:
+    post:
+      tags: [auth]
+      summary: Logout
+      operationId: logout
+      responses:
+        "204":
+          description: Logged out
+
+  /products:
+    get:
+      tags: [catalog]
+      summary: List products
+      operationId: listProducts
+      security: []
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+            maximum: 100
+        - name: category_id
+          in: query
+          schema:
+            type: string
+        - name: q
+          in: query
+          schema:
+            type: string
+        - name: sort
+          in: query
+          schema:
+            type: string
+            enum: [price_asc, price_desc, newest, popularity]
+      responses:
+        "200":
+          description: Product list
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProductList"
+
+  /products/{id}:
+    get:
+      tags: [catalog]
+      summary: Get product by ID
+      operationId: getProduct
+      security: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Product detail
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Product"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /cart:
+    get:
+      tags: [cart]
+      summary: Get cart
+      operationId: getCart
+      responses:
+        "200":
+          description: Cart contents
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Cart"
+    delete:
+      tags: [cart]
+      summary: Clear cart
+      operationId: clearCart
+      responses:
+        "204":
+          description: Cart cleared
+
+  /cart/items:
+    post:
+      tags: [cart]
+      summary: Add item to cart
+      operationId: addCartItem
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AddCartItemRequest"
+      responses:
+        "200":
+          description: Cart updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Cart"
+
+  /cart/items/{product_id}:
+    put:
+      tags: [cart]
+      summary: Update cart item quantity
+      operationId: updateCartItem
+      parameters:
+        - name: product_id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [quantity]
+              properties:
+                quantity:
+                  type: integer
+                  minimum: 1
+      responses:
+        "200":
+          description: Cart updated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Cart"
+    delete:
+      tags: [cart]
+      summary: Remove item from cart
+      operationId: removeCartItem
+      parameters:
+        - name: product_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Cart updated
+
+  /orders:
+    get:
+      tags: [orders]
+      summary: List user orders
+      operationId: listOrders
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+      responses:
+        "200":
+          description: Order list
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OrderList"
+    post:
+      tags: [orders]
+      summary: Create order (checkout)
+      operationId: createOrder
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateOrderRequest"
+      responses:
+        "201":
+          description: Order created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Order"
+
+  /orders/{id}:
+    get:
+      tags: [orders]
+      summary: Get order by ID
+      operationId: getOrder
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Order detail
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Order"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  responses:
+    Unauthorized:
+      description: Unauthorized
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+    NotFound:
+      description: Not found
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+    BadRequest:
+      description: Bad request
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+
+  schemas:
+    HealthResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          example: ok
+        version:
+          type: string
+
+    Error:
+      type: object
+      required: [code, message]
+      properties:
+        code:
+          type: string
+        message:
+          type: string
+        details:
+          type: object
+
+    LoginRequest:
+      type: object
+      required: [email, password]
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          minLength: 8
+
+    AuthResponse:
+      type: object
+      properties:
+        access_token:
+          type: string
+        refresh_token:
+          type: string
+        expires_in:
+          type: integer
+        token_type:
+          type: string
+          example: Bearer
+        user:
+          $ref: "#/components/schemas/User"
+
+    User:
+      type: object
+      properties:
+        id:
+          type: string
+        email:
+          type: string
+        name:
+          type: string
+        roles:
+          type: array
+          items:
+            type: string
+
+    Product:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        description:
+          type: string
+        price:
+          type: number
+          format: double
+        currency:
+          type: string
+          example: USD
+        sku:
+          type: string
+        stock:
+          type: integer
+        category_id:
+          type: string
+        images:
+          type: array
+          items:
+            type: string
+        rating:
+          type: number
+        review_count:
+          type: integer
+
+    ProductList:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/Product"
+        total:
+          type: integer
+        page:
+          type: integer
+        limit:
+          type: integer
+
+    CartItem:
+      type: object
+      properties:
+        product_id:
+          type: string
+        product:
+          $ref: "#/components/schemas/Product"
+        quantity:
+          type: integer
+        unit_price:
+          type: number
+        total_price:
+          type: number
+
+    Cart:
+      type: object
+      properties:
+        id:
+          type: string
+        user_id:
+          type: string
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/CartItem"
+        subtotal:
+          type: number
+        currency:
+          type: string
+
+    AddCartItemRequest:
+      type: object
+      required: [product_id, quantity]
+      properties:
+        product_id:
+          type: string
+        quantity:
+          type: integer
+          minimum: 1
+
+    Address:
+      type: object
+      required: [line1, city, country]
+      properties:
+        line1:
+          type: string
+        line2:
+          type: string
+        city:
+          type: string
+        state:
+          type: string
+        postal_code:
+          type: string
+        country:
+          type: string
+          pattern: "^[A-Z]{2}$"
+
+    CreateOrderRequest:
+      type: object
+      required: [shipping_address, payment_method_id]
+      properties:
+        shipping_address:
+          $ref: "#/components/schemas/Address"
+        billing_address:
+          $ref: "#/components/schemas/Address"
+        payment_method_id:
+          type: string
+        coupon_code:
+          type: string
+
+    Order:
+      type: object
+      properties:
+        id:
+          type: string
+        user_id:
+          type: string
+        status:
+          type: string
+          enum: [pending, confirmed, processing, shipped, delivered, cancelled, refunded]
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/CartItem"
+        shipping_address:
+          $ref: "#/components/schemas/Address"
+        subtotal:
+          type: number
+        shipping_cost:
+          type: number
+        tax:
+          type: number
+        total:
+          type: number
+        currency:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    OrderList:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/Order"
+        total:
+          type: integer
+        page:
+          type: integer
+        limit:
+          type: integer
+
+security:
+  - bearerAuth: []

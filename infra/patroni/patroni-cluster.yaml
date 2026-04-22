@@ -1,0 +1,254 @@
+# Patroni — High-Availability PostgreSQL cluster
+# 3-node primary/replica with automatic failover via etcd
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: postgres-patroni
+  namespace: databases
+spec:
+  serviceName: postgres-patroni
+  replicas: 3
+  selector:
+    matchLabels:
+      app: postgres-patroni
+  template:
+    metadata:
+      labels:
+        app: postgres-patroni
+    spec:
+      serviceAccountName: patroni
+      terminationGracePeriodSeconds: 30
+      initContainers:
+        - name: chown-data
+          image: busybox:1.36
+          command: ["chown", "-R", "999:999", "/data"]
+          volumeMounts:
+            - name: pgdata
+              mountPath: /data
+      containers:
+        - name: patroni
+          image: patroni/patroni:3.3.2
+          env:
+            - name: POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            - name: PATRONI_KUBERNETES_POD_IP
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.podIP
+            - name: PATRONI_KUBERNETES_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+            - name: PATRONI_KUBERNETES_LABELS
+              value: '{"app": "postgres-patroni"}'
+            - name: PATRONI_SUPERUSER_USERNAME
+              value: postgres
+            - name: PATRONI_SUPERUSER_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: patroni-secrets
+                  key: superuser-password
+            - name: PATRONI_REPLICATION_USERNAME
+              value: replicator
+            - name: PATRONI_REPLICATION_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: patroni-secrets
+                  key: replication-password
+            - name: PATRONI_SCOPE
+              value: shopos-pg-cluster
+            - name: PATRONI_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            - name: PATRONI_ETCD3_HOSTS
+              value: "etcd-0.etcd.databases.svc.cluster.local:2379,etcd-1.etcd.databases.svc.cluster.local:2379,etcd-2.etcd.databases.svc.cluster.local:2379"
+            - name: PATRONI_POSTGRESQL_DATA_DIR
+              value: /data/pgdata
+            - name: PATRONI_POSTGRESQL_PGPASS
+              value: /tmp/pgpass
+            - name: PATRONI_POSTGRESQL_LISTEN
+              value: "0.0.0.0:5432"
+            - name: PATRONI_RESTAPI_LISTEN
+              value: "0.0.0.0:8008"
+            - name: PATRONI_RESTAPI_CONNECT_ADDRESS
+              value: "$(PATRONI_KUBERNETES_POD_IP):8008"
+            - name: PATRONI_POSTGRESQL_CONNECT_ADDRESS
+              value: "$(PATRONI_KUBERNETES_POD_IP):5432"
+          ports:
+            - name: postgresql
+              containerPort: 5432
+            - name: patroni-api
+              containerPort: 8008
+          readinessProbe:
+            httpGet:
+              path: /readiness
+              port: 8008
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /liveness
+              port: 8008
+            initialDelaySeconds: 30
+            periodSeconds: 30
+          resources:
+            requests:
+              cpu: 500m
+              memory: 1Gi
+            limits:
+              cpu: 2
+              memory: 4Gi
+          volumeMounts:
+            - name: pgdata
+              mountPath: /data
+            - name: patroni-config
+              mountPath: /etc/patroni
+      volumes:
+        - name: patroni-config
+          configMap:
+            name: patroni-config
+  volumeClaimTemplates:
+    - metadata:
+        name: pgdata
+      spec:
+        accessModes: [ReadWriteOnce]
+        storageClassName: standard-rwo
+        resources:
+          requests:
+            storage: 100Gi
+---
+# Service for primary (read-write)
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres-primary
+  namespace: databases
+  labels:
+    app: postgres-patroni
+    role: primary
+spec:
+  type: ClusterIP
+  selector:
+    app: postgres-patroni
+    role: primary
+  ports:
+    - port: 5432
+      targetPort: 5432
+---
+# Service for replicas (read-only)
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres-replica
+  namespace: databases
+  labels:
+    app: postgres-patroni
+spec:
+  type: ClusterIP
+  selector:
+    app: postgres-patroni
+    role: replica
+  ports:
+    - port: 5432
+      targetPort: 5432
+---
+# Headless service for DNS
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres-patroni
+  namespace: databases
+spec:
+  clusterIP: None
+  selector:
+    app: postgres-patroni
+  ports:
+    - port: 5432
+      targetPort: 5432
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: patroni-config
+  namespace: databases
+data:
+  patroni.yaml: |
+    bootstrap:
+      dcs:
+        ttl: 30
+        loop_wait: 10
+        retry_timeout: 10
+        maximum_lag_on_failover: 1048576
+      initdb:
+        - encoding: UTF8
+        - data-checksums
+      pg_hba:
+        - host replication replicator 0.0.0.0/0 scram-sha-256
+        - host all all 0.0.0.0/0 scram-sha-256
+      post_bootstrap: |
+        psql -c "CREATE USER shopos_app PASSWORD '${APP_PASSWORD}';"
+        psql -c "CREATE DATABASE shopos OWNER shopos_app;"
+    postgresql:
+      parameters:
+        max_connections: 500
+        shared_buffers: 1GB
+        effective_cache_size: 3GB
+        maintenance_work_mem: 256MB
+        checkpoint_completion_target: 0.9
+        wal_buffers: 16MB
+        default_statistics_target: 100
+        random_page_cost: 1.1
+        effective_io_concurrency: 200
+        work_mem: 4MB
+        min_wal_size: 1GB
+        max_wal_size: 4GB
+        wal_level: replica
+        hot_standby: "on"
+        max_wal_senders: 10
+        max_replication_slots: 10
+        track_commit_timestamp: "on"
+        log_min_duration_statement: 200
+        log_checkpoints: "on"
+        log_connections: "on"
+        log_disconnections: "on"
+        log_lock_waits: "on"
+        log_temp_files: 0
+        log_autovacuum_min_duration: 0
+        autovacuum_max_workers: 5
+        autovacuum_naptime: 10s
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: patroni
+  namespace: databases
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: patroni
+  namespace: databases
+rules:
+  - apiGroups: [""]
+    resources: [configmaps, endpoints]
+    verbs: [create, get, list, patch, update, watch, delete]
+  - apiGroups: [""]
+    resources: [pods]
+    verbs: [get, list, patch, update, watch]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: patroni
+  namespace: databases
+subjects:
+  - kind: ServiceAccount
+    name: patroni
+    namespace: databases
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: patroni

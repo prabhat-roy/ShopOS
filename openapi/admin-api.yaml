@@ -1,0 +1,280 @@
+openapi: "3.1.0"
+info:
+  title: ShopOS Admin API
+  description: Internal admin API served by admin-portal. Requires ADMIN or SUPERADMIN role.
+  version: "1.0.0"
+servers:
+  - url: http://localhost:8085/admin/v1
+    description: Local
+
+tags:
+  - name: users
+  - name: orders
+  - name: products
+  - name: analytics
+  - name: settings
+
+paths:
+  /healthz:
+    get:
+      tags: [health]
+      operationId: healthCheck
+      security: []
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+
+  /users:
+    get:
+      tags: [users]
+      summary: List all users
+      operationId: listUsers
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 50
+        - name: q
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: User list
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserList"
+
+  /users/{id}:
+    get:
+      tags: [users]
+      summary: Get user details
+      operationId: getUser
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: User detail
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminUser"
+    patch:
+      tags: [users]
+      summary: Update user
+      operationId: updateUser
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateUserRequest"
+      responses:
+        "200":
+          description: Updated
+    delete:
+      tags: [users]
+      summary: Delete user
+      operationId: deleteUser
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "204":
+          description: Deleted
+
+  /orders:
+    get:
+      tags: [orders]
+      summary: List all orders
+      operationId: listOrders
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+        - name: limit
+          in: query
+          schema:
+            type: integer
+        - name: status
+          in: query
+          schema:
+            type: string
+        - name: from
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: to
+          in: query
+          schema:
+            type: string
+            format: date
+      responses:
+        "200":
+          description: Order list
+
+  /orders/{id}/status:
+    patch:
+      tags: [orders]
+      summary: Update order status
+      operationId: updateOrderStatus
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [status]
+              properties:
+                status:
+                  type: string
+                  enum: [confirmed, processing, shipped, delivered, cancelled, refunded]
+                reason:
+                  type: string
+      responses:
+        "200":
+          description: Status updated
+
+  /analytics/summary:
+    get:
+      tags: [analytics]
+      summary: Dashboard summary stats
+      operationId: getAnalyticsSummary
+      parameters:
+        - name: period
+          in: query
+          schema:
+            type: string
+            enum: [today, week, month, year]
+            default: month
+      responses:
+        "200":
+          description: Stats
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DashboardStats"
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    AdminUser:
+      type: object
+      properties:
+        id:
+          type: string
+        email:
+          type: string
+        name:
+          type: string
+        roles:
+          type: array
+          items:
+            type: string
+        status:
+          type: string
+          enum: [active, suspended, deleted]
+        created_at:
+          type: string
+          format: date-time
+        last_login:
+          type: string
+          format: date-time
+        order_count:
+          type: integer
+        total_spent:
+          type: number
+
+    UserList:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/AdminUser"
+        total:
+          type: integer
+        page:
+          type: integer
+        limit:
+          type: integer
+
+    UpdateUserRequest:
+      type: object
+      properties:
+        name:
+          type: string
+        roles:
+          type: array
+          items:
+            type: string
+        status:
+          type: string
+          enum: [active, suspended]
+
+    DashboardStats:
+      type: object
+      properties:
+        revenue:
+          type: number
+        orders:
+          type: integer
+        users:
+          type: integer
+        avg_order_value:
+          type: number
+        top_products:
+          type: array
+          items:
+            type: object
+            properties:
+              product_id:
+                type: string
+              name:
+                type: string
+              units_sold:
+                type: integer
+              revenue:
+                type: number
+
+security:
+  - bearerAuth: []

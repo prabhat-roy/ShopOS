@@ -1,0 +1,23 @@
+shopos:
+  target: dev
+  outputs:
+    dev:
+      type: postgres
+      host: "{{ env_var('DBT_HOST', 'pgbouncer.databases.svc.cluster.local') }}"
+      port: 5432
+      user: "{{ env_var('DBT_USER', 'shopos_dbt') }}"
+      password: "{{ env_var('DBT_PASSWORD') }}"
+      dbname: shopos
+      schema: dbt_dev
+      threads: 4
+      connect_timeout: 10
+    prod:
+      type: postgres
+      host: "{{ env_var('DBT_HOST') }}"
+      port: 5432
+      user: "{{ env_var('DBT_USER') }}"
+      password: "{{ env_var('DBT_PASSWORD') }}"
+      dbname: shopos
+      schema: analytics
+      threads: 8
+      connect_timeout: 10

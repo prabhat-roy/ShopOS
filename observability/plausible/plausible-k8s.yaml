@@ -1,0 +1,67 @@
+# Plausible Analytics — Kubernetes deployment for production
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: plausible
+  namespace: monitoring
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: plausible
+  template:
+    metadata:
+      labels:
+        app: plausible
+    spec:
+      containers:
+        - name: plausible
+          image: ghcr.io/plausible/community-edition:v2.1.4
+          command: [sh, -c, "/entrypoint.sh run"]
+          env:
+            - name: BASE_URL
+              value: https://analytics.shopos.com
+            - name: SECRET_KEY_BASE
+              valueFrom:
+                secretKeyRef:
+                  name: plausible-secrets
+                  key: secret-key-base
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: plausible-secrets
+                  key: database-url
+            - name: CLICKHOUSE_DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: plausible-secrets
+                  key: clickhouse-url
+            - name: DISABLE_REGISTRATION
+              value: "true"
+          ports:
+            - containerPort: 8000
+          readinessProbe:
+            httpGet:
+              path: /api/health
+              port: 8000
+            initialDelaySeconds: 30
+            periodSeconds: 10
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: 500m
+              memory: 1Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: plausible
+  namespace: monitoring
+spec:
+  selector:
+    app: plausible
+  ports:
+    - port: 8000
+      targetPort: 8000

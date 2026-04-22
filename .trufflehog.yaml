@@ -1,0 +1,45 @@
+# TruffleHog v3 configuration
+no_update: true
+concurrency: 8
+results: verified
+
+include_paths:
+  - src/
+  - ci/
+  - gitops/
+  - infra/
+  - kubernetes/
+  - security/
+
+exclude_paths:
+  - "**/.env.example"
+  - "**/testdata/**"
+  - "**/vendor/**"
+  - "**/node_modules/**"
+  - "**/*.md"
+
+detectors:
+  - name: JWT
+    enabled: true
+  - name: AWS
+    enabled: true
+  - name: GCP
+    enabled: true
+  - name: Azure
+    enabled: true
+  - name: Postgres
+    enabled: true
+  - name: Slack
+    enabled: true
+  - name: Stripe
+    enabled: true
+  - name: Twilio
+    enabled: true
+  - name: SendGrid
+    enabled: true
+  - name: MailGun
+    enabled: true
+  - name: Vault
+    enabled: true
+  - name: GitHub
+    enabled: true

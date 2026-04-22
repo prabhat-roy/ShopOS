@@ -1,0 +1,87 @@
+# Dragonfly — Redis-compatible in-memory store
+# Used as high-throughput Redis alternative for sessions and real-time features
+# Dragonfly supports Redis API and is multi-threaded (vs Redis single-threaded)
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: dragonfly
+  namespace: databases
+spec:
+  serviceName: dragonfly
+  replicas: 1
+  selector:
+    matchLabels:
+      app: dragonfly
+  template:
+    metadata:
+      labels:
+        app: dragonfly
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "6379"
+    spec:
+      containers:
+        - name: dragonfly
+          image: docker.dragonflydb.io/dragonflydb/dragonfly:v1.23.2
+          args:
+            - --logtostderr
+            - --requirepass=$(DRAGONFLY_PASSWORD)
+            - --cache_mode=false
+            - --maxmemory=4gb
+            - --save_schedule=*/5 * * * *
+            - --dbfilename=dragonfly.rdb
+            - --dir=/data
+            - --hz=10
+            - --repl_diskless_load=disabled
+            - --latency_tracking=false
+          env:
+            - name: DRAGONFLY_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: dragonfly-secrets
+                  key: password
+          ports:
+            - name: redis
+              containerPort: 6379
+          readinessProbe:
+            exec:
+              command: [redis-cli, -a, "$(DRAGONFLY_PASSWORD)", ping]
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            exec:
+              command: [redis-cli, -a, "$(DRAGONFLY_PASSWORD)", ping]
+            initialDelaySeconds: 15
+            periodSeconds: 30
+          resources:
+            requests:
+              cpu: 500m
+              memory: 1Gi
+            limits:
+              cpu: 4
+              memory: 6Gi
+          volumeMounts:
+            - name: data
+              mountPath: /data
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+      spec:
+        accessModes: [ReadWriteOnce]
+        storageClassName: standard-rwo
+        resources:
+          requests:
+            storage: 20Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: dragonfly
+  namespace: databases
+spec:
+  type: ClusterIP
+  selector:
+    app: dragonfly
+  ports:
+    - port: 6379
+      targetPort: 6379

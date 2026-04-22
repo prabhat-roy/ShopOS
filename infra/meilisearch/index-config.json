@@ -1,0 +1,86 @@
+{
+  "indexes": [
+    {
+      "uid": "products",
+      "primaryKey": "id",
+      "settings": {
+        "searchableAttributes": [
+          "name",
+          "description",
+          "brand",
+          "category",
+          "sku",
+          "tags"
+        ],
+        "displayedAttributes": [
+          "id",
+          "name",
+          "description",
+          "price",
+          "currency",
+          "brand",
+          "category",
+          "sku",
+          "stock",
+          "images",
+          "rating",
+          "review_count",
+          "tags",
+          "created_at"
+        ],
+        "filterableAttributes": [
+          "category",
+          "brand",
+          "price",
+          "stock",
+          "rating",
+          "tags",
+          "currency"
+        ],
+        "sortableAttributes": [
+          "price",
+          "rating",
+          "review_count",
+          "created_at"
+        ],
+        "rankingRules": [
+          "words",
+          "typo",
+          "proximity",
+          "attribute",
+          "sort",
+          "exactness",
+          "rating:desc"
+        ],
+        "typoTolerance": {
+          "enabled": true,
+          "minWordSizeForTypos": {
+            "oneTypo": 4,
+            "twoTypos": 8
+          }
+        },
+        "synonyms": {
+          "smartphone": ["phone", "mobile", "cell phone"],
+          "laptop": ["notebook", "computer"],
+          "tv": ["television", "screen", "monitor"],
+          "sneakers": ["shoes", "trainers", "kicks"]
+        },
+        "faceting": {
+          "maxValuesPerFacet": 100
+        },
+        "pagination": {
+          "maxTotalHits": 10000
+        }
+      }
+    },
+    {
+      "uid": "sellers",
+      "primaryKey": "id",
+      "settings": {
+        "searchableAttributes": ["name", "description", "categories"],
+        "filterableAttributes": ["rating", "verified", "country"],
+        "sortableAttributes": ["rating", "product_count"]
+      }
+    }
+  ]
+}

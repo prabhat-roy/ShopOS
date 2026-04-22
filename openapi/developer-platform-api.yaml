@@ -1,0 +1,385 @@
+openapi: "3.1.0"
+info:
+  title: ShopOS Developer Platform API
+  description: Public API for third-party developers — API key management, webhooks, sandbox, analytics.
+  version: "1.0.0"
+servers:
+  - url: https://developers.shopos.com/v1
+    description: Production
+  - url: http://localhost:8206/v1
+    description: Local
+
+tags:
+  - name: api-keys
+  - name: webhooks
+  - name: sandbox
+  - name: analytics
+
+paths:
+  /healthz:
+    get:
+      tags: [health]
+      security: []
+      operationId: healthCheck
+      responses:
+        "200":
+          description: OK
+
+  /api-keys:
+    get:
+      tags: [api-keys]
+      summary: List API keys for authenticated developer
+      operationId: listApiKeys
+      responses:
+        "200":
+          description: API key list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/ApiKey"
+    post:
+      tags: [api-keys]
+      summary: Create a new API key
+      operationId: createApiKey
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateApiKeyRequest"
+      responses:
+        "201":
+          description: Created — key value only returned once
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ApiKeyWithSecret"
+
+  /api-keys/{id}:
+    delete:
+      tags: [api-keys]
+      summary: Revoke API key
+      operationId: revokeApiKey
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "204":
+          description: Revoked
+
+  /webhooks:
+    get:
+      tags: [webhooks]
+      summary: List webhooks
+      operationId: listWebhooks
+      responses:
+        "200":
+          description: Webhook list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/Webhook"
+    post:
+      tags: [webhooks]
+      summary: Create webhook
+      operationId: createWebhook
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateWebhookRequest"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Webhook"
+
+  /webhooks/{id}:
+    put:
+      tags: [webhooks]
+      summary: Update webhook
+      operationId: updateWebhook
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateWebhookRequest"
+      responses:
+        "200":
+          description: Updated
+    delete:
+      tags: [webhooks]
+      summary: Delete webhook
+      operationId: deleteWebhook
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "204":
+          description: Deleted
+
+  /webhooks/{id}/test:
+    post:
+      tags: [webhooks]
+      summary: Send test event to webhook
+      operationId: testWebhook
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                event_type:
+                  type: string
+                  example: order.created
+      responses:
+        "200":
+          description: Test sent
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status_code:
+                    type: integer
+                  latency_ms:
+                    type: integer
+
+  /sandbox/orders:
+    post:
+      tags: [sandbox]
+      summary: Create a test order in sandbox
+      operationId: sandboxCreateOrder
+      responses:
+        "201":
+          description: Sandbox order created
+
+  /sandbox/payments:
+    post:
+      tags: [sandbox]
+      summary: Simulate a payment
+      operationId: sandboxSimulatePayment
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                order_id:
+                  type: string
+                result:
+                  type: string
+                  enum: [success, failure, timeout]
+      responses:
+        "200":
+          description: Payment simulated
+
+  /analytics/usage:
+    get:
+      tags: [analytics]
+      summary: API usage analytics
+      operationId: getApiUsage
+      parameters:
+        - name: from
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: to
+          in: query
+          schema:
+            type: string
+            format: date
+        - name: granularity
+          in: query
+          schema:
+            type: string
+            enum: [hour, day, week]
+            default: day
+      responses:
+        "200":
+          description: Usage data
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UsageStats"
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+    apiKeyAuth:
+      type: apiKey
+      in: header
+      name: X-API-Key
+
+  schemas:
+    ApiKey:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        prefix:
+          type: string
+          description: First 8 chars of key for identification
+        scopes:
+          type: array
+          items:
+            type: string
+        environment:
+          type: string
+          enum: [sandbox, production]
+        created_at:
+          type: string
+          format: date-time
+        last_used_at:
+          type: string
+          format: date-time
+        expires_at:
+          type: string
+          format: date-time
+
+    ApiKeyWithSecret:
+      allOf:
+        - $ref: "#/components/schemas/ApiKey"
+        - type: object
+          properties:
+            key:
+              type: string
+              description: Full API key — only returned on creation
+
+    CreateApiKeyRequest:
+      type: object
+      required: [name, environment]
+      properties:
+        name:
+          type: string
+        scopes:
+          type: array
+          items:
+            type: string
+            enum: [orders:read, orders:write, products:read, webhooks:manage, analytics:read]
+        environment:
+          type: string
+          enum: [sandbox, production]
+        expires_in_days:
+          type: integer
+          minimum: 1
+          maximum: 365
+
+    Webhook:
+      type: object
+      properties:
+        id:
+          type: string
+        url:
+          type: string
+          format: uri
+        events:
+          type: array
+          items:
+            type: string
+        secret:
+          type: string
+          description: HMAC signing secret (masked after creation)
+        active:
+          type: boolean
+        created_at:
+          type: string
+          format: date-time
+        failure_count:
+          type: integer
+        last_triggered_at:
+          type: string
+          format: date-time
+
+    CreateWebhookRequest:
+      type: object
+      required: [url, events]
+      properties:
+        url:
+          type: string
+          format: uri
+        events:
+          type: array
+          minItems: 1
+          items:
+            type: string
+            enum:
+              - order.created
+              - order.updated
+              - order.shipped
+              - order.delivered
+              - order.cancelled
+              - payment.succeeded
+              - payment.failed
+              - product.updated
+              - inventory.low
+        active:
+          type: boolean
+          default: true
+
+    UsageStats:
+      type: object
+      properties:
+        total_requests:
+          type: integer
+        successful_requests:
+          type: integer
+        failed_requests:
+          type: integer
+        avg_latency_ms:
+          type: number
+        data_points:
+          type: array
+          items:
+            type: object
+            properties:
+              timestamp:
+                type: string
+                format: date-time
+              requests:
+                type: integer
+              errors:
+                type: integer
+              latency_p99:
+                type: number
+
+security:
+  - bearerAuth: []

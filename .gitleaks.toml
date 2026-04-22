@@ -1,0 +1,57 @@
+# Gitleaks configuration for ShopOS
+title = "ShopOS Gitleaks Config"
+
+[extend]
+useDefault = true
+
+[[rules]]
+id = "shopos-jwt-secret"
+description = "ShopOS JWT secret key"
+regex = '''JWT_SECRET\s*=\s*.{8,}'''
+tags = ["secret", "jwt"]
+
+[[rules]]
+id = "shopos-db-password"
+description = "ShopOS database password"
+regex = '''(DB_PASSWORD|DATABASE_PASSWORD|POSTGRES_PASSWORD)\s*=\s*[^\s]+'''
+tags = ["secret", "database"]
+
+[[rules]]
+id = "shopos-api-key"
+description = "ShopOS API keys in code"
+regex = '''shopos_[a-zA-Z0-9]{32,}'''
+tags = ["secret", "api-key"]
+
+[[rules]]
+id = "shopos-vault-token"
+description = "HashiCorp Vault tokens"
+regex = '''hvs\.[a-zA-Z0-9]{24,}'''
+tags = ["secret", "vault"]
+
+[[rules]]
+id = "kafka-sasl-password"
+description = "Kafka SASL password"
+regex = '''KAFKA_SASL_PASSWORD\s*=\s*[^\s]+'''
+tags = ["secret", "kafka"]
+
+[allowlist]
+description = "Global allowlist"
+paths = [
+  '''.env.example''',
+  '''.*_test\.go''',
+  '''.*\.md''',
+  '''testdata/.*''',
+  '''\.devcontainer/.*''',
+]
+regexes = [
+  '''PLACEHOLDER''',
+  '''changeme''',
+  '''your_.*_here''',
+  '''<.*>''',
+  '''\$\{.*\}''',
+]
+commits = []
+
+[[allowlist.rules]]
+id = "shopos-db-password"
+paths = ['''.env.example''', '''docker-compose.*\.yml''']

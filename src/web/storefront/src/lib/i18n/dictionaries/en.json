@@ -1,0 +1,20 @@
+{
+  "nav.home":         "Home",
+  "nav.products":     "Products",
+  "nav.search":       "Search",
+  "nav.cart":         "Cart",
+  "nav.account":      "Account",
+  "nav.login":        "Login",
+  "nav.logout":       "Logout",
+  "hero.title":       "Welcome to ShopOS",
+  "hero.subtitle":    "Discover thousands of products across every category.",
+  "hero.cta":         "Shop Now",
+  "product.add":      "Add to Cart",
+  "product.outofstock": "Out of Stock",
+  "cart.empty":       "Your cart is empty",
+  "cart.checkout":    "Proceed to Checkout",
+  "order.place":      "Place Order",
+  "common.loading":   "Loading...",
+  "common.error":     "Something went wrong",
+  "common.retry":     "Try again"
+}

@@ -1,0 +1,88 @@
+# Meilisearch — fast, typo-tolerant search engine
+# Used by: search-service (catalog domain) for instant product search
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: meilisearch
+  namespace: databases
+spec:
+  serviceName: meilisearch
+  replicas: 1
+  selector:
+    matchLabels:
+      app: meilisearch
+  template:
+    metadata:
+      labels:
+        app: meilisearch
+    spec:
+      containers:
+        - name: meilisearch
+          image: getmeili/meilisearch:v1.11.3
+          env:
+            - name: MEILI_MASTER_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: meilisearch-secrets
+                  key: master-key
+            - name: MEILI_ENV
+              value: production
+            - name: MEILI_DB_PATH
+              value: /meili_data/data.ms
+            - name: MEILI_MAX_INDEXING_MEMORY
+              value: "1Gb"
+            - name: MEILI_HTTP_ADDR
+              value: "0.0.0.0:7700"
+            - name: MEILI_LOG_LEVEL
+              value: INFO
+            - name: MEILI_EXPERIMENTAL_ENABLE_METRICS
+              value: "true"
+          ports:
+            - name: http
+              containerPort: 7700
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 7700
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 7700
+            initialDelaySeconds: 15
+            periodSeconds: 30
+          resources:
+            requests:
+              cpu: 200m
+              memory: 512Mi
+            limits:
+              cpu: 2
+              memory: 3Gi
+          volumeMounts:
+            - name: data
+              mountPath: /meili_data
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+      spec:
+        accessModes: [ReadWriteOnce]
+        storageClassName: standard-rwo
+        resources:
+          requests:
+            storage: 50Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: meilisearch
+  namespace: databases
+  labels:
+    app: meilisearch
+spec:
+  type: ClusterIP
+  selector:
+    app: meilisearch
+  ports:
+    - port: 7700
+      targetPort: 7700

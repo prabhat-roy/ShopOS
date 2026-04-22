@@ -1,0 +1,144 @@
+# Argo Workflow — container image security scan pipeline
+# Runs Trivy + Grype + Cosign signature verification on newly built images
+apiVersion: argoproj.io/v1alpha1
+kind: WorkflowTemplate
+metadata:
+  name: security-scan
+  namespace: shopos-platform
+spec:
+  serviceAccountName: argo-workflow
+  entrypoint: security-pipeline
+  arguments:
+    parameters:
+      - name: image
+        value: ""
+      - name: registry
+        value: harbor.shopos.internal
+      - name: fail-on-high
+        value: "true"
+
+  templates:
+    - name: security-pipeline
+      dag:
+        tasks:
+          - name: trivy-scan
+            template: trivy
+            arguments:
+              parameters:
+                - name: image
+                  value: "{{workflow.parameters.image}}"
+
+          - name: grype-scan
+            template: grype
+            arguments:
+              parameters:
+                - name: image
+                  value: "{{workflow.parameters.image}}"
+
+          - name: verify-signature
+            template: cosign-verify
+            arguments:
+              parameters:
+                - name: image
+                  value: "{{workflow.parameters.image}}"
+
+          - name: sbom-generate
+            template: syft-sbom
+            dependencies: [trivy-scan, grype-scan]
+            arguments:
+              parameters:
+                - name: image
+                  value: "{{workflow.parameters.image}}"
+
+          - name: attest-sbom
+            template: cosign-attest
+            dependencies: [sbom-generate, verify-signature]
+            arguments:
+              parameters:
+                - name: image
+                  value: "{{workflow.parameters.image}}"
+
+    - name: trivy
+      inputs:
+        parameters:
+          - name: image
+      container:
+        image: aquasecurity/trivy:0.57.1
+        args:
+          - image
+          - --exit-code=1
+          - --severity=CRITICAL
+          - --format=sarif
+          - --output=/tmp/trivy-results.sarif
+          - "{{inputs.parameters.image}}"
+        env:
+          - name: TRIVY_INSECURE
+            value: "false"
+        volumeMounts:
+          - name: scan-results
+            mountPath: /tmp
+
+    - name: grype
+      inputs:
+        parameters:
+          - name: image
+      container:
+        image: anchore/grype:v0.82.0
+        args:
+          - "{{inputs.parameters.image}}"
+          - --output=json
+          - --file=/tmp/grype-results.json
+          - --fail-on=high
+        volumeMounts:
+          - name: scan-results
+            mountPath: /tmp
+
+    - name: cosign-verify
+      inputs:
+        parameters:
+          - name: image
+      container:
+        image: gcr.io/projectsigstore/cosign:v2.4.1
+        args:
+          - verify
+          - --certificate-identity-regexp=.*@shopos.internal
+          - --certificate-oidc-issuer=https://keycloak.shopos.internal/realms/shopos
+          - "{{inputs.parameters.image}}"
+
+    - name: syft-sbom
+      inputs:
+        parameters:
+          - name: image
+      container:
+        image: anchore/syft:v1.14.2
+        args:
+          - "{{inputs.parameters.image}}"
+          - -o=cyclonedx-json
+          - --file=/tmp/sbom.json
+        volumeMounts:
+          - name: scan-results
+            mountPath: /tmp
+
+    - name: cosign-attest
+      inputs:
+        parameters:
+          - name: image
+      container:
+        image: gcr.io/projectsigstore/cosign:v2.4.1
+        args:
+          - attest
+          - --predicate=/tmp/sbom.json
+          - --type=cyclonedx
+          - "{{inputs.parameters.image}}"
+        volumeMounts:
+          - name: scan-results
+            mountPath: /tmp
+
+  volumeClaimTemplates:
+    - metadata:
+        name: scan-results
+      spec:
+        accessModes: [ReadWriteOnce]
+        resources:
+          requests:
+            storage: 1Gi

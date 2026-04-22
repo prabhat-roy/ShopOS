@@ -1,0 +1,84 @@
+# Apache Airflow — standalone docker-compose for local dev
+# For Kubernetes deployment, use the official Airflow Helm chart
+version: "3.8"
+
+x-airflow-common: &airflow-common
+  image: apache/airflow:2.10.3-python3.12
+  environment:
+    AIRFLOW__CORE__EXECUTOR: CeleryExecutor
+    AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@airflow-postgres/airflow
+    AIRFLOW__CELERY__RESULT_BACKEND: db+postgresql://airflow:airflow@airflow-postgres/airflow
+    AIRFLOW__CELERY__BROKER_URL: redis://:@airflow-redis:6379/0
+    AIRFLOW__CORE__FERNET_KEY: ""
+    AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION: "true"
+    AIRFLOW__CORE__LOAD_EXAMPLES: "false"
+    AIRFLOW__API__AUTH_BACKENDS: "airflow.api.auth.backend.basic_auth"
+    AIRFLOW__SCHEDULER__DAG_DIR_LIST_INTERVAL: 30
+    _PIP_ADDITIONAL_REQUIREMENTS: httpx dbt-postgres apache-airflow-providers-postgres apache-airflow-providers-http
+  volumes:
+    - ./dags:/opt/airflow/dags
+    - ../dbt:/opt/dbt
+    - airflow-logs:/opt/airflow/logs
+  depends_on:
+    airflow-postgres:
+      condition: service_healthy
+    airflow-redis:
+      condition: service_healthy
+
+services:
+  airflow-postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: airflow
+      POSTGRES_PASSWORD: airflow
+      POSTGRES_DB: airflow
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "airflow"]
+      interval: 10s
+      retries: 5
+    volumes:
+      - airflow-pg-data:/var/lib/postgresql/data
+
+  airflow-redis:
+    image: redis:7-alpine
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      retries: 5
+
+  airflow-webserver:
+    <<: *airflow-common
+    command: webserver
+    ports:
+      - "8093:8080"
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  airflow-scheduler:
+    <<: *airflow-common
+    command: scheduler
+    healthcheck:
+      test: ["CMD", "airflow", "jobs", "check", "--job-type", "SchedulerJob", "--hostname", "$${HOSTNAME}"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  airflow-worker:
+    <<: *airflow-common
+    command: celery worker
+
+  airflow-init:
+    <<: *airflow-common
+    command: >
+      bash -c "
+        airflow db upgrade &&
+        airflow users create --username admin --firstname Admin --lastname User
+          --role Admin --email admin@shopos.internal --password admin
+      "
+
+volumes:
+  airflow-pg-data:
+  airflow-logs:

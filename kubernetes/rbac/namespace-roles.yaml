@@ -1,0 +1,309 @@
+# Namespace-scoped Roles + RoleBindings for per-domain team access
+# Each domain team gets edit access to their own namespace only
+
+{% set domains = [
+  ("platform", "shopos:team-platform"),
+  ("identity", "shopos:team-identity"),
+  ("catalog", "shopos:team-catalog"),
+  ("commerce", "shopos:team-commerce"),
+  ("supply-chain", "shopos:team-supply-chain"),
+  ("financial", "shopos:team-financial"),
+  ("customer-experience", "shopos:team-customer-experience"),
+  ("communications", "shopos:team-communications"),
+  ("content", "shopos:team-content"),
+  ("analytics-ai", "shopos:team-analytics-ai"),
+  ("b2b", "shopos:team-b2b"),
+  ("integrations", "shopos:team-integrations"),
+  ("affiliate", "shopos:team-affiliate"),
+  ("marketplace", "shopos:team-marketplace"),
+  ("gamification", "shopos:team-gamification"),
+  ("developer-platform", "shopos:team-developer-platform"),
+  ("compliance", "shopos:team-compliance"),
+  ("sustainability", "shopos:team-sustainability"),
+  ("shopos-web", "shopos:team-web"),
+] %}
+---
+# platform team
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: team-edit
+  namespace: platform
+subjects:
+  - kind: Group
+    name: "shopos:team-platform"
+    apiGroup: rbac.authorization.k8s.io
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: edit
+---
+# identity team
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: team-edit
+  namespace: identity
+subjects:
+  - kind: Group
+    name: "shopos:team-identity"
+    apiGroup: rbac.authorization.k8s.io
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: edit
+---
+# catalog team
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: team-edit
+  namespace: catalog
+subjects:
+  - kind: Group
+    name: "shopos:team-catalog"
+    apiGroup: rbac.authorization.k8s.io
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: edit
+---
+# commerce team
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: team-edit
+  namespace: commerce
+subjects:
+  - kind: Group
+    name: "shopos:team-commerce"
+    apiGroup: rbac.authorization.k8s.io
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: edit
+---
+# supply-chain team
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: team-edit
+  namespace: supply-chain
+subjects:
+  - kind: Group
+    name: "shopos:team-supply-chain"
+    apiGroup: rbac.authorization.k8s.io
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: edit
+---
+# financial team
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: team-edit
+  namespace: financial
+subjects:
+  - kind: Group
+    name: "shopos:team-financial"
+    apiGroup: rbac.authorization.k8s.io
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: edit
+---
+# customer-experience team
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: team-edit
+  namespace: customer-experience
+subjects:
+  - kind: Group
+    name: "shopos:team-customer-experience"
+    apiGroup: rbac.authorization.k8s.io
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: edit
+---
+# communications team
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: team-edit
+  namespace: communications
+subjects:
+  - kind: Group
+    name: "shopos:team-communications"
+    apiGroup: rbac.authorization.k8s.io
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: edit
+---
+# content team
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: team-edit
+  namespace: content
+subjects:
+  - kind: Group
+    name: "shopos:team-content"
+    apiGroup: rbac.authorization.k8s.io
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: edit
+---
+# analytics-ai team
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: team-edit
+  namespace: analytics-ai
+subjects:
+  - kind: Group
+    name: "shopos:team-analytics-ai"
+    apiGroup: rbac.authorization.k8s.io
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: edit
+---
+# b2b team
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: team-edit
+  namespace: b2b
+subjects:
+  - kind: Group
+    name: "shopos:team-b2b"
+    apiGroup: rbac.authorization.k8s.io
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: edit
+---
+# integrations team
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: team-edit
+  namespace: integrations
+subjects:
+  - kind: Group
+    name: "shopos:team-integrations"
+    apiGroup: rbac.authorization.k8s.io
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: edit
+---
+# affiliate team
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: team-edit
+  namespace: affiliate
+subjects:
+  - kind: Group
+    name: "shopos:team-affiliate"
+    apiGroup: rbac.authorization.k8s.io
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: edit
+---
+# marketplace team
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: team-edit
+  namespace: marketplace
+subjects:
+  - kind: Group
+    name: "shopos:team-marketplace"
+    apiGroup: rbac.authorization.k8s.io
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: edit
+---
+# gamification team
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: team-edit
+  namespace: gamification
+subjects:
+  - kind: Group
+    name: "shopos:team-gamification"
+    apiGroup: rbac.authorization.k8s.io
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: edit
+---
+# developer-platform team
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: team-edit
+  namespace: developer-platform
+subjects:
+  - kind: Group
+    name: "shopos:team-developer-platform"
+    apiGroup: rbac.authorization.k8s.io
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: edit
+---
+# compliance team
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: team-edit
+  namespace: compliance
+subjects:
+  - kind: Group
+    name: "shopos:team-compliance"
+    apiGroup: rbac.authorization.k8s.io
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: edit
+---
+# sustainability team
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: team-edit
+  namespace: sustainability
+subjects:
+  - kind: Group
+    name: "shopos:team-sustainability"
+    apiGroup: rbac.authorization.k8s.io
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: edit
+---
+# web team
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: team-edit
+  namespace: shopos-web
+subjects:
+  - kind: Group
+    name: "shopos:team-web"
+    apiGroup: rbac.authorization.k8s.io
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: edit

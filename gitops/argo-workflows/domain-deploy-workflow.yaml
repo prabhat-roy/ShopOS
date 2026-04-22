@@ -1,0 +1,112 @@
+# Argo Workflow — domain deployment orchestrator
+# Coordinates deploy order: DB migration → security scan → canary rollout → smoke test
+apiVersion: argoproj.io/v1alpha1
+kind: WorkflowTemplate
+metadata:
+  name: domain-deploy
+  namespace: shopos-platform
+spec:
+  serviceAccountName: argo-workflow
+  entrypoint: deploy-pipeline
+  arguments:
+    parameters:
+      - name: service
+      - name: domain
+      - name: image
+      - name: version
+      - name: migration-tool
+        value: "golang-migrate"
+
+  templates:
+    - name: deploy-pipeline
+      steps:
+        - - name: db-migration
+            templateRef:
+              name: db-migration
+              template: run-migrations
+            arguments:
+              parameters:
+                - name: service
+                  value: "{{workflow.parameters.service}}"
+                - name: domain
+                  value: "{{workflow.parameters.domain}}"
+                - name: version
+                  value: "{{workflow.parameters.version}}"
+                - name: migration-tool
+                  value: "{{workflow.parameters.migration-tool}}"
+
+        - - name: security-scan
+            templateRef:
+              name: security-scan
+              template: security-pipeline
+            arguments:
+              parameters:
+                - name: image
+                  value: "{{workflow.parameters.image}}"
+
+        - - name: argo-rollout-promote
+            template: promote-rollout
+            arguments:
+              parameters:
+                - name: service
+                  value: "{{workflow.parameters.service}}"
+                - name: domain
+                  value: "{{workflow.parameters.domain}}"
+                - name: image
+                  value: "{{workflow.parameters.image}}"
+
+        - - name: smoke-test
+            template: smoke-test
+            arguments:
+              parameters:
+                - name: service
+                  value: "{{workflow.parameters.service}}"
+                - name: domain
+                  value: "{{workflow.parameters.domain}}"
+
+    - name: promote-rollout
+      inputs:
+        parameters:
+          - name: service
+          - name: domain
+          - name: image
+      resource:
+        action: patch
+        manifest: |
+          apiVersion: argoproj.io/v1alpha1
+          kind: Rollout
+          metadata:
+            name: "{{inputs.parameters.service}}"
+            namespace: "shopos-{{inputs.parameters.domain}}"
+          spec:
+            template:
+              spec:
+                containers:
+                  - name: "{{inputs.parameters.service}}"
+                    image: "{{inputs.parameters.image}}"
+
+    - name: smoke-test
+      inputs:
+        parameters:
+          - name: service
+          - name: domain
+      script:
+        image: curlimages/curl:8.10.1
+        command: [sh]
+        source: |
+          echo "Running smoke test for {{inputs.parameters.service}}..."
+          SERVICE_URL="http://{{inputs.parameters.service}}.shopos-{{inputs.parameters.domain}}.svc.cluster.local"
+
+          # Health check
+          for i in $(seq 1 10); do
+            STATUS=$(curl -s -o /dev/null -w "%{http_code}" "$SERVICE_URL/healthz" 2>/dev/null)
+            if [ "$STATUS" = "200" ]; then
+              echo "Health check passed (attempt $i)"
+              exit 0
+            fi
+            echo "Attempt $i: status=$STATUS, retrying..."
+            sleep 5
+          done
+
+          echo "Smoke test FAILED after 10 attempts"
+          exit 1

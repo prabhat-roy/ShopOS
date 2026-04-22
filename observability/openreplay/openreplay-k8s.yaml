@@ -1,0 +1,72 @@
+# OpenReplay — self-hosted session replay
+# Single-node deployment for internal use
+# Full HA setup: use official Helm chart at https://github.com/openreplay/openreplay
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: openreplay
+  namespace: monitoring
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: openreplay
+  template:
+    metadata:
+      labels:
+        app: openreplay
+    spec:
+      containers:
+        - name: openreplay
+          image: openreplay/openreplay:v1.22.0
+          env:
+            - name: DOMAIN_NAME
+              value: replay.shopos.internal
+            - name: MINIO_HOST
+              value: minio.databases.svc.cluster.local
+            - name: MINIO_PORT
+              value: "9000"
+            - name: MINIO_ACCESS_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: openreplay-secrets
+                  key: minio-access-key
+            - name: MINIO_SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: openreplay-secrets
+                  key: minio-secret-key
+            - name: POSTGRES_HOST
+              value: pgbouncer.databases.svc.cluster.local
+            - name: POSTGRES_DB
+              value: openreplay
+            - name: POSTGRES_USER
+              value: openreplay
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: openreplay-secrets
+                  key: postgres-password
+            - name: REDIS_URL
+              value: redis://redis.databases.svc.cluster.local:6379
+          ports:
+            - containerPort: 8080
+          resources:
+            requests:
+              cpu: 200m
+              memory: 512Mi
+            limits:
+              cpu: 1
+              memory: 2Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: openreplay
+  namespace: monitoring
+spec:
+  selector:
+    app: openreplay
+  ports:
+    - port: 8080
+      targetPort: 8080

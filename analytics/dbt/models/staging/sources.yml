@@ -1,0 +1,58 @@
+version: 2
+
+sources:
+  - name: commerce
+    database: shopos
+    schema: public
+    tables:
+      - name: orders
+        description: Raw orders from order-service
+        columns:
+          - name: id
+            tests: [unique, not_null]
+          - name: user_id
+            tests: [not_null]
+          - name: status
+            tests:
+              - accepted_values:
+                  values: [pending, confirmed, processing, shipped, delivered, cancelled, refunded]
+          - name: total_amount
+            tests: [not_null]
+          - name: created_at
+            tests: [not_null]
+
+      - name: order_items
+        description: Line items for each order
+        columns:
+          - name: id
+            tests: [unique, not_null]
+          - name: order_id
+            tests: [not_null, relationships: {to: ref('stg_orders'), field: order_id}]
+          - name: product_id
+            tests: [not_null]
+          - name: quantity
+            tests: [not_null]
+
+  - name: catalog
+    database: shopos
+    schema: public
+    tables:
+      - name: products
+        columns:
+          - name: id
+            tests: [unique, not_null]
+          - name: name
+            tests: [not_null]
+
+  - name: identity
+    database: shopos
+    schema: public
+    tables:
+      - name: users
+        columns:
+          - name: id
+            tests: [unique, not_null]
+          - name: email
+            tests: [unique, not_null]
+          - name: created_at
+            tests: [not_null]

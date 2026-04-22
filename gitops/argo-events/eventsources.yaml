@@ -1,0 +1,118 @@
+# Argo Events — EventSources for triggering workflows
+# Sources: GitHub webhooks, Kafka domain events, scheduled crons, SNS/webhook ingestion
+---
+# GitHub push events (for CI build triggers)
+apiVersion: argoproj.io/v1alpha1
+kind: EventSource
+metadata:
+  name: github
+  namespace: shopos-platform
+spec:
+  github:
+    push:
+      owner: prabhat-roy
+      repository: ShopOS
+      webhook:
+        endpoint: /push
+        port: "12000"
+        method: POST
+      events:
+        - push
+      apiToken:
+        name: github-access
+        key: token
+      insecure: false
+      active: true
+      contentType: json
+---
+# GitHub PR events (for preview deploys)
+apiVersion: argoproj.io/v1alpha1
+kind: EventSource
+metadata:
+  name: github-pr
+  namespace: shopos-platform
+spec:
+  github:
+    pull_request:
+      owner: prabhat-roy
+      repository: ShopOS
+      webhook:
+        endpoint: /pr
+        port: "12001"
+        method: POST
+      events:
+        - pull_request
+      apiToken:
+        name: github-access
+        key: token
+      contentType: json
+---
+# Kafka domain events — triggers workflows on business events
+apiVersion: argoproj.io/v1alpha1
+kind: EventSource
+metadata:
+  name: kafka-commerce
+  namespace: shopos-platform
+spec:
+  kafka:
+    order_placed:
+      url: kafka.streaming.svc.cluster.local:9092
+      topic: commerce.order.placed
+      partition: "0"
+      connectionBackoff:
+        duration: 10s
+        factor: 2
+        steps: 5
+    payment_failed:
+      url: kafka.streaming.svc.cluster.local:9092
+      topic: commerce.payment.failed
+      partition: "0"
+    fraud_detected:
+      url: kafka.streaming.svc.cluster.local:9092
+      topic: security.fraud.detected
+      partition: "0"
+---
+# Scheduled crons — for batch workflows
+apiVersion: argoproj.io/v1alpha1
+kind: EventSource
+metadata:
+  name: cron-schedules
+  namespace: shopos-platform
+spec:
+  calendar:
+    daily_revenue_etl:
+      schedule: "0 2 * * *"
+      timezone: UTC
+      metadata:
+        workflow: daily-revenue-etl
+    weekly_fraud_retrain:
+      schedule: "0 4 * * 1"
+      timezone: UTC
+      metadata:
+        workflow: fraud-detection-retrain
+    hourly_ml_feature_refresh:
+      schedule: "0 * * * *"
+      timezone: UTC
+      metadata:
+        workflow: ml-feature-refresh
+---
+# Webhook ingestion — for external system triggers
+apiVersion: argoproj.io/v1alpha1
+kind: EventSource
+metadata:
+  name: webhooks
+  namespace: shopos-platform
+spec:
+  webhook:
+    deploy_trigger:
+      endpoint: /deploy
+      port: "12002"
+      method: POST
+    scan_trigger:
+      endpoint: /scan
+      port: "12002"
+      method: POST
+    rollback_trigger:
+      endpoint: /rollback
+      port: "12002"
+      method: POST

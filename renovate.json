@@ -1,0 +1,78 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": ["config:base", ":dependencyDashboard", ":semanticCommits"],
+  "timezone": "UTC",
+  "schedule": ["before 6am on Monday"],
+  "prConcurrentLimit": 10,
+  "prHourlyLimit": 4,
+  "labels": ["dependencies", "renovate"],
+  "assignees": ["prabhat-roy"],
+  "packageRules": [
+    {
+      "matchManagers": ["dockerfile"],
+      "labels": ["docker", "dependencies"]
+    },
+    {
+      "matchManagers": ["helmv3"],
+      "labels": ["helm", "dependencies"]
+    },
+    {
+      "matchManagers": ["terraform"],
+      "labels": ["terraform", "dependencies"]
+    },
+    {
+      "matchPackagePatterns": ["^golang.org", "^google.golang.org", "^github.com"],
+      "groupName": "Go modules"
+    },
+    {
+      "matchManagers": ["npm"],
+      "matchPackagePatterns": ["^@tanstack/", "zustand", "next", "react", "vue", "@angular"],
+      "groupName": "Frontend frameworks"
+    },
+    {
+      "matchManagers": ["npm"],
+      "matchDepTypes": ["devDependencies"],
+      "automerge": true,
+      "automergeType": "pr",
+      "labels": ["automerge", "dependencies"]
+    },
+    {
+      "matchUpdateTypes": ["patch"],
+      "automerge": true,
+      "automergeType": "pr"
+    },
+    {
+      "matchPackagePatterns": ["kafka", "postgres", "redis", "mongo", "cassandra", "elasticsearch"],
+      "labels": ["infra-deps", "dependencies"],
+      "reviewersFromCodeOwners": true
+    },
+    {
+      "matchManagers": ["github-actions"],
+      "groupName": "GitHub Actions",
+      "automerge": true
+    }
+  ],
+  "vulnerabilityAlerts": {
+    "labels": ["security"],
+    "assignees": ["prabhat-roy"],
+    "prPriority": 10
+  },
+  "osvVulnerabilityAlerts": true,
+  "ignorePaths": [
+    "**/vendor/**",
+    "**/node_modules/**",
+    "**/testdata/**"
+  ],
+  "helm": {
+    "enabled": true
+  },
+  "kubernetes": {
+    "fileMatch": ["kubernetes/**/*.yaml", "gitops/**/*.yaml"]
+  },
+  "terraform": {
+    "enabled": true
+  },
+  "golang": {
+    "enabled": true
+  }
+}

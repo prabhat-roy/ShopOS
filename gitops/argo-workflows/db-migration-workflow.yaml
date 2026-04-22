@@ -1,0 +1,155 @@
+# Argo Workflow — database migration runner
+# Triggered before each deployment via Argo Events sensor
+# Runs golang-migrate (Go services) and Flyway (Java/Kotlin services) in sequence
+apiVersion: argoproj.io/v1alpha1
+kind: WorkflowTemplate
+metadata:
+  name: db-migration
+  namespace: shopos-platform
+spec:
+  serviceAccountName: argo-workflow
+  entrypoint: run-migrations
+  arguments:
+    parameters:
+      - name: service
+        value: ""
+      - name: domain
+        value: ""
+      - name: version
+        value: ""
+      - name: migration-tool
+        value: "golang-migrate"
+
+  templates:
+    - name: run-migrations
+      steps:
+        - - name: check-db-connection
+            template: check-db
+            arguments:
+              parameters:
+                - name: service
+                  value: "{{workflow.parameters.service}}"
+                - name: domain
+                  value: "{{workflow.parameters.domain}}"
+
+        - - name: run-golang-migrate
+            template: golang-migrate
+            when: "{{workflow.parameters.migration-tool}} == golang-migrate"
+            arguments:
+              parameters:
+                - name: service
+                  value: "{{workflow.parameters.service}}"
+                - name: domain
+                  value: "{{workflow.parameters.domain}}"
+                - name: version
+                  value: "{{workflow.parameters.version}}"
+
+          - name: run-flyway
+            template: flyway-migrate
+            when: "{{workflow.parameters.migration-tool}} == flyway"
+            arguments:
+              parameters:
+                - name: service
+                  value: "{{workflow.parameters.service}}"
+                - name: domain
+                  value: "{{workflow.parameters.domain}}"
+                - name: version
+                  value: "{{workflow.parameters.version}}"
+
+        - - name: verify-migration
+            template: verify
+            arguments:
+              parameters:
+                - name: service
+                  value: "{{workflow.parameters.service}}"
+
+    - name: check-db
+      inputs:
+        parameters:
+          - name: service
+          - name: domain
+      container:
+        image: postgres:16-alpine
+        command: [sh, -c]
+        args:
+          - |
+            until pg_isready -h pgbouncer.databases.svc.cluster.local -p 5432; do
+              echo "Waiting for PostgreSQL..."
+              sleep 2
+            done
+            echo "PostgreSQL is ready"
+        env:
+          - name: PGPASSWORD
+            valueFrom:
+              secretKeyRef:
+                name: postgres-credentials
+                key: password
+
+    - name: golang-migrate
+      inputs:
+        parameters:
+          - name: service
+          - name: domain
+          - name: version
+      container:
+        image: migrate/migrate:v4.18.1
+        command:
+          - migrate
+          - -database
+          - "postgresql://shopos_app:$(DB_PASSWORD)@pgbouncer.databases.svc.cluster.local:5432/shopos?sslmode=disable"
+          - -path
+          - /migrations/{{inputs.parameters.service}}
+          - up
+        env:
+          - name: DB_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                name: postgres-credentials
+                key: password
+        volumeMounts:
+          - name: migration-files
+            mountPath: /migrations
+      volumes:
+        - name: migration-files
+          configMap:
+            name: "{{inputs.parameters.service}}-migrations"
+
+    - name: flyway-migrate
+      inputs:
+        parameters:
+          - name: service
+          - name: domain
+          - name: version
+      container:
+        image: flyway/flyway:10.20
+        args:
+          - -url=jdbc:postgresql://pgbouncer.databases.svc.cluster.local:5432/shopos
+          - -user=shopos_app
+          - -password=$(DB_PASSWORD)
+          - -locations=filesystem:/flyway/sql/{{inputs.parameters.service}}
+          - migrate
+        env:
+          - name: DB_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                name: postgres-credentials
+                key: password
+
+    - name: verify
+      inputs:
+        parameters:
+          - name: service
+      script:
+        image: postgres:16-alpine
+        command: [sh]
+        source: |
+          psql -h pgbouncer.databases.svc.cluster.local -U shopos_app \
+            -c "SELECT version FROM schema_migrations ORDER BY version DESC LIMIT 5;"
+        env:
+          - name: PGPASSWORD
+            valueFrom:
+              secretKeyRef:
+                name: postgres-credentials
+                key: password
+          - name: PGDATABASE
+            value: shopos

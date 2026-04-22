@@ -1,0 +1,126 @@
+# PgBouncer — PostgreSQL connection pooler
+# Sits between all services and PostgreSQL, reduces connection overhead
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: pgbouncer
+  namespace: databases
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: pgbouncer
+  template:
+    metadata:
+      labels:
+        app: pgbouncer
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "9127"
+    spec:
+      containers:
+        - name: pgbouncer
+          image: bitnami/pgbouncer:1.23.1
+          env:
+            - name: POSTGRESQL_HOST
+              value: postgres-primary.databases.svc.cluster.local
+            - name: POSTGRESQL_PORT
+              value: "5432"
+            - name: POSTGRESQL_USERNAME
+              value: shopos_app
+            - name: POSTGRESQL_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: pgbouncer-secrets
+                  key: postgres-password
+            - name: PGBOUNCER_DATABASE
+              value: shopos
+            - name: PGBOUNCER_POOL_MODE
+              value: transaction
+            - name: PGBOUNCER_MAX_CLIENT_CONN
+              value: "2000"
+            - name: PGBOUNCER_DEFAULT_POOL_SIZE
+              value: "50"
+            - name: PGBOUNCER_MIN_POOL_SIZE
+              value: "10"
+            - name: PGBOUNCER_RESERVE_POOL_SIZE
+              value: "20"
+            - name: PGBOUNCER_RESERVE_POOL_TIMEOUT
+              value: "5"
+            - name: PGBOUNCER_MAX_DB_CONNECTIONS
+              value: "100"
+            - name: PGBOUNCER_IGNORE_STARTUP_PARAMETERS
+              value: extra_float_digits
+            - name: PGBOUNCER_SERVER_IDLE_TIMEOUT
+              value: "600"
+            - name: PGBOUNCER_CLIENT_IDLE_TIMEOUT
+              value: "0"
+            - name: PGBOUNCER_AUTH_TYPE
+              value: scram-sha-256
+            - name: PGBOUNCER_STATS_USERS
+              value: stats_user
+          ports:
+            - name: pgbouncer
+              containerPort: 5432
+          readinessProbe:
+            tcpSocket:
+              port: 5432
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            tcpSocket:
+              port: 5432
+            initialDelaySeconds: 15
+            periodSeconds: 30
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+
+        - name: pgbouncer-exporter
+          image: prometheuscommunity/pgbouncer-exporter:v0.7.0
+          env:
+            - name: DATA_SOURCE_NAME
+              value: "postgresql://stats_user:$(STATS_PASSWORD)@localhost:5432/pgbouncer"
+          ports:
+            - containerPort: 9127
+          resources:
+            requests:
+              cpu: 50m
+              memory: 32Mi
+            limits:
+              cpu: 100m
+              memory: 64Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: pgbouncer
+  namespace: databases
+  labels:
+    app: pgbouncer
+spec:
+  type: ClusterIP
+  selector:
+    app: pgbouncer
+  ports:
+    - name: pgbouncer
+      port: 5432
+      targetPort: 5432
+    - name: metrics
+      port: 9127
+      targetPort: 9127
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: pgbouncer-pdb
+  namespace: databases
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: pgbouncer

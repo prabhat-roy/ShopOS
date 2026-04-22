@@ -1,0 +1,20 @@
+{
+  "nav.home":         "Accueil",
+  "nav.products":     "Produits",
+  "nav.search":       "Rechercher",
+  "nav.cart":         "Panier",
+  "nav.account":      "Compte",
+  "nav.login":        "Connexion",
+  "nav.logout":       "Déconnexion",
+  "hero.title":       "Bienvenue sur ShopOS",
+  "hero.subtitle":    "Découvrez des milliers de produits dans toutes les catégories.",
+  "hero.cta":         "Acheter maintenant",
+  "product.add":      "Ajouter au panier",
+  "product.outofstock": "Rupture de stock",
+  "cart.empty":       "Votre panier est vide",
+  "cart.checkout":    "Procéder au paiement",
+  "order.place":      "Passer la commande",
+  "common.loading":   "Chargement...",
+  "common.error":     "Une erreur s'est produite",
+  "common.retry":     "Réessayer"
+}

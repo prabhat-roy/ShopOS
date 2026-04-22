@@ -1,3 +1,125 @@
+# ResourceQuotas and LimitRanges for all 19 namespaces (18 domains + web)
+# Sizing based on service count and expected load
+
+---
+# ── Platform (27 services) ──────────────────────────────────────────────────
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: platform-quota
+  namespace: platform
+spec:
+  hard:
+    requests.cpu: "50"
+    requests.memory: 100Gi
+    limits.cpu: "100"
+    limits.memory: 200Gi
+    pods: "300"
+    services: "60"
+    persistentvolumeclaims: "40"
+    secrets: "100"
+    configmaps: "100"
+---
+apiVersion: v1
+kind: LimitRange
+metadata:
+  name: platform-limits
+  namespace: platform
+spec:
+  limits:
+    - type: Container
+      default:
+        cpu: 500m
+        memory: 512Mi
+      defaultRequest:
+        cpu: 100m
+        memory: 128Mi
+      max:
+        cpu: "4"
+        memory: 8Gi
+      min:
+        cpu: 50m
+        memory: 64Mi
+---
+# ── Identity (11 services) ──────────────────────────────────────────────────
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: identity-quota
+  namespace: identity
+spec:
+  hard:
+    requests.cpu: "16"
+    requests.memory: 32Gi
+    limits.cpu: "32"
+    limits.memory: 64Gi
+    pods: "80"
+    services: "20"
+    persistentvolumeclaims: "15"
+    secrets: "50"
+    configmaps: "50"
+---
+apiVersion: v1
+kind: LimitRange
+metadata:
+  name: identity-limits
+  namespace: identity
+spec:
+  limits:
+    - type: Container
+      default:
+        cpu: 500m
+        memory: 512Mi
+      defaultRequest:
+        cpu: 100m
+        memory: 128Mi
+      max:
+        cpu: "2"
+        memory: 4Gi
+      min:
+        cpu: 50m
+        memory: 64Mi
+---
+# ── Catalog (15 services) ──────────────────────────────────────────────────
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: catalog-quota
+  namespace: catalog
+spec:
+  hard:
+    requests.cpu: "24"
+    requests.memory: 48Gi
+    limits.cpu: "48"
+    limits.memory: 96Gi
+    pods: "120"
+    services: "30"
+    persistentvolumeclaims: "20"
+    secrets: "50"
+    configmaps: "50"
+---
+apiVersion: v1
+kind: LimitRange
+metadata:
+  name: catalog-limits
+  namespace: catalog
+spec:
+  limits:
+    - type: Container
+      default:
+        cpu: 250m
+        memory: 256Mi
+      defaultRequest:
+        cpu: 50m
+        memory: 64Mi
+      max:
+        cpu: "4"
+        memory: 8Gi
+      min:
+        cpu: 50m
+        memory: 64Mi
+---
+# ── Commerce (28 services) ──────────────────────────────────────────────────
 apiVersion: v1
 kind: ResourceQuota
 metadata:
@@ -12,19 +134,8 @@ spec:
     pods: "200"
     services: "50"
     persistentvolumeclaims: "30"
----
-apiVersion: v1
-kind: ResourceQuota
-metadata:
-  name: analytics-quota
-  namespace: analytics-ai
-spec:
-  hard:
-    requests.cpu: "20"
-    requests.memory: 60Gi
-    limits.cpu: "40"
-    limits.memory: 120Gi
-    pods: "100"
+    secrets: "80"
+    configmaps: "80"
 ---
 apiVersion: v1
 kind: LimitRange
@@ -51,11 +162,27 @@ spec:
         cpu: "8"
         memory: 16Gi
 ---
+# ── Supply Chain (17 services) ────────────────────────────────────────────────
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: supply-chain-quota
+  namespace: supply-chain
+spec:
+  hard:
+    requests.cpu: "24"
+    requests.memory: 48Gi
+    limits.cpu: "48"
+    limits.memory: 96Gi
+    pods: "120"
+    services: "30"
+    persistentvolumeclaims: "20"
+---
 apiVersion: v1
 kind: LimitRange
 metadata:
-  name: default-limits
-  namespace: catalog
+  name: supply-chain-limits
+  namespace: supply-chain
 spec:
   limits:
     - type: Container
@@ -63,5 +190,519 @@ spec:
         cpu: 250m
         memory: 256Mi
       defaultRequest:
+        cpu: 100m
+        memory: 128Mi
+      max:
+        cpu: "2"
+        memory: 4Gi
+      min:
+        cpu: 50m
+        memory: 64Mi
+---
+# ── Financial (15 services) ──────────────────────────────────────────────────
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: financial-quota
+  namespace: financial
+spec:
+  hard:
+    requests.cpu: "20"
+    requests.memory: 40Gi
+    limits.cpu: "40"
+    limits.memory: 80Gi
+    pods: "100"
+    services: "25"
+    persistentvolumeclaims: "20"
+---
+apiVersion: v1
+kind: LimitRange
+metadata:
+  name: financial-limits
+  namespace: financial
+spec:
+  limits:
+    - type: Container
+      default:
+        cpu: 500m
+        memory: 512Mi
+      defaultRequest:
+        cpu: 100m
+        memory: 128Mi
+      max:
+        cpu: "4"
+        memory: 8Gi
+      min:
+        cpu: 50m
+        memory: 64Mi
+---
+# ── Customer Experience (17 services) ────────────────────────────────────────
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: customer-experience-quota
+  namespace: customer-experience
+spec:
+  hard:
+    requests.cpu: "20"
+    requests.memory: 40Gi
+    limits.cpu: "40"
+    limits.memory: 80Gi
+    pods: "120"
+    services: "30"
+    persistentvolumeclaims: "15"
+---
+apiVersion: v1
+kind: LimitRange
+metadata:
+  name: customer-experience-limits
+  namespace: customer-experience
+spec:
+  limits:
+    - type: Container
+      default:
+        cpu: 250m
+        memory: 256Mi
+      defaultRequest:
+        cpu: 50m
+        memory: 64Mi
+      max:
+        cpu: "2"
+        memory: 4Gi
+      min:
+        cpu: 50m
+        memory: 64Mi
+---
+# ── Communications (12 services) ────────────────────────────────────────────
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: communications-quota
+  namespace: communications
+spec:
+  hard:
+    requests.cpu: "12"
+    requests.memory: 24Gi
+    limits.cpu: "24"
+    limits.memory: 48Gi
+    pods: "80"
+    services: "20"
+---
+apiVersion: v1
+kind: LimitRange
+metadata:
+  name: communications-limits
+  namespace: communications
+spec:
+  limits:
+    - type: Container
+      default:
+        cpu: 250m
+        memory: 256Mi
+      defaultRequest:
+        cpu: 50m
+        memory: 64Mi
+      max:
+        cpu: "2"
+        memory: 4Gi
+      min:
+        cpu: 50m
+        memory: 64Mi
+---
+# ── Content (9 services) ────────────────────────────────────────────────────
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: content-quota
+  namespace: content
+spec:
+  hard:
+    requests.cpu: "12"
+    requests.memory: 24Gi
+    limits.cpu: "24"
+    limits.memory: 48Gi
+    pods: "60"
+    services: "15"
+    persistentvolumeclaims: "10"
+---
+apiVersion: v1
+kind: LimitRange
+metadata:
+  name: content-limits
+  namespace: content
+spec:
+  limits:
+    - type: Container
+      default:
+        cpu: 500m
+        memory: 512Mi
+      defaultRequest:
+        cpu: 100m
+        memory: 128Mi
+      max:
+        cpu: "4"
+        memory: 8Gi
+      min:
+        cpu: 50m
+        memory: 64Mi
+---
+# ── Analytics AI (13 services) ──────────────────────────────────────────────
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: analytics-ai-quota
+  namespace: analytics-ai
+spec:
+  hard:
+    requests.cpu: "20"
+    requests.memory: 60Gi
+    limits.cpu: "40"
+    limits.memory: 120Gi
+    pods: "100"
+    services: "25"
+    persistentvolumeclaims: "20"
+---
+apiVersion: v1
+kind: LimitRange
+metadata:
+  name: analytics-ai-limits
+  namespace: analytics-ai
+spec:
+  limits:
+    - type: Container
+      default:
+        cpu: 500m
+        memory: 1Gi
+      defaultRequest:
+        cpu: 100m
+        memory: 256Mi
+      max:
+        cpu: "8"
+        memory: 16Gi
+      min:
+        cpu: 50m
+        memory: 64Mi
+---
+# ── B2B (10 services) ──────────────────────────────────────────────────────
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: b2b-quota
+  namespace: b2b
+spec:
+  hard:
+    requests.cpu: "12"
+    requests.memory: 24Gi
+    limits.cpu: "24"
+    limits.memory: 48Gi
+    pods: "80"
+    services: "20"
+---
+apiVersion: v1
+kind: LimitRange
+metadata:
+  name: b2b-limits
+  namespace: b2b
+spec:
+  limits:
+    - type: Container
+      default:
+        cpu: 250m
+        memory: 256Mi
+      defaultRequest:
+        cpu: 100m
+        memory: 128Mi
+      max:
+        cpu: "2"
+        memory: 4Gi
+      min:
+        cpu: 50m
+        memory: 64Mi
+---
+# ── Integrations (14 services) ──────────────────────────────────────────────
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: integrations-quota
+  namespace: integrations
+spec:
+  hard:
+    requests.cpu: "16"
+    requests.memory: 32Gi
+    limits.cpu: "32"
+    limits.memory: 64Gi
+    pods: "100"
+    services: "25"
+---
+apiVersion: v1
+kind: LimitRange
+metadata:
+  name: integrations-limits
+  namespace: integrations
+spec:
+  limits:
+    - type: Container
+      default:
+        cpu: 250m
+        memory: 256Mi
+      defaultRequest:
+        cpu: 100m
+        memory: 128Mi
+      max:
+        cpu: "2"
+        memory: 4Gi
+      min:
+        cpu: 50m
+        memory: 64Mi
+---
+# ── Affiliate (6 services) ──────────────────────────────────────────────────
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: affiliate-quota
+  namespace: affiliate
+spec:
+  hard:
+    requests.cpu: "8"
+    requests.memory: 16Gi
+    limits.cpu: "16"
+    limits.memory: 32Gi
+    pods: "40"
+    services: "10"
+---
+apiVersion: v1
+kind: LimitRange
+metadata:
+  name: affiliate-limits
+  namespace: affiliate
+spec:
+  limits:
+    - type: Container
+      default:
+        cpu: 250m
+        memory: 256Mi
+      defaultRequest:
+        cpu: 50m
+        memory: 64Mi
+      max:
+        cpu: "2"
+        memory: 4Gi
+      min:
+        cpu: 50m
+        memory: 64Mi
+---
+# ── Marketplace (8 services) ────────────────────────────────────────────────
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: marketplace-quota
+  namespace: marketplace
+spec:
+  hard:
+    requests.cpu: "10"
+    requests.memory: 20Gi
+    limits.cpu: "20"
+    limits.memory: 40Gi
+    pods: "60"
+    services: "15"
+---
+apiVersion: v1
+kind: LimitRange
+metadata:
+  name: marketplace-limits
+  namespace: marketplace
+spec:
+  limits:
+    - type: Container
+      default:
+        cpu: 250m
+        memory: 256Mi
+      defaultRequest:
+        cpu: 50m
+        memory: 64Mi
+      max:
+        cpu: "2"
+        memory: 4Gi
+      min:
+        cpu: 50m
+        memory: 64Mi
+---
+# ── Gamification (6 services) ────────────────────────────────────────────────
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: gamification-quota
+  namespace: gamification
+spec:
+  hard:
+    requests.cpu: "8"
+    requests.memory: 16Gi
+    limits.cpu: "16"
+    limits.memory: 32Gi
+    pods: "40"
+    services: "10"
+---
+apiVersion: v1
+kind: LimitRange
+metadata:
+  name: gamification-limits
+  namespace: gamification
+spec:
+  limits:
+    - type: Container
+      default:
+        cpu: 250m
+        memory: 256Mi
+      defaultRequest:
+        cpu: 50m
+        memory: 64Mi
+      max:
+        cpu: "2"
+        memory: 4Gi
+      min:
+        cpu: 50m
+        memory: 64Mi
+---
+# ── Developer Platform (6 services) ─────────────────────────────────────────
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: developer-platform-quota
+  namespace: developer-platform
+spec:
+  hard:
+    requests.cpu: "8"
+    requests.memory: 16Gi
+    limits.cpu: "16"
+    limits.memory: 32Gi
+    pods: "40"
+    services: "10"
+---
+apiVersion: v1
+kind: LimitRange
+metadata:
+  name: developer-platform-limits
+  namespace: developer-platform
+spec:
+  limits:
+    - type: Container
+      default:
+        cpu: 250m
+        memory: 256Mi
+      defaultRequest:
+        cpu: 50m
+        memory: 64Mi
+      max:
+        cpu: "2"
+        memory: 4Gi
+      min:
+        cpu: 50m
+        memory: 64Mi
+---
+# ── Compliance (5 services) ──────────────────────────────────────────────────
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: compliance-quota
+  namespace: compliance
+spec:
+  hard:
+    requests.cpu: "6"
+    requests.memory: 12Gi
+    limits.cpu: "12"
+    limits.memory: 24Gi
+    pods: "30"
+    services: "10"
+---
+apiVersion: v1
+kind: LimitRange
+metadata:
+  name: compliance-limits
+  namespace: compliance
+spec:
+  limits:
+    - type: Container
+      default:
+        cpu: 250m
+        memory: 256Mi
+      defaultRequest:
+        cpu: 50m
+        memory: 64Mi
+      max:
+        cpu: "2"
+        memory: 4Gi
+      min:
+        cpu: 50m
+        memory: 64Mi
+---
+# ── Sustainability (5 services) ──────────────────────────────────────────────
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: sustainability-quota
+  namespace: sustainability
+spec:
+  hard:
+    requests.cpu: "6"
+    requests.memory: 12Gi
+    limits.cpu: "12"
+    limits.memory: 24Gi
+    pods: "30"
+    services: "10"
+---
+apiVersion: v1
+kind: LimitRange
+metadata:
+  name: sustainability-limits
+  namespace: sustainability
+spec:
+  limits:
+    - type: Container
+      default:
+        cpu: 250m
+        memory: 256Mi
+      defaultRequest:
+        cpu: 50m
+        memory: 64Mi
+      max:
+        cpu: "2"
+        memory: 4Gi
+      min:
+        cpu: 50m
+        memory: 64Mi
+---
+# ── Web (6 frontend apps) ────────────────────────────────────────────────────
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: shopos-web-quota
+  namespace: shopos-web
+spec:
+  hard:
+    requests.cpu: "10"
+    requests.memory: 20Gi
+    limits.cpu: "20"
+    limits.memory: 40Gi
+    pods: "60"
+    services: "15"
+---
+apiVersion: v1
+kind: LimitRange
+metadata:
+  name: shopos-web-limits
+  namespace: shopos-web
+spec:
+  limits:
+    - type: Container
+      default:
+        cpu: 250m
+        memory: 256Mi
+      defaultRequest:
+        cpu: 50m
+        memory: 64Mi
+      max:
+        cpu: "2"
+        memory: 4Gi
+      min:
         cpu: 50m
         memory: 64Mi
