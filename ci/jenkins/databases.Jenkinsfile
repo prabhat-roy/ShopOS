@@ -53,6 +53,7 @@ pipeline {
                     helm repo add bitnami https://charts.bitnami.com/bitnami || true
                     helm repo update
                     helm upgrade --install clickhouse bitnami/clickhouse \
+                        --version 6.2.23 \
                         --namespace databases \
                         --set shards=1 \
                         --set replicaCount=1 \
