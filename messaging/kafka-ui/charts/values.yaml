@@ -1,7 +1,7 @@
 replicaCount: 1
 
 image:
-  repository: provectus/kafka-ui
+  repository: ghcr.io/kafbat/kafka-ui
   tag: "latest"
   pullPolicy: IfNotPresent
 
