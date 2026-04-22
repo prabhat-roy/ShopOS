@@ -17,7 +17,6 @@ pipeline {
         booleanParam(name: 'CLICKHOUSE',  defaultValue: true,  description: 'ClickHouse OLAP database')
         booleanParam(name: 'WEAVIATE',    defaultValue: true,  description: 'Weaviate vector database')
         booleanParam(name: 'NEO4J',       defaultValue: true,  description: 'Neo4j graph database')
-        booleanParam(name: 'SCYLLADB',    defaultValue: false, description: 'ScyllaDB high-throughput database (disabled by default — heavy operator, enable manually)')
         booleanParam(name: 'TEMPORAL',    defaultValue: true,  description: 'Temporal workflow engine')
     }
 
@@ -113,50 +112,6 @@ pipeline {
             }
         }
 
-        stage('ScyllaDB') {
-            when { allOf { expression { params.ACTION == 'INSTALL' }; expression { params.SCYLLADB } } }
-            steps {
-                catchError(buildResult: 'UNSTABLE', stageResult: 'FAILURE') {
-                    sh """
-                        helm repo add scylla https://scylla-operator-charts.storage.googleapis.com/stable || true
-                        helm repo add jetstack https://charts.jetstack.io || true
-                        helm repo update
-                        helm uninstall cert-manager -n cert-manager --ignore-not-found || true
-                        kubectl delete namespace cert-manager --ignore-not-found || true
-                        helm upgrade --install cert-manager jetstack/cert-manager \
-                            --namespace cert-manager --create-namespace \
-                            --set installCRDs=true \
-                            --set startupapicheck.enabled=false \
-                            --wait --timeout=5m
-                        kubectl rollout status deployment/cert-manager-webhook -n cert-manager --timeout=180s
-                        kubectl rollout status deployment/cert-manager-cainjector -n cert-manager --timeout=180s
-                        echo "Waiting for cert-manager CA bundle injection (up to 3m)..."
-                        for i in \$(seq 1 18); do
-                            CA=\$(kubectl get validatingwebhookconfiguration cert-manager-webhook -o jsonpath='{.webhooks[0].clientConfig.caBundle}' 2>/dev/null || echo "")
-                            if [ -n "\$CA" ]; then echo "CA bundle injected after \$i attempts"; break; fi
-                            echo "Waiting (\$i/18)..."; sleep 10
-                        done
-                        CA=\$(kubectl get validatingwebhookconfiguration cert-manager-webhook -o jsonpath='{.webhooks[0].clientConfig.caBundle}' 2>/dev/null || echo "")
-                        if [ -z "\$CA" ]; then
-                            echo "CA bundle not injected — removing cert-manager webhook to unblock scylla-operator..."
-                            kubectl delete validatingwebhookconfiguration cert-manager-webhook --ignore-not-found || true
-                            kubectl delete mutatingwebhookconfiguration cert-manager-webhook --ignore-not-found || true
-                        fi
-                        helm upgrade --install scylla-operator scylla/scylla-operator \
-                            --namespace scylla-operator --create-namespace \
-                            --wait --timeout=10m
-                        helm upgrade --install scylla scylla/scylla \
-                            --namespace databases \
-                            --set developerMode=true \
-                            --wait --timeout=10m
-                        echo "Applying ScyllaDB keyspace schemas..."
-                        kubectl apply -f databases/scylladb/ -n databases 2>/dev/null || true
-                        echo "ScyllaDB installed"
-                    """
-                }
-            }
-        }
-
         stage('Temporal') {
             when { allOf { expression { params.ACTION == 'INSTALL' }; expression { params.TEMPORAL } } }
             steps {
@@ -213,16 +168,6 @@ pipeline {
             when { allOf { expression { params.ACTION == 'UNINSTALL' }; expression { params.TEMPORAL } } }
             steps {
                 sh "helm uninstall temporal -n temporal-system --ignore-not-found || true"
-            }
-        }
-
-        stage('Uninstall ScyllaDB') {
-            when { allOf { expression { params.ACTION == 'UNINSTALL' }; expression { params.SCYLLADB } } }
-            steps {
-                sh """
-                    helm uninstall scylla -n databases --ignore-not-found || true
-                    helm uninstall scylla-operator -n scylla-operator --ignore-not-found || true
-                """
             }
         }
 
