@@ -4,6 +4,7 @@ def call() {
             --namespace kafka-ui \
             --create-namespace \
             --set fullnameOverride=kafka-ui \
+            --set persistence.enabled=false \
             --set env.KAFKA_CLUSTERS_0_NAME=shopos \
             --set env.KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS=kafka.kafka.svc.cluster.local:9092 \
             --set env.KAFKA_CLUSTERS_0_SCHEMAREGISTRY=http://schema-registry.schema-registry.svc.cluster.local:8081 \

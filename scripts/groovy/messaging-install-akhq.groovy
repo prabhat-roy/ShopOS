@@ -4,6 +4,7 @@ def call() {
             --namespace akhq \
             --create-namespace \
             --set fullnameOverride=akhq \
+            --set persistence.enabled=false \
             --wait --timeout 5m
     """
     sh "sed -i '/^AKHQ_/d' infra.env || true"
