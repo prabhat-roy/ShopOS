@@ -12,12 +12,8 @@ pipeline {
         choice(
             name: 'ACTION',
             choices: ['INSTALL', 'UNINSTALL'],
-            description: 'INSTALL — deploy specialist databases. UNINSTALL — remove all.'
+            description: 'INSTALL — deploy all specialist databases. UNINSTALL — remove all.'
         )
-        booleanParam(name: 'CLICKHOUSE',  defaultValue: true,  description: 'ClickHouse OLAP database')
-        booleanParam(name: 'WEAVIATE',    defaultValue: true,  description: 'Weaviate vector database')
-        booleanParam(name: 'NEO4J',       defaultValue: true,  description: 'Neo4j graph database')
-        booleanParam(name: 'TEMPORAL',    defaultValue: true,  description: 'Temporal workflow engine')
     }
 
     stages {
@@ -46,7 +42,7 @@ pipeline {
         // ── INSTALL ──────────────────────────────────────────────────────────
 
         stage('ClickHouse') {
-            when { allOf { expression { params.ACTION == 'INSTALL' }; expression { params.CLICKHOUSE } } }
+            when { expression { params.ACTION == 'INSTALL' } }
             steps {
                 catchError(buildResult: 'UNSTABLE', stageResult: 'FAILURE') {
                     sh """
@@ -70,7 +66,7 @@ pipeline {
         }
 
         stage('Weaviate') {
-            when { allOf { expression { params.ACTION == 'INSTALL' }; expression { params.WEAVIATE } } }
+            when { expression { params.ACTION == 'INSTALL' } }
             steps {
                 catchError(buildResult: 'UNSTABLE', stageResult: 'FAILURE') {
                     sh """
@@ -92,7 +88,7 @@ pipeline {
         }
 
         stage('Neo4j') {
-            when { allOf { expression { params.ACTION == 'INSTALL' }; expression { params.NEO4J } } }
+            when { expression { params.ACTION == 'INSTALL' } }
             steps {
                 catchError(buildResult: 'UNSTABLE', stageResult: 'FAILURE') {
                     sh """
@@ -113,7 +109,7 @@ pipeline {
         }
 
         stage('Temporal') {
-            when { allOf { expression { params.ACTION == 'INSTALL' }; expression { params.TEMPORAL } } }
+            when { expression { params.ACTION == 'INSTALL' } }
             steps {
                 catchError(buildResult: 'UNSTABLE', stageResult: 'FAILURE') {
                     sh """
@@ -165,7 +161,7 @@ pipeline {
         // ── UNINSTALL ────────────────────────────────────────────────────────
 
         stage('Uninstall Temporal') {
-            when { allOf { expression { params.ACTION == 'UNINSTALL' }; expression { params.TEMPORAL } } }
+            when { expression { params.ACTION == 'UNINSTALL' } }
             steps {
                 sh """
                     helm uninstall temporal -n temporal-system --ignore-not-found || true
@@ -176,7 +172,7 @@ pipeline {
         }
 
         stage('Uninstall Neo4j') {
-            when { allOf { expression { params.ACTION == 'UNINSTALL' }; expression { params.NEO4J } } }
+            when { expression { params.ACTION == 'UNINSTALL' } }
             steps {
                 sh """
                     helm uninstall neo4j -n databases --ignore-not-found || true
@@ -186,7 +182,7 @@ pipeline {
         }
 
         stage('Uninstall Weaviate') {
-            when { allOf { expression { params.ACTION == 'UNINSTALL' }; expression { params.WEAVIATE } } }
+            when { expression { params.ACTION == 'UNINSTALL' } }
             steps {
                 sh """
                     helm uninstall weaviate -n databases --ignore-not-found || true
@@ -196,7 +192,7 @@ pipeline {
         }
 
         stage('Uninstall ClickHouse') {
-            when { allOf { expression { params.ACTION == 'UNINSTALL' }; expression { params.CLICKHOUSE } } }
+            when { expression { params.ACTION == 'UNINSTALL' } }
             steps {
                 sh """
                     helm uninstall clickhouse -n databases --ignore-not-found || true
