@@ -1,7 +1,7 @@
 def call() {
     sh """
         echo "Configuring Kafka Connect via kubectl exec..."
-        kubectl exec -n kafka-connect deploy/kafka-connect-kafka-connect -- \
+        kubectl exec -n kafka-connect deploy/kafka-connect -- \
             curl -sf -X POST http://localhost:8083/connectors \
             -H 'Content-Type: application/json' \
             -d '{
