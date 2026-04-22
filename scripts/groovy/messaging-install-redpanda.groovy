@@ -4,7 +4,7 @@ def call() {
             --namespace redpanda \
             --create-namespace \
             --set fullnameOverride=redpanda \
-            --wait --timeout 5m
+            --wait --timeout 15m
     """
     sh "sed -i '/^REDPANDA_/d' infra.env || true"
     sh "echo 'REDPANDA_URL=redpanda.redpanda.svc.cluster.local:9092' >> infra.env"

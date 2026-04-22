@@ -27,6 +27,13 @@ spec:
           command: ['sh', '-c', 'mkdir -p {{ .Values.persistence.mountPath }} && rm -rf {{ .Values.persistence.mountPath }}/lost+found && chmod 777 {{ .Values.persistence.mountPath }}']
           securityContext:
             runAsUser: 0
+          resources:
+            requests:
+              cpu: 100m
+              memory: 64Mi
+            limits:
+              cpu: 200m
+              memory: 128Mi
           volumeMounts:
             - name: data
               mountPath: {{ .Values.persistence.mountPath }}
