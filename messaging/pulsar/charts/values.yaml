@@ -2,7 +2,7 @@ replicaCount: 1
 
 image:
   repository: apachepulsar/pulsar
-  tag: "3.3.0"
+  tag: "4.0.9"
   pullPolicy: IfNotPresent
 
 service:
@@ -12,10 +12,10 @@ service:
 
 persistence:
   enabled: true
-  storageClass: ""
-  size: 10Gi
+  storageClass: "standard-rwo"
+  size: 20Gi
   accessMode: ReadWriteOnce
-  mountPath: /var/lib/data
+  mountPath: /pulsar/data
 
 resources:
   requests:

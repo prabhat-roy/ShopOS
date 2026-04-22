@@ -2,7 +2,7 @@ replicaCount: 1
 
 image:
   repository: confluentinc/cp-kafka-connect
-  tag: "7.7.1"
+  tag: "7.8.0"
   pullPolicy: IfNotPresent
 
 service:
@@ -11,19 +11,19 @@ service:
   targetPort: 8083
 
 persistence:
-  enabled: true
-  storageClass: ""
-  size: 10Gi
+  enabled: false
+  storageClass: "standard-rwo"
+  size: 5Gi
   accessMode: ReadWriteOnce
   mountPath: /var/lib/data
 
 resources:
   requests:
-    cpu: 200m
-    memory: 512Mi
+    cpu: 500m
+    memory: 1Gi
   limits:
     cpu: "2"
-    memory: 2Gi
+    memory: 4Gi
 
 env: {}
 

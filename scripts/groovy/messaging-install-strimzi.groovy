@@ -5,6 +5,7 @@ def call() {
         helm upgrade --install strimzi strimzi/strimzi-kafka-operator \
             --namespace strimzi \
             --create-namespace \
+            --version 0.51.0 \
             --set watchNamespaces={kafka} \
             --wait --timeout 5m
     """

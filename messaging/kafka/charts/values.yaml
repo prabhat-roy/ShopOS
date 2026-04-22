@@ -2,7 +2,7 @@ replicaCount: 1
 
 image:
   repository: confluentinc/cp-kafka
-  tag: "7.7.1"
+  tag: "7.8.0"
   pullPolicy: IfNotPresent
 
 service:
@@ -12,8 +12,8 @@ service:
 
 persistence:
   enabled: true
-  storageClass: ""
-  size: 10Gi
+  storageClass: "standard-rwo"
+  size: 20Gi
   accessMode: ReadWriteOnce
   mountPath: /var/lib/data
 

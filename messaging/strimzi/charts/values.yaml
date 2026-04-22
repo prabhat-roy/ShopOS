@@ -2,7 +2,7 @@ replicaCount: 1
 
 image:
   repository: quay.io/strimzi/operator
-  tag: "0.43.0"
+  tag: "0.51.0"
   pullPolicy: IfNotPresent
 
 service:
@@ -11,19 +11,19 @@ service:
   targetPort: 8080
 
 persistence:
-  enabled: true
-  storageClass: ""
-  size: 10Gi
+  enabled: false
+  storageClass: "standard-rwo"
+  size: 5Gi
   accessMode: ReadWriteOnce
   mountPath: /var/lib/data
 
 resources:
   requests:
     cpu: 200m
-    memory: 512Mi
+    memory: 384Mi
   limits:
-    cpu: "2"
-    memory: 2Gi
+    cpu: "1"
+    memory: 768Mi
 
 env: {}
 

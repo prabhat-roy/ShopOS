@@ -2,7 +2,7 @@ replicaCount: 1
 
 image:
   repository: docker.redpanda.com/redpandadata/redpanda
-  tag: "v24.2.7"
+  tag: "v26.1.1"
   pullPolicy: IfNotPresent
 
 service:
@@ -12,18 +12,18 @@ service:
 
 persistence:
   enabled: true
-  storageClass: ""
-  size: 10Gi
+  storageClass: "standard-rwo"
+  size: 20Gi
   accessMode: ReadWriteOnce
-  mountPath: /var/lib/data
+  mountPath: /var/lib/redpanda/data
 
 resources:
   requests:
-    cpu: 200m
-    memory: 512Mi
+    cpu: 500m
+    memory: 1Gi
   limits:
     cpu: "2"
-    memory: 2Gi
+    memory: 4Gi
 
 env: {}
 

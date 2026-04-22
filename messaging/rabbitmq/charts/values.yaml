@@ -2,7 +2,7 @@ replicaCount: 1
 
 image:
   repository: rabbitmq
-  tag: "3.13-management"
+  tag: "4.0-management"
   pullPolicy: IfNotPresent
 
 service:
@@ -12,14 +12,14 @@ service:
 
 persistence:
   enabled: true
-  storageClass: ""
+  storageClass: "standard-rwo"
   size: 10Gi
   accessMode: ReadWriteOnce
-  mountPath: /var/lib/data
+  mountPath: /var/lib/rabbitmq
 
 resources:
   requests:
-    cpu: 200m
+    cpu: 300m
     memory: 512Mi
   limits:
     cpu: "2"

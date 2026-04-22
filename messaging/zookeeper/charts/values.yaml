@@ -2,7 +2,7 @@ replicaCount: 1
 
 image:
   repository: confluentinc/cp-zookeeper
-  tag: "7.7.1"
+  tag: "7.8.0"
   pullPolicy: IfNotPresent
 
 service:
@@ -12,7 +12,7 @@ service:
 
 persistence:
   enabled: true
-  storageClass: ""
+  storageClass: "standard-rwo"
   size: 10Gi
   accessMode: ReadWriteOnce
   mountPath: /var/lib/data

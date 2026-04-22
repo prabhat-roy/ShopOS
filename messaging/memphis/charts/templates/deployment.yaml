@@ -35,7 +35,7 @@ spec:
           command: ['sh', '-c', '(grep -v "^::1.*localhost" /etc/hosts; echo "127.0.0.1 localhost") > /tmp/hosts.new && cat /tmp/hosts.new > /etc/hosts && echo "Fixed /etc/hosts:" && cat /etc/hosts']
       containers:
         - name: memphis-metadata
-          image: postgres:15-alpine
+          image: postgres:17-alpine
           env:
             - name: POSTGRES_USER
               value: memphis

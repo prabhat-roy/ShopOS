@@ -2,7 +2,7 @@ replicaCount: 1
 
 image:
   repository: nats
-  tag: "2.10-alpine"
+  tag: "2.12.7-alpine"
   pullPolicy: IfNotPresent
 
 service:
@@ -12,7 +12,7 @@ service:
 
 persistence:
   enabled: true
-  storageClass: ""
+  storageClass: "standard-rwo"
   size: 10Gi
   accessMode: ReadWriteOnce
   mountPath: /var/lib/data
@@ -20,10 +20,10 @@ persistence:
 resources:
   requests:
     cpu: 200m
-    memory: 512Mi
+    memory: 256Mi
   limits:
     cpu: "2"
-    memory: 2Gi
+    memory: 1Gi
 
 env: {}
 

@@ -5,7 +5,7 @@ def call() {
         if [ "\$STATUS" = "pending-install" ] || [ "\$STATUS" = "pending-upgrade" ] || [ "\$STATUS" = "failed" ]; then
             echo "Clearing stuck helm release: \$STATUS"
             helm uninstall pulsar -n pulsar 2>/dev/null || true
-            kubectl delete pvc pulsar-pvc -n pulsar 2>/dev/null || true
+            kubectl delete pvc data-pulsar-0 -n pulsar 2>/dev/null || true
             kubectl delete pod --all -n pulsar --force 2>/dev/null || true
         fi
 

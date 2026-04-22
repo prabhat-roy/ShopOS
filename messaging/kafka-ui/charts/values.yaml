@@ -2,7 +2,7 @@ replicaCount: 1
 
 image:
   repository: ghcr.io/kafbat/kafka-ui
-  tag: "latest"
+  tag: "v1.5.0"
   pullPolicy: IfNotPresent
 
 service:
@@ -11,9 +11,9 @@ service:
   targetPort: 8080
 
 persistence:
-  enabled: true
-  storageClass: ""
-  size: 10Gi
+  enabled: false
+  storageClass: "standard-rwo"
+  size: 5Gi
   accessMode: ReadWriteOnce
   mountPath: /var/lib/data
 

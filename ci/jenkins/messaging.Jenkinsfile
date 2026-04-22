@@ -193,72 +193,150 @@ pipeline {
 
         stage('Uninstall AKHQ') {
             when { expression { params.ACTION == 'UNINSTALL' } }
-            steps { sh 'helm uninstall akhq -n akhq --ignore-not-found || true' }
+            steps {
+                sh '''
+                    helm uninstall akhq -n akhq --ignore-not-found || true
+                    kubectl delete namespace akhq --ignore-not-found || true
+                '''
+            }
         }
 
         stage('Uninstall Kafka UI') {
             when { expression { params.ACTION == 'UNINSTALL' } }
-            steps { sh 'helm uninstall kafka-ui -n kafka-ui --ignore-not-found || true' }
+            steps {
+                sh '''
+                    helm uninstall kafka-ui -n kafka-ui --ignore-not-found || true
+                    kubectl delete namespace kafka-ui --ignore-not-found || true
+                '''
+            }
         }
 
         stage('Uninstall Memphis') {
             when { expression { params.ACTION == 'UNINSTALL' } }
-            steps { sh 'helm uninstall memphis -n memphis --ignore-not-found || true' }
+            steps {
+                sh '''
+                    helm uninstall memphis -n memphis --ignore-not-found || true
+                    kubectl delete pvc --all -n memphis --ignore-not-found || true
+                    kubectl delete namespace memphis --ignore-not-found || true
+                '''
+            }
         }
 
         stage('Uninstall Redpanda') {
             when { expression { params.ACTION == 'UNINSTALL' } }
-            steps { sh 'helm uninstall redpanda -n redpanda --ignore-not-found || true' }
+            steps {
+                sh '''
+                    helm uninstall redpanda -n redpanda --ignore-not-found || true
+                    kubectl delete pvc --all -n redpanda --ignore-not-found || true
+                    kubectl delete namespace redpanda --ignore-not-found || true
+                '''
+            }
         }
 
         stage('Uninstall ActiveMQ Artemis') {
             when { expression { params.ACTION == 'UNINSTALL' } }
-            steps { sh 'helm uninstall activemq-artemis -n activemq-artemis --ignore-not-found || true' }
+            steps {
+                sh '''
+                    helm uninstall activemq-artemis -n activemq-artemis --ignore-not-found || true
+                    kubectl delete pvc --all -n activemq-artemis --ignore-not-found || true
+                    kubectl delete namespace activemq-artemis --ignore-not-found || true
+                '''
+            }
         }
 
         stage('Uninstall Pulsar') {
             when { expression { params.ACTION == 'UNINSTALL' } }
-            steps { sh 'helm uninstall pulsar -n pulsar --ignore-not-found || true' }
+            steps {
+                sh '''
+                    helm uninstall pulsar -n pulsar --ignore-not-found || true
+                    kubectl delete pvc --all -n pulsar --ignore-not-found || true
+                    kubectl delete namespace pulsar --ignore-not-found || true
+                '''
+            }
         }
 
         stage('Uninstall NATS') {
             when { expression { params.ACTION == 'UNINSTALL' } }
-            steps { sh 'helm uninstall nats -n nats --ignore-not-found || true' }
+            steps {
+                sh '''
+                    helm uninstall nats -n nats --ignore-not-found || true
+                    kubectl delete pvc --all -n nats --ignore-not-found || true
+                    kubectl delete namespace nats --ignore-not-found || true
+                '''
+            }
         }
 
         stage('Uninstall RabbitMQ') {
             when { expression { params.ACTION == 'UNINSTALL' } }
-            steps { sh 'helm uninstall rabbitmq -n rabbitmq --ignore-not-found || true' }
+            steps {
+                sh '''
+                    helm uninstall rabbitmq -n rabbitmq --ignore-not-found || true
+                    kubectl delete pvc --all -n rabbitmq --ignore-not-found || true
+                    kubectl delete namespace rabbitmq --ignore-not-found || true
+                '''
+            }
         }
 
         stage('Uninstall Strimzi') {
             when { expression { params.ACTION == 'UNINSTALL' } }
-            steps { sh 'helm uninstall strimzi -n strimzi --ignore-not-found || true' }
+            steps {
+                sh '''
+                    helm uninstall strimzi -n strimzi --ignore-not-found || true
+                    kubectl delete namespace strimzi --ignore-not-found || true
+                '''
+            }
         }
 
         stage('Uninstall ksqlDB') {
             when { expression { params.ACTION == 'UNINSTALL' } }
-            steps { sh 'helm uninstall ksqldb -n ksqldb --ignore-not-found || true' }
+            steps {
+                sh '''
+                    helm uninstall ksqldb -n ksqldb --ignore-not-found || true
+                    kubectl delete namespace ksqldb --ignore-not-found || true
+                '''
+            }
         }
 
         stage('Uninstall Kafka Connect') {
             when { expression { params.ACTION == 'UNINSTALL' } }
-            steps { sh 'helm uninstall kafka-connect -n kafka-connect --ignore-not-found || true' }
+            steps {
+                sh '''
+                    helm uninstall kafka-connect -n kafka-connect --ignore-not-found || true
+                    kubectl delete namespace kafka-connect --ignore-not-found || true
+                '''
+            }
         }
 
         stage('Uninstall Schema Registry') {
             when { expression { params.ACTION == 'UNINSTALL' } }
-            steps { sh 'helm uninstall schema-registry -n schema-registry --ignore-not-found || true' }
+            steps {
+                sh '''
+                    helm uninstall schema-registry -n schema-registry --ignore-not-found || true
+                    kubectl delete namespace schema-registry --ignore-not-found || true
+                '''
+            }
         }
 
         stage('Uninstall Kafka') {
             when { expression { params.ACTION == 'UNINSTALL' } }
-            steps { sh 'helm uninstall kafka -n kafka --ignore-not-found || true' }
+            steps {
+                sh '''
+                    helm uninstall kafka -n kafka --ignore-not-found || true
+                    kubectl delete pvc --all -n kafka --ignore-not-found || true
+                    kubectl delete namespace kafka --ignore-not-found || true
+                '''
+            }
         }
 
         stage('Uninstall Zookeeper') {
             when { expression { params.ACTION == 'UNINSTALL' } }
-            steps { sh 'helm uninstall zookeeper -n zookeeper --ignore-not-found || true' }
+            steps {
+                sh '''
+                    helm uninstall zookeeper -n zookeeper --ignore-not-found || true
+                    kubectl delete pvc --all -n zookeeper --ignore-not-found || true
+                    kubectl delete namespace zookeeper --ignore-not-found || true
+                '''
+            }
         }
     }
 

@@ -2,7 +2,7 @@ replicaCount: 1
 
 image:
   repository: tchiotludo/akhq
-  tag: "latest"
+  tag: "0.27.0"
   pullPolicy: IfNotPresent
 
 service:
@@ -11,9 +11,9 @@ service:
   targetPort: 8080
 
 persistence:
-  enabled: true
-  storageClass: ""
-  size: 10Gi
+  enabled: false
+  storageClass: "standard-rwo"
+  size: 5Gi
   accessMode: ReadWriteOnce
   mountPath: /var/lib/data
 

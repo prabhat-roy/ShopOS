@@ -11,15 +11,15 @@ service:
   targetPort: 6666
 
 persistence:
-  enabled: true
-  storageClass: ""
+  enabled: false
+  storageClass: "standard-rwo"
   size: 10Gi
   accessMode: ReadWriteOnce
   mountPath: /var/lib/data
 
 resources:
   requests:
-    cpu: 200m
+    cpu: 300m
     memory: 512Mi
   limits:
     cpu: "2"
