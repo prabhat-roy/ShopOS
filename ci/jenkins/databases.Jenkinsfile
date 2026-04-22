@@ -52,6 +52,8 @@ pipeline {
                 sh """
                     helm repo add bitnami https://charts.bitnami.com/bitnami || true
                     helm repo update
+                    helm uninstall clickhouse -n databases --ignore-not-found || true
+                    kubectl delete pvc -l app.kubernetes.io/name=clickhouse -n databases --ignore-not-found || true
                     helm upgrade --install clickhouse bitnami/clickhouse \
                         --version 6.2.23 \
                         --namespace databases \
