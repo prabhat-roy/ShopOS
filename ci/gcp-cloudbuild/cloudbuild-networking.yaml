@@ -1,9 +1,11 @@
-# Networking Infrastructure — GCP Cloud Build
-# Mirrors .github/workflows/networking.yml
-# Substitutions: _ENVIRONMENT, _ACTION, _CILIUM, _ISTIO, _TRAEFIK, _CONSUL, _EXTERNAL_DNS
+# GCP Cloud Build — Deploy networking stack to GKE
+# GKE-native networking: Dataplane V2 (Cilium-like), Cloud DNS, Cloud Load Balancing
+# _ACTION: INSTALL | UPGRADE | UNINSTALL
 
 substitutions:
   _ENVIRONMENT: dev
+  _CLUSTER_NAME: shopos-dev
+  _REGION: us-central1
   _ACTION: INSTALL
   _CILIUM: "false"
   _ISTIO: "true"
@@ -15,45 +17,26 @@ options:
   logging: CLOUD_LOGGING_ONLY
   machineType: E2_STANDARD_4
 
-availableSecrets:
-  secretManager:
-    - versionName: projects/$PROJECT_ID/secrets/kubeconfig-content/versions/latest
-      env: KUBECONFIG_CONTENT
-
 steps:
-  - name: alpine/helm
-    id: cilium
-    secretEnv: [KUBECONFIG_CONTENT]
-    entrypoint: bash
+  - name: gcr.io/cloud-builders/gcloud
+    id: get-credentials
     args:
-      - -c
-      - |
-        [ "$_CILIUM" = "true" ] || exit 0
-        mkdir -p ~/.kube && echo "$$KUBECONFIG_CONTENT" | base64 -d > ~/.kube/config
-        helm repo add cilium https://helm.cilium.io --force-update
-        if [ "$_ACTION" = "UNINSTALL" ]; then
-          helm uninstall cilium -n kube-system 2>/dev/null || true
-        else
-          helm upgrade --install cilium cilium/cilium \
-            --namespace kube-system \
-            --set kubeProxyReplacement=true \
-            --set hubble.relay.enabled=true \
-            --set hubble.ui.enabled=true \
-            --set loadBalancer.algorithm=maglev \
-            --wait --timeout 8m
-        fi
+      - container
+      - clusters
+      - get-credentials
+      - ${_CLUSTER_NAME}
+      - --region=${_REGION}
+      - --project=${PROJECT_ID}
 
-  - name: alpine/helm
+  - name: alpine/helm:3.16.0
     id: istio
-    secretEnv: [KUBECONFIG_CONTENT]
     entrypoint: bash
     args:
       - -c
       - |
-        [ "$_ISTIO" = "true" ] || exit 0
-        mkdir -p ~/.kube && echo "$$KUBECONFIG_CONTENT" | base64 -d > ~/.kube/config
+        [ "${_ISTIO}" = "true" ] || exit 0
         helm repo add istio https://istio-release.storage.googleapis.com/charts --force-update
-        if [ "$_ACTION" = "UNINSTALL" ]; then
+        if [ "${_ACTION}" = "UNINSTALL" ]; then
           helm uninstall istio-ingressgateway -n istio-system 2>/dev/null || true
           helm uninstall istiod -n istio-system 2>/dev/null || true
           helm uninstall istio-base -n istio-system 2>/dev/null || true
@@ -65,22 +48,27 @@ steps:
             --set telemetry.enabled=true \
             --set pilot.traceSampling=1.0 \
             --wait --timeout 5m
+          # Use GCP internal load balancer for ingress gateway
           helm upgrade --install istio-ingressgateway istio/gateway \
-            --namespace istio-system --wait --timeout 3m
+            --namespace istio-system \
+            --set service.annotations."cloud\.google\.com/load-balancer-type"=Internal \
+            --wait --timeout 3m
+          kubectl apply -f networking/istio/ 2>/dev/null || true
         fi
-    waitFor: [cilium]
+    env:
+      - CLOUDSDK_CONTAINER_CLUSTER=${_CLUSTER_NAME}
+      - CLOUDSDK_COMPUTE_REGION=${_REGION}
+    waitFor: [get-credentials]
 
-  - name: alpine/helm
+  - name: alpine/helm:3.16.0
     id: traefik
-    secretEnv: [KUBECONFIG_CONTENT]
     entrypoint: bash
     args:
       - -c
       - |
-        [ "$_TRAEFIK" = "true" ] || exit 0
-        mkdir -p ~/.kube && echo "$$KUBECONFIG_CONTENT" | base64 -d > ~/.kube/config
+        [ "${_TRAEFIK}" = "true" ] || exit 0
         helm repo add traefik https://traefik.github.io/charts --force-update
-        if [ "$_ACTION" = "UNINSTALL" ]; then
+        if [ "${_ACTION}" = "UNINSTALL" ]; then
           helm uninstall traefik -n networking 2>/dev/null || true
         else
           helm upgrade --install traefik traefik/traefik \
@@ -91,51 +79,73 @@ steps:
             --set ingressClass.isDefaultClass=true \
             --set metrics.prometheus.enabled=true \
             --wait --timeout 5m
+          kubectl apply -f networking/traefik/ 2>/dev/null || true
         fi
-    waitFor: [istio]
+    env:
+      - CLOUDSDK_CONTAINER_CLUSTER=${_CLUSTER_NAME}
+      - CLOUDSDK_COMPUTE_REGION=${_REGION}
+    waitFor: [get-credentials]
 
-  - name: alpine/helm
+  - name: alpine/helm:3.16.0
     id: consul
-    secretEnv: [KUBECONFIG_CONTENT]
     entrypoint: bash
     args:
       - -c
       - |
-        [ "$_CONSUL" = "true" ] || exit 0
-        mkdir -p ~/.kube && echo "$$KUBECONFIG_CONTENT" | base64 -d > ~/.kube/config
+        [ "${_CONSUL}" = "true" ] || exit 0
         helm repo add hashicorp https://helm.releases.hashicorp.com --force-update
-        if [ "$_ACTION" = "UNINSTALL" ]; then
+        if [ "${_ACTION}" = "UNINSTALL" ]; then
           helm uninstall consul -n consul 2>/dev/null || true
         else
           helm upgrade --install consul hashicorp/consul \
             --namespace consul --create-namespace \
+            --set global.name=consul \
             --set server.replicas=3 \
             --set server.bootstrapExpect=3 \
             --set connectInject.enabled=true \
             --set ui.enabled=true \
             --wait --timeout 8m
+          kubectl apply -f networking/consul/ 2>/dev/null || true
         fi
-    waitFor: [traefik]
+    env:
+      - CLOUDSDK_CONTAINER_CLUSTER=${_CLUSTER_NAME}
+      - CLOUDSDK_COMPUTE_REGION=${_REGION}
+    waitFor: [get-credentials]
 
-  - name: alpine/helm
+  - name: alpine/helm:3.16.0
     id: external-dns
-    secretEnv: [KUBECONFIG_CONTENT]
     entrypoint: bash
     args:
       - -c
       - |
-        [ "$_EXTERNAL_DNS" = "true" ] || exit 0
-        mkdir -p ~/.kube && echo "$$KUBECONFIG_CONTENT" | base64 -d > ~/.kube/config
+        [ "${_EXTERNAL_DNS}" = "true" ] || exit 0
         helm repo add external-dns https://kubernetes-sigs.github.io/external-dns --force-update
-        if [ "$_ACTION" = "UNINSTALL" ]; then
+        if [ "${_ACTION}" = "UNINSTALL" ]; then
           helm uninstall external-dns -n networking 2>/dev/null || true
         else
+          # ExternalDNS configured for Google Cloud DNS
           helm upgrade --install external-dns external-dns/external-dns \
             --namespace networking --create-namespace \
             --set provider=google \
-            --set google.project=$PROJECT_ID \
+            --set google.project=${PROJECT_ID} \
+            --set txtOwnerId=shopos-${_ENVIRONMENT} \
             --set policy=sync \
-            --set txtOwnerId=shopos \
             --wait --timeout 3m
         fi
-    waitFor: [consul]
+    env:
+      - CLOUDSDK_CONTAINER_CLUSTER=${_CLUSTER_NAME}
+      - CLOUDSDK_COMPUTE_REGION=${_REGION}
+    waitFor: [get-credentials]
+
+  - name: gcr.io/cloud-builders/kubectl
+    id: apply-network-policies
+    entrypoint: bash
+    args:
+      - -c
+      - |
+        [ "${_ACTION}" = "UNINSTALL" ] && exit 0
+        kubectl apply -f kubernetes/network-policies/ 2>/dev/null || true
+    env:
+      - CLOUDSDK_CONTAINER_CLUSTER=${_CLUSTER_NAME}
+      - CLOUDSDK_COMPUTE_REGION=${_REGION}
+    waitFor: [istio, traefik, consul]

@@ -1,14 +1,17 @@
-# Registry Tools — GCP Cloud Build
-# Mirrors .github/workflows/registry.yml
-# Substitutions: _ENVIRONMENT, _ACTION, _HARBOR, _NEXUS, _GITEA, _MINIO
+# GCP Cloud Build — Deploy registry tools to GKE; Artifact Registry as primary registry
+# Artifact Registry repos created via gcloud; Harbor/Nexus/Gitea on GKE
+# _ACTION: INSTALL | UPGRADE | UNINSTALL | CONFIGURE
 
 substitutions:
   _ENVIRONMENT: dev
+  _CLUSTER_NAME: shopos-dev
+  _REGION: us-central1
   _ACTION: INSTALL
   _HARBOR: "true"
   _NEXUS: "true"
   _GITEA: "true"
   _MINIO: "true"
+  _CONFIGURE_AR: "true"
 
 options:
   logging: CLOUD_LOGGING_ONLY
@@ -16,29 +19,65 @@ options:
 
 availableSecrets:
   secretManager:
-    - versionName: projects/$PROJECT_ID/secrets/kubeconfig-content/versions/latest
-      env: KUBECONFIG_CONTENT
-    - versionName: projects/$PROJECT_ID/secrets/harbor-admin-password/versions/latest
+    - versionName: projects/$PROJECT_ID/secrets/shopos-harbor-admin-password/versions/latest
       env: HARBOR_ADMIN_PASSWORD
-    - versionName: projects/$PROJECT_ID/secrets/minio-root-user/versions/latest
-      env: MINIO_ROOT_USER
-    - versionName: projects/$PROJECT_ID/secrets/minio-root-password/versions/latest
+    - versionName: projects/$PROJECT_ID/secrets/shopos-minio-root-password/versions/latest
       env: MINIO_ROOT_PASSWORD
-    - versionName: projects/$PROJECT_ID/secrets/gitea-admin-password/versions/latest
+    - versionName: projects/$PROJECT_ID/secrets/shopos-gitea-admin-password/versions/latest
       env: GITEA_ADMIN_PASSWORD
+    - versionName: projects/$PROJECT_ID/secrets/shopos-minio-root-user/versions/latest
+      env: MINIO_ROOT_USER
 
 steps:
-  - name: alpine/helm
-    id: harbor
-    secretEnv: [KUBECONFIG_CONTENT, HARBOR_ADMIN_PASSWORD]
+  - name: gcr.io/cloud-builders/gcloud
+    id: get-credentials
+    args:
+      - container
+      - clusters
+      - get-credentials
+      - ${_CLUSTER_NAME}
+      - --region=${_REGION}
+      - --project=${PROJECT_ID}
+
+  # Configure Artifact Registry — GCP-native container registry
+  - name: gcr.io/cloud-builders/gcloud
+    id: configure-artifact-registry
     entrypoint: bash
     args:
       - -c
       - |
-        [ "$_HARBOR" = "true" ] && [ "$_ACTION" != "CONFIGURE" ] || exit 0
-        mkdir -p ~/.kube && echo "$$KUBECONFIG_CONTENT" | base64 -d > ~/.kube/config
+        [ "${_CONFIGURE_AR}" = "true" ] && [ "${_ACTION}" = "CONFIGURE" ] || exit 0
+        # Ensure shopos AR repo exists
+        gcloud artifacts repositories describe shopos \
+          --repository-format=docker \
+          --location=${_REGION} \
+          --project=${PROJECT_ID} 2>/dev/null || \
+          gcloud artifacts repositories create shopos \
+            --repository-format=docker \
+            --location=${_REGION} \
+            --project=${PROJECT_ID} \
+            --description="ShopOS microservices registry"
+
+        # Apply cleanup policy: keep 20 tagged, expire untagged after 7d
+        gcloud artifacts repositories set-cleanup-policies shopos \
+          --location=${_REGION} \
+          --project=${PROJECT_ID} \
+          --policy='[{"name":"delete-untagged","action":{"type":"Delete"},"condition":{"tagState":"UNTAGGED","olderThan":"7d"}},{"name":"keep-20-tagged","action":{"type":"Keep"},"mostRecentVersions":{"keepCount":20}}]' 2>/dev/null || true
+
+        gcloud auth configure-docker ${_REGION}-docker.pkg.dev --quiet
+        echo "Artifact Registry configured for ${PROJECT_ID}/${_REGION}/shopos"
+    waitFor: [get-credentials]
+
+  - name: alpine/helm:3.16.0
+    id: harbor
+    secretEnv: [HARBOR_ADMIN_PASSWORD]
+    entrypoint: bash
+    args:
+      - -c
+      - |
+        [ "${_HARBOR}" = "true" ] && [ "${_ACTION}" != "CONFIGURE" ] || exit 0
         helm repo add harbor https://helm.goharbor.io --force-update
-        if [ "$_ACTION" = "UNINSTALL" ]; then
+        if [ "${_ACTION}" = "UNINSTALL" ]; then
           helm uninstall harbor -n registry 2>/dev/null || true
         else
           helm upgrade --install harbor harbor/harbor \
@@ -50,21 +89,78 @@ steps:
             --set harborAdminPassword="$$HARBOR_ADMIN_PASSWORD" \
             --set trivy.enabled=true \
             --set notary.enabled=true \
+            --set chartmuseum.enabled=true \
             --set persistence.enabled=true \
+            --set persistence.persistentVolumeClaim.registry.storageClass=standard-rwo \
             --wait --timeout 10m
         fi
+    env:
+      - CLOUDSDK_CONTAINER_CLUSTER=${_CLUSTER_NAME}
+      - CLOUDSDK_COMPUTE_REGION=${_REGION}
+    waitFor: [get-credentials]
 
-  - name: alpine/helm
-    id: minio
-    secretEnv: [KUBECONFIG_CONTENT, MINIO_ROOT_USER, MINIO_ROOT_PASSWORD]
+  - name: alpine/helm:3.16.0
+    id: nexus
     entrypoint: bash
     args:
       - -c
       - |
-        [ "$_MINIO" = "true" ] && [ "$_ACTION" != "CONFIGURE" ] || exit 0
-        mkdir -p ~/.kube && echo "$$KUBECONFIG_CONTENT" | base64 -d > ~/.kube/config
+        [ "${_NEXUS}" = "true" ] && [ "${_ACTION}" != "CONFIGURE" ] || exit 0
+        helm repo add sonatype https://sonatype.github.io/helm3-charts --force-update
+        if [ "${_ACTION}" = "UNINSTALL" ]; then
+          helm uninstall nexus -n registry 2>/dev/null || true
+        else
+          helm upgrade --install nexus sonatype/nexus-repository-manager \
+            --namespace registry --create-namespace \
+            --set nexus.resources.requests.memory=2Gi \
+            --set nexus.resources.limits.memory=4Gi \
+            --set persistence.enabled=true \
+            --set persistence.storageSize=50Gi \
+            --set persistence.storageClass=standard-rwo \
+            --wait --timeout 10m
+        fi
+    env:
+      - CLOUDSDK_CONTAINER_CLUSTER=${_CLUSTER_NAME}
+      - CLOUDSDK_COMPUTE_REGION=${_REGION}
+    waitFor: [get-credentials]
+
+  - name: alpine/helm:3.16.0
+    id: gitea
+    secretEnv: [GITEA_ADMIN_PASSWORD]
+    entrypoint: bash
+    args:
+      - -c
+      - |
+        [ "${_GITEA}" = "true" ] && [ "${_ACTION}" != "CONFIGURE" ] || exit 0
+        helm repo add gitea-charts https://dl.gitea.io/charts --force-update
+        if [ "${_ACTION}" = "UNINSTALL" ]; then
+          helm uninstall gitea -n registry 2>/dev/null || true
+        else
+          helm upgrade --install gitea gitea-charts/gitea \
+            --namespace registry --create-namespace \
+            --set gitea.admin.username=gitea-admin \
+            --set gitea.admin.password="$$GITEA_ADMIN_PASSWORD" \
+            --set gitea.admin.email=admin@shopos.internal \
+            --set persistence.enabled=true \
+            --set persistence.storageClass=standard-rwo \
+            --set postgresql.enabled=true \
+            --wait --timeout 8m
+        fi
+    env:
+      - CLOUDSDK_CONTAINER_CLUSTER=${_CLUSTER_NAME}
+      - CLOUDSDK_COMPUTE_REGION=${_REGION}
+    waitFor: [get-credentials]
+
+  - name: alpine/helm:3.16.0
+    id: minio
+    secretEnv: [MINIO_ROOT_USER, MINIO_ROOT_PASSWORD]
+    entrypoint: bash
+    args:
+      - -c
+      - |
+        [ "${_MINIO}" = "true" ] && [ "${_ACTION}" != "CONFIGURE" ] || exit 0
         helm repo add minio https://charts.min.io --force-update
-        if [ "$_ACTION" = "UNINSTALL" ]; then
+        if [ "${_ACTION}" = "UNINSTALL" ]; then
           helm uninstall minio -n registry 2>/dev/null || true
         else
           helm upgrade --install minio minio/minio \
@@ -74,76 +170,10 @@ steps:
             --set replicas=4 \
             --set persistence.enabled=true \
             --set persistence.size=100Gi \
+            --set persistence.storageClass=standard-rwo \
             --wait --timeout 8m
         fi
-    waitFor: [harbor]
-
-  - name: alpine/helm
-    id: gitea
-    secretEnv: [KUBECONFIG_CONTENT, GITEA_ADMIN_PASSWORD]
-    entrypoint: bash
-    args:
-      - -c
-      - |
-        [ "$_GITEA" = "true" ] && [ "$_ACTION" != "CONFIGURE" ] || exit 0
-        mkdir -p ~/.kube && echo "$$KUBECONFIG_CONTENT" | base64 -d > ~/.kube/config
-        helm repo add gitea-charts https://dl.gitea.io/charts --force-update
-        if [ "$_ACTION" = "UNINSTALL" ]; then
-          helm uninstall gitea -n registry 2>/dev/null || true
-        else
-          helm upgrade --install gitea gitea-charts/gitea \
-            --namespace registry --create-namespace \
-            --set gitea.admin.username=gitea-admin \
-            --set gitea.admin.password="$$GITEA_ADMIN_PASSWORD" \
-            --set gitea.admin.email=admin@shopos.internal \
-            --set persistence.enabled=true \
-            --set postgresql.enabled=true \
-            --wait --timeout 8m
-        fi
-    waitFor: [minio]
-
-  # Configure: MinIO buckets + Harbor projects
-  - name: gcr.io/cloud-builders/curl
-    id: configure-minio
-    secretEnv: [KUBECONFIG_CONTENT, MINIO_ROOT_USER, MINIO_ROOT_PASSWORD]
-    entrypoint: bash
-    args:
-      - -c
-      - |
-        [ "$_ACTION" = "CONFIGURE" ] || exit 0
-        # Install kubectl and mc
-        curl -fsSL "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl" -o /usr/local/bin/kubectl && chmod +x /usr/local/bin/kubectl
-        curl -fsSL https://dl.min.io/client/mc/release/linux-amd64/mc -o /usr/local/bin/mc && chmod +x /usr/local/bin/mc
-
-        mkdir -p ~/.kube && echo "$$KUBECONFIG_CONTENT" | base64 -d > ~/.kube/config
-        kubectl port-forward svc/minio 9000:9000 -n registry &
-        PF_PID=$!; sleep 5
-
-        mc alias set shopos http://localhost:9000 "$$MINIO_ROOT_USER" "$$MINIO_ROOT_PASSWORD"
-        for BUCKET in harbor-registry velero-backups loki-chunks tempo-traces thanos mlflow artifacts backups media-assets; do
-          mc mb --ignore-existing "shopos/$BUCKET" || true
-        done
-        kill $PF_PID 2>/dev/null || true
-    waitFor: [gitea]
-
-  - name: gcr.io/cloud-builders/curl
-    id: configure-harbor
-    secretEnv: [KUBECONFIG_CONTENT, HARBOR_ADMIN_PASSWORD]
-    entrypoint: bash
-    args:
-      - -c
-      - |
-        [ "$_ACTION" = "CONFIGURE" ] || exit 0
-        curl -fsSL "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl" -o /usr/local/bin/kubectl && chmod +x /usr/local/bin/kubectl
-
-        mkdir -p ~/.kube && echo "$$KUBECONFIG_CONTENT" | base64 -d > ~/.kube/config
-        kubectl port-forward svc/harbor-core 18080:80 -n registry &
-        PF_PID=$!; sleep 5
-
-        for PROJECT in platform identity catalog commerce supply-chain financial customer-experience; do
-          curl -sf -u "admin:$$HARBOR_ADMIN_PASSWORD" -X POST "http://localhost:18080/api/v2.0/projects" \
-            -H "Content-Type: application/json" \
-            -d "{\"project_name\":\"$PROJECT\",\"public\":false,\"metadata\":{\"auto_scan\":\"true\",\"prevent_vul\":\"true\",\"severity\":\"high\"}}" || true
-        done
-        kill $PF_PID 2>/dev/null || true
-    waitFor: [configure-minio]
+    env:
+      - CLOUDSDK_CONTAINER_CLUSTER=${_CLUSTER_NAME}
+      - CLOUDSDK_COMPUTE_REGION=${_REGION}
+    waitFor: [get-credentials]

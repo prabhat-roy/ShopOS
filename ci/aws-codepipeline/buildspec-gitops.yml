@@ -1,13 +1,20 @@
 version: 0.2
 
-# GitOps Tools — CodeBuild buildspec
-# Mirrors .github/workflows/gitops.yml
-# Parameters via environment variables:
-#   ENVIRONMENT, ACTION (INSTALL|UPGRADE|UNINSTALL|CONFIGURE)
-#   ARGOCD, ARGO_ROLLOUTS, ARGO_WORKFLOWS, ARGO_EVENTS, FLUXCD,
-#   SEALED_SECRETS, EXTERNAL_SECRETS, KEDA, VELERO
+# AWS CodePipeline — Deploy GitOps stack to EKS
+# ArgoCD configured with EKS kubeconfig via aws eks update-kubeconfig
+# Velero backed by S3; External Secrets pulls from AWS Parameter Store
+# ACTION: INSTALL | UPGRADE | UNINSTALL | CONFIGURE
 
 env:
+  parameter-store:
+    EKS_CLUSTER_NAME: /shopos/eks/cluster_name
+    AWS_REGION: /shopos/aws/region
+    AWS_ACCOUNT_ID: /shopos/aws/account_id
+    VELERO_S3_BUCKET: /shopos/velero/s3-bucket
+    MINIO_ACCESS_KEY: /shopos/minio/access-key
+  secrets-manager:
+    ARGOCD_ADMIN_PASSWORD_HASH: shopos/argocd:admin-password-hash
+    MINIO_SECRET_KEY: shopos/minio:secret-key
   variables:
     ENVIRONMENT: dev
     ACTION: INSTALL
@@ -16,37 +23,28 @@ env:
     ARGO_WORKFLOWS: "true"
     ARGO_EVENTS: "true"
     FLUXCD: "false"
-    SEALED_SECRETS: "true"
+    SEALED_SECRETS: "false"
     EXTERNAL_SECRETS: "true"
     KEDA: "true"
     VELERO: "true"
-  parameter-store:
-    MINIO_ENDPOINT: /shopos/minio/endpoint
-    MINIO_ACCESS_KEY: /shopos/minio/access-key
-  secrets-manager:
-    KUBECONFIG_CONTENT: shopos/kubeconfig:content
-    ARGOCD_ADMIN_PASSWORD_HASH: shopos/argocd:admin-password-hash
-    MINIO_SECRET_KEY: shopos/minio:secret-key
 
 phases:
   install:
     commands:
-      - curl -fsSL "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl" -o /usr/local/bin/kubectl && chmod +x /usr/local/bin/kubectl
+      - curl -fsSL "https://dl.k8s.io/release/$(curl -Ls https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl" -o /usr/local/bin/kubectl && chmod +x /usr/local/bin/kubectl
       - curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
 
   pre_build:
     commands:
-      - mkdir -p ~/.kube
-      - echo "$KUBECONFIG_CONTENT" | base64 -d > ~/.kube/config
-      - echo "GitOps $ACTION on $ENVIRONMENT"
+      - aws eks update-kubeconfig --region ${AWS_REGION} --name ${EKS_CLUSTER_NAME}
+      - echo "GitOps ${ACTION} on ${ENVIRONMENT}"
 
   build:
     commands:
-      # ArgoCD
       - |
-        if [ "$ARGOCD" = "true" ] && [ "$ACTION" != "CONFIGURE" ]; then
+        if [ "${ARGOCD}" = "true" ] && [ "${ACTION}" != "CONFIGURE" ]; then
           helm repo add argo https://argoproj.github.io/argo-helm --force-update
-          if [ "$ACTION" = "UNINSTALL" ]; then
+          if [ "${ACTION}" = "UNINSTALL" ]; then
             helm uninstall argocd -n argocd 2>/dev/null || true
           else
             helm upgrade --install argocd argo/argo-cd \
@@ -56,16 +54,15 @@ phases:
               --set controller.replicas=1 \
               --set repoServer.replicas=2 \
               --set applicationSet.replicas=2 \
-              --set configs.secret.argocdServerAdminPassword="$ARGOCD_ADMIN_PASSWORD_HASH" \
+              --set configs.secret.argocdServerAdminPassword="${ARGOCD_ADMIN_PASSWORD_HASH}" \
               --wait --timeout 10m
           fi
         fi
 
-      # Argo Rollouts
       - |
-        if [ "$ARGO_ROLLOUTS" = "true" ] && [ "$ACTION" != "CONFIGURE" ]; then
+        if [ "${ARGO_ROLLOUTS}" = "true" ] && [ "${ACTION}" != "CONFIGURE" ]; then
           helm repo add argo https://argoproj.github.io/argo-helm --force-update
-          if [ "$ACTION" = "UNINSTALL" ]; then
+          if [ "${ACTION}" = "UNINSTALL" ]; then
             helm uninstall argo-rollouts -n argo-rollouts 2>/dev/null || true
           else
             helm upgrade --install argo-rollouts argo/argo-rollouts \
@@ -75,11 +72,10 @@ phases:
           fi
         fi
 
-      # Argo Workflows
       - |
-        if [ "$ARGO_WORKFLOWS" = "true" ] && [ "$ACTION" != "CONFIGURE" ]; then
+        if [ "${ARGO_WORKFLOWS}" = "true" ] && [ "${ACTION}" != "CONFIGURE" ]; then
           helm repo add argo https://argoproj.github.io/argo-helm --force-update
-          if [ "$ACTION" = "UNINSTALL" ]; then
+          if [ "${ACTION}" = "UNINSTALL" ]; then
             helm uninstall argo-workflows -n argo 2>/dev/null || true
           else
             helm upgrade --install argo-workflows argo/argo-workflows \
@@ -90,11 +86,10 @@ phases:
           fi
         fi
 
-      # Argo Events
       - |
-        if [ "$ARGO_EVENTS" = "true" ] && [ "$ACTION" != "CONFIGURE" ]; then
+        if [ "${ARGO_EVENTS}" = "true" ] && [ "${ACTION}" != "CONFIGURE" ]; then
           helm repo add argo https://argoproj.github.io/argo-helm --force-update
-          if [ "$ACTION" = "UNINSTALL" ]; then
+          if [ "${ACTION}" = "UNINSTALL" ]; then
             helm uninstall argo-events -n argo-events 2>/dev/null || true
           else
             helm upgrade --install argo-events argo/argo-events \
@@ -103,48 +98,40 @@ phases:
           fi
         fi
 
-      # Flux CD
+      # External Secrets Operator — backed by AWS Parameter Store + Secrets Manager
       - |
-        if [ "$FLUXCD" = "true" ] && [ "$ACTION" != "CONFIGURE" ]; then
-          curl -s https://fluxcd.io/install.sh | bash
-          if [ "$ACTION" = "UNINSTALL" ]; then
-            flux uninstall --silent 2>/dev/null || true
-          else
-            flux install --namespace=flux-system
-            kubectl apply -f gitops/flux/ 2>/dev/null || true
-          fi
-        fi
-
-      # Sealed Secrets
-      - |
-        if [ "$SEALED_SECRETS" = "true" ] && [ "$ACTION" != "CONFIGURE" ]; then
-          helm repo add sealed-secrets https://bitnami-labs.github.io/sealed-secrets --force-update
-          if [ "$ACTION" = "UNINSTALL" ]; then
-            helm uninstall sealed-secrets -n kube-system 2>/dev/null || true
-          else
-            helm upgrade --install sealed-secrets sealed-secrets/sealed-secrets \
-              --namespace kube-system --wait --timeout 3m
-          fi
-        fi
-
-      # External Secrets Operator
-      - |
-        if [ "$EXTERNAL_SECRETS" = "true" ] && [ "$ACTION" != "CONFIGURE" ]; then
+        if [ "${EXTERNAL_SECRETS}" = "true" ] && [ "${ACTION}" != "CONFIGURE" ]; then
           helm repo add external-secrets https://charts.external-secrets.io --force-update
-          if [ "$ACTION" = "UNINSTALL" ]; then
+          if [ "${ACTION}" = "UNINSTALL" ]; then
             helm uninstall external-secrets -n external-secrets 2>/dev/null || true
           else
             helm upgrade --install external-secrets external-secrets/external-secrets \
               --namespace external-secrets --create-namespace \
               --set installCRDs=true --wait --timeout 5m
+            # Bootstrap ClusterSecretStore for AWS SSM
+            kubectl apply -f - <<EOF
+apiVersion: external-secrets.io/v1beta1
+kind: ClusterSecretStore
+metadata:
+  name: aws-parameter-store
+spec:
+  provider:
+    aws:
+      service: ParameterStore
+      region: ${AWS_REGION}
+      auth:
+        jwt:
+          serviceAccountRef:
+            name: external-secrets
+            namespace: external-secrets
+EOF
           fi
         fi
 
-      # KEDA
       - |
-        if [ "$KEDA" = "true" ] && [ "$ACTION" != "CONFIGURE" ]; then
+        if [ "${KEDA}" = "true" ] && [ "${ACTION}" != "CONFIGURE" ]; then
           helm repo add kedacore https://kedacore.github.io/charts --force-update
-          if [ "$ACTION" = "UNINSTALL" ]; then
+          if [ "${ACTION}" = "UNINSTALL" ]; then
             helm uninstall keda -n keda 2>/dev/null || true
           else
             helm upgrade --install keda kedacore/keda \
@@ -154,22 +141,25 @@ phases:
           fi
         fi
 
-      # Velero
+      # Velero — backed by S3
       - |
-        if [ "$VELERO" = "true" ] && [ "$ACTION" != "CONFIGURE" ]; then
+        if [ "${VELERO}" = "true" ] && [ "${ACTION}" != "CONFIGURE" ]; then
           helm repo add vmware-tanzu https://vmware-tanzu.github.io/helm-charts --force-update
-          if [ "$ACTION" = "UNINSTALL" ]; then
+          if [ "${ACTION}" = "UNINSTALL" ]; then
             helm uninstall velero -n velero 2>/dev/null || true
           else
             helm upgrade --install velero vmware-tanzu/velero \
               --namespace velero --create-namespace \
               --set configuration.backupStorageLocation[0].name=default \
               --set configuration.backupStorageLocation[0].provider=aws \
-              --set configuration.backupStorageLocation[0].bucket=velero-backups \
-              --set configuration.backupStorageLocation[0].config.region=minio \
-              --set configuration.backupStorageLocation[0].config.s3ForcePathStyle=true \
-              --set "configuration.backupStorageLocation[0].config.s3Url=$MINIO_ENDPOINT" \
-              --set credentials.secretContents.cloud="[default]\naws_access_key_id=$MINIO_ACCESS_KEY\naws_secret_access_key=$MINIO_SECRET_KEY" \
+              --set configuration.backupStorageLocation[0].bucket=${VELERO_S3_BUCKET} \
+              --set configuration.backupStorageLocation[0].config.region=${AWS_REGION} \
+              --set configuration.volumeSnapshotLocation[0].provider=aws \
+              --set configuration.volumeSnapshotLocation[0].config.region=${AWS_REGION} \
+              --set initContainers[0].name=velero-plugin-for-aws \
+              --set initContainers[0].image=velero/velero-plugin-for-aws:v1.10.0 \
+              --set initContainers[0].volumeMounts[0].mountPath=/target \
+              --set initContainers[0].volumeMounts[0].name=plugins \
               --wait --timeout 5m
             kubectl apply -f kubernetes/velero/ 2>/dev/null || true
           fi
@@ -177,14 +167,19 @@ phases:
 
       # CONFIGURE: Bootstrap ArgoCD App-of-Apps
       - |
-        if [ "$ACTION" = "CONFIGURE" ]; then
+        if [ "${ACTION}" = "CONFIGURE" ]; then
           kubectl wait --for=condition=available deployment/argocd-server \
-            -n argocd --timeout=120s
+            -n argocd --timeout=180s
           kubectl apply -f gitops/argocd/app-of-apps.yaml
           kubectl apply -f gitops/argocd/applicationsets/ 2>/dev/null || true
-          echo "ArgoCD App-of-Apps bootstrapped for $ENVIRONMENT"
+          echo "ArgoCD App-of-Apps bootstrapped for ${ENVIRONMENT}"
+          # Store ArgoCD server URL in Parameter Store
+          ARGOCD_URL=$(kubectl get svc argocd-server -n argocd -o jsonpath='{.status.loadBalancer.ingress[0].hostname}' 2>/dev/null || echo "pending")
+          aws ssm put-parameter --name /shopos/argocd/url \
+            --value "https://${ARGOCD_URL}" --type String --overwrite || true
         fi
 
   post_build:
     commands:
-      - echo "GitOps $ACTION complete on $ENVIRONMENT"
+      - echo "GitOps ${ACTION} complete on ${ENVIRONMENT}"
+      - kubectl get pods -n argocd 2>/dev/null | head -10 || true

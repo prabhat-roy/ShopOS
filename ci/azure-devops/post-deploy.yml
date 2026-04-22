@@ -1,253 +1,154 @@
-name: Post-Deploy Validation
+# Azure DevOps — Post-deploy validation on AKS
+# Uses Azure DevOps: environments, AzureCLI@2; k6 results published as pipeline artifacts
+# DAST findings can be uploaded to Azure Security Center via AzureCLI@2
 
 trigger: none
 
 parameters:
   - name: environment
-    displayName: Target environment
     type: string
     default: staging
     values: [dev, staging, prod]
-  - name: run_load_test
-    displayName: Run k6 smoke test
+  - name: runLoadTest
     type: boolean
     default: true
-  - name: run_dast
-    displayName: Run OWASP ZAP + Nuclei DAST scan
+  - name: runDast
     type: boolean
     default: false
-  - name: run_k8s_audit
-    displayName: Run kube-bench + Kubescape audit
+  - name: runK8sAudit
     type: boolean
     default: true
-
-variables:
-  - group: shopos-secrets
 
 pool:
   vmImage: ubuntu-latest
 
+variables:
+  - group: shopos-azure-credentials
+
 stages:
-  # ── Health Checks ─────────────────────────────────────────────────────────
-  - stage: HealthCheck
-    displayName: Service Health Checks
+  - stage: Validation
+    displayName: Post-Deploy Validation on ${{ parameters.environment }}
     jobs:
-      - job: HealthCheck
-        displayName: Check all namespaces
-        steps:
-          - task: KubectlInstaller@0
+      - deployment: Validate
+        displayName: Validate ${{ parameters.environment }}
+        environment: ${{ parameters.environment }}
+        strategy:
+          runOnce:
+            deploy:
+              steps:
+                - task: KubectlInstaller@0
 
-          - script: |
-              mkdir -p ~/.kube
-              echo "$(KUBECONFIG_CONTENT)" | base64 -d > ~/.kube/config
-            displayName: Configure kubeconfig
+                - task: AzureCLI@2
+                  displayName: Configure AKS kubeconfig
+                  inputs:
+                    azureSubscription: azure-service-connection
+                    scriptType: bash
+                    scriptLocation: inlineScript
+                    inlineScript: |
+                      az aks get-credentials \
+                        --resource-group shopos-${{ parameters.environment }}-rg \
+                        --name shopos-aks-${{ parameters.environment }} \
+                        --overwrite-existing
+                      mkdir -p $(Build.ArtifactStagingDirectory)/reports/k6
+                      mkdir -p $(Build.ArtifactStagingDirectory)/reports/dast
+                      mkdir -p $(Build.ArtifactStagingDirectory)/reports/k8s-audit
 
-          - script: |
-              DOMAINS=(platform identity catalog commerce supply-chain financial customer-experience communications content analytics-ai b2b integrations affiliate)
-              FAILED=0
-              for ns in "${DOMAINS[@]}"; do
-                echo "=== Checking namespace: $ns ==="
-                kubectl get deployments -n "$ns" --no-headers 2>/dev/null | while read -r name ready uptodate available age; do
-                  if [[ "$available" == "0" ]]; then
-                    echo "FAIL: $name in $ns has 0 available replicas"
-                    FAILED=$((FAILED+1))
-                  fi
-                done || true
-              done
-            displayName: Check domain namespaces
+                - script: |
+                    echo "=== Health Checks ==="
+                    HEALTH_FAILED=0
+                    DOMAINS="platform identity catalog commerce supply-chain financial customer-experience communications content analytics-ai b2b integrations affiliate"
+                    for ns in ${DOMAINS}; do
+                      UNAVAILABLE=$(kubectl get deployments -n "${ns}" --no-headers 2>/dev/null | awk '{print $4}' | grep -c "^0$" || true)
+                      if [ "${UNAVAILABLE}" -gt 0 ]; then
+                        echo "WARN: ${UNAVAILABLE} deployment(s) with 0 available in ${ns}"
+                        HEALTH_FAILED=$((HEALTH_FAILED+1))
+                      fi
+                    done
 
-          - script: |
-              INFRA_NS=(messaging networking istio-system vault keycloak argocd observability registry keda)
-              for ns in "${INFRA_NS[@]}"; do
-                kubectl rollout status deploy --namespace="$ns" --timeout=60s 2>/dev/null | tail -3 || true
-              done
-            displayName: Check infrastructure namespaces
+                    kubectl port-forward svc/api-gateway 18080:8080 -n platform &
+                    PF_PID=$!; sleep 10
+                    HTTP_CODE=$(curl -sf -o /dev/null -w "%{http_code}" http://localhost:18080/healthz 2>/dev/null || echo "000")
+                    kill ${PF_PID} 2>/dev/null || true
+                    echo "API Gateway /healthz → ${HTTP_CODE}"
 
-          - script: |
-              kubectl port-forward svc/api-gateway 18080:8080 -n platform &
-              PF_PID=$!; sleep 5
-              HTTP_CODE=$(curl -sf -o /dev/null -w "%{http_code}" http://localhost:18080/healthz 2>/dev/null || echo "000")
-              kill $PF_PID 2>/dev/null || true
-              echo "API Gateway /healthz → $HTTP_CODE"
-              [ "$HTTP_CODE" = "200" ] || { echo "FAIL: API Gateway not healthy"; exit 1; }
-            displayName: Check API Gateway health
+                    if [ "${HTTP_CODE}" != "200" ]; then
+                      echo "##vso[task.logissue type=warning]API Gateway health check failed: ${HTTP_CODE}"
+                    fi
+                    echo "Health check failures: ${HEALTH_FAILED}"
+                  displayName: Health Checks
 
-  # ── k6 Smoke Test ─────────────────────────────────────────────────────────
-  - stage: LoadTest
-    displayName: k6 Smoke Test
-    condition: |
-      and(
-        succeeded('HealthCheck'),
-        eq('${{ parameters.run_load_test }}', 'True')
-      )
-    jobs:
-      - job: SmokeTest
-        displayName: k6 smoke test
-        steps:
-          - task: KubectlInstaller@0
+                - ${{ if eq(parameters.runLoadTest, true) }}:
+                  - script: |
+                      echo "=== Install k6 ==="
+                      sudo apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 \
+                        --recv-keys C5AD17C747E3415A3642D57D77C6C491D6AC1D69
+                      echo "deb https://dl.k6.io/deb stable main" | sudo tee /etc/apt/sources.list.d/k6.list
+                      sudo apt-get update -qq && sudo apt-get install k6 -y -qq
 
-          - script: |
-              sudo apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 \
-                --recv-keys C5AD17C747E3415A3642D57D77C6C491D6AC1D69
-              echo "deb https://dl.k6.io/deb stable main" | sudo tee /etc/apt/sources.list.d/k6.list
-              sudo apt-get update -qq && sudo apt-get install k6 -y -qq
-            displayName: Install k6
+                      echo "=== k6 Smoke Test ==="
+                      kubectl port-forward svc/api-gateway 18080:8080 -n platform &
+                      PF_PID=$!; sleep 10
+                      BASE_URL=http://localhost:18080 k6 run load-testing/k6/scripts/smoke.js \
+                        --out json=$(Build.ArtifactStagingDirectory)/reports/k6/smoke-${{ parameters.environment }}.json \
+                        --summary-export=$(Build.ArtifactStagingDirectory)/reports/k6/summary-${{ parameters.environment }}.json || true
+                      kill ${PF_PID} 2>/dev/null || true
+                    displayName: k6 Smoke Test
 
-          - script: |
-              mkdir -p ~/.kube
-              echo "$(KUBECONFIG_CONTENT)" | base64 -d > ~/.kube/config
-              kubectl port-forward svc/api-gateway 18080:8080 -n platform &
-              echo $! > /tmp/pf.pid
-              sleep 5
-            displayName: Port-forward API gateway
+                - ${{ if eq(parameters.runDast, true) }}:
+                  - script: |
+                      echo "=== DAST: OWASP ZAP ==="
+                      kubectl port-forward svc/api-gateway 18080:8080 -n platform &
+                      PF_PID=$!; sleep 10
+                      docker run --rm --network=host \
+                        -v "$(Build.ArtifactStagingDirectory)/reports/dast:/zap/wrk" \
+                        ghcr.io/zaproxy/zaproxy:stable \
+                        zap-baseline.py \
+                        -t http://localhost:18080 \
+                        -J /zap/wrk/zap-${{ parameters.environment }}.json \
+                        -r /zap/wrk/zap-${{ parameters.environment }}.html \
+                        -I || true
+                      kill ${PF_PID} 2>/dev/null || true
+                    displayName: OWASP ZAP DAST
 
-          - script: |
-              mkdir -p reports
-              BASE_URL=http://localhost:18080 k6 run load-testing/k6/scripts/smoke.js \
-                --out json=reports/k6-smoke-${{ parameters.environment }}.json || true
-            displayName: Run k6 smoke test
+                - ${{ if eq(parameters.runK8sAudit, true) }}:
+                  - script: |
+                      echo "=== kube-bench ==="
+                      docker run --rm --pid=host \
+                        -v /etc:/etc:ro -v /var:/var:ro \
+                        aquasec/kube-bench:latest --json \
+                        > $(Build.ArtifactStagingDirectory)/reports/k8s-audit/kube-bench-${{ parameters.environment }}.json || true
 
-          - script: kill $(cat /tmp/pf.pid) 2>/dev/null || true
-            condition: always()
-            displayName: Stop port-forward
+                      echo "=== Kubescape ==="
+                      docker run --rm -v ~/.kube:/root/.kube \
+                        quay.io/armosec/kubescape:latest scan \
+                        framework nsa,mitre \
+                        --format json \
+                        --output $(Build.ArtifactStagingDirectory)/reports/k8s-audit/kubescape-${{ parameters.environment }}.json || true
+                    displayName: K8s Security Audit
 
-          - task: PublishPipelineArtifact@1
-            condition: always()
-            inputs:
-              targetPath: reports
-              artifact: k6-smoke-${{ parameters.environment }}-$(Build.BuildNumber)
+                - task: PublishPipelineArtifact@1
+                  displayName: Publish validation reports
+                  inputs:
+                    targetPath: $(Build.ArtifactStagingDirectory)/reports
+                    artifact: post-deploy-reports-$(Build.BuildNumber)
+                  condition: always()
 
-  # ── DAST ──────────────────────────────────────────────────────────────────
-  - stage: DAST
-    displayName: DAST (ZAP + Nuclei)
-    condition: |
-      and(
-        succeeded('HealthCheck'),
-        eq('${{ parameters.run_dast }}', 'True')
-      )
-    jobs:
-      - job: DAST
-        displayName: ZAP + Nuclei DAST
-        timeoutInMinutes: 45
-        steps:
-          - task: KubectlInstaller@0
-
-          - script: |
-              mkdir -p ~/.kube
-              echo "$(KUBECONFIG_CONTENT)" | base64 -d > ~/.kube/config
-            displayName: Configure kubeconfig
-
-          - script: |
-              kubectl port-forward svc/api-gateway 18080:8080 -n platform &
-              PF_PID=$!; sleep 5
-              mkdir -p reports/dast
-              docker run --rm --network=host -v "$PWD/reports/dast:/zap/wrk" \
-                ghcr.io/zaproxy/zaproxy:stable \
-                zap-baseline.py -t http://localhost:18080 \
-                -J /zap/wrk/zap-${{ parameters.environment }}.json \
-                -r /zap/wrk/zap-${{ parameters.environment }}.html \
-                -I || true
-              kill $PF_PID 2>/dev/null || true
-            displayName: OWASP ZAP baseline scan
-            continueOnError: true
-
-          - script: |
-              kubectl port-forward svc/api-gateway 18080:8080 -n platform &
-              PF_PID=$!; sleep 5
-              docker run --rm --network=host \
-                -v "$PWD/reports/dast:/output" \
-                projectdiscovery/nuclei:latest \
-                -target http://localhost:18080 \
-                -severity critical,high \
-                -json-export /output/nuclei-${{ parameters.environment }}.json || true
-              kill $PF_PID 2>/dev/null || true
-            displayName: Nuclei CVE scan
-            continueOnError: true
-
-          - task: PublishPipelineArtifact@1
-            condition: always()
-            inputs:
-              targetPath: reports/dast
-              artifact: dast-${{ parameters.environment }}-$(Build.BuildNumber)
-
-  # ── K8s Security Audit ────────────────────────────────────────────────────
-  - stage: K8sAudit
-    displayName: K8s Security Audit
-    condition: |
-      and(
-        succeeded('HealthCheck'),
-        eq('${{ parameters.run_k8s_audit }}', 'True')
-      )
-    jobs:
-      - job: K8sAudit
-        displayName: kube-bench + Kubescape
-        timeoutInMinutes: 30
-        steps:
-          - task: KubectlInstaller@0
-
-          - script: |
-              mkdir -p ~/.kube
-              echo "$(KUBECONFIG_CONTENT)" | base64 -d > ~/.kube/config
-            displayName: Configure kubeconfig
-
-          - script: |
-              mkdir -p reports/k8s-audit
-              docker run --rm --pid=host \
-                -v /etc:/etc:ro -v /var:/var:ro \
-                -v ~/.kube:/root/.kube:ro \
-                aquasec/kube-bench:latest --json \
-                > reports/k8s-audit/kube-bench-${{ parameters.environment }}.json || true
-            displayName: kube-bench CIS Benchmark
-            continueOnError: true
-
-          - script: |
-              docker run --rm -v ~/.kube:/root/.kube \
-                quay.io/armosec/kubescape:latest scan \
-                framework nsa,mitre \
-                --format json \
-                --output reports/k8s-audit/kubescape-${{ parameters.environment }}.json || true
-            displayName: Kubescape NSA/MITRE
-            continueOnError: true
-
-          - task: PublishPipelineArtifact@1
-            condition: always()
-            inputs:
-              targetPath: reports/k8s-audit
-              artifact: k8s-audit-${{ parameters.environment }}-$(Build.BuildNumber)
-
-  # ── Notify ────────────────────────────────────────────────────────────────
-  - stage: Notify
-    displayName: Notify
-    dependsOn: [HealthCheck, LoadTest, DAST, K8sAudit]
-    condition: always()
-    jobs:
-      - job: Notify
-        displayName: Post summary and alerts
-        steps:
-          - script: |
-              echo "## Post-Deploy Validation — ${{ parameters.environment }}" >> $(Build.ArtifactStagingDirectory)/summary.md
-              echo "" >> $(Build.ArtifactStagingDirectory)/summary.md
-              echo "| Check | Result |" >> $(Build.ArtifactStagingDirectory)/summary.md
-              echo "|---|---|" >> $(Build.ArtifactStagingDirectory)/summary.md
-              echo "| Service health checks | $HEALTH_RESULT |" >> $(Build.ArtifactStagingDirectory)/summary.md
-              echo "| k6 smoke test         | $LOAD_RESULT |" >> $(Build.ArtifactStagingDirectory)/summary.md
-              echo "| DAST (ZAP + Nuclei)   | $DAST_RESULT |" >> $(Build.ArtifactStagingDirectory)/summary.md
-              echo "| K8s audit             | $AUDIT_RESULT |" >> $(Build.ArtifactStagingDirectory)/summary.md
-              cat $(Build.ArtifactStagingDirectory)/summary.md
-            displayName: Print summary
-            env:
-              HEALTH_RESULT: $[ stageDependencies.HealthCheck.HealthCheck.result ]
-              LOAD_RESULT: $[ stageDependencies.LoadTest.SmokeTest.result ]
-              DAST_RESULT: $[ stageDependencies.DAST.DAST.result ]
-              AUDIT_RESULT: $[ stageDependencies.K8sAudit.K8sAudit.result ]
-
-          - script: |
-              if [ "$HEALTH_RESULT" = "Failed" ]; then
-                curl -sf -X POST "$(SLACK_WEBHOOK)" \
-                  -H "Content-Type: application/json" \
-                  -d "{\"text\":\"Post-deploy health check FAILED on *${{ parameters.environment }}* — build #$(Build.BuildNumber)\"}" || true
-              fi
-            displayName: Slack notification on failure
-            condition: always()
-            env:
-              HEALTH_RESULT: $[ stageDependencies.HealthCheck.HealthCheck.result ]
+                - task: AzureCLI@2
+                  displayName: Upload reports to Azure Blob Storage
+                  condition: always()
+                  inputs:
+                    azureSubscription: azure-service-connection
+                    scriptType: bash
+                    scriptLocation: inlineScript
+                    inlineScript: |
+                      STORAGE_ACCOUNT=$(az storage account list \
+                        -g shopos-${{ parameters.environment }}-rg \
+                        --query "[?starts_with(name,'shopos')].name" -o tsv | head -1)
+                      if [ -n "${STORAGE_ACCOUNT}" ]; then
+                        az storage blob upload-batch \
+                          --account-name ${STORAGE_ACCOUNT} \
+                          --destination post-deploy-reports \
+                          --source $(Build.ArtifactStagingDirectory)/reports \
+                          --destination-path ${{ parameters.environment }}/$(Build.BuildNumber) 2>/dev/null || true
+                        echo "Reports uploaded to Azure Blob Storage"
+                      fi

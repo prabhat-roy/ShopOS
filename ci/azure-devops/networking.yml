@@ -1,45 +1,40 @@
-name: Networking Infrastructure
+# Azure DevOps — Deploy networking stack to AKS
+# AGIC (Application Gateway Ingress Controller) as Azure-native ingress
+# ExternalDNS configured for Azure DNS; Traefik with Azure LB annotations
+# action: INSTALL | UPGRADE | UNINSTALL
 
 trigger: none
 
 parameters:
   - name: environment
-    displayName: Target environment
     type: string
     default: dev
     values: [dev, staging, prod]
   - name: action
-    displayName: Action
     type: string
     default: INSTALL
     values: [INSTALL, UPGRADE, UNINSTALL]
-  - name: cilium
-    type: boolean
-    default: false
   - name: istio
     type: boolean
     default: true
-  - name: linkerd
-    type: boolean
-    default: false
   - name: traefik
     type: boolean
     default: true
   - name: consul
     type: boolean
     default: true
-  - name: external_dns
+  - name: externalDns
     type: boolean
     default: true
-  - name: metallb
+  - name: agic
     type: boolean
     default: false
 
-variables:
-  - group: shopos-secrets
-
 pool:
   vmImage: ubuntu-latest
+
+variables:
+  - group: shopos-azure-credentials
 
 jobs:
   - job: Networking
@@ -48,35 +43,44 @@ jobs:
     steps:
       - task: KubectlInstaller@0
 
-      - script: |
-          curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
-        displayName: Install Helm
+      - task: HelmInstaller@1
+        inputs:
+          helmVersion: 3.16.0
 
-      - script: |
-          mkdir -p ~/.kube
-          echo "$(KUBECONFIG_CONTENT)" | base64 -d > ~/.kube/config
-        displayName: Configure kubeconfig
+      - task: AzureCLI@2
+        displayName: Configure AKS kubeconfig
+        inputs:
+          azureSubscription: azure-service-connection
+          scriptType: bash
+          scriptLocation: inlineScript
+          inlineScript: |
+            az aks get-credentials \
+              --resource-group shopos-${{ parameters.environment }}-rg \
+              --name shopos-aks-${{ parameters.environment }} \
+              --overwrite-existing
 
-      # ── Cilium ────────────────────────────────────────────────────────────
-      - ${{ if eq(parameters.cilium, true) }}:
-        - script: |
-            helm repo add cilium https://helm.cilium.io --force-update
-            if [ "${{ parameters.action }}" = "UNINSTALL" ]; then
-              helm uninstall cilium -n kube-system 2>/dev/null || true
-            else
-              helm upgrade --install cilium cilium/cilium \
-                --namespace kube-system \
-                --set kubeProxyReplacement=true \
-                --set hubble.relay.enabled=true \
-                --set hubble.ui.enabled=true \
-                --set loadBalancer.algorithm=maglev \
-                --set prometheus.enabled=true \
-                --wait --timeout 8m
-              kubectl apply -f networking/cilium/ 2>/dev/null || true
-            fi
-          displayName: Cilium CNI
+      # Azure Application Gateway Ingress Controller (native Azure ingress)
+      - ${{ if eq(parameters.agic, true) }}:
+        - task: AzureCLI@2
+          displayName: Enable AGIC add-on on AKS
+          inputs:
+            azureSubscription: azure-service-connection
+            scriptType: bash
+            scriptLocation: inlineScript
+            inlineScript: |
+              RG="shopos-${{ parameters.environment }}-rg"
+              CLUSTER="shopos-aks-${{ parameters.environment }}"
+              if [ "${{ parameters.action }}" = "UNINSTALL" ]; then
+                az aks disable-addons --addons ingress-appgw \
+                  --resource-group ${RG} --name ${CLUSTER} || true
+              else
+                APPGW_ID=$(az network application-gateway list -g ${RG} \
+                  --query '[0].id' -o tsv)
+                az aks enable-addons --addons ingress-appgw \
+                  --resource-group ${RG} --name ${CLUSTER} \
+                  --appgw-id ${APPGW_ID} || true
+              fi
 
-      # ── Istio ─────────────────────────────────────────────────────────────
       - ${{ if eq(parameters.istio, true) }}:
         - script: |
             helm repo add istio https://istio-release.storage.googleapis.com/charts --force-update
@@ -84,7 +88,6 @@ jobs:
               helm uninstall istio-ingressgateway -n istio-system 2>/dev/null || true
               helm uninstall istiod -n istio-system 2>/dev/null || true
               helm uninstall istio-base -n istio-system 2>/dev/null || true
-              kubectl delete ns istio-system 2>/dev/null || true
             else
               helm upgrade --install istio-base istio/base \
                 --namespace istio-system --create-namespace --wait --timeout 3m
@@ -93,33 +96,15 @@ jobs:
                 --set telemetry.enabled=true \
                 --set pilot.traceSampling=1.0 \
                 --wait --timeout 5m
+              # Azure internal load balancer annotation for Istio gateway
               helm upgrade --install istio-ingressgateway istio/gateway \
-                --namespace istio-system --wait --timeout 3m
+                --namespace istio-system \
+                --set service.annotations."service\.beta\.kubernetes\.io/azure-load-balancer-internal"=true \
+                --wait --timeout 3m
               kubectl apply -f networking/istio/ 2>/dev/null || true
             fi
           displayName: Istio Service Mesh
 
-      # ── Linkerd ───────────────────────────────────────────────────────────
-      - ${{ if eq(parameters.linkerd, true) }}:
-        - script: |
-            helm repo add linkerd https://helm.linkerd.io/stable --force-update
-            if [ "${{ parameters.action }}" = "UNINSTALL" ]; then
-              helm uninstall linkerd-viz -n linkerd-viz 2>/dev/null || true
-              helm uninstall linkerd-control-plane -n linkerd 2>/dev/null || true
-              helm uninstall linkerd-crds -n linkerd 2>/dev/null || true
-            else
-              helm upgrade --install linkerd-crds linkerd/linkerd-crds \
-                --namespace linkerd --create-namespace --wait --timeout 3m
-              helm upgrade --install linkerd-control-plane linkerd/linkerd-control-plane \
-                --namespace linkerd \
-                --set proxyInit.runAsRoot=true \
-                --wait --timeout 5m
-              helm upgrade --install linkerd-viz linkerd/linkerd-viz \
-                --namespace linkerd-viz --create-namespace --wait --timeout 5m
-            fi
-          displayName: Linkerd
-
-      # ── Traefik ───────────────────────────────────────────────────────────
       - ${{ if eq(parameters.traefik, true) }}:
         - script: |
             helm repo add traefik https://traefik.github.io/charts --force-update
@@ -133,13 +118,11 @@ jobs:
                 --set ingressClass.enabled=true \
                 --set ingressClass.isDefaultClass=true \
                 --set metrics.prometheus.enabled=true \
-                --set tracing.jaeger.enabled=true \
                 --wait --timeout 5m
               kubectl apply -f networking/traefik/ 2>/dev/null || true
             fi
-          displayName: Traefik Edge Router
+          displayName: Traefik
 
-      # ── Consul ────────────────────────────────────────────────────────────
       - ${{ if eq(parameters.consul, true) }}:
         - script: |
             helm repo add hashicorp https://helm.releases.hashicorp.com --force-update
@@ -158,33 +141,26 @@ jobs:
             fi
           displayName: Consul
 
-      # ── ExternalDNS ───────────────────────────────────────────────────────
-      - ${{ if eq(parameters.external_dns, true) }}:
-        - script: |
-            helm repo add external-dns https://kubernetes-sigs.github.io/external-dns --force-update
-            if [ "${{ parameters.action }}" = "UNINSTALL" ]; then
-              helm uninstall external-dns -n networking 2>/dev/null || true
-            else
-              helm upgrade --install external-dns external-dns/external-dns \
-                --namespace networking --create-namespace \
-                --set provider=aws \
-                --set aws.region="$(AWS_REGION)" \
-                --set policy=sync \
-                --set txtOwnerId=shopos \
-                --wait --timeout 3m
-            fi
-          displayName: ExternalDNS
-
-      # ── MetalLB ───────────────────────────────────────────────────────────
-      - ${{ if eq(parameters.metallb, true) }}:
-        - script: |
-            helm repo add metallb https://metallb.github.io/metallb --force-update
-            if [ "${{ parameters.action }}" = "UNINSTALL" ]; then
-              helm uninstall metallb -n metallb-system 2>/dev/null || true
-            else
-              helm upgrade --install metallb metallb/metallb \
-                --namespace metallb-system --create-namespace \
-                --wait --timeout 5m
-              kubectl apply -f networking/metallb/ 2>/dev/null || true
-            fi
-          displayName: MetalLB
+      - ${{ if eq(parameters.externalDns, true) }}:
+        - task: AzureCLI@2
+          displayName: ExternalDNS (Azure DNS)
+          inputs:
+            azureSubscription: azure-service-connection
+            scriptType: bash
+            scriptLocation: inlineScript
+            inlineScript: |
+              SUBSCRIPTION_ID=$(az account show --query id -o tsv)
+              RESOURCE_GROUP="shopos-${{ parameters.environment }}-rg"
+              helm repo add external-dns https://kubernetes-sigs.github.io/external-dns --force-update
+              if [ "${{ parameters.action }}" = "UNINSTALL" ]; then
+                helm uninstall external-dns -n networking 2>/dev/null || true
+              else
+                helm upgrade --install external-dns external-dns/external-dns \
+                  --namespace networking --create-namespace \
+                  --set provider=azure \
+                  --set azure.resourceGroup="${RESOURCE_GROUP}" \
+                  --set azure.subscriptionId="${SUBSCRIPTION_ID}" \
+                  --set txtOwnerId=shopos-${{ parameters.environment }} \
+                  --set policy=sync \
+                  --wait --timeout 3m
+              fi

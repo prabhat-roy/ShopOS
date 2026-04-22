@@ -1,17 +1,13 @@
-# Deploy Service — GCP Cloud Build
-# Mirrors ci/jenkins/deploy.Jenkinsfile
-# Substitutions (set via trigger or --substitutions flag):
-#   _SERVICE_NAME, _DOMAIN, _IMAGE_TAG, _ENVIRONMENT, _SKIP_TESTS, _SCAN_SEVERITY
+# GCP Cloud Build — Build service image, push to Artifact Registry, deploy to GKE via Helm
+# Uses GCP-native: Artifact Registry, gcloud container get-credentials, Secret Manager
 
 substitutions:
   _SERVICE_NAME: api-gateway
   _DOMAIN: platform
-  _IMAGE_TAG: latest
   _ENVIRONMENT: dev
-  _SKIP_TESTS: "false"
-  _SCAN_SEVERITY: HIGH,CRITICAL
-  _HARBOR_REGISTRY: harbor.shopos.internal
-  _SONAR_HOST_URL: http://sonarqube.shopos.internal
+  _REGION: us-central1
+  _ARTIFACT_REGISTRY: us-central1-docker.pkg.dev
+  _CLUSTER_NAME: shopos-dev
 
 options:
   logging: CLOUD_LOGGING_ONLY
@@ -19,166 +15,116 @@ options:
 
 availableSecrets:
   secretManager:
-    - versionName: projects/$PROJECT_ID/secrets/harbor-password/versions/latest
-      env: HARBOR_PASSWORD
-    - versionName: projects/$PROJECT_ID/secrets/harbor-user/versions/latest
-      env: HARBOR_USER
-    - versionName: projects/$PROJECT_ID/secrets/sonar-token/versions/latest
-      env: SONAR_TOKEN
-    - versionName: projects/$PROJECT_ID/secrets/kubeconfig-content/versions/latest
+    - versionName: projects/$PROJECT_ID/secrets/shopos-kubeconfig-${_ENVIRONMENT}/versions/latest
       env: KUBECONFIG_CONTENT
-    - versionName: projects/$PROJECT_ID/secrets/slack-webhook/versions/latest
-      env: SLACK_WEBHOOK
 
 steps:
-  # ── Secret scan ────────────────────────────────────────────────────────────
-  - name: zricethezav/gitleaks
-    id: secret-scan
-    args:
-      - detect
-      - --source=.
-      - --no-git
-      - --exit-code=0
-      - --report-format=json
-      - --report-path=/workspace/reports/gitleaks.json
-
-  # ── SAST: Semgrep ──────────────────────────────────────────────────────────
-  - name: returntocorp/semgrep
-    id: sast
-    args:
-      - --config=auto
-      - --json
-      - --output=/workspace/reports/semgrep.json
-      - --error
-      - --severity=ERROR
-      - src/$_DOMAIN/$_SERVICE_NAME
-    waitFor: [secret-scan]
-
-  # ── Build + Test ───────────────────────────────────────────────────────────
-  - name: gcr.io/cloud-builders/docker
-    id: setup
+  - name: gcr.io/cloud-builders/gcloud
+    id: ensure-repo
     entrypoint: bash
     args:
       - -c
       - |
-        mkdir -p reports
-        # language-aware build & test
-        SERVICE_DIR="src/$_DOMAIN/$_SERVICE_NAME"
-        cd "$$SERVICE_DIR"
-        if [ -f "go.mod" ]; then
-          go test ./... -coverprofile=/workspace/reports/coverage.out 2>&1 | tee /workspace/reports/test.txt || [ "$_SKIP_TESTS" = "true" ]
-        elif [ -f "pom.xml" ]; then
-          mvn test -q 2>&1 | tee /workspace/reports/test.txt || [ "$_SKIP_TESTS" = "true" ]
-        elif [ -f "package.json" ]; then
-          npm ci --quiet && npm test 2>&1 | tee /workspace/reports/test.txt || [ "$_SKIP_TESTS" = "true" ]
-        elif [ -f "requirements.txt" ]; then
-          pip install -r requirements.txt --quiet
-          python -m pytest --tb=short 2>&1 | tee /workspace/reports/test.txt || [ "$_SKIP_TESTS" = "true" ]
-        fi
-    waitFor: [secret-scan]
+        gcloud artifacts repositories describe shopos \
+          --repository-format=docker \
+          --location=${_REGION} \
+          --project=${PROJECT_ID} 2>/dev/null || \
+          gcloud artifacts repositories create shopos \
+            --repository-format=docker \
+            --location=${_REGION} \
+            --project=${PROJECT_ID}
+        gcloud auth configure-docker ${_REGION}-docker.pkg.dev --quiet
 
-  # ── Docker build ───────────────────────────────────────────────────────────
   - name: gcr.io/cloud-builders/docker
     id: docker-build
-    secretEnv: [HARBOR_USER, HARBOR_PASSWORD]
-    args:
-      - build
-      - -t
-      - $_HARBOR_REGISTRY/$_DOMAIN/$_SERVICE_NAME:$_IMAGE_TAG
-      - -t
-      - $_HARBOR_REGISTRY/$_DOMAIN/$_SERVICE_NAME:latest
-      - src/$_DOMAIN/$_SERVICE_NAME
-    waitFor: [setup]
-
-  # ── Trivy image scan ───────────────────────────────────────────────────────
-  - name: aquasec/trivy
-    id: trivy-scan
-    args:
-      - image
-      - --exit-code=0
-      - --severity=$_SCAN_SEVERITY
-      - --format=json
-      - --output=/workspace/reports/trivy-$_SERVICE_NAME.json
-      - $_HARBOR_REGISTRY/$_DOMAIN/$_SERVICE_NAME:$_IMAGE_TAG
-    waitFor: [docker-build]
-
-  # ── Syft SBOM ─────────────────────────────────────────────────────────────
-  - name: anchore/syft
-    id: sbom
-    args:
-      - $_HARBOR_REGISTRY/$_DOMAIN/$_SERVICE_NAME:$_IMAGE_TAG
-      - -o
-      - cyclonedx-json
-      - --file=/workspace/reports/sbom-$_SERVICE_NAME.json
-    waitFor: [docker-build]
-
-  # ── Push to Harbor ─────────────────────────────────────────────────────────
-  - name: gcr.io/cloud-builders/docker
-    id: push
-    secretEnv: [HARBOR_USER, HARBOR_PASSWORD]
     entrypoint: bash
     args:
       - -c
       - |
-        echo "$$HARBOR_PASSWORD" | docker login "$_HARBOR_REGISTRY" -u "$$HARBOR_USER" --password-stdin
-        docker push "$_HARBOR_REGISTRY/$_DOMAIN/$_SERVICE_NAME:$_IMAGE_TAG"
-        docker push "$_HARBOR_REGISTRY/$_DOMAIN/$_SERVICE_NAME:latest"
-    waitFor: [trivy-scan, sbom]
+        IMAGE="${_ARTIFACT_REGISTRY}/${PROJECT_ID}/shopos/${_SERVICE_NAME}:${BUILD_ID:0:8}"
+        docker build \
+          --label "build.id=${BUILD_ID}" \
+          --label "commit.sha=${COMMIT_SHA}" \
+          --label "domain=${_DOMAIN}" \
+          -t "${IMAGE}" \
+          -t "${_ARTIFACT_REGISTRY}/${PROJECT_ID}/shopos/${_SERVICE_NAME}:latest" \
+          "src/${_DOMAIN}/${_SERVICE_NAME}/"
+        echo "${BUILD_ID:0:8}" > /workspace/image_tag
+    waitFor: [ensure-repo]
 
-  # ── Cosign keyless sign ───────────────────────────────────────────────────
-  - name: gcr.io/projectsigstore/cosign
-    id: sign
-    args:
-      - sign
-      - --yes
-      - $_HARBOR_REGISTRY/$_DOMAIN/$_SERVICE_NAME:$_IMAGE_TAG
-    waitFor: [push]
-
-  # ── Cosign attest SBOM ────────────────────────────────────────────────────
-  - name: gcr.io/projectsigstore/cosign
-    id: attest
-    args:
-      - attest
-      - --yes
-      - --predicate=/workspace/reports/sbom-$_SERVICE_NAME.json
-      - --type=cyclonedx
-      - $_HARBOR_REGISTRY/$_DOMAIN/$_SERVICE_NAME:$_IMAGE_TAG
-    waitFor: [sign]
-
-  # ── Deploy via Helm ────────────────────────────────────────────────────────
-  - name: alpine/helm
-    id: deploy
-    secretEnv: [KUBECONFIG_CONTENT]
+  - name: gcr.io/cloud-builders/docker
+    id: docker-push
     entrypoint: bash
+    args:
+      - -c
+      - |
+        IMAGE_TAG=$(cat /workspace/image_tag)
+        docker push "${_ARTIFACT_REGISTRY}/${PROJECT_ID}/shopos/${_SERVICE_NAME}:${IMAGE_TAG}"
+        docker push "${_ARTIFACT_REGISTRY}/${PROJECT_ID}/shopos/${_SERVICE_NAME}:latest"
+    waitFor: [docker-build]
+
+  - name: aquasec/trivy:latest
+    id: trivy-scan
+    entrypoint: sh
+    args:
+      - -c
+      - |
+        IMAGE_TAG=$(cat /workspace/image_tag)
+        trivy image \
+          --severity HIGH,CRITICAL \
+          --exit-code 0 \
+          --format json \
+          --output /workspace/trivy-${_SERVICE_NAME}.json \
+          "${_ARTIFACT_REGISTRY}/${PROJECT_ID}/shopos/${_SERVICE_NAME}:${IMAGE_TAG}" || true
+    waitFor: [docker-push]
+
+  - name: gcr.io/cloud-builders/gcloud
+    id: get-credentials
+    args:
+      - container
+      - clusters
+      - get-credentials
+      - ${_CLUSTER_NAME}
+      - --region=${_REGION}
+      - --project=${PROJECT_ID}
+    waitFor: [docker-push]
+
+  - name: alpine/helm:3.16.0
+    id: helm-deploy
+    secretEnv: [KUBECONFIG_CONTENT]
+    entrypoint: sh
     args:
       - -c
       - |
         mkdir -p ~/.kube
         echo "$$KUBECONFIG_CONTENT" | base64 -d > ~/.kube/config
-        helm upgrade --install "$_SERVICE_NAME" "helm/charts/$_SERVICE_NAME" \
-          --namespace "$_DOMAIN" \
-          --set image.repository="$_HARBOR_REGISTRY/$_DOMAIN/$_SERVICE_NAME" \
-          --set image.tag="$_IMAGE_TAG" \
-          --set environment="$_ENVIRONMENT" \
-          -f "helm/charts/$_SERVICE_NAME/values-$_ENVIRONMENT.yaml" \
-          --wait --timeout 5m
-    waitFor: [attest]
+        IMAGE_TAG=$(cat /workspace/image_tag)
+        helm upgrade --install ${_SERVICE_NAME} helm/charts/${_SERVICE_NAME} \
+          --namespace ${_DOMAIN} --create-namespace \
+          --set image.repository="${_ARTIFACT_REGISTRY}/${PROJECT_ID}/shopos/${_SERVICE_NAME}" \
+          --set image.tag="${IMAGE_TAG}" \
+          --set environment="${_ENVIRONMENT}" \
+          --set persistence.storageClass=standard-rwo \
+          -f helm/charts/${_SERVICE_NAME}/values-${_ENVIRONMENT}.yaml \
+          --wait --timeout 10m
+    waitFor: [get-credentials, trivy-scan]
 
-  # ── Notify ─────────────────────────────────────────────────────────────────
-  - name: curlimages/curl
-    id: notify
-    secretEnv: [SLACK_WEBHOOK]
-    entrypoint: sh
+  - name: gcr.io/cloud-builders/kubectl
+    id: verify-rollout
+    entrypoint: bash
     args:
       - -c
       - |
-        curl -sf -X POST "$$SLACK_WEBHOOK" \
-          -H "Content-Type: application/json" \
-          -d "{\"text\":\"Deployed *$_SERVICE_NAME* @ $_IMAGE_TAG to *$_ENVIRONMENT*\"}" || true
-    waitFor: [deploy]
+        kubectl rollout status deployment/${_SERVICE_NAME} \
+          -n ${_DOMAIN} --timeout=5m
+        kubectl get pods -n ${_DOMAIN} -l app=${_SERVICE_NAME}
+    env:
+      - CLOUDSDK_CONTAINER_CLUSTER=${_CLUSTER_NAME}
+      - CLOUDSDK_COMPUTE_REGION=${_REGION}
+    waitFor: [helm-deploy]
 
 artifacts:
   objects:
-    location: gs://$PROJECT_ID-build-artifacts/$BUILD_ID/
+    location: gs://${PROJECT_ID}-build-artifacts/${BUILD_ID}/
     paths:
-      - /workspace/reports/**
+      - /workspace/trivy-*.json

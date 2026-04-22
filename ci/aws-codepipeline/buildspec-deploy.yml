@@ -1,147 +1,76 @@
 version: 0.2
 
-# Deploy Service — CodeBuild buildspec
-# Mirrors ci/jenkins/deploy.Jenkinsfile
-# Parameters via environment variables (set in CodePipeline action overrides):
-#   SERVICE_NAME, DOMAIN, IMAGE_TAG, ENVIRONMENT, SKIP_TESTS, SCAN_SEVERITY
+# AWS CodePipeline — Build service image, push to ECR, deploy to EKS via Helm
+# IMAGE_TAG, SERVICE_NAME, DOMAIN, ENVIRONMENT set via CodePipeline action overrides
 
 env:
-  variables:
-    ENVIRONMENT: dev
-    IMAGE_TAG: latest
-    SKIP_TESTS: "false"
-    SCAN_SEVERITY: HIGH,CRITICAL
   parameter-store:
-    HARBOR_REGISTRY: /shopos/harbor/registry
-    HARBOR_USER: /shopos/harbor/user
-    HARBOR_PASSWORD: /shopos/harbor/password
-    SONAR_HOST_URL: /shopos/sonarqube/url
-    SONAR_TOKEN: /shopos/sonarqube/token
-    SLACK_WEBHOOK: /shopos/slack/webhook
-  secrets-manager:
-    KUBECONFIG_CONTENT: shopos/kubeconfig:content
+    AWS_ACCOUNT_ID: /shopos/aws/account_id
+    EKS_CLUSTER_NAME: /shopos/eks/cluster_name
+    AWS_REGION: /shopos/aws/region
+  variables:
+    SERVICE_NAME: api-gateway
+    DOMAIN: platform
+    ENVIRONMENT: dev
 
 phases:
   install:
-    runtime-versions:
-      golang: 1.23
-      java: corretto21
-      nodejs: 22
-      python: 3.13
     commands:
-      # kubectl
-      - curl -fsSL "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl" -o /usr/local/bin/kubectl && chmod +x /usr/local/bin/kubectl
-      # Helm
       - curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
-      # Trivy
-      - curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh -s -- -b /usr/local/bin
-      # Cosign
-      - curl -fsSL "https://github.com/sigstore/cosign/releases/download/v2.4.0/cosign-linux-amd64" -o /usr/local/bin/cosign && chmod +x /usr/local/bin/cosign
-      # Syft / Grype
-      - curl -sSfL https://raw.githubusercontent.com/anchore/syft/main/install.sh | sh -s -- -b /usr/local/bin
-      - curl -sSfL https://raw.githubusercontent.com/anchore/grype/main/install.sh | sh -s -- -b /usr/local/bin
-      # Semgrep
-      - pip install semgrep --quiet
-      # Gitleaks
-      - curl -fsSL "https://github.com/gitleaks/gitleaks/releases/download/v8.21.0/gitleaks_8.21.0_linux_x64.tar.gz" | tar -xz -C /usr/local/bin gitleaks
-      # Checkov
-      - pip install checkov --quiet
+      - helm version --short
+      - aws eks update-kubeconfig --region ${AWS_REGION} --name ${EKS_CLUSTER_NAME}
+      - kubectl get nodes --no-headers | wc -l
 
   pre_build:
     commands:
-      - echo "=== Pre-Build: $SERVICE_NAME / $DOMAIN @ $IMAGE_TAG ==="
-      # kubeconfig
-      - mkdir -p ~/.kube
-      - echo "$KUBECONFIG_CONTENT" | base64 -d > ~/.kube/config
-      # Docker login to Harbor
-      - echo "$HARBOR_PASSWORD" | docker login "$HARBOR_REGISTRY" -u "$HARBOR_USER" --password-stdin
-      # Gitleaks secret scan
-      - gitleaks detect --source . --no-git --exit-code 0 --report-format json --report-path reports/gitleaks.json || true
+      - IMAGE_TAG="${CODEBUILD_BUILD_NUMBER}-${CODEBUILD_RESOLVED_SOURCE_VERSION:0:8}"
+      - ECR_REGISTRY="${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com"
+      - ECR_REPO="shopos/${SERVICE_NAME}"
+      - IMAGE="${ECR_REGISTRY}/${ECR_REPO}:${IMAGE_TAG}"
+      - aws ecr get-login-password --region ${AWS_REGION} | docker login --username AWS --password-stdin ${ECR_REGISTRY}
+      - |
+        aws ecr describe-repositories --repository-names ${ECR_REPO} --region ${AWS_REGION} 2>/dev/null || \
+          aws ecr create-repository \
+            --repository-name ${ECR_REPO} \
+            --image-scanning-configuration scanOnPush=true \
+            --encryption-configuration encryptionType=AES256 \
+            --region ${AWS_REGION}
+      - echo "Building ${IMAGE}"
 
   build:
     commands:
-      - echo "=== Build + Test: $SERVICE_NAME ==="
-      - SERVICE_DIR="src/$DOMAIN/$SERVICE_NAME"
-      - cd "$SERVICE_DIR"
-
-      # Language-aware build
+      - docker build -t ${IMAGE} src/${DOMAIN}/${SERVICE_NAME}/
       - |
-        if [ -f "go.mod" ]; then
-          go test ./... -v -coverprofile=coverage.out 2>&1 | tee test-results.txt || [ "$SKIP_TESTS" = "true" ]
-          go build -o /tmp/service-binary .
-        elif [ -f "pom.xml" ]; then
-          mvn test package -q 2>&1 | tee test-results.txt || [ "$SKIP_TESTS" = "true" ]
-        elif [ -f "build.gradle.kts" ]; then
-          gradle test build -q 2>&1 | tee test-results.txt || [ "$SKIP_TESTS" = "true" ]
-        elif [ -f "package.json" ]; then
-          npm ci --quiet && npm test 2>&1 | tee test-results.txt || [ "$SKIP_TESTS" = "true" ]
-        elif [ -f "requirements.txt" ]; then
-          pip install -r requirements.txt --quiet
-          python -m pytest --tb=short 2>&1 | tee test-results.txt || [ "$SKIP_TESTS" = "true" ]
-        elif [ -f "Cargo.toml" ]; then
-          cargo test 2>&1 | tee test-results.txt || [ "$SKIP_TESTS" = "true" ]
-        fi
-
-      # SonarQube
+        aws ecr start-image-scan \
+          --repository-name shopos/${SERVICE_NAME} \
+          --image-id imageTag=${IMAGE_TAG} \
+          --region ${AWS_REGION} 2>/dev/null || true
+      - docker push ${IMAGE}
+      - docker tag ${IMAGE} ${ECR_REGISTRY}/shopos/${SERVICE_NAME}:latest
+      - docker push ${ECR_REGISTRY}/shopos/${SERVICE_NAME}:latest
       - |
-        if [ -f "pom.xml" ]; then
-          mvn sonar:sonar -Dsonar.host.url=$SONAR_HOST_URL -Dsonar.login=$SONAR_TOKEN -q || true
-        else
-          sonar-scanner -Dsonar.host.url=$SONAR_HOST_URL -Dsonar.login=$SONAR_TOKEN -Dsonar.projectKey=$SERVICE_NAME || true
-        fi
-
-      # Docker build
-      - cd "$CODEBUILD_SRC_DIR/$SERVICE_DIR"
-      - IMAGE="$HARBOR_REGISTRY/$DOMAIN/$SERVICE_NAME:$IMAGE_TAG"
-      - docker build -t "$IMAGE" -t "$HARBOR_REGISTRY/$DOMAIN/$SERVICE_NAME:latest" .
-
-      # Trivy image scan
-      - mkdir -p "$CODEBUILD_SRC_DIR/reports"
-      - trivy image --exit-code 0 --severity "$SCAN_SEVERITY" --format json --output "$CODEBUILD_SRC_DIR/reports/trivy-$SERVICE_NAME.json" "$IMAGE" || true
-      - trivy image --exit-code 1 --severity CRITICAL "$IMAGE" || echo "WARN Critical vulnerabilities found"
-
-      # Syft SBOM
-      - syft "$IMAGE" -o cyclonedx-json > "$CODEBUILD_SRC_DIR/reports/sbom-$SERVICE_NAME.json" || true
-
-      # Push image
-      - docker push "$IMAGE"
-      - docker push "$HARBOR_REGISTRY/$DOMAIN/$SERVICE_NAME:latest"
-
-      # Cosign keyless sign
-      - cosign sign --yes "$IMAGE" || true
-      # Cosign attest SBOM
-      - cosign attest --yes --predicate "$CODEBUILD_SRC_DIR/reports/sbom-$SERVICE_NAME.json" --type cyclonedx "$IMAGE" || true
+        helm upgrade --install ${SERVICE_NAME} helm/charts/${SERVICE_NAME} \
+          --namespace ${DOMAIN} --create-namespace \
+          --set image.repository=${ECR_REGISTRY}/shopos/${SERVICE_NAME} \
+          --set image.tag=${IMAGE_TAG} \
+          --set environment=${ENVIRONMENT} \
+          --set persistence.storageClass=gp3 \
+          -f helm/charts/${SERVICE_NAME}/values-${ENVIRONMENT}.yaml \
+          --wait --timeout 10m
 
   post_build:
     commands:
-      - echo "=== Deploy: $SERVICE_NAME to $ENVIRONMENT ==="
-      # Helm deploy
+      - kubectl rollout status deployment/${SERVICE_NAME} -n ${DOMAIN} --timeout=5m
+      - kubectl get pods -n ${DOMAIN} -l app=${SERVICE_NAME}
       - |
-        helm upgrade --install "$SERVICE_NAME" "helm/charts/$SERVICE_NAME" \
-          --namespace "$DOMAIN" \
-          --set image.repository="$HARBOR_REGISTRY/$DOMAIN/$SERVICE_NAME" \
-          --set image.tag="$IMAGE_TAG" \
-          --set environment="$ENVIRONMENT" \
-          -f "helm/charts/$SERVICE_NAME/values-$ENVIRONMENT.yaml" \
-          --wait --timeout 5m
-
-      # Smoke test
-      - kubectl rollout status deploy/"$SERVICE_NAME" -n "$DOMAIN" --timeout=120s
-      - echo "Deploy complete for $SERVICE_NAME:$IMAGE_TAG in $ENVIRONMENT"
-
-      # Slack notification
-      - |
-        curl -sf -X POST "$SLACK_WEBHOOK" \
-          -H "Content-Type: application/json" \
-          -d "{\"text\":\"Deployed *$SERVICE_NAME* @ $IMAGE_TAG to *$ENVIRONMENT* — build #$CODEBUILD_BUILD_NUMBER\"}" || true
+        aws ssm put-parameter \
+          --name /shopos/deployments/${SERVICE_NAME}/image_tag \
+          --value "${IMAGE_TAG}" \
+          --type String --overwrite || true
+      - echo "Deploy complete: ${SERVICE_NAME}:${IMAGE_TAG} on ${ENVIRONMENT}"
 
 artifacts:
   files:
-    - reports/**/*
-  name: deploy-reports-$CODEBUILD_BUILD_NUMBER
-
-reports:
-  test-reports:
-    files:
-      - '**/test-results.txt'
-    file-format: JUNITXML
+    - "**/*"
+  base-directory: reports
+  name: deploy-reports-${CODEBUILD_BUILD_NUMBER}

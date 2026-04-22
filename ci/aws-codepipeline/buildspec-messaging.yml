@@ -1,62 +1,59 @@
 version: 0.2
 
-# Messaging Infrastructure — CodeBuild buildspec
-# Mirrors .github/workflows/messaging.yml
-# Parameters via environment variables:
-#   ENVIRONMENT, ACTION (INSTALL|UPGRADE|UNINSTALL|CONFIGURE)
-#   ZOOKEEPER, KAFKA, SCHEMA_REGISTRY, KAFKA_CONNECT, RABBITMQ, NATS, KAFKA_UI, DEBEZIUM, FLINK
+# AWS CodePipeline — Deploy messaging stack to EKS via Helm
+# Kubeconfig sourced from aws eks update-kubeconfig (not base64 secret)
+# ACTION: INSTALL | UPGRADE | UNINSTALL | CONFIGURE
 
 env:
+  parameter-store:
+    EKS_CLUSTER_NAME: /shopos/eks/cluster_name
+    AWS_REGION: /shopos/aws/region
+    RABBITMQ_PASSWORD: /shopos/rabbitmq/password
   variables:
     ENVIRONMENT: dev
     ACTION: INSTALL
     ZOOKEEPER: "true"
     KAFKA: "true"
     SCHEMA_REGISTRY: "true"
-    KAFKA_CONNECT: "true"
     RABBITMQ: "true"
     NATS: "true"
     KAFKA_UI: "true"
     DEBEZIUM: "false"
     FLINK: "false"
-  parameter-store:
-    RABBITMQ_PASSWORD: /shopos/rabbitmq/password
-  secrets-manager:
-    KUBECONFIG_CONTENT: shopos/kubeconfig:content
 
 phases:
   install:
     commands:
-      - curl -fsSL "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl" -o /usr/local/bin/kubectl && chmod +x /usr/local/bin/kubectl
+      - curl -fsSL "https://dl.k8s.io/release/$(curl -Ls https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl" -o /usr/local/bin/kubectl && chmod +x /usr/local/bin/kubectl
       - curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
 
   pre_build:
     commands:
-      - mkdir -p ~/.kube
-      - echo "$KUBECONFIG_CONTENT" | base64 -d > ~/.kube/config
-      - echo "Messaging $ACTION on $ENVIRONMENT"
+      - aws eks update-kubeconfig --region ${AWS_REGION} --name ${EKS_CLUSTER_NAME}
+      - kubectl get nodes --no-headers | wc -l
+      - echo "Messaging ${ACTION} on ${ENVIRONMENT}"
 
   build:
     commands:
-      # ZooKeeper
       - |
-        if [ "$ZOOKEEPER" = "true" ] && [ "$ACTION" != "CONFIGURE" ]; then
+        if [ "${ZOOKEEPER}" = "true" ] && [ "${ACTION}" != "CONFIGURE" ]; then
           helm repo add bitnami https://charts.bitnami.com/bitnami --force-update
-          if [ "$ACTION" = "UNINSTALL" ]; then
+          if [ "${ACTION}" = "UNINSTALL" ]; then
             helm uninstall zookeeper -n messaging 2>/dev/null || true
           else
             helm upgrade --install zookeeper bitnami/zookeeper \
               --namespace messaging --create-namespace \
-              --set replicaCount=3 --set auth.enabled=false \
+              --set replicaCount=3 \
+              --set auth.enabled=false \
+              --set persistence.storageClass=gp3 \
               --wait --timeout 8m
           fi
         fi
 
-      # Kafka
       - |
-        if [ "$KAFKA" = "true" ] && [ "$ACTION" != "CONFIGURE" ]; then
+        if [ "${KAFKA}" = "true" ] && [ "${ACTION}" != "CONFIGURE" ]; then
           helm repo add bitnami https://charts.bitnami.com/bitnami --force-update
-          if [ "$ACTION" = "UNINSTALL" ]; then
+          if [ "${ACTION}" = "UNINSTALL" ]; then
             helm uninstall kafka -n messaging 2>/dev/null || true
           else
             helm upgrade --install kafka bitnami/kafka \
@@ -68,15 +65,15 @@ phases:
               --set autoCreateTopicsEnable=false \
               --set offsetsTopicReplicationFactor=3 \
               --set defaultReplicationFactor=3 \
+              --set persistence.storageClass=gp3 \
               --wait --timeout 10m
           fi
         fi
 
-      # Schema Registry
       - |
-        if [ "$SCHEMA_REGISTRY" = "true" ] && [ "$ACTION" != "CONFIGURE" ]; then
+        if [ "${SCHEMA_REGISTRY}" = "true" ] && [ "${ACTION}" != "CONFIGURE" ]; then
           helm repo add bitnami https://charts.bitnami.com/bitnami --force-update
-          if [ "$ACTION" = "UNINSTALL" ]; then
+          if [ "${ACTION}" = "UNINSTALL" ]; then
             helm uninstall schema-registry -n messaging 2>/dev/null || true
           else
             helm upgrade --install schema-registry bitnami/schema-registry \
@@ -87,29 +84,28 @@ phases:
           fi
         fi
 
-      # RabbitMQ
       - |
-        if [ "$RABBITMQ" = "true" ] && [ "$ACTION" != "CONFIGURE" ]; then
+        if [ "${RABBITMQ}" = "true" ] && [ "${ACTION}" != "CONFIGURE" ]; then
           helm repo add bitnami https://charts.bitnami.com/bitnami --force-update
-          if [ "$ACTION" = "UNINSTALL" ]; then
+          if [ "${ACTION}" = "UNINSTALL" ]; then
             helm uninstall rabbitmq -n messaging 2>/dev/null || true
           else
             helm upgrade --install rabbitmq bitnami/rabbitmq \
               --namespace messaging --create-namespace \
               --set replicaCount=3 \
               --set auth.username=admin \
-              --set auth.password="$RABBITMQ_PASSWORD" \
+              --set auth.password="${RABBITMQ_PASSWORD}" \
               --set clustering.enabled=true \
               --set metrics.enabled=true \
+              --set persistence.storageClass=gp3 \
               --wait --timeout 8m
           fi
         fi
 
-      # NATS
       - |
-        if [ "$NATS" = "true" ] && [ "$ACTION" != "CONFIGURE" ]; then
+        if [ "${NATS}" = "true" ] && [ "${ACTION}" != "CONFIGURE" ]; then
           helm repo add nats https://nats-io.github.io/k8s/helm/charts --force-update
-          if [ "$ACTION" = "UNINSTALL" ]; then
+          if [ "${ACTION}" = "UNINSTALL" ]; then
             helm uninstall nats -n messaging 2>/dev/null || true
           else
             helm upgrade --install nats nats/nats \
@@ -119,15 +115,15 @@ phases:
               --set cluster.replicas=3 \
               --set nats.jetstream.fileStorage.enabled=true \
               --set nats.jetstream.fileStorage.size=20Gi \
+              --set nats.jetstream.fileStorage.storageClassName=gp3 \
               --wait --timeout 5m
           fi
         fi
 
-      # Kafka UI
       - |
-        if [ "$KAFKA_UI" = "true" ] && [ "$ACTION" != "CONFIGURE" ]; then
+        if [ "${KAFKA_UI}" = "true" ] && [ "${ACTION}" != "CONFIGURE" ]; then
           helm repo add kafka-ui https://provectus.github.io/kafka-ui-charts --force-update
-          if [ "$ACTION" = "UNINSTALL" ]; then
+          if [ "${ACTION}" = "UNINSTALL" ]; then
             helm uninstall kafka-ui -n messaging 2>/dev/null || true
           else
             helm upgrade --install kafka-ui kafka-ui/kafka-ui \
@@ -138,21 +134,19 @@ phases:
           fi
         fi
 
-      # Debezium
       - |
-        if [ "$DEBEZIUM" = "true" ] && [ "$ACTION" != "CONFIGURE" ]; then
-          if [ "$ACTION" = "UNINSTALL" ]; then
+        if [ "${DEBEZIUM}" = "true" ] && [ "${ACTION}" != "CONFIGURE" ]; then
+          if [ "${ACTION}" = "UNINSTALL" ]; then
             kubectl delete -f streaming/debezium/ 2>/dev/null || true
           else
             kubectl apply -f streaming/debezium/
           fi
         fi
 
-      # Apache Flink
       - |
-        if [ "$FLINK" = "true" ] && [ "$ACTION" != "CONFIGURE" ]; then
+        if [ "${FLINK}" = "true" ] && [ "${ACTION}" != "CONFIGURE" ]; then
           helm repo add flink-operator-helm https://downloads.apache.org/flink/flink-kubernetes-operator --force-update
-          if [ "$ACTION" = "UNINSTALL" ]; then
+          if [ "${ACTION}" = "UNINSTALL" ]; then
             helm uninstall flink-kubernetes-operator -n flink 2>/dev/null || true
           else
             helm upgrade --install flink-kubernetes-operator flink-operator-helm/flink-kubernetes-operator \
@@ -161,12 +155,11 @@ phases:
           fi
         fi
 
-      # Create Kafka Topics (CONFIGURE action)
       - |
-        if [ "$ACTION" = "CONFIGURE" ]; then
+        if [ "${ACTION}" = "CONFIGURE" ]; then
           KAFKA_POD=$(kubectl get pod -n messaging -l app.kubernetes.io/name=kafka -o jsonpath='{.items[0].metadata.name}')
           create_topic() {
-            kubectl exec -n messaging "$KAFKA_POD" -- \
+            kubectl exec -n messaging "${KAFKA_POD}" -- \
               kafka-topics.sh --create --if-not-exists \
               --bootstrap-server kafka.messaging.svc:9092 \
               --topic "$1" --partitions "$2" --replication-factor "$3" || true
@@ -192,10 +185,11 @@ phases:
           create_topic security.fraud.detected 3 3
           create_topic security.login.failed 6 3
           echo "=== Topics created ==="
-          kubectl exec -n messaging "$KAFKA_POD" -- \
+          kubectl exec -n messaging "${KAFKA_POD}" -- \
             kafka-topics.sh --list --bootstrap-server kafka.messaging.svc:9092
         fi
 
   post_build:
     commands:
-      - echo "Messaging $ACTION complete on $ENVIRONMENT"
+      - echo "Messaging ${ACTION} complete on ${ENVIRONMENT}"
+      - kubectl get pods -n messaging 2>/dev/null || true

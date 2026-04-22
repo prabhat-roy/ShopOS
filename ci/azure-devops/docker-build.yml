@@ -1,204 +1,113 @@
-# Azure DevOps — Docker-Build Pipeline
-# Builds, scans (Trivy), and pushes ShopOS images to Harbor.
-# Usage: Import via Pipelines → New pipeline → Existing YAML file
+# Azure DevOps — Build all ShopOS images, scan with Trivy, push to ACR
+# Uses Azure DevOps: Docker@2 task for ACR, AzureCLI@2, variable groups, environments
 
-trigger:
-  branches:
-    include: [main, develop]
-  paths:
-    include: ['src/**']
+trigger: none
 
 parameters:
-  - name: serviceName
-    displayName: 'Service name (blank = all in domain or all 154)'
-    type: string
-    default: ''
   - name: domain
-    displayName: 'Domain filter (blank = all 13 domains)'
+    displayName: Domain to build (empty = all 13)
     type: string
-    default: ''
-    values: ['', platform, identity, catalog, commerce, supply-chain, financial,
-             customer-experience, communications, content, analytics-ai, b2b,
-             integrations, affiliate]
-  - name: imageTag
-    displayName: 'Docker image tag (blank = auto)'
+    default: ""
+  - name: serviceName
+    displayName: Specific service (empty = all in domain)
     type: string
-    default: ''
-  - name: registryProject
-    displayName: 'Harbor project'
+    default: ""
+  - name: environment
     type: string
-    default: shopos
-  - name: pushImage
-    displayName: 'Push images to Harbor'
-    type: boolean
-    default: true
-  - name: scanImage
-    displayName: 'Run Trivy scan (HIGH,CRITICAL)'
-    type: boolean
-    default: true
-
-variables:
-  - group: shopos-secrets           # Azure DevOps variable group (HARBOR_URL, HARBOR_USER, HARBOR_PASSWORD)
-  - name: IMAGE_TAG
-    value: ${{ coalesce(parameters.imageTag, format('dev-{0}-{1}', variables['Build.SourceVersion'], variables['Build.BuildNumber'])) }}
+    default: dev
+    values: [dev, staging, prod]
 
 pool:
   vmImage: ubuntu-latest
 
-stages:
+variables:
+  - group: shopos-azure-credentials
+  - name: ACR_NAME
+    value: shoposacrregistry
+  - name: IMAGE_TAG
+    value: $(Build.BuildNumber)-$(Build.SourceVersion)
 
-  # ── Docker Build ─────────────────────────────────────────────────────────
-  - stage: DockerBuild
-    displayName: 'Docker Build'
-    jobs:
-      - job: DockerBuild
-        timeoutInMinutes: 240
-        steps:
-          - checkout: self
+jobs:
+  - job: BuildAndPush
+    displayName: Build + Scan + Push to ACR
+    timeoutInMinutes: 120
+    steps:
+      - task: AzureCLI@2
+        displayName: Login to ACR
+        inputs:
+          azureSubscription: azure-service-connection
+          scriptType: bash
+          scriptLocation: inlineScript
+          inlineScript: |
+            az acr login --name $(ACR_NAME)
 
-          - task: Docker@2
-            displayName: Login to Harbor
-            inputs:
-              command: login
-              containerRegistry: 'Harbor-SC'
-
-          - script: |
-              ALL_DOMAINS="platform identity catalog commerce supply-chain financial customer-experience communications content analytics-ai b2b integrations affiliate"
-
-              build_svc() {
-                local domain=$1 svc=$2
-                local image="$(HARBOR_URL)/${{ parameters.registryProject }}/$svc:$(IMAGE_TAG)"
-                echo "=== Building: $image ==="
+      - task: AzureCLI@2
+        displayName: Build and push all images to ACR
+        inputs:
+          azureSubscription: azure-service-connection
+          scriptType: bash
+          scriptLocation: inlineScript
+          inlineScript: |
+            ALL_DOMAINS="platform identity catalog commerce supply-chain financial customer-experience communications content analytics-ai b2b integrations affiliate"
+            SCOPE="${{ parameters.domain }}"
+            [ -z "${SCOPE}" ] && SCOPE="${ALL_DOMAINS}"
+            FAILED=0
+            for domain in ${SCOPE}; do
+              for dir in src/${domain}/*/; do
+                [ -d "${dir}" ] || continue
+                SVC=$(basename ${dir})
+                if [ -n "${{ parameters.serviceName }}" ] && [ "${SVC}" != "${{ parameters.serviceName }}" ]; then continue; fi
+                IMAGE="$(ACR_NAME).azurecr.io/shopos/${SVC}:$(IMAGE_TAG)"
+                echo "=== Building ${IMAGE} ==="
                 docker build \
-                  --label "git.commit=$(Build.SourceVersion)" \
                   --label "build.number=$(Build.BuildNumber)" \
-                  --label "domain=$domain" \
-                  -t "$image" \
-                  "src/$domain/$svc/" || echo "WARN build failed for $svc"
-              }
+                  --label "commit.sha=$(Build.SourceVersion)" \
+                  --label "domain=${domain}" \
+                  -t "${IMAGE}" \
+                  -t "$(ACR_NAME).azurecr.io/shopos/${SVC}:latest" \
+                  "${dir}" || { echo "WARN: ${SVC} build failed"; FAILED=$((FAILED+1)); continue; }
+                docker push "${IMAGE}" || { echo "WARN: ${SVC} push failed"; FAILED=$((FAILED+1)); }
+                docker push "$(ACR_NAME).azurecr.io/shopos/${SVC}:latest" || true
+              done
+            done
+            echo "Build complete. Failures: ${FAILED}"
 
-              SVC="${{ parameters.serviceName }}"
-              DOM="${{ parameters.domain }}"
+      - task: AzureCLI@2
+        displayName: Trivy security scan (representative services)
+        inputs:
+          azureSubscription: azure-service-connection
+          scriptType: bash
+          scriptLocation: inlineScript
+          inlineScript: |
+            mkdir -p $(Build.ArtifactStagingDirectory)/trivy-reports
+            az acr login --name $(ACR_NAME)
+            for SVC in api-gateway order-service payment-service fraud-detection-service auth-service; do
+              IMAGE="$(ACR_NAME).azurecr.io/shopos/${SVC}:$(IMAGE_TAG)"
+              docker run --rm \
+                aquasec/trivy:latest image \
+                --severity HIGH,CRITICAL \
+                --exit-code 0 \
+                --format json \
+                "${IMAGE}" \
+                > $(Build.ArtifactStagingDirectory)/trivy-reports/trivy-${SVC}.json 2>/dev/null || true
+            done
+        continueOnError: true
 
-              if [ -n "$SVC" ] && [ -n "$DOM" ]; then
-                build_svc "$DOM" "$SVC"
-              elif [ -n "$DOM" ]; then
-                for svc_path in src/$DOM/*/; do
-                  [ -d "$svc_path" ] || continue
-                  build_svc "$DOM" "$(basename $svc_path)"
-                done
-              else
-                for d in $ALL_DOMAINS; do
-                  for svc_path in src/$d/*/; do
-                    [ -d "$svc_path" ] || continue
-                    build_svc "$d" "$(basename $svc_path)"
-                  done
-                done
-              fi
-            displayName: Build Docker images
+      - task: AzureCLI@2
+        displayName: Store image tag in Key Vault
+        inputs:
+          azureSubscription: azure-service-connection
+          scriptType: bash
+          scriptLocation: inlineScript
+          inlineScript: |
+            az keyvault secret set \
+              --vault-name shopos-keyvault \
+              --name image-tag-${{ parameters.environment }} \
+              --value "$(IMAGE_TAG)" || true
 
-  # ── Trivy Image Scan ─────────────────────────────────────────────────────
-  - stage: ImageScan
-    displayName: 'Trivy Image Scan'
-    dependsOn: DockerBuild
-    condition: and(succeeded(), eq('${{ parameters.scanImage }}', 'true'))
-    jobs:
-      - job: TrivyScan
-        steps:
-          - checkout: self
-
-          - script: |
-              mkdir -p $(Build.SourcesDirectory)/reports/image-scan
-              ALL_DOMAINS="platform identity catalog commerce supply-chain financial customer-experience communications content analytics-ai b2b integrations affiliate"
-
-              scan_svc() {
-                local svc=$1
-                local image="$(HARBOR_URL)/${{ parameters.registryProject }}/$svc:$(IMAGE_TAG)"
-                echo "=== Trivy: $image ==="
-                docker run --rm \
-                  -v /var/run/docker.sock:/var/run/docker.sock \
-                  aquasec/trivy:latest image \
-                  --exit-code 0 \
-                  --severity HIGH,CRITICAL \
-                  --format json \
-                  --output "/tmp/trivy-${svc}.json" \
-                  "$image" || true
-                cp "/tmp/trivy-${svc}.json" \
-                  "$(Build.SourcesDirectory)/reports/image-scan/trivy-${svc}.json" 2>/dev/null || true
-              }
-
-              SVC="${{ parameters.serviceName }}"
-              DOM="${{ parameters.domain }}"
-
-              if [ -n "$SVC" ]; then
-                scan_svc "$SVC"
-              elif [ -n "$DOM" ]; then
-                for svc_path in src/$DOM/*/; do
-                  [ -d "$svc_path" ] && scan_svc "$(basename $svc_path)"
-                done
-              else
-                for d in $ALL_DOMAINS; do
-                  for svc_path in src/$d/*/; do
-                    [ -d "$svc_path" ] && scan_svc "$(basename $svc_path)"
-                  done
-                done
-              fi
-            displayName: Trivy scan all images
-            continueOnError: true
-
-          - task: PublishPipelineArtifact@1
-            inputs:
-              targetPath: '$(Build.SourcesDirectory)/reports/image-scan'
-              artifact: 'trivy-image-scan-$(Build.BuildNumber)'
-            condition: always()
-
-  # ── Docker Push ──────────────────────────────────────────────────────────
-  - stage: DockerPush
-    displayName: 'Push to Harbor'
-    dependsOn: ImageScan
-    condition: and(succeeded(), eq('${{ parameters.pushImage }}', 'true'))
-    jobs:
-      - job: DockerPush
-        steps:
-          - checkout: self
-
-          - task: Docker@2
-            displayName: Login to Harbor
-            inputs:
-              command: login
-              containerRegistry: 'Harbor-SC'
-
-          - script: |
-              ALL_DOMAINS="platform identity catalog commerce supply-chain financial customer-experience communications content analytics-ai b2b integrations affiliate"
-
-              push_svc() {
-                local svc=$1
-                local image="$(HARBOR_URL)/${{ parameters.registryProject }}/$svc:$(IMAGE_TAG)"
-                echo "=== Pushing: $image ==="
-                docker push "$image" || echo "WARN push failed for $svc"
-              }
-
-              SVC="${{ parameters.serviceName }}"
-              DOM="${{ parameters.domain }}"
-
-              if [ -n "$SVC" ]; then
-                push_svc "$SVC"
-              elif [ -n "$DOM" ]; then
-                for svc_path in src/$DOM/*/; do
-                  [ -d "$svc_path" ] && push_svc "$(basename $svc_path)"
-                done
-              else
-                for d in $ALL_DOMAINS; do
-                  for svc_path in src/$d/*/; do
-                    [ -d "$svc_path" ] && push_svc "$(basename $svc_path)"
-                  done
-                done
-              fi
-            displayName: Push images to Harbor
-
-          - script: |
-              curl -sf -X POST "$(SLACK_WEBHOOK)" \
-                -H "Content-Type: application/json" \
-                -d "{\"text\":\":whale: Docker Build complete — images pushed to $(HARBOR_URL) @ tag=$(IMAGE_TAG) — build #$(Build.BuildNumber)\"}" || true
-            displayName: Slack notification
-            condition: succeeded()
+      - task: PublishPipelineArtifact@1
+        displayName: Publish Trivy scan reports
+        inputs:
+          targetPath: $(Build.ArtifactStagingDirectory)/trivy-reports
+          artifact: trivy-reports-$(Build.BuildNumber)
+        condition: always()

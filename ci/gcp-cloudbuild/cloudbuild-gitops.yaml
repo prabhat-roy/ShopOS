@@ -1,21 +1,21 @@
-# GitOps Tools — GCP Cloud Build
-# Mirrors .github/workflows/gitops.yml
-# Substitutions: _ENVIRONMENT, _ACTION, _ARGOCD, _ARGO_ROLLOUTS, _ARGO_WORKFLOWS,
-#   _ARGO_EVENTS, _FLUXCD, _SEALED_SECRETS, _EXTERNAL_SECRETS, _KEDA, _VELERO
+# GCP Cloud Build — Deploy GitOps stack to GKE
+# ArgoCD configured with GKE kubeconfig; Velero backed by GCS
+# External Secrets pulls from GCP Secret Manager
+# _ACTION: INSTALL | UPGRADE | UNINSTALL | CONFIGURE
 
 substitutions:
   _ENVIRONMENT: dev
+  _CLUSTER_NAME: shopos-dev
+  _REGION: us-central1
   _ACTION: INSTALL
+  _GCS_VELERO_BUCKET: shopos-velero-backups
   _ARGOCD: "true"
   _ARGO_ROLLOUTS: "true"
   _ARGO_WORKFLOWS: "true"
   _ARGO_EVENTS: "true"
-  _FLUXCD: "false"
-  _SEALED_SECRETS: "true"
   _EXTERNAL_SECRETS: "true"
   _KEDA: "true"
   _VELERO: "true"
-  _GCS_VELERO_BUCKET: shopos-velero-backups
 
 options:
   logging: CLOUD_LOGGING_ONLY
@@ -23,23 +23,41 @@ options:
 
 availableSecrets:
   secretManager:
-    - versionName: projects/$PROJECT_ID/secrets/kubeconfig-content/versions/latest
-      env: KUBECONFIG_CONTENT
-    - versionName: projects/$PROJECT_ID/secrets/argocd-admin-password-hash/versions/latest
+    - versionName: projects/$PROJECT_ID/secrets/shopos-argocd-admin-password-hash/versions/latest
       env: ARGOCD_ADMIN_PASSWORD_HASH
 
 steps:
-  - name: alpine/helm
-    id: argocd
-    secretEnv: [KUBECONFIG_CONTENT, ARGOCD_ADMIN_PASSWORD_HASH]
+  - name: gcr.io/cloud-builders/gcloud
+    id: get-credentials
+    args:
+      - container
+      - clusters
+      - get-credentials
+      - ${_CLUSTER_NAME}
+      - --region=${_REGION}
+      - --project=${PROJECT_ID}
+
+  - name: gcr.io/cloud-builders/gcloud
+    id: ensure-gcs-velero
     entrypoint: bash
     args:
       - -c
       - |
-        [ "$_ARGOCD" = "true" ] && [ "$_ACTION" != "CONFIGURE" ] || exit 0
-        mkdir -p ~/.kube && echo "$$KUBECONFIG_CONTENT" | base64 -d > ~/.kube/config
+        [ "${_ACTION}" = "INSTALL" ] || exit 0
+        gcloud storage buckets create gs://${_GCS_VELERO_BUCKET} \
+          --project=${PROJECT_ID} --location=${_REGION} 2>/dev/null || true
+    waitFor: [get-credentials]
+
+  - name: alpine/helm:3.16.0
+    id: argocd
+    secretEnv: [ARGOCD_ADMIN_PASSWORD_HASH]
+    entrypoint: bash
+    args:
+      - -c
+      - |
+        [ "${_ARGOCD}" = "true" ] && [ "${_ACTION}" != "CONFIGURE" ] || exit 0
         helm repo add argo https://argoproj.github.io/argo-helm --force-update
-        if [ "$_ACTION" = "UNINSTALL" ]; then
+        if [ "${_ACTION}" = "UNINSTALL" ]; then
           helm uninstall argocd -n argocd 2>/dev/null || true
         else
           helm upgrade --install argocd argo/argo-cd \
@@ -52,18 +70,20 @@ steps:
             --set configs.secret.argocdServerAdminPassword="$$ARGOCD_ADMIN_PASSWORD_HASH" \
             --wait --timeout 10m
         fi
+    env:
+      - CLOUDSDK_CONTAINER_CLUSTER=${_CLUSTER_NAME}
+      - CLOUDSDK_COMPUTE_REGION=${_REGION}
+    waitFor: [get-credentials]
 
-  - name: alpine/helm
+  - name: alpine/helm:3.16.0
     id: argo-rollouts
-    secretEnv: [KUBECONFIG_CONTENT]
     entrypoint: bash
     args:
       - -c
       - |
-        [ "$_ARGO_ROLLOUTS" = "true" ] && [ "$_ACTION" != "CONFIGURE" ] || exit 0
-        mkdir -p ~/.kube && echo "$$KUBECONFIG_CONTENT" | base64 -d > ~/.kube/config
+        [ "${_ARGO_ROLLOUTS}" = "true" ] && [ "${_ACTION}" != "CONFIGURE" ] || exit 0
         helm repo add argo https://argoproj.github.io/argo-helm --force-update
-        if [ "$_ACTION" = "UNINSTALL" ]; then
+        if [ "${_ACTION}" = "UNINSTALL" ]; then
           helm uninstall argo-rollouts -n argo-rollouts 2>/dev/null || true
         else
           helm upgrade --install argo-rollouts argo/argo-rollouts \
@@ -71,19 +91,94 @@ steps:
             --set dashboard.enabled=true --wait --timeout 5m
           kubectl apply -f gitops/argo-rollouts/ 2>/dev/null || true
         fi
-    waitFor: [argocd]
+    env:
+      - CLOUDSDK_CONTAINER_CLUSTER=${_CLUSTER_NAME}
+      - CLOUDSDK_COMPUTE_REGION=${_REGION}
+    waitFor: [get-credentials]
 
-  - name: alpine/helm
-    id: keda
-    secretEnv: [KUBECONFIG_CONTENT]
+  - name: alpine/helm:3.16.0
+    id: argo-workflows
     entrypoint: bash
     args:
       - -c
       - |
-        [ "$_KEDA" = "true" ] && [ "$_ACTION" != "CONFIGURE" ] || exit 0
-        mkdir -p ~/.kube && echo "$$KUBECONFIG_CONTENT" | base64 -d > ~/.kube/config
+        [ "${_ARGO_WORKFLOWS}" = "true" ] && [ "${_ACTION}" != "CONFIGURE" ] || exit 0
+        helm repo add argo https://argoproj.github.io/argo-helm --force-update
+        if [ "${_ACTION}" = "UNINSTALL" ]; then
+          helm uninstall argo-workflows -n argo 2>/dev/null || true
+        else
+          helm upgrade --install argo-workflows argo/argo-workflows \
+            --namespace argo --create-namespace \
+            --set server.authModes[0]=server \
+            --wait --timeout 5m
+          kubectl apply -f gitops/argo-workflows/ 2>/dev/null || true
+        fi
+    env:
+      - CLOUDSDK_CONTAINER_CLUSTER=${_CLUSTER_NAME}
+      - CLOUDSDK_COMPUTE_REGION=${_REGION}
+    waitFor: [get-credentials]
+
+  - name: alpine/helm:3.16.0
+    id: argo-events
+    entrypoint: bash
+    args:
+      - -c
+      - |
+        [ "${_ARGO_EVENTS}" = "true" ] && [ "${_ACTION}" != "CONFIGURE" ] || exit 0
+        helm repo add argo https://argoproj.github.io/argo-helm --force-update
+        if [ "${_ACTION}" = "UNINSTALL" ]; then
+          helm uninstall argo-events -n argo-events 2>/dev/null || true
+        else
+          helm upgrade --install argo-events argo/argo-events \
+            --namespace argo-events --create-namespace --wait --timeout 5m
+          kubectl apply -f gitops/argo-events/ 2>/dev/null || true
+        fi
+    env:
+      - CLOUDSDK_CONTAINER_CLUSTER=${_CLUSTER_NAME}
+      - CLOUDSDK_COMPUTE_REGION=${_REGION}
+    waitFor: [get-credentials]
+
+  # External Secrets — backed by GCP Secret Manager
+  - name: alpine/helm:3.16.0
+    id: external-secrets
+    entrypoint: bash
+    args:
+      - -c
+      - |
+        [ "${_EXTERNAL_SECRETS}" = "true" ] && [ "${_ACTION}" != "CONFIGURE" ] || exit 0
+        helm repo add external-secrets https://charts.external-secrets.io --force-update
+        if [ "${_ACTION}" = "UNINSTALL" ]; then
+          helm uninstall external-secrets -n external-secrets 2>/dev/null || true
+        else
+          helm upgrade --install external-secrets external-secrets/external-secrets \
+            --namespace external-secrets --create-namespace \
+            --set installCRDs=true --wait --timeout 5m
+          # Bootstrap ClusterSecretStore for GCP Secret Manager
+          kubectl apply -f - <<EOF
+apiVersion: external-secrets.io/v1beta1
+kind: ClusterSecretStore
+metadata:
+  name: gcp-secret-manager
+spec:
+  provider:
+    gcpsm:
+      projectID: ${PROJECT_ID}
+EOF
+        fi
+    env:
+      - CLOUDSDK_CONTAINER_CLUSTER=${_CLUSTER_NAME}
+      - CLOUDSDK_COMPUTE_REGION=${_REGION}
+    waitFor: [get-credentials]
+
+  - name: alpine/helm:3.16.0
+    id: keda
+    entrypoint: bash
+    args:
+      - -c
+      - |
+        [ "${_KEDA}" = "true" ] && [ "${_ACTION}" != "CONFIGURE" ] || exit 0
         helm repo add kedacore https://kedacore.github.io/charts --force-update
-        if [ "$_ACTION" = "UNINSTALL" ]; then
+        if [ "${_ACTION}" = "UNINSTALL" ]; then
           helm uninstall keda -n keda 2>/dev/null || true
         else
           helm upgrade --install keda kedacore/keda \
@@ -91,65 +186,62 @@ steps:
             --set metricsServer.replicaCount=2 --wait --timeout 5m
           kubectl apply -f kubernetes/keda/ 2>/dev/null || true
         fi
-    waitFor: [argo-rollouts]
+    env:
+      - CLOUDSDK_CONTAINER_CLUSTER=${_CLUSTER_NAME}
+      - CLOUDSDK_COMPUTE_REGION=${_REGION}
+    waitFor: [get-credentials]
 
-  - name: alpine/helm
+  # Velero — backed by GCS
+  - name: alpine/helm:3.16.0
     id: velero
-    secretEnv: [KUBECONFIG_CONTENT]
     entrypoint: bash
     args:
       - -c
       - |
-        [ "$_VELERO" = "true" ] && [ "$_ACTION" != "CONFIGURE" ] || exit 0
-        mkdir -p ~/.kube && echo "$$KUBECONFIG_CONTENT" | base64 -d > ~/.kube/config
+        [ "${_VELERO}" = "true" ] && [ "${_ACTION}" != "CONFIGURE" ] || exit 0
         helm repo add vmware-tanzu https://vmware-tanzu.github.io/helm-charts --force-update
-        if [ "$_ACTION" = "UNINSTALL" ]; then
+        if [ "${_ACTION}" = "UNINSTALL" ]; then
           helm uninstall velero -n velero 2>/dev/null || true
         else
           helm upgrade --install velero vmware-tanzu/velero \
             --namespace velero --create-namespace \
             --set configuration.backupStorageLocation[0].name=default \
             --set configuration.backupStorageLocation[0].provider=gcp \
-            --set configuration.backupStorageLocation[0].bucket=$_GCS_VELERO_BUCKET \
-            --set configuration.volumeSnapshotLocation[0].name=default \
+            --set configuration.backupStorageLocation[0].bucket=${_GCS_VELERO_BUCKET} \
             --set configuration.volumeSnapshotLocation[0].provider=gcp \
+            --set configuration.volumeSnapshotLocation[0].config.project=${PROJECT_ID} \
+            --set initContainers[0].name=velero-plugin-for-gcp \
+            --set initContainers[0].image=velero/velero-plugin-for-gcp:v1.10.0 \
+            --set initContainers[0].volumeMounts[0].mountPath=/target \
+            --set initContainers[0].volumeMounts[0].name=plugins \
             --wait --timeout 5m
           kubectl apply -f kubernetes/velero/ 2>/dev/null || true
         fi
-    waitFor: [keda]
+    env:
+      - CLOUDSDK_CONTAINER_CLUSTER=${_CLUSTER_NAME}
+      - CLOUDSDK_COMPUTE_REGION=${_REGION}
+    waitFor: [ensure-gcs-velero]
 
-  - name: alpine/helm
-    id: external-secrets
-    secretEnv: [KUBECONFIG_CONTENT]
+  # CONFIGURE: Bootstrap ArgoCD App-of-Apps
+  - name: gcr.io/cloud-builders/kubectl
+    id: bootstrap-argocd
     entrypoint: bash
     args:
       - -c
       - |
-        [ "$_EXTERNAL_SECRETS" = "true" ] && [ "$_ACTION" != "CONFIGURE" ] || exit 0
-        mkdir -p ~/.kube && echo "$$KUBECONFIG_CONTENT" | base64 -d > ~/.kube/config
-        helm repo add external-secrets https://charts.external-secrets.io --force-update
-        if [ "$_ACTION" = "UNINSTALL" ]; then
-          helm uninstall external-secrets -n external-secrets 2>/dev/null || true
-        else
-          helm upgrade --install external-secrets external-secrets/external-secrets \
-            --namespace external-secrets --create-namespace \
-            --set installCRDs=true --wait --timeout 5m
-        fi
-    waitFor: [velero]
-
-  # Bootstrap ArgoCD App-of-Apps
-  - name: bitnami/kubectl
-    id: argocd-bootstrap
-    secretEnv: [KUBECONFIG_CONTENT]
-    entrypoint: bash
-    args:
-      - -c
-      - |
-        [ "$_ACTION" = "CONFIGURE" ] || exit 0
-        mkdir -p ~/.kube && echo "$$KUBECONFIG_CONTENT" | base64 -d > ~/.kube/config
+        [ "${_ACTION}" = "CONFIGURE" ] || exit 0
         kubectl wait --for=condition=available deployment/argocd-server \
-          -n argocd --timeout=120s
+          -n argocd --timeout=180s
         kubectl apply -f gitops/argocd/app-of-apps.yaml
         kubectl apply -f gitops/argocd/applicationsets/ 2>/dev/null || true
-        echo "ArgoCD App-of-Apps bootstrapped for $_ENVIRONMENT"
-    waitFor: [external-secrets]
+        # Store ArgoCD URL in Secret Manager
+        ARGOCD_IP=$(kubectl get svc argocd-server -n argocd -o jsonpath='{.status.loadBalancer.ingress[0].ip}' 2>/dev/null || echo "pending")
+        echo -n "https://${ARGOCD_IP}" | \
+          gcloud secrets create shopos-argocd-url-${_ENVIRONMENT} --data-file=- 2>/dev/null || \
+          echo -n "https://${ARGOCD_IP}" | \
+          gcloud secrets versions add shopos-argocd-url-${_ENVIRONMENT} --data-file=- 2>/dev/null || true
+        echo "ArgoCD App-of-Apps bootstrapped for ${_ENVIRONMENT}"
+    env:
+      - CLOUDSDK_CONTAINER_CLUSTER=${_CLUSTER_NAME}
+      - CLOUDSDK_COMPUTE_REGION=${_REGION}
+    waitFor: [argocd]

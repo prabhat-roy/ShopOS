@@ -1,142 +1,166 @@
 version: 0.2
 
-# Post-Deploy Validation — CodeBuild buildspec
-# Mirrors .github/workflows/post-deploy.yml
-# Parameters via environment variables:
-#   ENVIRONMENT, RUN_LOAD_TEST, RUN_DAST, RUN_K8S_AUDIT
+# AWS CodePipeline — Post-deploy validation on EKS
+# k6 results published to CloudWatch; DAST findings to Security Hub
+# RUN_LOAD_TEST, RUN_DAST, RUN_K8S_AUDIT: true | false
 
 env:
+  parameter-store:
+    EKS_CLUSTER_NAME: /shopos/eks/cluster_name
+    AWS_REGION: /shopos/aws/region
+    AWS_ACCOUNT_ID: /shopos/aws/account_id
   variables:
     ENVIRONMENT: staging
     RUN_LOAD_TEST: "true"
     RUN_DAST: "false"
     RUN_K8S_AUDIT: "true"
-  parameter-store:
-    SLACK_WEBHOOK: /shopos/slack/webhook
-  secrets-manager:
-    KUBECONFIG_CONTENT: shopos/kubeconfig:content
 
 phases:
   install:
     commands:
-      - curl -fsSL "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl" -o /usr/local/bin/kubectl && chmod +x /usr/local/bin/kubectl
-      # k6
+      - curl -fsSL "https://dl.k8s.io/release/$(curl -Ls https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl" -o /usr/local/bin/kubectl && chmod +x /usr/local/bin/kubectl
       - |
-        if [ "$RUN_LOAD_TEST" = "true" ]; then
+        if [ "${RUN_LOAD_TEST}" = "true" ]; then
           sudo apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 \
             --recv-keys C5AD17C747E3415A3642D57D77C6C491D6AC1D69
           echo "deb https://dl.k6.io/deb stable main" | sudo tee /etc/apt/sources.list.d/k6.list
           sudo apt-get update -qq && sudo apt-get install k6 -y -qq
+          k6 version
         fi
 
   pre_build:
     commands:
-      - mkdir -p ~/.kube reports reports/dast reports/k8s-audit
-      - echo "$KUBECONFIG_CONTENT" | base64 -d > ~/.kube/config
-      - echo "Post-Deploy Validation on $ENVIRONMENT"
+      - mkdir -p reports/k6 reports/dast reports/k8s-audit
+      - aws eks update-kubeconfig --region ${AWS_REGION} --name ${EKS_CLUSTER_NAME}
+      - echo "Post-Deploy Validation on ${ENVIRONMENT}"
 
   build:
     commands:
-      # ── Health Checks ──────────────────────────────────────────────────────
+      # Health checks — all service namespaces + infra namespaces
       - |
         echo "=== Health Checks ==="
         HEALTH_FAILED=0
-        DOMAINS=(platform identity catalog commerce supply-chain financial customer-experience communications content analytics-ai b2b integrations affiliate)
-        for ns in "${DOMAINS[@]}"; do
-          echo "Checking namespace: $ns"
-          kubectl get deployments -n "$ns" --no-headers 2>/dev/null | while read -r name ready uptodate available age; do
-            if [[ "$available" == "0" ]]; then
-              echo "FAIL: $name in $ns has 0 available replicas"
-              HEALTH_FAILED=$((HEALTH_FAILED+1))
-            fi
-          done || true
+        DOMAINS="platform identity catalog commerce supply-chain financial customer-experience communications content analytics-ai b2b integrations affiliate"
+        for ns in ${DOMAINS}; do
+          UNAVAILABLE=$(kubectl get deployments -n "${ns}" --no-headers 2>/dev/null | awk '{print $4}' | grep -c "^0$" || true)
+          if [ "${UNAVAILABLE}" -gt 0 ]; then
+            echo "WARN: ${UNAVAILABLE} deployment(s) with 0 available replicas in ${ns}"
+            HEALTH_FAILED=$((HEALTH_FAILED+1))
+          fi
         done
 
-        INFRA_NS=(messaging networking istio-system vault keycloak argocd observability registry keda)
-        for ns in "${INFRA_NS[@]}"; do
-          kubectl rollout status deploy --namespace="$ns" --timeout=60s 2>/dev/null | tail -3 || true
+        INFRA_NS="messaging networking istio-system vault keycloak argocd observability registry keda"
+        for ns in ${INFRA_NS}; do
+          kubectl rollout status deploy --namespace="${ns}" --timeout=60s 2>/dev/null | tail -2 || true
         done
 
+        # API Gateway health check
         kubectl port-forward svc/api-gateway 18080:8080 -n platform &
-        PF_PID=$!; sleep 5
+        PF_PID=$!; sleep 8
         HTTP_CODE=$(curl -sf -o /dev/null -w "%{http_code}" http://localhost:18080/healthz 2>/dev/null || echo "000")
-        kill $PF_PID 2>/dev/null || true
-        echo "API Gateway /healthz → $HTTP_CODE"
+        kill ${PF_PID} 2>/dev/null || true
+        echo "API Gateway /healthz → ${HTTP_CODE}"
 
-        if [ "$HTTP_CODE" != "200" ]; then
+        if [ "${HTTP_CODE}" != "200" ]; then
           echo "HEALTH_STATUS=FAILED" >> /tmp/validation-results.env
-          curl -sf -X POST "$SLACK_WEBHOOK" \
-            -H "Content-Type: application/json" \
-            -d "{\"text\":\"Post-deploy health check FAILED on *$ENVIRONMENT* — build #$CODEBUILD_BUILD_NUMBER\"}" || true
+          HEALTH_FAILED=$((HEALTH_FAILED+1))
         else
           echo "HEALTH_STATUS=PASSED" >> /tmp/validation-results.env
         fi
 
-      # ── k6 Smoke Test ──────────────────────────────────────────────────────
+        # Publish health metric to CloudWatch
+        aws cloudwatch put-metric-data \
+          --metric-name HealthCheckFailures \
+          --namespace ShopOS/Deployments \
+          --value ${HEALTH_FAILED} \
+          --unit Count \
+          --dimensions Environment=${ENVIRONMENT} \
+          --region ${AWS_REGION} || true
+
+      # k6 smoke test
       - |
-        if [ "$RUN_LOAD_TEST" = "true" ]; then
+        if [ "${RUN_LOAD_TEST}" = "true" ]; then
           echo "=== k6 Smoke Test ==="
           kubectl port-forward svc/api-gateway 18080:8080 -n platform &
-          PF_PID=$!; sleep 5
+          PF_PID=$!; sleep 8
           BASE_URL=http://localhost:18080 k6 run load-testing/k6/scripts/smoke.js \
-            --out json=reports/k6-smoke-$ENVIRONMENT.json || true
-          kill $PF_PID 2>/dev/null || true
+            --out json=reports/k6/smoke-${ENVIRONMENT}.json \
+            --summary-export=reports/k6/summary-${ENVIRONMENT}.json || true
+          kill ${PF_PID} 2>/dev/null || true
+
+          # Publish k6 summary metrics to CloudWatch
+          if [ -f reports/k6/summary-${ENVIRONMENT}.json ]; then
+            HTTP_REQ_DURATION=$(python3 -c "import json,sys; d=json.load(open('reports/k6/summary-${ENVIRONMENT}.json')); print(d.get('metrics',{}).get('http_req_duration',{}).get('values',{}).get('avg',0))" 2>/dev/null || echo 0)
+            aws cloudwatch put-metric-data \
+              --metric-name k6AvgResponseMs \
+              --namespace ShopOS/Performance \
+              --value "${HTTP_REQ_DURATION}" \
+              --unit Milliseconds \
+              --dimensions Environment=${ENVIRONMENT} \
+              --region ${AWS_REGION} || true
+          fi
         fi
 
-      # ── DAST ───────────────────────────────────────────────────────────────
+      # DAST — OWASP ZAP + Nuclei
       - |
-        if [ "$RUN_DAST" = "true" ]; then
+        if [ "${RUN_DAST}" = "true" ]; then
           echo "=== DAST: OWASP ZAP ==="
           kubectl port-forward svc/api-gateway 18080:8080 -n platform &
-          PF_PID=$!; sleep 5
-          docker run --rm --network=host -v "$PWD/reports/dast:/zap/wrk" \
+          PF_PID=$!; sleep 8
+          docker run --rm --network=host -v "${PWD}/reports/dast:/zap/wrk" \
             ghcr.io/zaproxy/zaproxy:stable \
             zap-baseline.py -t http://localhost:18080 \
-            -J /zap/wrk/zap-$ENVIRONMENT.json \
-            -r /zap/wrk/zap-$ENVIRONMENT.html \
+            -J /zap/wrk/zap-${ENVIRONMENT}.json \
+            -r /zap/wrk/zap-${ENVIRONMENT}.html \
             -I || true
-          kill $PF_PID 2>/dev/null || true
+          kill ${PF_PID} 2>/dev/null || true
 
           echo "=== DAST: Nuclei ==="
           kubectl port-forward svc/api-gateway 18080:8080 -n platform &
-          PF_PID=$!; sleep 5
+          PF_PID=$!; sleep 8
           docker run --rm --network=host \
-            -v "$PWD/reports/dast:/output" \
+            -v "${PWD}/reports/dast:/output" \
             projectdiscovery/nuclei:latest \
             -target http://localhost:18080 \
             -severity critical,high \
-            -json-export /output/nuclei-$ENVIRONMENT.json || true
-          kill $PF_PID 2>/dev/null || true
+            -json-export /output/nuclei-${ENVIRONMENT}.json || true
+          kill ${PF_PID} 2>/dev/null || true
+
+          # Import DAST findings to AWS Security Hub if available
+          aws securityhub batch-import-findings \
+            --findings file://reports/dast/zap-${ENVIRONMENT}.json \
+            --region ${AWS_REGION} 2>/dev/null || true
         fi
 
-      # ── K8s Security Audit ─────────────────────────────────────────────────
+      # K8s security audit via kube-bench and Kubescape
       - |
-        if [ "$RUN_K8S_AUDIT" = "true" ]; then
+        if [ "${RUN_K8S_AUDIT}" = "true" ]; then
           echo "=== kube-bench ==="
           docker run --rm --pid=host \
             -v /etc:/etc:ro -v /var:/var:ro \
             -v ~/.kube:/root/.kube:ro \
             aquasec/kube-bench:latest --json \
-            > reports/k8s-audit/kube-bench-$ENVIRONMENT.json || true
+            > reports/k8s-audit/kube-bench-${ENVIRONMENT}.json || true
 
           echo "=== Kubescape ==="
           docker run --rm -v ~/.kube:/root/.kube \
             quay.io/armosec/kubescape:latest scan \
             framework nsa,mitre \
             --format json \
-            --output reports/k8s-audit/kubescape-$ENVIRONMENT.json || true
+            --output reports/k8s-audit/kubescape-${ENVIRONMENT}.json || true
         fi
 
   post_build:
     commands:
+      - cat /tmp/validation-results.env 2>/dev/null || true
+      - echo "Post-Deploy Validation complete for ${ENVIRONMENT}"
+      - ls -la reports/ 2>/dev/null || true
       - |
-        cat /tmp/validation-results.env 2>/dev/null || true
-        echo "Post-Deploy Validation complete for $ENVIRONMENT"
-        echo "Results:"
-        echo "  Reports: reports/"
-        ls -la reports/ 2>/dev/null || true
+        aws s3 sync reports/ \
+          s3://$(aws ssm get-parameter --name /shopos/s3/logs-bucket --query 'Parameter.Value' --output text --region ${AWS_REGION} 2>/dev/null || echo shopos-logs)/post-deploy/${ENVIRONMENT}/${CODEBUILD_BUILD_NUMBER}/ \
+          --region ${AWS_REGION} || true
 
 artifacts:
   files:
     - reports/**/*
-  name: post-deploy-$ENVIRONMENT-$CODEBUILD_BUILD_NUMBER
+  name: post-deploy-${ENVIRONMENT}-${CODEBUILD_BUILD_NUMBER}

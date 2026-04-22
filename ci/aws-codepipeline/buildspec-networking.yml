@@ -1,64 +1,79 @@
 version: 0.2
 
-# Networking Infrastructure — CodeBuild buildspec
-# Mirrors .github/workflows/networking.yml
-# Parameters via environment variables:
-#   ENVIRONMENT, ACTION, CILIUM, ISTIO, TRAEFIK, CONSUL, EXTERNAL_DNS, METALLB
+# AWS CodePipeline — Deploy networking stack to EKS
+# ExternalDNS configured for Route53; AWS Load Balancer Controller for ELB integration
+# ACTION: INSTALL | UPGRADE | UNINSTALL
 
 env:
+  parameter-store:
+    EKS_CLUSTER_NAME: /shopos/eks/cluster_name
+    AWS_REGION: /shopos/aws/region
+    AWS_ACCOUNT_ID: /shopos/aws/account_id
+    ROUTE53_HOSTED_ZONE_ID: /shopos/route53/hosted_zone_id
   variables:
     ENVIRONMENT: dev
     ACTION: INSTALL
     CILIUM: "false"
     ISTIO: "true"
-    LINKERD: "false"
     TRAEFIK: "true"
     CONSUL: "true"
     EXTERNAL_DNS: "true"
-    METALLB: "false"
-  parameter-store:
-    AWS_REGION_PARAM: /shopos/aws/region
-  secrets-manager:
-    KUBECONFIG_CONTENT: shopos/kubeconfig:content
+    AWS_LB_CONTROLLER: "true"
 
 phases:
   install:
     commands:
-      - curl -fsSL "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl" -o /usr/local/bin/kubectl && chmod +x /usr/local/bin/kubectl
+      - curl -fsSL "https://dl.k8s.io/release/$(curl -Ls https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl" -o /usr/local/bin/kubectl && chmod +x /usr/local/bin/kubectl
       - curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
 
   pre_build:
     commands:
-      - mkdir -p ~/.kube
-      - echo "$KUBECONFIG_CONTENT" | base64 -d > ~/.kube/config
-      - echo "Networking $ACTION on $ENVIRONMENT"
+      - aws eks update-kubeconfig --region ${AWS_REGION} --name ${EKS_CLUSTER_NAME}
+      - echo "Networking ${ACTION} on ${ENVIRONMENT}"
 
   build:
     commands:
-      # Cilium
+      # AWS Load Balancer Controller — required for ELB integration on EKS
       - |
-        if [ "$CILIUM" = "true" ]; then
+        if [ "${AWS_LB_CONTROLLER}" = "true" ]; then
+          helm repo add eks https://aws.github.io/eks-charts --force-update
+          if [ "${ACTION}" = "UNINSTALL" ]; then
+            helm uninstall aws-load-balancer-controller -n kube-system 2>/dev/null || true
+          else
+            helm upgrade --install aws-load-balancer-controller eks/aws-load-balancer-controller \
+              --namespace kube-system \
+              --set clusterName=${EKS_CLUSTER_NAME} \
+              --set serviceAccount.create=true \
+              --set region=${AWS_REGION} \
+              --set vpcId=$(aws eks describe-cluster --name ${EKS_CLUSTER_NAME} --region ${AWS_REGION} --query 'cluster.resourcesVpcConfig.vpcId' --output text) \
+              --wait --timeout 5m
+          fi
+        fi
+
+      - |
+        if [ "${CILIUM}" = "true" ]; then
           helm repo add cilium https://helm.cilium.io --force-update
-          if [ "$ACTION" = "UNINSTALL" ]; then
+          if [ "${ACTION}" = "UNINSTALL" ]; then
             helm uninstall cilium -n kube-system 2>/dev/null || true
           else
+            # EKS-specific Cilium configuration (chained CNI mode)
             helm upgrade --install cilium cilium/cilium \
               --namespace kube-system \
-              --set kubeProxyReplacement=true \
+              --set eni.enabled=true \
+              --set ipam.mode=eni \
+              --set egressMasqueradeInterfaces=eth0 \
+              --set routingMode=native \
               --set hubble.relay.enabled=true \
               --set hubble.ui.enabled=true \
-              --set loadBalancer.algorithm=maglev \
-              --set prometheus.enabled=true \
               --wait --timeout 8m
             kubectl apply -f networking/cilium/ 2>/dev/null || true
           fi
         fi
 
-      # Istio
       - |
-        if [ "$ISTIO" = "true" ]; then
+        if [ "${ISTIO}" = "true" ]; then
           helm repo add istio https://istio-release.storage.googleapis.com/charts --force-update
-          if [ "$ACTION" = "UNINSTALL" ]; then
+          if [ "${ACTION}" = "UNINSTALL" ]; then
             helm uninstall istio-ingressgateway -n istio-system 2>/dev/null || true
             helm uninstall istiod -n istio-system 2>/dev/null || true
             helm uninstall istio-base -n istio-system 2>/dev/null || true
@@ -76,11 +91,10 @@ phases:
           fi
         fi
 
-      # Traefik
       - |
-        if [ "$TRAEFIK" = "true" ]; then
+        if [ "${TRAEFIK}" = "true" ]; then
           helm repo add traefik https://traefik.github.io/charts --force-update
-          if [ "$ACTION" = "UNINSTALL" ]; then
+          if [ "${ACTION}" = "UNINSTALL" ]; then
             helm uninstall traefik -n networking 2>/dev/null || true
           else
             helm upgrade --install traefik traefik/traefik \
@@ -90,16 +104,16 @@ phases:
               --set ingressClass.enabled=true \
               --set ingressClass.isDefaultClass=true \
               --set metrics.prometheus.enabled=true \
+              --set service.annotations."service\.beta\.kubernetes\.io/aws-load-balancer-type"=nlb \
               --wait --timeout 5m
             kubectl apply -f networking/traefik/ 2>/dev/null || true
           fi
         fi
 
-      # Consul
       - |
-        if [ "$CONSUL" = "true" ]; then
+        if [ "${CONSUL}" = "true" ]; then
           helm repo add hashicorp https://helm.releases.hashicorp.com --force-update
-          if [ "$ACTION" = "UNINSTALL" ]; then
+          if [ "${ACTION}" = "UNINSTALL" ]; then
             helm uninstall consul -n consul 2>/dev/null || true
           else
             helm upgrade --install consul hashicorp/consul \
@@ -114,23 +128,25 @@ phases:
           fi
         fi
 
-      # ExternalDNS
       - |
-        if [ "$EXTERNAL_DNS" = "true" ]; then
+        if [ "${EXTERNAL_DNS}" = "true" ]; then
           helm repo add external-dns https://kubernetes-sigs.github.io/external-dns --force-update
-          if [ "$ACTION" = "UNINSTALL" ]; then
+          if [ "${ACTION}" = "UNINSTALL" ]; then
             helm uninstall external-dns -n networking 2>/dev/null || true
           else
             helm upgrade --install external-dns external-dns/external-dns \
               --namespace networking --create-namespace \
               --set provider=aws \
-              --set aws.region="$AWS_REGION_PARAM" \
+              --set aws.region=${AWS_REGION} \
+              --set aws.zoneType=public \
+              --set txtOwnerId=shopos-${ENVIRONMENT} \
               --set policy=sync \
-              --set txtOwnerId=shopos \
               --wait --timeout 3m
           fi
         fi
 
   post_build:
     commands:
-      - echo "Networking $ACTION complete on $ENVIRONMENT"
+      - echo "Networking ${ACTION} complete on ${ENVIRONMENT}"
+      - kubectl get svc -n istio-system 2>/dev/null | head -10 || true
+      - kubectl get svc -n networking 2>/dev/null | head -10 || true

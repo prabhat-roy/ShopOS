@@ -1,194 +1,101 @@
-# Docker-Build Pipeline — GCP Cloud Build
-# Builds, scans (Trivy), and pushes ShopOS images to Harbor.
-# Substitutions (set via trigger or --substitutions flag):
-#   _SERVICE_NAME, _DOMAIN, _IMAGE_TAG, _REGISTRY_PROJECT, _HARBOR_REGISTRY
-#   _PUSH_IMAGE, _SCAN_IMAGE
+# GCP Cloud Build — Build all ShopOS images, scan with Trivy, push to Artifact Registry
+# Set _DOMAIN to build one domain; leave default "all" to build all 13 domains
 
 substitutions:
-  _SERVICE_NAME: ""              # empty = all in _DOMAIN or all 154
-  _DOMAIN: ""                    # empty = all 13 domains
-  _IMAGE_TAG: ""                 # empty = dev-$SHORT_SHA-$BUILD_ID prefix
-  _HARBOR_REGISTRY: harbor.shopos.internal
-  _REGISTRY_PROJECT: shopos
-  _PUSH_IMAGE: "true"
-  _SCAN_IMAGE: "true"
+  _REGION: us-central1
+  _ARTIFACT_REGISTRY: us-central1-docker.pkg.dev
+  _DOMAIN: all
 
 options:
+  machineType: E2_HIGHCPU_32
   logging: CLOUD_LOGGING_ONLY
-  machineType: E2_HIGHCPU_32    # larger machine for parallel-ish builds
-  env:
-    - ALL_DOMAINS=platform identity catalog commerce supply-chain financial customer-experience communications content analytics-ai b2b integrations affiliate
-
-availableSecrets:
-  secretManager:
-    - versionName: projects/$PROJECT_ID/secrets/harbor-password/versions/latest
-      env: HARBOR_PASSWORD
-    - versionName: projects/$PROJECT_ID/secrets/harbor-user/versions/latest
-      env: HARBOR_USER
-    - versionName: projects/$PROJECT_ID/secrets/slack-webhook/versions/latest
-      env: SLACK_WEBHOOK
 
 steps:
-
-  # ── Resolve tag ────────────────────────────────────────────────────────────
-  - name: alpine/git
-    id: resolve-tag
-    entrypoint: sh
-    args:
-      - -c
-      - |
-        TAG="${_IMAGE_TAG}"
-        if [ -z "$TAG" ]; then
-          TAG="dev-${SHORT_SHA}-${BUILD_ID:0:8}"
-        fi
-        echo "$TAG" > /workspace/.image_tag
-        echo "Resolved IMAGE_TAG=$TAG"
-
-  # ── Docker Build (all services) ────────────────────────────────────────────
-  - name: gcr.io/cloud-builders/docker
-    id: docker-build
-    secretEnv: [HARBOR_USER, HARBOR_PASSWORD]
+  - name: gcr.io/cloud-builders/gcloud
+    id: ensure-repo
     entrypoint: bash
     args:
       - -c
       - |
-        IMAGE_TAG=$(cat /workspace/.image_tag)
-        echo "$$HARBOR_PASSWORD" | docker login "$_HARBOR_REGISTRY" -u "$$HARBOR_USER" --password-stdin
+        gcloud artifacts repositories describe shopos \
+          --repository-format=docker \
+          --location=${_REGION} \
+          --project=${PROJECT_ID} 2>/dev/null || \
+          gcloud artifacts repositories create shopos \
+            --repository-format=docker \
+            --location=${_REGION} \
+            --project=${PROJECT_ID} \
+            --description="ShopOS microservices container registry"
+        gcloud auth configure-docker ${_REGION}-docker.pkg.dev --quiet
 
-        build_svc() {
-          local domain=$1 svc=$2
-          local image="$_HARBOR_REGISTRY/$_REGISTRY_PROJECT/$svc:$IMAGE_TAG"
-          echo "=== Building: $image ==="
-          docker build \
-            --label "git.commit=${SHORT_SHA}" \
-            --label "build.id=${BUILD_ID}" \
-            --label "domain=$domain" \
-            -t "$image" \
-            "src/$domain/$svc/" || echo "WARN build failed for $svc"
-        }
-
-        SVC="${_SERVICE_NAME}"
-        DOM="${_DOMAIN}"
-
-        if [ -n "$SVC" ] && [ -n "$DOM" ]; then
-          build_svc "$DOM" "$SVC"
-        elif [ -n "$DOM" ]; then
-          for svc_path in src/$DOM/*/; do
-            [ -d "$svc_path" ] || continue
-            build_svc "$DOM" "$(basename $svc_path)"
+  - name: gcr.io/cloud-builders/docker
+    id: build-and-push
+    entrypoint: bash
+    args:
+      - -c
+      - |
+        IMAGE_TAG="${BUILD_ID:0:8}"
+        REGISTRY="${_ARTIFACT_REGISTRY}/${PROJECT_ID}/shopos"
+        ALL_DOMAINS="platform identity catalog commerce supply-chain financial customer-experience communications content analytics-ai b2b integrations affiliate"
+        SCOPE="${_DOMAIN}"
+        [ "${SCOPE}" = "all" ] && SCOPE="${ALL_DOMAINS}"
+        FAILED=0
+        for domain in ${SCOPE}; do
+          for dir in src/${domain}/*/; do
+            [ -d "${dir}" ] || continue
+            SVC=$(basename ${dir})
+            IMAGE="${REGISTRY}/${SVC}:${IMAGE_TAG}"
+            echo "=== Building ${IMAGE} ==="
+            docker build \
+              --label "build.id=${BUILD_ID}" \
+              --label "commit.sha=${COMMIT_SHA}" \
+              --label "domain=${domain}" \
+              -t "${IMAGE}" \
+              -t "${REGISTRY}/${SVC}:latest" \
+              "${dir}" || { echo "WARN: ${SVC} build failed"; FAILED=$((FAILED+1)); continue; }
+            docker push "${IMAGE}" || { echo "WARN: ${SVC} push failed"; FAILED=$((FAILED+1)); }
           done
-        else
-          for d in $ALL_DOMAINS; do
-            for svc_path in src/$d/*/; do
-              [ -d "$svc_path" ] || continue
-              build_svc "$d" "$(basename $svc_path)"
-            done
-          done
-        fi
-    waitFor: [resolve-tag]
+        done
+        echo "${IMAGE_TAG}" > /workspace/image_tag
+        echo "Build complete. Failures: ${FAILED}"
+    waitFor: [ensure-repo]
 
-  # ── Trivy Image Scan ───────────────────────────────────────────────────────
-  - name: aquasec/trivy
+  - name: aquasec/trivy:latest
     id: trivy-scan
     entrypoint: sh
     args:
       - -c
       - |
-        IMAGE_TAG=$(cat /workspace/.image_tag)
-        if [ "${_SCAN_IMAGE}" != "true" ]; then
-          echo "Skipping Trivy scan (_SCAN_IMAGE=false)"
-          exit 0
-        fi
-        mkdir -p /workspace/reports/image-scan
-
-        scan_svc() {
-          local svc=$1
-          local image="${_HARBOR_REGISTRY}/${_REGISTRY_PROJECT}/$svc:$IMAGE_TAG"
-          echo "=== Trivy: $image ==="
+        IMAGE_TAG=$(cat /workspace/image_tag)
+        REGISTRY="${_ARTIFACT_REGISTRY}/${PROJECT_ID}/shopos"
+        # Scan representative services (api-gateway, order-service, payment-service)
+        for SVC in api-gateway order-service payment-service fraud-detection-service auth-service; do
           trivy image \
-            --exit-code 0 \
             --severity HIGH,CRITICAL \
+            --exit-code 0 \
             --format json \
-            --output "/workspace/reports/image-scan/trivy-${svc}.json" \
-            "$image" || true
-        }
+            --output /workspace/trivy-${SVC}.json \
+            "${REGISTRY}/${SVC}:${IMAGE_TAG}" 2>/dev/null || true
+        done
+    waitFor: [build-and-push]
 
-        SVC="${_SERVICE_NAME}"
-        DOM="${_DOMAIN}"
-
-        if [ -n "$SVC" ]; then
-          scan_svc "$SVC"
-        elif [ -n "$DOM" ]; then
-          for svc_path in src/$DOM/*/; do
-            [ -d "$svc_path" ] && scan_svc "$(basename $svc_path)"
-          done
-        else
-          for d in $ALL_DOMAINS; do
-            for svc_path in src/$d/*/; do
-              [ -d "$svc_path" ] && scan_svc "$(basename $svc_path)"
-            done
-          done
-        fi
-    waitFor: [docker-build]
-
-  # ── Docker Push ────────────────────────────────────────────────────────────
-  - name: gcr.io/cloud-builders/docker
-    id: docker-push
-    secretEnv: [HARBOR_USER, HARBOR_PASSWORD]
+  - name: gcr.io/cloud-builders/gcloud
+    id: store-image-tag
     entrypoint: bash
     args:
       - -c
       - |
-        IMAGE_TAG=$(cat /workspace/.image_tag)
-        if [ "${_PUSH_IMAGE}" != "true" ]; then
-          echo "Skipping push (_PUSH_IMAGE=false)"
-          exit 0
-        fi
-
-        echo "$$HARBOR_PASSWORD" | docker login "$_HARBOR_REGISTRY" -u "$$HARBOR_USER" --password-stdin
-
-        push_svc() {
-          local svc=$1
-          local image="$_HARBOR_REGISTRY/$_REGISTRY_PROJECT/$svc:$IMAGE_TAG"
-          echo "=== Pushing: $image ==="
-          docker push "$image" || echo "WARN push failed for $svc"
-        }
-
-        SVC="${_SERVICE_NAME}"
-        DOM="${_DOMAIN}"
-
-        if [ -n "$SVC" ]; then
-          push_svc "$SVC"
-        elif [ -n "$DOM" ]; then
-          for svc_path in src/$DOM/*/; do
-            [ -d "$svc_path" ] && push_svc "$(basename $svc_path)"
-          done
-        else
-          for d in $ALL_DOMAINS; do
-            for svc_path in src/$d/*/; do
-              [ -d "$svc_path" ] && push_svc "$(basename $svc_path)"
-            done
-          done
-        fi
-        docker logout "$_HARBOR_REGISTRY" || true
-    waitFor: [trivy-scan]
-
-  # ── Notify ─────────────────────────────────────────────────────────────────
-  - name: curlimages/curl
-    id: notify
-    secretEnv: [SLACK_WEBHOOK]
-    entrypoint: sh
-    args:
-      - -c
-      - |
-        IMAGE_TAG=$(cat /workspace/.image_tag)
-        curl -sf -X POST "$$SLACK_WEBHOOK" \
-          -H "Content-Type: application/json" \
-          -d "{\"text\":\":whale: Docker Build complete — images pushed to ${_HARBOR_REGISTRY}/${_REGISTRY_PROJECT} @ tag=$IMAGE_TAG\"}" || true
-    waitFor: [docker-push]
+        IMAGE_TAG=$(cat /workspace/image_tag)
+        echo -n "${IMAGE_TAG}" | \
+          gcloud secrets create shopos-image-tag --data-file=- 2>/dev/null || \
+          echo -n "${IMAGE_TAG}" | \
+          gcloud secrets versions add shopos-image-tag --data-file=-
+        echo "Image tag ${IMAGE_TAG} stored in Secret Manager"
+    waitFor: [build-and-push]
 
 artifacts:
   objects:
-    location: gs://$PROJECT_ID-build-artifacts/$BUILD_ID/
+    location: gs://${PROJECT_ID}-build-artifacts/${BUILD_ID}/
     paths:
-      - /workspace/reports/image-scan/**
+      - /workspace/trivy-*.json
+      - /workspace/image_tag

@@ -1,15 +1,15 @@
-name: Registry Tools
+# Azure DevOps — Deploy registry tools to AKS; configure ACR as primary registry
+# ACR lifecycle policies applied via AzureCLI@2; Harbor/Nexus/Gitea on AKS
+# action: INSTALL | UPGRADE | UNINSTALL | CONFIGURE
 
 trigger: none
 
 parameters:
   - name: environment
-    displayName: Target environment
     type: string
     default: dev
     values: [dev, staging, prod]
   - name: action
-    displayName: Action
     type: string
     default: INSTALL
     values: [INSTALL, UPGRADE, UNINSTALL, CONFIGURE]
@@ -25,30 +25,72 @@ parameters:
   - name: minio
     type: boolean
     default: true
-
-variables:
-  - group: shopos-secrets
+  - name: configureAcr
+    type: boolean
+    default: true
 
 pool:
   vmImage: ubuntu-latest
 
+variables:
+  - group: shopos-azure-credentials
+  - name: ACR_NAME
+    value: shoposacrregistry
+
 jobs:
   - job: Registry
     displayName: Registry ${{ parameters.action }} on ${{ parameters.environment }}
-    timeoutInMinutes: 60
+    timeoutInMinutes: 90
     steps:
       - task: KubectlInstaller@0
 
-      - script: |
-          curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
-        displayName: Install Helm
+      - task: HelmInstaller@1
+        inputs:
+          helmVersion: 3.16.0
 
-      - script: |
-          mkdir -p ~/.kube
-          echo "$(KUBECONFIG_CONTENT)" | base64 -d > ~/.kube/config
-        displayName: Configure kubeconfig
+      - task: AzureCLI@2
+        displayName: Configure AKS kubeconfig
+        inputs:
+          azureSubscription: azure-service-connection
+          scriptType: bash
+          scriptLocation: inlineScript
+          inlineScript: |
+            az aks get-credentials \
+              --resource-group shopos-${{ parameters.environment }}-rg \
+              --name shopos-aks-${{ parameters.environment }} \
+              --overwrite-existing
 
-      # ── Harbor ────────────────────────────────────────────────────────────
+      # Configure ACR — Azure-native container registry
+      - ${{ if and(eq(parameters.configureAcr, true), eq(parameters.action, 'CONFIGURE')) }}:
+        - task: AzureCLI@2
+          displayName: Configure ACR lifecycle policies
+          inputs:
+            azureSubscription: azure-service-connection
+            scriptType: bash
+            scriptLocation: inlineScript
+            inlineScript: |
+              # Apply retention policy to ACR
+              az acr config retention update \
+                --registry $(ACR_NAME) \
+                --status enabled \
+                --days 30 \
+                --type UntaggedManifests 2>/dev/null || true
+
+              # Geo-replication for prod
+              if [ "${{ parameters.environment }}" = "prod" ]; then
+                az acr replication create \
+                  --registry $(ACR_NAME) \
+                  --location eastus 2>/dev/null || true
+              fi
+
+              # Attach ACR to AKS
+              az aks update \
+                --resource-group shopos-${{ parameters.environment }}-rg \
+                --name shopos-aks-${{ parameters.environment }} \
+                --attach-acr $(ACR_NAME) 2>/dev/null || true
+
+              echo "ACR $(ACR_NAME) configured and attached to AKS"
+
       - ${{ if and(eq(parameters.harbor, true), ne(parameters.action, 'CONFIGURE')) }}:
         - script: |
             helm repo add harbor https://helm.goharbor.io --force-update
@@ -66,11 +108,11 @@ jobs:
                 --set notary.enabled=true \
                 --set chartmuseum.enabled=true \
                 --set persistence.enabled=true \
+                --set persistence.persistentVolumeClaim.registry.storageClass=managed-premium \
                 --wait --timeout 10m
             fi
-          displayName: Harbor Container Registry
+          displayName: Harbor Registry
 
-      # ── Nexus ─────────────────────────────────────────────────────────────
       - ${{ if and(eq(parameters.nexus, true), ne(parameters.action, 'CONFIGURE')) }}:
         - script: |
             helm repo add sonatype https://sonatype.github.io/helm3-charts --force-update
@@ -83,11 +125,11 @@ jobs:
                 --set nexus.resources.limits.memory=4Gi \
                 --set persistence.enabled=true \
                 --set persistence.storageSize=50Gi \
+                --set persistence.storageClass=managed-premium \
                 --wait --timeout 10m
             fi
           displayName: Nexus Repository Manager
 
-      # ── Gitea ─────────────────────────────────────────────────────────────
       - ${{ if and(eq(parameters.gitea, true), ne(parameters.action, 'CONFIGURE')) }}:
         - script: |
             helm repo add gitea-charts https://dl.gitea.io/charts --force-update
@@ -100,13 +142,12 @@ jobs:
                 --set gitea.admin.password="$(GITEA_ADMIN_PASSWORD)" \
                 --set gitea.admin.email=admin@shopos.internal \
                 --set persistence.enabled=true \
-                --set persistence.size=20Gi \
+                --set persistence.storageClass=managed-premium \
                 --set postgresql.enabled=true \
                 --wait --timeout 8m
             fi
-          displayName: Gitea
+          displayName: Gitea Git Server
 
-      # ── MinIO ─────────────────────────────────────────────────────────────
       - ${{ if and(eq(parameters.minio, true), ne(parameters.action, 'CONFIGURE')) }}:
         - script: |
             helm repo add minio https://charts.min.io --force-update
@@ -120,60 +161,7 @@ jobs:
                 --set replicas=4 \
                 --set persistence.enabled=true \
                 --set persistence.size=100Gi \
-                --set resources.requests.memory=1Gi \
-                --set ingress.enabled=true \
-                --set ingress.ingressClassName=traefik \
-                --set ingress.hosts[0]=minio.shopos.internal \
+                --set persistence.storageClass=managed-premium \
                 --wait --timeout 8m
             fi
-          displayName: MinIO
-
-      # ── CONFIGURE: Create MinIO buckets + Harbor settings ─────────────────
-      - ${{ if eq(parameters.action, 'CONFIGURE') }}:
-        - script: |
-            # Install mc (MinIO client)
-            curl -fsSL https://dl.min.io/client/mc/release/linux-amd64/mc -o /usr/local/bin/mc
-            chmod +x /usr/local/bin/mc
-
-            # Port-forward MinIO
-            kubectl port-forward svc/minio 9000:9000 -n registry &
-            PF_PID=$!; sleep 5
-
-            mc alias set shopos http://localhost:9000 "$(MINIO_ROOT_USER)" "$(MINIO_ROOT_PASSWORD)"
-
-            BUCKETS=(harbor-registry velero-backups loki-chunks tempo-traces thanos mlflow artifacts backups media-assets)
-            for BUCKET in "${BUCKETS[@]}"; do
-              mc mb --ignore-existing "shopos/$BUCKET" || true
-              echo "Created bucket: $BUCKET"
-            done
-
-            # Set lifecycle policies
-            mc ilm import shopos/loki-chunks <<'EOF'
-            {"Rules":[{"Expiration":{"Days":30},"ID":"expire-chunks","Status":"Enabled","Filter":{"Prefix":""}}]}
-            EOF
-
-            kill $PF_PID 2>/dev/null || true
-          displayName: Configure MinIO Buckets
-
-        - script: |
-            # Port-forward Harbor
-            kubectl port-forward svc/harbor-core 18080:80 -n registry &
-            PF_PID=$!; sleep 5
-
-            HARBOR_URL=http://localhost:18080
-            HARBOR_AUTH="admin:$(HARBOR_ADMIN_PASSWORD)"
-
-            # Create projects
-            for PROJECT in platform identity catalog commerce supply-chain financial; do
-              curl -sf -u "$HARBOR_AUTH" -X POST "$HARBOR_URL/api/v2.0/projects" \
-                -H "Content-Type: application/json" \
-                -d "{\"project_name\":\"$PROJECT\",\"public\":false,\"metadata\":{\"auto_scan\":\"true\",\"prevent_vul\":\"true\",\"severity\":\"high\"}}" || true
-            done
-
-            # Enable content trust (Cosign/Notary)
-            curl -sf -u "$HARBOR_AUTH" -X PUT "$HARBOR_URL/api/v2.0/configurations" \
-              -H "Content-Type: application/json" \
-              -d '{"content_trust_enabled":true}' || true
-
-            kill $PF_PID 2>/dev/null || true
-          displayName: Configure Harbor Projects
+          displayName: MinIO Object Storage

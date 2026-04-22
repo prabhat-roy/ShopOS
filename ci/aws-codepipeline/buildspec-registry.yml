@@ -1,12 +1,19 @@
 version: 0.2
 
-# Registry Tools — CodeBuild buildspec
-# Mirrors .github/workflows/registry.yml
-# Parameters via environment variables:
-#   ENVIRONMENT, ACTION (INSTALL|UPGRADE|UNINSTALL|CONFIGURE)
-#   HARBOR, NEXUS, GITEA, MINIO
+# AWS CodePipeline — Deploy registry tools to EKS; configure ECR as primary registry
+# ECR lifecycle policies applied via AWS CLI; Harbor/Nexus/Gitea on EKS
+# ACTION: INSTALL | UPGRADE | UNINSTALL | CONFIGURE
 
 env:
+  parameter-store:
+    EKS_CLUSTER_NAME: /shopos/eks/cluster_name
+    AWS_REGION: /shopos/aws/region
+    AWS_ACCOUNT_ID: /shopos/aws/account_id
+    MINIO_ROOT_USER: /shopos/minio/root-user
+    GITEA_ADMIN_PASSWORD: /shopos/gitea/admin-password
+  secrets-manager:
+    HARBOR_ADMIN_PASSWORD: shopos/harbor:admin-password
+    MINIO_ROOT_PASSWORD: shopos/minio:root-password
   variables:
     ENVIRONMENT: dev
     ACTION: INSTALL
@@ -14,33 +21,56 @@ env:
     NEXUS: "true"
     GITEA: "true"
     MINIO: "true"
-  parameter-store:
-    MINIO_ROOT_USER: /shopos/minio/root-user
-    GITEA_ADMIN_PASSWORD: /shopos/gitea/admin-password
-  secrets-manager:
-    KUBECONFIG_CONTENT: shopos/kubeconfig:content
-    HARBOR_ADMIN_PASSWORD: shopos/harbor:admin-password
-    MINIO_ROOT_PASSWORD: shopos/minio:root-password
+    CONFIGURE_ECR: "true"
 
 phases:
   install:
     commands:
-      - curl -fsSL "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl" -o /usr/local/bin/kubectl && chmod +x /usr/local/bin/kubectl
+      - curl -fsSL "https://dl.k8s.io/release/$(curl -Ls https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl" -o /usr/local/bin/kubectl && chmod +x /usr/local/bin/kubectl
       - curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
 
   pre_build:
     commands:
-      - mkdir -p ~/.kube
-      - echo "$KUBECONFIG_CONTENT" | base64 -d > ~/.kube/config
-      - echo "Registry $ACTION on $ENVIRONMENT"
+      - aws eks update-kubeconfig --region ${AWS_REGION} --name ${EKS_CLUSTER_NAME}
+      - echo "Registry ${ACTION} on ${ENVIRONMENT}"
 
   build:
     commands:
-      # Harbor
+      # ECR — configure lifecycle policies for all ShopOS repos
       - |
-        if [ "$HARBOR" = "true" ] && [ "$ACTION" != "CONFIGURE" ]; then
+        if [ "${CONFIGURE_ECR}" = "true" ] && [ "${ACTION}" = "CONFIGURE" ]; then
+          LIFECYCLE_POLICY='{
+            "rules": [{
+              "rulePriority": 1,
+              "description": "Keep last 20 images",
+              "selection": {"tagStatus": "tagged", "tagPrefixList": ["dev-"], "countType": "imageCountMoreThan", "countNumber": 20},
+              "action": {"type": "expire"}
+            }, {
+              "rulePriority": 2,
+              "description": "Expire untagged images older than 7 days",
+              "selection": {"tagStatus": "untagged", "countType": "sinceImagePushed", "countUnit": "days", "countNumber": 7},
+              "action": {"type": "expire"}
+            }]
+          }'
+          ALL_DOMAINS="platform identity catalog commerce supply-chain financial customer-experience communications content analytics-ai b2b integrations affiliate"
+          for domain in ${ALL_DOMAINS}; do
+            for dir in src/${domain}/*/; do
+              [ -d "${dir}" ] || continue
+              SVC=$(basename ${dir})
+              aws ecr describe-repositories --repository-names shopos/${SVC} --region ${AWS_REGION} 2>/dev/null && \
+                aws ecr put-lifecycle-policy \
+                  --repository-name shopos/${SVC} \
+                  --lifecycle-policy-text "${LIFECYCLE_POLICY}" \
+                  --region ${AWS_REGION} || true
+            done
+          done
+          echo "ECR lifecycle policies applied"
+        fi
+
+      - |
+        if [ "${HARBOR}" = "true" ] && [ "${ACTION}" != "CONFIGURE" ]; then
           helm repo add harbor https://helm.goharbor.io --force-update
-          if [ "$ACTION" = "UNINSTALL" ]; then
+          if [ "${ACTION}" = "UNINSTALL" ]; then
             helm uninstall harbor -n registry 2>/dev/null || true
           else
             helm upgrade --install harbor harbor/harbor \
@@ -49,20 +79,20 @@ phases:
               --set expose.ingress.className=traefik \
               --set expose.ingress.hosts.core=harbor.shopos.internal \
               --set externalURL=https://harbor.shopos.internal \
-              --set harborAdminPassword="$HARBOR_ADMIN_PASSWORD" \
+              --set harborAdminPassword="${HARBOR_ADMIN_PASSWORD}" \
               --set trivy.enabled=true \
               --set notary.enabled=true \
               --set chartmuseum.enabled=true \
               --set persistence.enabled=true \
+              --set persistence.persistentVolumeClaim.registry.storageClass=gp3 \
               --wait --timeout 10m
           fi
         fi
 
-      # Nexus
       - |
-        if [ "$NEXUS" = "true" ] && [ "$ACTION" != "CONFIGURE" ]; then
+        if [ "${NEXUS}" = "true" ] && [ "${ACTION}" != "CONFIGURE" ]; then
           helm repo add sonatype https://sonatype.github.io/helm3-charts --force-update
-          if [ "$ACTION" = "UNINSTALL" ]; then
+          if [ "${ACTION}" = "UNINSTALL" ]; then
             helm uninstall nexus -n registry 2>/dev/null || true
           else
             helm upgrade --install nexus sonatype/nexus-repository-manager \
@@ -71,79 +101,52 @@ phases:
               --set nexus.resources.limits.memory=4Gi \
               --set persistence.enabled=true \
               --set persistence.storageSize=50Gi \
+              --set persistence.storageClass=gp3 \
               --wait --timeout 10m
           fi
         fi
 
-      # Gitea
       - |
-        if [ "$GITEA" = "true" ] && [ "$ACTION" != "CONFIGURE" ]; then
+        if [ "${GITEA}" = "true" ] && [ "${ACTION}" != "CONFIGURE" ]; then
           helm repo add gitea-charts https://dl.gitea.io/charts --force-update
-          if [ "$ACTION" = "UNINSTALL" ]; then
+          if [ "${ACTION}" = "UNINSTALL" ]; then
             helm uninstall gitea -n registry 2>/dev/null || true
           else
             helm upgrade --install gitea gitea-charts/gitea \
               --namespace registry --create-namespace \
               --set gitea.admin.username=gitea-admin \
-              --set gitea.admin.password="$GITEA_ADMIN_PASSWORD" \
+              --set gitea.admin.password="${GITEA_ADMIN_PASSWORD}" \
               --set gitea.admin.email=admin@shopos.internal \
               --set persistence.enabled=true \
+              --set persistence.storageClass=gp3 \
               --set postgresql.enabled=true \
               --wait --timeout 8m
           fi
         fi
 
-      # MinIO
       - |
-        if [ "$MINIO" = "true" ] && [ "$ACTION" != "CONFIGURE" ]; then
+        if [ "${MINIO}" = "true" ] && [ "${ACTION}" != "CONFIGURE" ]; then
           helm repo add minio https://charts.min.io --force-update
-          if [ "$ACTION" = "UNINSTALL" ]; then
+          if [ "${ACTION}" = "UNINSTALL" ]; then
             helm uninstall minio -n registry 2>/dev/null || true
           else
             helm upgrade --install minio minio/minio \
               --namespace registry --create-namespace \
-              --set rootUser="$MINIO_ROOT_USER" \
-              --set rootPassword="$MINIO_ROOT_PASSWORD" \
+              --set rootUser="${MINIO_ROOT_USER}" \
+              --set rootPassword="${MINIO_ROOT_PASSWORD}" \
               --set replicas=4 \
               --set persistence.enabled=true \
               --set persistence.size=100Gi \
+              --set persistence.storageClass=gp3 \
               --wait --timeout 8m
           fi
         fi
 
-      # CONFIGURE: Create MinIO buckets + Harbor projects
-      - |
-        if [ "$ACTION" = "CONFIGURE" ]; then
-          # MinIO buckets
-          curl -fsSL https://dl.min.io/client/mc/release/linux-amd64/mc -o /usr/local/bin/mc
-          chmod +x /usr/local/bin/mc
-
-          kubectl port-forward svc/minio 9000:9000 -n registry &
-          PF_PID=$!; sleep 5
-
-          mc alias set shopos http://localhost:9000 "$MINIO_ROOT_USER" "$MINIO_ROOT_PASSWORD"
-
-          for BUCKET in harbor-registry velero-backups loki-chunks tempo-traces thanos mlflow artifacts backups media-assets; do
-            mc mb --ignore-existing "shopos/$BUCKET" || true
-            echo "Created bucket: $BUCKET"
-          done
-
-          kill $PF_PID 2>/dev/null || true
-
-          # Harbor projects
-          kubectl port-forward svc/harbor-core 18080:80 -n registry &
-          PF_PID=$!; sleep 5
-
-          for PROJECT in platform identity catalog commerce supply-chain financial customer-experience communications content analytics-ai b2b integrations affiliate; do
-            curl -sf -u "admin:$HARBOR_ADMIN_PASSWORD" -X POST "http://localhost:18080/api/v2.0/projects" \
-              -H "Content-Type: application/json" \
-              -d "{\"project_name\":\"$PROJECT\",\"public\":false,\"metadata\":{\"auto_scan\":\"true\",\"prevent_vul\":\"true\",\"severity\":\"high\"}}" || true
-          done
-
-          kill $PF_PID 2>/dev/null || true
-          echo "Registry configuration complete"
-        fi
-
   post_build:
     commands:
-      - echo "Registry $ACTION complete on $ENVIRONMENT"
+      - echo "Registry ${ACTION} complete on ${ENVIRONMENT}"
+      - kubectl get pods -n registry 2>/dev/null | head -15 || true
+      - |
+        aws ecr describe-repositories --region ${AWS_REGION} \
+          --query 'repositories[?starts_with(repositoryName,`shopos/`)].repositoryName' \
+          --output table 2>/dev/null | head -20 || true
