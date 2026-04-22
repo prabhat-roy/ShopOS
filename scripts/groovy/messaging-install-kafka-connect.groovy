@@ -12,7 +12,12 @@ def call() {
             --set env.CONNECT_KEY_CONVERTER=org.apache.kafka.connect.json.JsonConverter \
             --set env.CONNECT_VALUE_CONVERTER=org.apache.kafka.connect.json.JsonConverter \
             --set env.CONNECT_REST_ADVERTISED_HOST_NAME=kafka-connect-kafka-connect.kafka-connect.svc.cluster.local \
-            --wait --timeout 10m
+            --set env.CONNECT_CONFIG_STORAGE_REPLICATION_FACTOR=1 \
+            --set env.CONNECT_OFFSET_STORAGE_REPLICATION_FACTOR=1 \
+            --set env.CONNECT_STATUS_STORAGE_REPLICATION_FACTOR=1 \
+            --set env.CONNECT_OFFSET_STORAGE_PARTITIONS=1 \
+            --set env.CONNECT_STATUS_STORAGE_PARTITIONS=1 \
+            --wait --timeout 15m
     """
     sh "sed -i '/^KAFKA_CONNECT_/d' infra.env || true"
     sh "sed -i '/^KAFKA_CONNECT_URL=/d' infra.env 2>/dev/null || true; echo 'KAFKA_CONNECT_URL=http://kafka-connect-kafka-connect.kafka-connect.svc.cluster.local:8083' >> infra.env" 
