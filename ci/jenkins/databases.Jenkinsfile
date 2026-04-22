@@ -101,6 +101,7 @@ pipeline {
                         helm repo update
                         helm upgrade --install neo4j neo4j/neo4j \
                             --namespace databases \
+                            --set neo4j.name=shopos-neo4j \
                             --set volumes.data.mode=defaultStorageClass \
                             --set neo4j.password=shopos-neo4j-password \
                             --wait --timeout=8m
@@ -118,7 +119,12 @@ pipeline {
                 catchError(buildResult: 'UNSTABLE', stageResult: 'FAILURE') {
                     sh """
                         helm repo add scylla https://scylla-operator-charts.storage.googleapis.com/stable || true
+                        helm repo add jetstack https://charts.jetstack.io || true
                         helm repo update
+                        helm upgrade --install cert-manager jetstack/cert-manager \
+                            --namespace cert-manager --create-namespace \
+                            --set installCRDs=true \
+                            --wait --timeout=5m
                         helm upgrade --install scylla-operator scylla/scylla-operator \
                             --namespace scylla-operator --create-namespace \
                             --wait --timeout=5m
@@ -143,6 +149,7 @@ pipeline {
                         helm repo update
                         kubectl create namespace temporal-system --dry-run=client -o yaml | kubectl apply -f -
                         helm upgrade --install temporal temporal/temporal \
+                            --version 0.74.0 \
                             --namespace temporal-system \
                             --set server.replicaCount=1 \
                             --set cassandra.config.cluster_size=1 \
