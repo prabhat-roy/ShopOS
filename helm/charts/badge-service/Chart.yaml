@@ -1,0 +1,19 @@
+apiVersion: v2
+name: badge-service
+description: ShopOS badge-service — Badge definition, award and display logic
+type: application
+version: 0.1.0
+appVersion: "1.0.0"
+keywords:
+  - shopos
+  - badge-service
+  - gamification
+home: https://github.com/your-org/shopos
+sources:
+  - https://github.com/your-org/shopos/tree/main/src/gamification/badge-service
+maintainers:
+  - name: ShopOS Platform Team
+    email: platform@shopos.io
+annotations:
+  app.kubernetes.io/domain: gamification
+  app.kubernetes.io/language: Go

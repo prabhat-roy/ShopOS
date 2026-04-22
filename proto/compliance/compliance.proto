@@ -1,0 +1,70 @@
+syntax = "proto3";
+
+package compliance;
+
+import "common/common.proto";
+
+option go_package = "github.com/shopos/proto/compliance";
+
+// ---------------------------------------------------------------------------
+// Privacy Request Service (GDPR/CCPA)
+// ---------------------------------------------------------------------------
+
+message PrivacyRequest {
+  string request_id  = 1;
+  string user_id     = 2;
+  string type        = 3; // access, erasure, portability, rectification
+  string status      = 4; // pending, in_progress, completed, rejected
+  string created_at  = 5;
+  string completed_at = 6;
+}
+
+message SubmitPrivacyRequest  { PrivacyRequest request = 1; }
+message SubmitPrivacyResponse { PrivacyRequest request = 1; }
+message GetPrivacyRequestStatus { string request_id = 1; }
+
+service PrivacyRequestService {
+  rpc SubmitRequest (SubmitPrivacyRequest)     returns (SubmitPrivacyResponse);
+  rpc GetStatus     (GetPrivacyRequestStatus)  returns (PrivacyRequest);
+}
+
+// ---------------------------------------------------------------------------
+// Consent Audit Service
+// ---------------------------------------------------------------------------
+
+message ConsentEvent {
+  string event_id    = 1;
+  string user_id     = 2;
+  string consent_type = 3; // marketing, analytics, third_party
+  bool   granted     = 4;
+  string ip_address  = 5;
+  string user_agent  = 6;
+  string recorded_at = 7;
+}
+
+message RecordConsentRequest  { ConsentEvent event = 1; }
+message RecordConsentResponse { string event_id = 1; }
+
+service ConsentAuditService {
+  rpc RecordConsent (RecordConsentRequest) returns (RecordConsentResponse);
+}
+
+// ---------------------------------------------------------------------------
+// Data Lineage Service
+// ---------------------------------------------------------------------------
+
+message DataFlow {
+  string flow_id     = 1;
+  string source      = 2;  // service name
+  string destination = 3;  // service name
+  string data_type   = 4;  // PII, financial, behavioral
+  string purpose     = 5;
+  string created_at  = 6;
+}
+
+message RegisterFlowRequest  { DataFlow flow = 1; }
+message RegisterFlowResponse { DataFlow flow = 1; }
+
+service DataLineageService {
+  rpc RegisterFlow (RegisterFlowRequest) returns (RegisterFlowResponse);
+}

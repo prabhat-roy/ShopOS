@@ -1,0 +1,19 @@
+apiVersion: v2
+name: reward-redemption-service
+description: ShopOS reward-redemption-service — Reward catalogue and points redemption
+type: application
+version: 0.1.0
+appVersion: "1.0.0"
+keywords:
+  - shopos
+  - reward-redemption-service
+  - gamification
+home: https://github.com/your-org/shopos
+sources:
+  - https://github.com/your-org/shopos/tree/main/src/gamification/reward-redemption-service
+maintainers:
+  - name: ShopOS Platform Team
+    email: platform@shopos.io
+annotations:
+  app.kubernetes.io/domain: gamification
+  app.kubernetes.io/language: Go

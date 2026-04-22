@@ -1,0 +1,19 @@
+apiVersion: v2
+name: api-analytics-service
+description: ShopOS api-analytics-service — Per-key API usage metrics and quota enforcement
+type: application
+version: 0.1.0
+appVersion: "1.0.0"
+keywords:
+  - shopos
+  - api-analytics-service
+  - developer-platform
+home: https://github.com/your-org/shopos
+sources:
+  - https://github.com/your-org/shopos/tree/main/src/developer-platform/api-analytics-service
+maintainers:
+  - name: ShopOS Platform Team
+    email: platform@shopos.io
+annotations:
+  app.kubernetes.io/domain: developer-platform
+  app.kubernetes.io/language: Go

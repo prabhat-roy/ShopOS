@@ -1,0 +1,19 @@
+apiVersion: v2
+name: click-tracking-service
+description: ShopOS click-tracking-service — Affiliate link click capture with UTM tracking
+type: application
+version: 0.1.0
+appVersion: "1.0.0"
+keywords:
+  - shopos
+  - click-tracking-service
+  - affiliate
+home: https://github.com/your-org/shopos
+sources:
+  - https://github.com/your-org/shopos/tree/main/src/affiliate/click-tracking-service
+maintainers:
+  - name: ShopOS Platform Team
+    email: platform@shopos.io
+annotations:
+  app.kubernetes.io/domain: affiliate
+  app.kubernetes.io/language: Go

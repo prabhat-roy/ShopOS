@@ -1,0 +1,19 @@
+apiVersion: v2
+name: sustainability-reporting-service
+description: ShopOS sustainability-reporting-service — ESG and sustainability KPI reporting
+type: application
+version: 0.1.0
+appVersion: "1.0.0"
+keywords:
+  - shopos
+  - sustainability-reporting-service
+  - sustainability
+home: https://github.com/your-org/shopos
+sources:
+  - https://github.com/your-org/shopos/tree/main/src/sustainability/sustainability-reporting-service
+maintainers:
+  - name: ShopOS Platform Team
+    email: platform@shopos.io
+annotations:
+  app.kubernetes.io/domain: sustainability
+  app.kubernetes.io/language: Go

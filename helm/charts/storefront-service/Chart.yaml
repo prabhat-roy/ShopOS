@@ -1,0 +1,19 @@
+apiVersion: v2
+name: storefront-service
+description: ShopOS storefront-service — Multi-seller storefront rendering and routing
+type: application
+version: 0.1.0
+appVersion: "1.0.0"
+keywords:
+  - shopos
+  - storefront-service
+  - marketplace
+home: https://github.com/your-org/shopos
+sources:
+  - https://github.com/your-org/shopos/tree/main/src/marketplace/storefront-service
+maintainers:
+  - name: ShopOS Platform Team
+    email: platform@shopos.io
+annotations:
+  app.kubernetes.io/domain: marketplace
+  app.kubernetes.io/language: Node.js

@@ -1,0 +1,19 @@
+apiVersion: v2
+name: points-service
+description: ShopOS points-service — User points ledger and transaction log
+type: application
+version: 0.1.0
+appVersion: "1.0.0"
+keywords:
+  - shopos
+  - points-service
+  - gamification
+home: https://github.com/your-org/shopos
+sources:
+  - https://github.com/your-org/shopos/tree/main/src/gamification/points-service
+maintainers:
+  - name: ShopOS Platform Team
+    email: platform@shopos.io
+annotations:
+  app.kubernetes.io/domain: gamification
+  app.kubernetes.io/language: Go

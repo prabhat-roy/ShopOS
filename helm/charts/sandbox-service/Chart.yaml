@@ -1,0 +1,19 @@
+apiVersion: v2
+name: sandbox-service
+description: ShopOS sandbox-service — Isolated sandbox environment for partner testing
+type: application
+version: 0.1.0
+appVersion: "1.0.0"
+keywords:
+  - shopos
+  - sandbox-service
+  - developer-platform
+home: https://github.com/your-org/shopos
+sources:
+  - https://github.com/your-org/shopos/tree/main/src/developer-platform/sandbox-service
+maintainers:
+  - name: ShopOS Platform Team
+    email: platform@shopos.io
+annotations:
+  app.kubernetes.io/domain: developer-platform
+  app.kubernetes.io/language: Go

@@ -1,0 +1,19 @@
+apiVersion: v2
+name: seller-registration-service
+description: ShopOS seller-registration-service — Seller onboarding and registration
+type: application
+version: 0.1.0
+appVersion: "1.0.0"
+keywords:
+  - shopos
+  - seller-registration-service
+  - marketplace
+home: https://github.com/your-org/shopos
+sources:
+  - https://github.com/your-org/shopos/tree/main/src/marketplace/seller-registration-service
+maintainers:
+  - name: ShopOS Platform Team
+    email: platform@shopos.io
+annotations:
+  app.kubernetes.io/domain: marketplace
+  app.kubernetes.io/language: Go

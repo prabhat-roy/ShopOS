@@ -1,0 +1,19 @@
+apiVersion: v2
+name: carbon-tracker-service
+description: ShopOS carbon-tracker-service — Carbon footprint calculation per order/shipment
+type: application
+version: 0.1.0
+appVersion: "1.0.0"
+keywords:
+  - shopos
+  - carbon-tracker-service
+  - sustainability
+home: https://github.com/your-org/shopos
+sources:
+  - https://github.com/your-org/shopos/tree/main/src/sustainability/carbon-tracker-service
+maintainers:
+  - name: ShopOS Platform Team
+    email: platform@shopos.io
+annotations:
+  app.kubernetes.io/domain: sustainability
+  app.kubernetes.io/language: Go

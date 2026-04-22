@@ -1,0 +1,98 @@
+syntax = "proto3";
+
+package gamification;
+
+import "common/common.proto";
+
+option go_package = "github.com/shopos/proto/gamification";
+
+// ---------------------------------------------------------------------------
+// Points Service
+// ---------------------------------------------------------------------------
+
+message PointsTransaction {
+  string transaction_id = 1;
+  string user_id        = 2;
+  int64  points         = 3;
+  string type           = 4; // earn, redeem, expire, adjust
+  string source         = 5; // order, review, referral, challenge
+  string reference_id   = 6;
+  string created_at     = 7;
+}
+
+message EarnPointsRequest   { string user_id = 1; int64 points = 2; string source = 3; string reference_id = 4; }
+message EarnPointsResponse  { int64 new_balance = 1; }
+message GetBalanceRequest   { string user_id = 1; }
+message GetBalanceResponse  { string user_id = 1; int64 balance = 2; }
+
+service PointsService {
+  rpc EarnPoints  (EarnPointsRequest)  returns (EarnPointsResponse);
+  rpc GetBalance  (GetBalanceRequest)  returns (GetBalanceResponse);
+}
+
+// ---------------------------------------------------------------------------
+// Badge Service
+// ---------------------------------------------------------------------------
+
+message Badge {
+  string badge_id     = 1;
+  string name         = 2;
+  string description  = 3;
+  string icon_url     = 4;
+  string tier         = 5; // bronze, silver, gold, platinum
+}
+
+message UserBadge {
+  string user_id    = 1;
+  string badge_id   = 2;
+  string awarded_at = 3;
+}
+
+message AwardBadgeRequest   { string user_id = 1; string badge_id = 2; }
+message AwardBadgeResponse  { UserBadge user_badge = 1; }
+message ListUserBadgesRequest  { string user_id = 1; }
+message ListUserBadgesResponse { repeated UserBadge badges = 1; }
+
+service BadgeService {
+  rpc AwardBadge      (AwardBadgeRequest)      returns (AwardBadgeResponse);
+  rpc ListUserBadges  (ListUserBadgesRequest)  returns (ListUserBadgesResponse);
+}
+
+// ---------------------------------------------------------------------------
+// Leaderboard Service
+// ---------------------------------------------------------------------------
+
+message LeaderboardEntry {
+  string user_id   = 1;
+  string username  = 2;
+  int64  score     = 3;
+  int32  rank      = 4;
+}
+
+message GetLeaderboardRequest  { string scope = 1; int32 top_n = 2; } // scope: global, weekly, monthly
+message GetLeaderboardResponse { repeated LeaderboardEntry entries = 1; }
+
+service LeaderboardService {
+  rpc GetLeaderboard (GetLeaderboardRequest) returns (GetLeaderboardResponse);
+}
+
+// ---------------------------------------------------------------------------
+// Challenge Service
+// ---------------------------------------------------------------------------
+
+message Challenge {
+  string challenge_id = 1;
+  string title        = 2;
+  string description  = 3;
+  int64  reward_points = 4;
+  string starts_at    = 5;
+  string ends_at      = 6;
+  string status       = 7; // active, completed, cancelled
+}
+
+message CompleteChallenge { string user_id = 1; string challenge_id = 2; }
+message CompleteChallengeResponse { int64 points_awarded = 1; }
+
+service ChallengeService {
+  rpc CompleteChallenge (CompleteChallenge) returns (CompleteChallengeResponse);
+}

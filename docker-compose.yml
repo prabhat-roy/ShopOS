@@ -3424,6 +3424,1180 @@ networks:
     driver: bridge
 
 # =============================================================================
+  notification-preferences-service:
+    image: shopos/notification-preferences-service:latest
+    build:
+      context: ./src/platform/notification-preferences-service
+      dockerfile: Dockerfile
+    environment:
+      - PORT=50210
+      - LOG_LEVEL=info
+      - DATABASE_URL=postgres://postgres:postgres@postgres:5432/shopos?sslmode=disable
+    ports:
+      - "50210:50210"
+    depends_on:
+      - postgres
+    restart: unless-stopped
+    networks:
+      - shopos
+
+  circuit-breaker-service:
+    image: shopos/circuit-breaker-service:latest
+    build:
+      context: ./src/platform/circuit-breaker-service
+      dockerfile: Dockerfile
+    environment:
+      - PORT=50211
+      - LOG_LEVEL=info
+      - REDIS_URL=redis://redis:6379
+    ports:
+      - "50211:50211"
+    depends_on:
+      - redis
+    restart: unless-stopped
+    networks:
+      - shopos
+
+  idempotency-service:
+    image: shopos/idempotency-service:latest
+    build:
+      context: ./src/platform/idempotency-service
+      dockerfile: Dockerfile
+    environment:
+      - PORT=50212
+      - LOG_LEVEL=info
+      - REDIS_URL=redis://redis:6379
+    ports:
+      - "50212:50212"
+    depends_on:
+      - redis
+    restart: unless-stopped
+    networks:
+      - shopos
+
+  correlation-id-service:
+    image: shopos/correlation-id-service:latest
+    build:
+      context: ./src/platform/correlation-id-service
+      dockerfile: Dockerfile
+    environment:
+      - PORT=50213
+      - LOG_LEVEL=info
+    ports:
+      - "50213:50213"
+    restart: unless-stopped
+    networks:
+      - shopos
+
+  data-masking-service:
+    image: shopos/data-masking-service:latest
+    build:
+      context: ./src/platform/data-masking-service
+      dockerfile: Dockerfile
+    environment:
+      - PORT=50214
+      - LOG_LEVEL=info
+    ports:
+      - "50214:50214"
+    restart: unless-stopped
+    networks:
+      - shopos
+
+  sso-service:
+    image: shopos/sso-service:latest
+    build:
+      context: ./src/identity/sso-service
+      dockerfile: Dockerfile
+    environment:
+      - PORT=50215
+      - LOG_LEVEL=info
+      - DATABASE_URL=postgres://postgres:postgres@postgres:5432/shopos?sslmode=disable
+    ports:
+      - "50215:50215"
+    depends_on:
+      - postgres
+    restart: unless-stopped
+    networks:
+      - shopos
+
+  password-policy-service:
+    image: shopos/password-policy-service:latest
+    build:
+      context: ./src/identity/password-policy-service
+      dockerfile: Dockerfile
+    environment:
+      - PORT=50216
+      - LOG_LEVEL=info
+      - DATABASE_URL=postgres://postgres:postgres@postgres:5432/shopos?sslmode=disable
+    ports:
+      - "50216:50216"
+    depends_on:
+      - postgres
+    restart: unless-stopped
+    networks:
+      - shopos
+
+  bot-detection-service:
+    image: shopos/bot-detection-service:latest
+    build:
+      context: ./src/identity/bot-detection-service
+      dockerfile: Dockerfile
+    environment:
+      - PORT=50217
+      - LOG_LEVEL=info
+      - REDIS_URL=redis://redis:6379
+    ports:
+      - "50217:50217"
+    depends_on:
+      - redis
+    restart: unless-stopped
+    networks:
+      - shopos
+
+  product-label-service:
+    image: shopos/product-label-service:latest
+    build:
+      context: ./src/catalog/product-label-service
+      dockerfile: Dockerfile
+    environment:
+      - PORT=50218
+      - LOG_LEVEL=info
+      - DATABASE_URL=postgres://postgres:postgres@postgres:5432/shopos?sslmode=disable
+    ports:
+      - "50218:50218"
+    depends_on:
+      - postgres
+    restart: unless-stopped
+    networks:
+      - shopos
+
+  variant-service:
+    image: shopos/variant-service:latest
+    build:
+      context: ./src/catalog/variant-service
+      dockerfile: Dockerfile
+    environment:
+      - PORT=50219
+      - LOG_LEVEL=info
+      - DATABASE_URL=postgres://postgres:postgres@postgres:5432/shopos?sslmode=disable
+    ports:
+      - "50219:50219"
+    depends_on:
+      - postgres
+    restart: unless-stopped
+    networks:
+      - shopos
+
+  stock-reservation-service:
+    image: shopos/stock-reservation-service:latest
+    build:
+      context: ./src/catalog/stock-reservation-service
+      dockerfile: Dockerfile
+    environment:
+      - PORT=50220
+      - LOG_LEVEL=info
+      - REDIS_URL=redis://redis:6379
+    ports:
+      - "50220:50220"
+    depends_on:
+      - redis
+    restart: unless-stopped
+    networks:
+      - shopos
+
+  split-payment-service:
+    image: shopos/split-payment-service:latest
+    build:
+      context: ./src/commerce/split-payment-service
+      dockerfile: Dockerfile
+    environment:
+      - PORT=50221
+      - LOG_LEVEL=info
+      - DATABASE_URL=postgres://postgres:postgres@postgres:5432/shopos?sslmode=disable
+    ports:
+      - "50221:50221"
+    depends_on:
+      - postgres
+    restart: unless-stopped
+    networks:
+      - shopos
+
+  installment-service:
+    image: shopos/installment-service:latest
+    build:
+      context: ./src/commerce/installment-service
+      dockerfile: Dockerfile
+    environment:
+      - PORT=50222
+      - LOG_LEVEL=info
+      - DATABASE_URL=postgres://postgres:postgres@postgres:5432/shopos?sslmode=disable
+    ports:
+      - "50222:50222"
+    depends_on:
+      - postgres
+    restart: unless-stopped
+    networks:
+      - shopos
+
+  dynamic-pricing-service:
+    image: shopos/dynamic-pricing-service:latest
+    build:
+      context: ./src/commerce/dynamic-pricing-service
+      dockerfile: Dockerfile
+    environment:
+      - PORT=50223
+      - LOG_LEVEL=info
+      - DATABASE_URL=postgres://postgres:postgres@postgres:5432/shopos?sslmode=disable
+    ports:
+      - "50223:50223"
+    depends_on:
+      - postgres
+    restart: unless-stopped
+    networks:
+      - shopos
+
+  coupon-service:
+    image: shopos/coupon-service:latest
+    build:
+      context: ./src/commerce/coupon-service
+      dockerfile: Dockerfile
+    environment:
+      - PORT=50224
+      - LOG_LEVEL=info
+      - DATABASE_URL=postgres://postgres:postgres@postgres:5432/shopos?sslmode=disable
+    ports:
+      - "50224:50224"
+    depends_on:
+      - postgres
+    restart: unless-stopped
+    networks:
+      - shopos
+
+  order-amendment-service:
+    image: shopos/order-amendment-service:latest
+    build:
+      context: ./src/commerce/order-amendment-service
+      dockerfile: Dockerfile
+    environment:
+      - PORT=50225
+      - LOG_LEVEL=info
+      - DATABASE_URL=postgres://postgres:postgres@postgres:5432/shopos?sslmode=disable
+    ports:
+      - "50225:50225"
+    depends_on:
+      - postgres
+    restart: unless-stopped
+    networks:
+      - shopos
+
+  route-optimization-service:
+    image: shopos/route-optimization-service:latest
+    build:
+      context: ./src/supply-chain/route-optimization-service
+      dockerfile: Dockerfile
+    environment:
+      - PORT=50226
+      - LOG_LEVEL=info
+      - DATABASE_URL=postgres://postgres:postgres@postgres:5432/shopos?sslmode=disable
+    ports:
+      - "50226:50226"
+    depends_on:
+      - postgres
+    restart: unless-stopped
+    networks:
+      - shopos
+
+  packaging-service:
+    image: shopos/packaging-service:latest
+    build:
+      context: ./src/supply-chain/packaging-service
+      dockerfile: Dockerfile
+    environment:
+      - PORT=50227
+      - LOG_LEVEL=info
+      - DATABASE_URL=postgres://postgres:postgres@postgres:5432/shopos?sslmode=disable
+    ports:
+      - "50227:50227"
+    depends_on:
+      - postgres
+    restart: unless-stopped
+    networks:
+      - shopos
+
+  cross-dock-service:
+    image: shopos/cross-dock-service:latest
+    build:
+      context: ./src/supply-chain/cross-dock-service
+      dockerfile: Dockerfile
+    environment:
+      - PORT=50228
+      - LOG_LEVEL=info
+      - DATABASE_URL=postgres://postgres:postgres@postgres:5432/shopos?sslmode=disable
+    ports:
+      - "50228:50228"
+    depends_on:
+      - postgres
+    restart: unless-stopped
+    networks:
+      - shopos
+
+  duty-drawback-service:
+    image: shopos/duty-drawback-service:latest
+    build:
+      context: ./src/supply-chain/duty-drawback-service
+      dockerfile: Dockerfile
+    environment:
+      - PORT=50229
+      - LOG_LEVEL=info
+      - DATABASE_URL=postgres://postgres:postgres@postgres:5432/shopos?sslmode=disable
+    ports:
+      - "50229:50229"
+    depends_on:
+      - postgres
+    restart: unless-stopped
+    networks:
+      - shopos
+
+  escrow-service:
+    image: shopos/escrow-service:latest
+    build:
+      context: ./src/financial/escrow-service
+      dockerfile: Dockerfile
+    environment:
+      - PORT=50230
+      - LOG_LEVEL=info
+      - DATABASE_URL=postgres://postgres:postgres@postgres:5432/shopos?sslmode=disable
+    ports:
+      - "50230:50230"
+    depends_on:
+      - postgres
+    restart: unless-stopped
+    networks:
+      - shopos
+
+  forex-service:
+    image: shopos/forex-service:latest
+    build:
+      context: ./src/financial/forex-service
+      dockerfile: Dockerfile
+    environment:
+      - PORT=50231
+      - LOG_LEVEL=info
+      - DATABASE_URL=postgres://postgres:postgres@postgres:5432/shopos?sslmode=disable
+    ports:
+      - "50231:50231"
+    depends_on:
+      - postgres
+    restart: unless-stopped
+    networks:
+      - shopos
+
+  audit-trail-service:
+    image: shopos/audit-trail-service:latest
+    build:
+      context: ./src/financial/audit-trail-service
+      dockerfile: Dockerfile
+    environment:
+      - PORT=50232
+      - LOG_LEVEL=info
+      - DATABASE_URL=postgres://postgres:postgres@postgres:5432/shopos?sslmode=disable
+    ports:
+      - "50232:50232"
+    depends_on:
+      - postgres
+    restart: unless-stopped
+    networks:
+      - shopos
+
+  dunning-service:
+    image: shopos/dunning-service:latest
+    build:
+      context: ./src/financial/dunning-service
+      dockerfile: Dockerfile
+    environment:
+      - PORT=50233
+      - LOG_LEVEL=info
+      - DATABASE_URL=postgres://postgres:postgres@postgres:5432/shopos?sslmode=disable
+    ports:
+      - "50233:50233"
+    depends_on:
+      - postgres
+    restart: unless-stopped
+    networks:
+      - shopos
+
+  loyalty-tier-service:
+    image: shopos/loyalty-tier-service:latest
+    build:
+      context: ./src/customer-experience/loyalty-tier-service
+      dockerfile: Dockerfile
+    environment:
+      - PORT=50234
+      - LOG_LEVEL=info
+      - DATABASE_URL=postgres://postgres:postgres@postgres:5432/shopos?sslmode=disable
+    ports:
+      - "50234:50234"
+    depends_on:
+      - postgres
+    restart: unless-stopped
+    networks:
+      - shopos
+
+  accessibility-service:
+    image: shopos/accessibility-service:latest
+    build:
+      context: ./src/customer-experience/accessibility-service
+      dockerfile: Dockerfile
+    environment:
+      - PORT=50235
+      - LOG_LEVEL=info
+    ports:
+      - "50235:50235"
+    restart: unless-stopped
+    networks:
+      - shopos
+
+  return-portal-service:
+    image: shopos/return-portal-service:latest
+    build:
+      context: ./src/customer-experience/return-portal-service
+      dockerfile: Dockerfile
+    environment:
+      - PORT=50236
+      - LOG_LEVEL=info
+      - DATABASE_URL=postgres://postgres:postgres@postgres:5432/shopos?sslmode=disable
+    ports:
+      - "50236:50236"
+    depends_on:
+      - postgres
+    restart: unless-stopped
+    networks:
+      - shopos
+
+  telegram-service:
+    image: shopos/telegram-service:latest
+    build:
+      context: ./src/communications/telegram-service
+      dockerfile: Dockerfile
+    environment:
+      - PORT=8197
+      - LOG_LEVEL=info
+      - KAFKA_BROKERS=kafka:9092
+    ports:
+      - "8197:8197"
+    depends_on:
+      - kafka
+    restart: unless-stopped
+    networks:
+      - shopos
+
+  voice-service:
+    image: shopos/voice-service:latest
+    build:
+      context: ./src/communications/voice-service
+      dockerfile: Dockerfile
+    environment:
+      - PORT=8198
+      - LOG_LEVEL=info
+    ports:
+      - "8198:8198"
+    restart: unless-stopped
+    networks:
+      - shopos
+
+  webhook-delivery-service:
+    image: shopos/webhook-delivery-service:latest
+    build:
+      context: ./src/communications/webhook-delivery-service
+      dockerfile: Dockerfile
+    environment:
+      - PORT=8199
+      - LOG_LEVEL=info
+      - DATABASE_URL=postgres://postgres:postgres@postgres:5432/shopos?sslmode=disable
+    ports:
+      - "8199:8199"
+    depends_on:
+      - postgres
+    restart: unless-stopped
+    networks:
+      - shopos
+
+  ab-content-service:
+    image: shopos/ab-content-service:latest
+    build:
+      context: ./src/content/ab-content-service
+      dockerfile: Dockerfile
+    environment:
+      - PORT=50240
+      - LOG_LEVEL=info
+      - DATABASE_URL=postgres://postgres:postgres@postgres:5432/shopos?sslmode=disable
+    ports:
+      - "50240:50240"
+    depends_on:
+      - postgres
+    restart: unless-stopped
+    networks:
+      - shopos
+
+  rfp-service:
+    image: shopos/rfp-service:latest
+    build:
+      context: ./src/b2b/rfp-service
+      dockerfile: Dockerfile
+    environment:
+      - PORT=50241
+      - LOG_LEVEL=info
+      - DATABASE_URL=postgres://postgres:postgres@postgres:5432/shopos?sslmode=disable
+    ports:
+      - "50241:50241"
+    depends_on:
+      - postgres
+    restart: unless-stopped
+    networks:
+      - shopos
+
+  vendor-onboarding-service:
+    image: shopos/vendor-onboarding-service:latest
+    build:
+      context: ./src/b2b/vendor-onboarding-service
+      dockerfile: Dockerfile
+    environment:
+      - PORT=50242
+      - LOG_LEVEL=info
+      - DATABASE_URL=postgres://postgres:postgres@postgres:5432/shopos?sslmode=disable
+    ports:
+      - "50242:50242"
+    depends_on:
+      - postgres
+    restart: unless-stopped
+    networks:
+      - shopos
+
+  purchase-requisition-service:
+    image: shopos/purchase-requisition-service:latest
+    build:
+      context: ./src/b2b/purchase-requisition-service
+      dockerfile: Dockerfile
+    environment:
+      - PORT=50243
+      - LOG_LEVEL=info
+      - DATABASE_URL=postgres://postgres:postgres@postgres:5432/shopos?sslmode=disable
+    ports:
+      - "50243:50243"
+    depends_on:
+      - postgres
+    restart: unless-stopped
+    networks:
+      - shopos
+
+  webhook-ingestion-service:
+    image: shopos/webhook-ingestion-service:latest
+    build:
+      context: ./src/integrations/webhook-ingestion-service
+      dockerfile: Dockerfile
+    environment:
+      - PORT=8200
+      - LOG_LEVEL=info
+      - DATABASE_URL=postgres://postgres:postgres@postgres:5432/shopos?sslmode=disable
+      - - KAFKA_BROKERS=kafka:9092
+    ports:
+      - "8200:8200"
+    depends_on:
+      - postgres
+      - kafka
+    restart: unless-stopped
+    networks:
+      - shopos
+
+  etl-service:
+    image: shopos/etl-service:latest
+    build:
+      context: ./src/integrations/etl-service
+      dockerfile: Dockerfile
+    environment:
+      - PORT=8201
+      - LOG_LEVEL=info
+      - DATABASE_URL=postgres://postgres:postgres@postgres:5432/shopos?sslmode=disable
+    ports:
+      - "8201:8201"
+    depends_on:
+      - postgres
+    restart: unless-stopped
+    networks:
+      - shopos
+
+  data-sync-service:
+    image: shopos/data-sync-service:latest
+    build:
+      context: ./src/integrations/data-sync-service
+      dockerfile: Dockerfile
+    environment:
+      - PORT=50244
+      - LOG_LEVEL=info
+      - DATABASE_URL=postgres://postgres:postgres@postgres:5432/shopos?sslmode=disable
+    ports:
+      - "50244:50244"
+    depends_on:
+      - postgres
+    restart: unless-stopped
+    networks:
+      - shopos
+
+  ipaas-connector-service:
+    image: shopos/ipaas-connector-service:latest
+    build:
+      context: ./src/integrations/ipaas-connector-service
+      dockerfile: Dockerfile
+    environment:
+      - PORT=8202
+      - LOG_LEVEL=info
+    ports:
+      - "8202:8202"
+    restart: unless-stopped
+    networks:
+      - shopos
+
+  click-tracking-service:
+    image: shopos/click-tracking-service:latest
+    build:
+      context: ./src/affiliate/click-tracking-service
+      dockerfile: Dockerfile
+    environment:
+      - PORT=8203
+      - LOG_LEVEL=info
+      - REDIS_URL=redis://redis:6379
+    ports:
+      - "8203:8203"
+    depends_on:
+      - redis
+    restart: unless-stopped
+    networks:
+      - shopos
+
+  fraud-prevention-affiliate-service:
+    image: shopos/fraud-prevention-affiliate-service:latest
+    build:
+      context: ./src/affiliate/fraud-prevention-affiliate-service
+      dockerfile: Dockerfile
+    environment:
+      - PORT=50248
+      - LOG_LEVEL=info
+      - DATABASE_URL=postgres://postgres:postgres@postgres:5432/shopos?sslmode=disable
+    ports:
+      - "50248:50248"
+    depends_on:
+      - postgres
+    restart: unless-stopped
+    networks:
+      - shopos
+
+  seller-registration-service:
+    image: shopos/seller-registration-service:latest
+    build:
+      context: ./src/marketplace/seller-registration-service
+      dockerfile: Dockerfile
+    environment:
+      - PORT=50250
+      - LOG_LEVEL=info
+      - DATABASE_URL=postgres://postgres:postgres@postgres:5432/shopos?sslmode=disable
+    ports:
+      - "50250:50250"
+    depends_on:
+      - postgres
+    restart: unless-stopped
+    networks:
+      - shopos
+
+  listing-approval-service:
+    image: shopos/listing-approval-service:latest
+    build:
+      context: ./src/marketplace/listing-approval-service
+      dockerfile: Dockerfile
+    environment:
+      - PORT=50251
+      - LOG_LEVEL=info
+      - DATABASE_URL=postgres://postgres:postgres@postgres:5432/shopos?sslmode=disable
+    ports:
+      - "50251:50251"
+    depends_on:
+      - postgres
+    restart: unless-stopped
+    networks:
+      - shopos
+
+  marketplace-commission-service:
+    image: shopos/marketplace-commission-service:latest
+    build:
+      context: ./src/marketplace/marketplace-commission-service
+      dockerfile: Dockerfile
+    environment:
+      - PORT=50252
+      - LOG_LEVEL=info
+      - DATABASE_URL=postgres://postgres:postgres@postgres:5432/shopos?sslmode=disable
+    ports:
+      - "50252:50252"
+    depends_on:
+      - postgres
+    restart: unless-stopped
+    networks:
+      - shopos
+
+  dispute-resolution-service:
+    image: shopos/dispute-resolution-service:latest
+    build:
+      context: ./src/marketplace/dispute-resolution-service
+      dockerfile: Dockerfile
+    environment:
+      - PORT=50253
+      - LOG_LEVEL=info
+      - DATABASE_URL=postgres://postgres:postgres@postgres:5432/shopos?sslmode=disable
+    ports:
+      - "50253:50253"
+    depends_on:
+      - postgres
+    restart: unless-stopped
+    networks:
+      - shopos
+
+  seller-analytics-service:
+    image: shopos/seller-analytics-service:latest
+    build:
+      context: ./src/marketplace/seller-analytics-service
+      dockerfile: Dockerfile
+    environment:
+      - PORT=8204
+      - LOG_LEVEL=info
+      - DATABASE_URL=postgres://postgres:postgres@postgres:5432/shopos?sslmode=disable
+    ports:
+      - "8204:8204"
+    depends_on:
+      - postgres
+    restart: unless-stopped
+    networks:
+      - shopos
+
+  product-syndication-service:
+    image: shopos/product-syndication-service:latest
+    build:
+      context: ./src/marketplace/product-syndication-service
+      dockerfile: Dockerfile
+    environment:
+      - PORT=50254
+      - LOG_LEVEL=info
+      - DATABASE_URL=postgres://postgres:postgres@postgres:5432/shopos?sslmode=disable
+    ports:
+      - "50254:50254"
+    depends_on:
+      - postgres
+    restart: unless-stopped
+    networks:
+      - shopos
+
+  storefront-service:
+    image: shopos/storefront-service:latest
+    build:
+      context: ./src/marketplace/storefront-service
+      dockerfile: Dockerfile
+    environment:
+      - PORT=8205
+      - LOG_LEVEL=info
+    ports:
+      - "8205:8205"
+    restart: unless-stopped
+    networks:
+      - shopos
+
+  seller-payout-service:
+    image: shopos/seller-payout-service:latest
+    build:
+      context: ./src/marketplace/seller-payout-service
+      dockerfile: Dockerfile
+    environment:
+      - PORT=50255
+      - LOG_LEVEL=info
+      - DATABASE_URL=postgres://postgres:postgres@postgres:5432/shopos?sslmode=disable
+    ports:
+      - "50255:50255"
+    depends_on:
+      - postgres
+    restart: unless-stopped
+    networks:
+      - shopos
+
+  points-service:
+    image: shopos/points-service:latest
+    build:
+      context: ./src/gamification/points-service
+      dockerfile: Dockerfile
+    environment:
+      - PORT=50260
+      - LOG_LEVEL=info
+      - REDIS_URL=redis://redis:6379
+    ports:
+      - "50260:50260"
+    depends_on:
+      - redis
+    restart: unless-stopped
+    networks:
+      - shopos
+
+  badge-service:
+    image: shopos/badge-service:latest
+    build:
+      context: ./src/gamification/badge-service
+      dockerfile: Dockerfile
+    environment:
+      - PORT=50261
+      - LOG_LEVEL=info
+      - DATABASE_URL=postgres://postgres:postgres@postgres:5432/shopos?sslmode=disable
+    ports:
+      - "50261:50261"
+    depends_on:
+      - postgres
+    restart: unless-stopped
+    networks:
+      - shopos
+
+  leaderboard-service:
+    image: shopos/leaderboard-service:latest
+    build:
+      context: ./src/gamification/leaderboard-service
+      dockerfile: Dockerfile
+    environment:
+      - PORT=50262
+      - LOG_LEVEL=info
+      - REDIS_URL=redis://redis:6379
+    ports:
+      - "50262:50262"
+    depends_on:
+      - redis
+    restart: unless-stopped
+    networks:
+      - shopos
+
+  challenge-service:
+    image: shopos/challenge-service:latest
+    build:
+      context: ./src/gamification/challenge-service
+      dockerfile: Dockerfile
+    environment:
+      - PORT=50263
+      - LOG_LEVEL=info
+      - DATABASE_URL=postgres://postgres:postgres@postgres:5432/shopos?sslmode=disable
+    ports:
+      - "50263:50263"
+    depends_on:
+      - postgres
+    restart: unless-stopped
+    networks:
+      - shopos
+
+  reward-redemption-service:
+    image: shopos/reward-redemption-service:latest
+    build:
+      context: ./src/gamification/reward-redemption-service
+      dockerfile: Dockerfile
+    environment:
+      - PORT=50264
+      - LOG_LEVEL=info
+      - DATABASE_URL=postgres://postgres:postgres@postgres:5432/shopos?sslmode=disable
+    ports:
+      - "50264:50264"
+    depends_on:
+      - postgres
+    restart: unless-stopped
+    networks:
+      - shopos
+
+  streak-service:
+    image: shopos/streak-service:latest
+    build:
+      context: ./src/gamification/streak-service
+      dockerfile: Dockerfile
+    environment:
+      - PORT=50265
+      - LOG_LEVEL=info
+      - REDIS_URL=redis://redis:6379
+    ports:
+      - "50265:50265"
+    depends_on:
+      - redis
+    restart: unless-stopped
+    networks:
+      - shopos
+
+  api-management-service:
+    image: shopos/api-management-service:latest
+    build:
+      context: ./src/developer-platform/api-management-service
+      dockerfile: Dockerfile
+    environment:
+      - PORT=8206
+      - LOG_LEVEL=info
+      - DATABASE_URL=postgres://postgres:postgres@postgres:5432/shopos?sslmode=disable
+    ports:
+      - "8206:8206"
+    depends_on:
+      - postgres
+    restart: unless-stopped
+    networks:
+      - shopos
+
+  sandbox-service:
+    image: shopos/sandbox-service:latest
+    build:
+      context: ./src/developer-platform/sandbox-service
+      dockerfile: Dockerfile
+    environment:
+      - PORT=8207
+      - LOG_LEVEL=info
+      - DATABASE_URL=postgres://postgres:postgres@postgres:5432/shopos?sslmode=disable
+    ports:
+      - "8207:8207"
+    depends_on:
+      - postgres
+    restart: unless-stopped
+    networks:
+      - shopos
+
+  developer-portal-backend:
+    image: shopos/developer-portal-backend:latest
+    build:
+      context: ./src/developer-platform/developer-portal-backend
+      dockerfile: Dockerfile
+    environment:
+      - PORT=8208
+      - LOG_LEVEL=info
+      - DATABASE_URL=postgres://postgres:postgres@postgres:5432/shopos?sslmode=disable
+    ports:
+      - "8208:8208"
+    depends_on:
+      - postgres
+    restart: unless-stopped
+    networks:
+      - shopos
+
+  oauth-client-service:
+    image: shopos/oauth-client-service:latest
+    build:
+      context: ./src/developer-platform/oauth-client-service
+      dockerfile: Dockerfile
+    environment:
+      - PORT=50270
+      - LOG_LEVEL=info
+      - DATABASE_URL=postgres://postgres:postgres@postgres:5432/shopos?sslmode=disable
+    ports:
+      - "50270:50270"
+    depends_on:
+      - postgres
+    restart: unless-stopped
+    networks:
+      - shopos
+
+  api-analytics-service:
+    image: shopos/api-analytics-service:latest
+    build:
+      context: ./src/developer-platform/api-analytics-service
+      dockerfile: Dockerfile
+    environment:
+      - PORT=8209
+      - LOG_LEVEL=info
+      - DATABASE_URL=postgres://postgres:postgres@postgres:5432/shopos?sslmode=disable
+    ports:
+      - "8209:8209"
+    depends_on:
+      - postgres
+    restart: unless-stopped
+    networks:
+      - shopos
+
+  webhook-management-service:
+    image: shopos/webhook-management-service:latest
+    build:
+      context: ./src/developer-platform/webhook-management-service
+      dockerfile: Dockerfile
+    environment:
+      - PORT=50271
+      - LOG_LEVEL=info
+      - DATABASE_URL=postgres://postgres:postgres@postgres:5432/shopos?sslmode=disable
+    ports:
+      - "50271:50271"
+    depends_on:
+      - postgres
+    restart: unless-stopped
+    networks:
+      - shopos
+
+  data-retention-service:
+    image: shopos/data-retention-service:latest
+    build:
+      context: ./src/compliance/data-retention-service
+      dockerfile: Dockerfile
+    environment:
+      - PORT=50280
+      - LOG_LEVEL=info
+      - DATABASE_URL=postgres://postgres:postgres@postgres:5432/shopos?sslmode=disable
+    ports:
+      - "50280:50280"
+    depends_on:
+      - postgres
+    restart: unless-stopped
+    networks:
+      - shopos
+
+  consent-audit-service:
+    image: shopos/consent-audit-service:latest
+    build:
+      context: ./src/compliance/consent-audit-service
+      dockerfile: Dockerfile
+    environment:
+      - PORT=50281
+      - LOG_LEVEL=info
+      - DATABASE_URL=postgres://postgres:postgres@postgres:5432/shopos?sslmode=disable
+    ports:
+      - "50281:50281"
+    depends_on:
+      - postgres
+    restart: unless-stopped
+    networks:
+      - shopos
+
+  privacy-request-service:
+    image: shopos/privacy-request-service:latest
+    build:
+      context: ./src/compliance/privacy-request-service
+      dockerfile: Dockerfile
+    environment:
+      - PORT=50282
+      - LOG_LEVEL=info
+      - DATABASE_URL=postgres://postgres:postgres@postgres:5432/shopos?sslmode=disable
+    ports:
+      - "50282:50282"
+    depends_on:
+      - postgres
+    restart: unless-stopped
+    networks:
+      - shopos
+
+  compliance-reporting-service:
+    image: shopos/compliance-reporting-service:latest
+    build:
+      context: ./src/compliance/compliance-reporting-service
+      dockerfile: Dockerfile
+    environment:
+      - PORT=50283
+      - LOG_LEVEL=info
+      - DATABASE_URL=postgres://postgres:postgres@postgres:5432/shopos?sslmode=disable
+    ports:
+      - "50283:50283"
+    depends_on:
+      - postgres
+    restart: unless-stopped
+    networks:
+      - shopos
+
+  data-lineage-service:
+    image: shopos/data-lineage-service:latest
+    build:
+      context: ./src/compliance/data-lineage-service
+      dockerfile: Dockerfile
+    environment:
+      - PORT=50284
+      - LOG_LEVEL=info
+      - DATABASE_URL=postgres://postgres:postgres@postgres:5432/shopos?sslmode=disable
+    ports:
+      - "50284:50284"
+    depends_on:
+      - postgres
+    restart: unless-stopped
+    networks:
+      - shopos
+
+  carbon-tracker-service:
+    image: shopos/carbon-tracker-service:latest
+    build:
+      context: ./src/sustainability/carbon-tracker-service
+      dockerfile: Dockerfile
+    environment:
+      - PORT=50290
+      - LOG_LEVEL=info
+      - DATABASE_URL=postgres://postgres:postgres@postgres:5432/shopos?sslmode=disable
+    ports:
+      - "50290:50290"
+    depends_on:
+      - postgres
+    restart: unless-stopped
+    networks:
+      - shopos
+
+  eco-score-service:
+    image: shopos/eco-score-service:latest
+    build:
+      context: ./src/sustainability/eco-score-service
+      dockerfile: Dockerfile
+    environment:
+      - PORT=50291
+      - LOG_LEVEL=info
+      - DATABASE_URL=postgres://postgres:postgres@postgres:5432/shopos?sslmode=disable
+    ports:
+      - "50291:50291"
+    depends_on:
+      - postgres
+    restart: unless-stopped
+    networks:
+      - shopos
+
+  green-shipping-service:
+    image: shopos/green-shipping-service:latest
+    build:
+      context: ./src/sustainability/green-shipping-service
+      dockerfile: Dockerfile
+    environment:
+      - PORT=50292
+      - LOG_LEVEL=info
+      - DATABASE_URL=postgres://postgres:postgres@postgres:5432/shopos?sslmode=disable
+    ports:
+      - "50292:50292"
+    depends_on:
+      - postgres
+    restart: unless-stopped
+    networks:
+      - shopos
+
+  sustainability-reporting-service:
+    image: shopos/sustainability-reporting-service:latest
+    build:
+      context: ./src/sustainability/sustainability-reporting-service
+      dockerfile: Dockerfile
+    environment:
+      - PORT=50293
+      - LOG_LEVEL=info
+      - DATABASE_URL=postgres://postgres:postgres@postgres:5432/shopos?sslmode=disable
+    ports:
+      - "50293:50293"
+    depends_on:
+      - postgres
+    restart: unless-stopped
+    networks:
+      - shopos
+
+  offset-service:
+    image: shopos/offset-service:latest
+    build:
+      context: ./src/sustainability/offset-service
+      dockerfile: Dockerfile
+    environment:
+      - PORT=50294
+      - LOG_LEVEL=info
+      - DATABASE_URL=postgres://postgres:postgres@postgres:5432/shopos?sslmode=disable
+    ports:
+      - "50294:50294"
+    depends_on:
+      - postgres
+    restart: unless-stopped
+    networks:
+      - shopos
+
 # VOLUMES
 # =============================================================================
 

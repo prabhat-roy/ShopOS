@@ -1,0 +1,19 @@
+apiVersion: v2
+name: loyalty-tier-service
+description: ShopOS loyalty-tier-service — Loyalty tier calculation and upgrade logic
+type: application
+version: 0.1.0
+appVersion: "1.0.0"
+keywords:
+  - shopos
+  - loyalty-tier-service
+  - customer-experience
+home: https://github.com/your-org/shopos
+sources:
+  - https://github.com/your-org/shopos/tree/main/src/customer-experience/loyalty-tier-service
+maintainers:
+  - name: ShopOS Platform Team
+    email: platform@shopos.io
+annotations:
+  app.kubernetes.io/domain: customer-experience
+  app.kubernetes.io/language: Go

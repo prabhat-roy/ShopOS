@@ -1,0 +1,19 @@
+apiVersion: v2
+name: data-lineage-service
+description: ShopOS data-lineage-service — Data flow lineage tracking across services
+type: application
+version: 0.1.0
+appVersion: "1.0.0"
+keywords:
+  - shopos
+  - data-lineage-service
+  - compliance
+home: https://github.com/your-org/shopos
+sources:
+  - https://github.com/your-org/shopos/tree/main/src/compliance/data-lineage-service
+maintainers:
+  - name: ShopOS Platform Team
+    email: platform@shopos.io
+annotations:
+  app.kubernetes.io/domain: compliance
+  app.kubernetes.io/language: Go

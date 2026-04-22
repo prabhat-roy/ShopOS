@@ -1,0 +1,19 @@
+apiVersion: v2
+name: dunning-service
+description: ShopOS dunning-service — Failed payment retry and escalation logic
+type: application
+version: 0.1.0
+appVersion: "1.0.0"
+keywords:
+  - shopos
+  - dunning-service
+  - financial
+home: https://github.com/your-org/shopos
+sources:
+  - https://github.com/your-org/shopos/tree/main/src/financial/dunning-service
+maintainers:
+  - name: ShopOS Platform Team
+    email: platform@shopos.io
+annotations:
+  app.kubernetes.io/domain: financial
+  app.kubernetes.io/language: Go

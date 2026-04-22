@@ -1,0 +1,19 @@
+apiVersion: v2
+name: audit-trail-service
+description: ShopOS audit-trail-service — Financial audit trail with immutable ledger
+type: application
+version: 0.1.0
+appVersion: "1.0.0"
+keywords:
+  - shopos
+  - audit-trail-service
+  - financial
+home: https://github.com/your-org/shopos
+sources:
+  - https://github.com/your-org/shopos/tree/main/src/financial/audit-trail-service
+maintainers:
+  - name: ShopOS Platform Team
+    email: platform@shopos.io
+annotations:
+  app.kubernetes.io/domain: financial
+  app.kubernetes.io/language: Java

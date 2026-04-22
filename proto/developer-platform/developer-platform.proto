@@ -1,0 +1,51 @@
+syntax = "proto3";
+
+package developerplatform;
+
+import "common/common.proto";
+
+option go_package = "github.com/shopos/proto/developerplatform";
+
+// ---------------------------------------------------------------------------
+// OAuth Client Service
+// ---------------------------------------------------------------------------
+
+message OAuthClient {
+  string client_id     = 1;
+  string client_secret = 2;
+  string name          = 3;
+  string owner_id      = 4;
+  repeated string scopes        = 5;
+  repeated string redirect_uris = 6;
+  string created_at   = 7;
+}
+
+message CreateClientRequest  { OAuthClient client = 1; }
+message CreateClientResponse { OAuthClient client = 1; }
+message GetClientRequest     { string client_id = 1; }
+
+service OAuthClientService {
+  rpc CreateClient (CreateClientRequest) returns (CreateClientResponse);
+  rpc GetClient    (GetClientRequest)    returns (OAuthClient);
+}
+
+// ---------------------------------------------------------------------------
+// Webhook Management Service
+// ---------------------------------------------------------------------------
+
+message WebhookSubscription {
+  string subscription_id = 1;
+  string owner_id        = 2;
+  string endpoint_url    = 3;
+  repeated string events = 4;
+  string secret          = 5;
+  string status          = 6; // active, paused, disabled
+  string created_at      = 7;
+}
+
+message CreateWebhookRequest  { WebhookSubscription subscription = 1; }
+message CreateWebhookResponse { WebhookSubscription subscription = 1; }
+
+service WebhookManagementService {
+  rpc CreateWebhook (CreateWebhookRequest) returns (CreateWebhookResponse);
+}

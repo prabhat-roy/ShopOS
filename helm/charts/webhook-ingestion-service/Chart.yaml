@@ -1,0 +1,19 @@
+apiVersion: v2
+name: webhook-ingestion-service
+description: ShopOS webhook-ingestion-service — Inbound webhooks from Stripe/Shopify to Kafka
+type: application
+version: 0.1.0
+appVersion: "1.0.0"
+keywords:
+  - shopos
+  - webhook-ingestion-service
+  - integrations
+home: https://github.com/your-org/shopos
+sources:
+  - https://github.com/your-org/shopos/tree/main/src/integrations/webhook-ingestion-service
+maintainers:
+  - name: ShopOS Platform Team
+    email: platform@shopos.io
+annotations:
+  app.kubernetes.io/domain: integrations
+  app.kubernetes.io/language: Go

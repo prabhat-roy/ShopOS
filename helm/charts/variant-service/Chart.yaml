@@ -1,0 +1,19 @@
+apiVersion: v2
+name: variant-service
+description: ShopOS variant-service — Product variant (size/colour matrix) management
+type: application
+version: 0.1.0
+appVersion: "1.0.0"
+keywords:
+  - shopos
+  - variant-service
+  - catalog
+home: https://github.com/your-org/shopos
+sources:
+  - https://github.com/your-org/shopos/tree/main/src/catalog/variant-service
+maintainers:
+  - name: ShopOS Platform Team
+    email: platform@shopos.io
+annotations:
+  app.kubernetes.io/domain: catalog
+  app.kubernetes.io/language: Go

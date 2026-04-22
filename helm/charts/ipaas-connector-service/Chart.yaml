@@ -1,0 +1,19 @@
+apiVersion: v2
+name: ipaas-connector-service
+description: ShopOS ipaas-connector-service — Generic iPaaS adapter (Zapier/Make/n8n protocol)
+type: application
+version: 0.1.0
+appVersion: "1.0.0"
+keywords:
+  - shopos
+  - ipaas-connector-service
+  - integrations
+home: https://github.com/your-org/shopos
+sources:
+  - https://github.com/your-org/shopos/tree/main/src/integrations/ipaas-connector-service
+maintainers:
+  - name: ShopOS Platform Team
+    email: platform@shopos.io
+annotations:
+  app.kubernetes.io/domain: integrations
+  app.kubernetes.io/language: Go

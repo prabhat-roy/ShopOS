@@ -1,0 +1,19 @@
+apiVersion: v2
+name: challenge-service
+description: ShopOS challenge-service — Gamified challenge definition and completion
+type: application
+version: 0.1.0
+appVersion: "1.0.0"
+keywords:
+  - shopos
+  - challenge-service
+  - gamification
+home: https://github.com/your-org/shopos
+sources:
+  - https://github.com/your-org/shopos/tree/main/src/gamification/challenge-service
+maintainers:
+  - name: ShopOS Platform Team
+    email: platform@shopos.io
+annotations:
+  app.kubernetes.io/domain: gamification
+  app.kubernetes.io/language: Go

@@ -1,0 +1,68 @@
+syntax = "proto3";
+
+package sustainability;
+
+import "common/common.proto";
+
+option go_package = "github.com/shopos/proto/sustainability";
+
+// ---------------------------------------------------------------------------
+// Carbon Tracker Service
+// ---------------------------------------------------------------------------
+
+message CarbonFootprint {
+  string record_id    = 1;
+  string reference_id = 2;  // order_id or shipment_id
+  string reference_type = 3; // order, shipment
+  double kg_co2e      = 4;
+  string method       = 5;  // estimated, measured
+  string calculated_at = 6;
+}
+
+message CalculateCarbonRequest  { string reference_id = 1; string reference_type = 2; }
+message CalculateCarbonResponse { CarbonFootprint footprint = 1; }
+
+service CarbonTrackerService {
+  rpc CalculateCarbon (CalculateCarbonRequest) returns (CalculateCarbonResponse);
+}
+
+// ---------------------------------------------------------------------------
+// Eco Score Service
+// ---------------------------------------------------------------------------
+
+message EcoScore {
+  string product_id   = 1;
+  double score        = 2;  // 0-100
+  string grade        = 3;  // A+, A, B, C, D, E
+  string label        = 4;  // eco-friendly, sustainable, etc.
+  string calculated_at = 5;
+}
+
+message GetEcoScoreRequest  { string product_id = 1; }
+message GetEcoScoreResponse { EcoScore score = 1; }
+
+service EcoScoreService {
+  rpc GetEcoScore (GetEcoScoreRequest) returns (GetEcoScoreResponse);
+}
+
+// ---------------------------------------------------------------------------
+// Offset Service
+// ---------------------------------------------------------------------------
+
+message CarbonOffset {
+  string offset_id    = 1;
+  string order_id     = 2;
+  string user_id      = 3;
+  double kg_co2e      = 4;
+  double cost_usd     = 5;
+  string project      = 6;  // reforestation, renewable, etc.
+  string certificate  = 7;  // certificate URL
+  string created_at   = 8;
+}
+
+message PurchaseOffsetRequest  { string order_id = 1; string user_id = 2; double kg_co2e = 3; }
+message PurchaseOffsetResponse { CarbonOffset offset = 1; }
+
+service OffsetService {
+  rpc PurchaseOffset (PurchaseOffsetRequest) returns (PurchaseOffsetResponse);
+}

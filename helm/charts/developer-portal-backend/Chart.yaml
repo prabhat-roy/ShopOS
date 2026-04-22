@@ -1,0 +1,19 @@
+apiVersion: v2
+name: developer-portal-backend
+description: ShopOS developer-portal-backend — Backend API for developer documentation portal
+type: application
+version: 0.1.0
+appVersion: "1.0.0"
+keywords:
+  - shopos
+  - developer-portal-backend
+  - developer-platform
+home: https://github.com/your-org/shopos
+sources:
+  - https://github.com/your-org/shopos/tree/main/src/developer-platform/developer-portal-backend
+maintainers:
+  - name: ShopOS Platform Team
+    email: platform@shopos.io
+annotations:
+  app.kubernetes.io/domain: developer-platform
+  app.kubernetes.io/language: Node.js

@@ -1,0 +1,19 @@
+apiVersion: v2
+name: api-management-service
+description: ShopOS api-management-service — External API lifecycle, versioning and keys
+type: application
+version: 0.1.0
+appVersion: "1.0.0"
+keywords:
+  - shopos
+  - api-management-service
+  - developer-platform
+home: https://github.com/your-org/shopos
+sources:
+  - https://github.com/your-org/shopos/tree/main/src/developer-platform/api-management-service
+maintainers:
+  - name: ShopOS Platform Team
+    email: platform@shopos.io
+annotations:
+  app.kubernetes.io/domain: developer-platform
+  app.kubernetes.io/language: Go

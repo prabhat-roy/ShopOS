@@ -1,6 +1,6 @@
 # ShopOS — Enterprise Commerce Platform
 
-An enterprise-grade, cloud-native commerce platform — 154 microservices, 13 domains, 8 languages, full open source stack.
+An enterprise-grade, cloud-native commerce platform — 224 microservices, 18 domains, 8 languages, full open source stack.
 
 ---
 
@@ -21,7 +21,7 @@ An enterprise-grade, cloud-native commerce platform — 154 microservices, 13 do
 | 11 | B2B | 7 |
 | 12 | Integrations | 10 |
 | 13 | Affiliate | 4 |
-| | **Total** | **154** |
+| | **Total** | **224** |
 
 ---
 
@@ -92,7 +92,7 @@ An enterprise-grade, cloud-native commerce platform — 154 microservices, 13 do
 |---|---|---|
 | Docker | latest | Container runtime, multi-stage builds |
 | Kubernetes | 1.31 | Container orchestration |
-| Helm | 3.x | 154 per-service charts + 30 tool charts |
+| Helm | 3.x | 224 per-service charts + 30 tool charts |
 | KEDA | 2.15 | Kafka/Redis-driven autoscaling (alongside HPA) |
 | Velero | 7.x | Kubernetes backup and restore |
 | Skaffold | latest | Local dev hot-reload |
@@ -106,7 +106,7 @@ An enterprise-grade, cloud-native commerce platform — 154 microservices, 13 do
 | OpenTofu | 1.8 | Open source Terraform alternative (same targets) |
 | Crossplane | 1.17 | Kubernetes-native IaC — database and cloud resource claims |
 | Ansible | 2.17 | Kubernetes node bootstrapping |
-| Docker Compose | v2 | Full local stack (154 services + infra) |
+| Docker Compose | v2 | Full local stack (224 services + infra) |
 
 ### CI/CD
 
@@ -521,16 +521,6 @@ An enterprise-grade, cloud-native commerce platform — 154 microservices, 13 do
 | commission-payout-service | Go | Commission aggregation, tax rules, and payout batching |
 
 ---
-
-## Project Status
-
-| Phase | Scope | Status |
-|---|---|---|
-| 1 | 154 microservices, Kubernetes, Kafka, databases, Helm charts | **Complete** |
-| 2 | CI/CD (15 platforms × 12 pipelines), GitOps, IaC, DevSecOps | **Complete** |
-| 3 | Security layer — Istio, Keycloak, Vault, OPA, Falco, Cilium | Configs ready |
-| 4 | Observability — OTel, Prometheus, Grafana, Loki, Jaeger | Configs ready |
-| 5 | AI/ML — LLM service, RAG, MLflow, Flink, Neo4j | Configs ready |
 
 ## Docs
 

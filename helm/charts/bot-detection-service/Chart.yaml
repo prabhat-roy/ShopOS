@@ -1,0 +1,19 @@
+apiVersion: v2
+name: bot-detection-service
+description: ShopOS bot-detection-service — Real-time bot and automated traffic detection
+type: application
+version: 0.1.0
+appVersion: "1.0.0"
+keywords:
+  - shopos
+  - bot-detection-service
+  - identity
+home: https://github.com/your-org/shopos
+sources:
+  - https://github.com/your-org/shopos/tree/main/src/identity/bot-detection-service
+maintainers:
+  - name: ShopOS Platform Team
+    email: platform@shopos.io
+annotations:
+  app.kubernetes.io/domain: identity
+  app.kubernetes.io/language: Go

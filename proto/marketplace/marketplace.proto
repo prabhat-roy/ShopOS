@@ -1,0 +1,97 @@
+syntax = "proto3";
+
+package marketplace;
+
+import "common/common.proto";
+
+option go_package = "github.com/shopos/proto/marketplace";
+
+// ---------------------------------------------------------------------------
+// Seller Registration Service
+// ---------------------------------------------------------------------------
+
+message Seller {
+  string seller_id    = 1;
+  string user_id      = 2;
+  string business_name = 3;
+  string status       = 4; // pending, approved, suspended
+  string country      = 5;
+  string currency     = 6;
+  string created_at   = 7;
+}
+
+message RegisterSellerRequest  { Seller seller = 1; }
+message RegisterSellerResponse { Seller seller = 1; }
+message GetSellerRequest       { string seller_id = 1; }
+
+service SellerRegistrationService {
+  rpc RegisterSeller (RegisterSellerRequest)  returns (RegisterSellerResponse);
+  rpc GetSeller      (GetSellerRequest)       returns (Seller);
+}
+
+// ---------------------------------------------------------------------------
+// Listing Approval Service
+// ---------------------------------------------------------------------------
+
+message Listing {
+  string listing_id  = 1;
+  string seller_id   = 2;
+  string product_id  = 3;
+  string status      = 4; // pending, approved, rejected
+  string reviewer_id = 5;
+  string notes       = 6;
+}
+
+message SubmitListingRequest  { Listing listing = 1; }
+message SubmitListingResponse { Listing listing = 1; }
+message ApproveListing        { string listing_id = 1; string reviewer_id = 2; }
+message ApproveListingResponse { Listing listing = 1; }
+
+service ListingApprovalService {
+  rpc SubmitListing  (SubmitListingRequest)  returns (SubmitListingResponse);
+  rpc ApproveListing (ApproveListing)        returns (ApproveListingResponse);
+}
+
+// ---------------------------------------------------------------------------
+// Marketplace Commission Service
+// ---------------------------------------------------------------------------
+
+message CommissionRule {
+  string rule_id       = 1;
+  string category_id   = 2;
+  double rate          = 3;  // 0.0–1.0
+  double flat_fee      = 4;
+  string currency      = 5;
+}
+
+message CalculateCommissionRequest  { string order_id = 1; double order_amount = 2; string category_id = 3; }
+message CalculateCommissionResponse { double commission = 1; string currency = 2; }
+
+service MarketplaceCommissionService {
+  rpc CalculateCommission (CalculateCommissionRequest) returns (CalculateCommissionResponse);
+}
+
+// ---------------------------------------------------------------------------
+// Dispute Resolution Service
+// ---------------------------------------------------------------------------
+
+message Dispute {
+  string dispute_id  = 1;
+  string order_id    = 2;
+  string buyer_id    = 3;
+  string seller_id   = 4;
+  string reason      = 5;
+  string status      = 6; // open, in_review, resolved, escalated
+  string resolution  = 7;
+  string created_at  = 8;
+}
+
+message OpenDisputeRequest    { Dispute dispute = 1; }
+message OpenDisputeResponse   { Dispute dispute = 1; }
+message ResolveDisputeRequest { string dispute_id = 1; string resolution = 2; }
+message ResolveDisputeResponse { Dispute dispute = 1; }
+
+service DisputeResolutionService {
+  rpc OpenDispute    (OpenDisputeRequest)    returns (OpenDisputeResponse);
+  rpc ResolveDispute (ResolveDisputeRequest) returns (ResolveDisputeResponse);
+}

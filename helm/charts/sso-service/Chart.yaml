@@ -1,0 +1,19 @@
+apiVersion: v2
+name: sso-service
+description: ShopOS sso-service — Single Sign-On federation and token exchange
+type: application
+version: 0.1.0
+appVersion: "1.0.0"
+keywords:
+  - shopos
+  - sso-service
+  - identity
+home: https://github.com/your-org/shopos
+sources:
+  - https://github.com/your-org/shopos/tree/main/src/identity/sso-service
+maintainers:
+  - name: ShopOS Platform Team
+    email: platform@shopos.io
+annotations:
+  app.kubernetes.io/domain: identity
+  app.kubernetes.io/language: Go

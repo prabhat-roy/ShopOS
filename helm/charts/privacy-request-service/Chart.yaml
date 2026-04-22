@@ -1,0 +1,19 @@
+apiVersion: v2
+name: privacy-request-service
+description: ShopOS privacy-request-service — GDPR/CCPA subject access and erasure requests
+type: application
+version: 0.1.0
+appVersion: "1.0.0"
+keywords:
+  - shopos
+  - privacy-request-service
+  - compliance
+home: https://github.com/your-org/shopos
+sources:
+  - https://github.com/your-org/shopos/tree/main/src/compliance/privacy-request-service
+maintainers:
+  - name: ShopOS Platform Team
+    email: platform@shopos.io
+annotations:
+  app.kubernetes.io/domain: compliance
+  app.kubernetes.io/language: Go

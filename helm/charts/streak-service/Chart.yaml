@@ -1,0 +1,19 @@
+apiVersion: v2
+name: streak-service
+description: ShopOS streak-service — Daily/weekly activity streak tracking
+type: application
+version: 0.1.0
+appVersion: "1.0.0"
+keywords:
+  - shopos
+  - streak-service
+  - gamification
+home: https://github.com/your-org/shopos
+sources:
+  - https://github.com/your-org/shopos/tree/main/src/gamification/streak-service
+maintainers:
+  - name: ShopOS Platform Team
+    email: platform@shopos.io
+annotations:
+  app.kubernetes.io/domain: gamification
+  app.kubernetes.io/language: Go

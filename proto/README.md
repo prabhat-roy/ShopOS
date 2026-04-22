@@ -96,13 +96,28 @@ proto/
 │   ├── contract.proto              ← ContractService
 │   └── quote.proto                 ← QuoteRFQService
 │
-└── integrations/
-    ├── erp.proto                   ← ERPIntegrationService
-    ├── crm.proto                   ← CRMIntegrationService
-    └── marketplace.proto           ← MarketplaceConnectorService
+├── integrations/
+│   ├── erp.proto                   ← ERPIntegrationService
+│   ├── crm.proto                   ← CRMIntegrationService
+│   └── marketplace.proto           ← MarketplaceConnectorService
+│
+├── marketplace/
+│   └── marketplace.proto           ← SellerRegistration, ListingApproval, Commission, Dispute
+│
+├── gamification/
+│   └── gamification.proto          ← Points, Badge, Leaderboard, Challenge
+│
+├── developer-platform/
+│   └── developer-platform.proto    ← OAuthClient, WebhookManagement
+│
+├── compliance/
+│   └── compliance.proto            ← PrivacyRequest, ConsentAudit, DataLineage
+│
+└── sustainability/
+    └── sustainability.proto        ← CarbonTracker, EcoScore, Offset
 ```
 
-**Total: 58 `.proto` files across 13 directories.**
+**Total: 63 `.proto` files across 18 directories.**
 
 ---
 

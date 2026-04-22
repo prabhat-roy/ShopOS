@@ -1,0 +1,19 @@
+apiVersion: v2
+name: notification-preferences-service
+description: ShopOS notification-preferences-service — Manages user notification preferences
+type: application
+version: 0.1.0
+appVersion: "1.0.0"
+keywords:
+  - shopos
+  - notification-preferences-service
+  - platform
+home: https://github.com/your-org/shopos
+sources:
+  - https://github.com/your-org/shopos/tree/main/src/platform/notification-preferences-service
+maintainers:
+  - name: ShopOS Platform Team
+    email: platform@shopos.io
+annotations:
+  app.kubernetes.io/domain: platform
+  app.kubernetes.io/language: Go

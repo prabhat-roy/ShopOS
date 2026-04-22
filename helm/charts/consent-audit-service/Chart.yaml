@@ -1,0 +1,19 @@
+apiVersion: v2
+name: consent-audit-service
+description: ShopOS consent-audit-service — Consent event audit log with immutable trail
+type: application
+version: 0.1.0
+appVersion: "1.0.0"
+keywords:
+  - shopos
+  - consent-audit-service
+  - compliance
+home: https://github.com/your-org/shopos
+sources:
+  - https://github.com/your-org/shopos/tree/main/src/compliance/consent-audit-service
+maintainers:
+  - name: ShopOS Platform Team
+    email: platform@shopos.io
+annotations:
+  app.kubernetes.io/domain: compliance
+  app.kubernetes.io/language: Go
