@@ -5,6 +5,7 @@ def call() {
             --create-namespace \
             --set fullnameOverride=memphis \
             --set env.ROOT_PASSWORD=memphis \
+            --set persistence.enabled=false \
             --wait --timeout 5m
     """
     sh "sed -i '/^MEMPHIS_/d' infra.env || true"
