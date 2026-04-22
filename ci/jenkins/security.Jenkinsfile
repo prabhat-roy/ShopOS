@@ -12,7 +12,7 @@ pipeline {
         choice(
             name: 'ACTION',
             choices: ['INSTALL', 'UNINSTALL'],
-            description: 'INSTALL — deploy and configure all security tools + pull CLI images. UNINSTALL — remove all.'
+            description: 'INSTALL — deploy, configure and apply K8s enhancements for all security tools + pull CLI images. UNINSTALL — remove all.'
         )
     }
 
@@ -27,9 +27,7 @@ pipeline {
         stage('Load Kubeconfig') {
             steps {
                 script {
-                    if (!fileExists('infra.env')) {
-                        error "infra.env not found — run the k8s-infra pipeline first"
-                    }
+                    if (!fileExists('infra.env')) error "infra.env not found — run the k8s-infra pipeline first"
                     def content = readFile('infra.env').trim()
                         .split('\n').find { it.startsWith('KUBECONFIG_CONTENT=') }?.split('=', 2)?.last()
                     if (!content) error "KUBECONFIG_CONTENT missing from infra.env"
@@ -48,6 +46,7 @@ pipeline {
                 script {
                     def s = load 'scripts/groovy/security-install-keycloak.groovy'; s()
                     def c = load 'scripts/groovy/security-configure-keycloak.groovy'; c()
+                    def e = load 'scripts/groovy/apply-k8s-enhancements.groovy'; e('keycloak')
                 }
             }
         }
@@ -57,6 +56,7 @@ pipeline {
             steps {
                 script {
                     def s = load 'scripts/groovy/security-install-dex.groovy'; s()
+                    def e = load 'scripts/groovy/apply-k8s-enhancements.groovy'; e('dex')
                 }
             }
         }
@@ -67,6 +67,7 @@ pipeline {
                 script {
                     def s = load 'scripts/groovy/security-install-authentik.groovy'; s()
                     def c = load 'scripts/groovy/security-configure-authentik.groovy'; c()
+                    def e = load 'scripts/groovy/apply-k8s-enhancements.groovy'; e('authentik')
                 }
             }
         }
@@ -77,6 +78,7 @@ pipeline {
                 script {
                     def s = load 'scripts/groovy/security-install-zitadel.groovy'; s()
                     def c = load 'scripts/groovy/security-configure-zitadel.groovy'; c()
+                    def e = load 'scripts/groovy/apply-k8s-enhancements.groovy'; e('zitadel')
                 }
             }
         }
@@ -87,6 +89,7 @@ pipeline {
                 script {
                     def s = load 'scripts/groovy/security-install-authelia.groovy'; s()
                     def c = load 'scripts/groovy/security-configure-authelia.groovy'; c()
+                    def e = load 'scripts/groovy/apply-k8s-enhancements.groovy'; e('authelia')
                 }
             }
         }
@@ -96,6 +99,7 @@ pipeline {
             steps {
                 script {
                     def s = load 'scripts/groovy/security-install-spire.groovy'; s()
+                    def e = load 'scripts/groovy/apply-k8s-enhancements.groovy'; e('spire')
                 }
             }
         }
@@ -106,6 +110,7 @@ pipeline {
                 script {
                     def s = load 'scripts/groovy/security-install-pomerium.groovy'; s()
                     def c = load 'scripts/groovy/security-configure-pomerium.groovy'; c()
+                    def e = load 'scripts/groovy/apply-k8s-enhancements.groovy'; e('pomerium')
                 }
             }
         }
@@ -118,6 +123,7 @@ pipeline {
                 script {
                     def s = load 'scripts/groovy/security-install-vault.groovy'; s()
                     def c = load 'scripts/groovy/security-configure-vault.groovy'; c()
+                    def e = load 'scripts/groovy/apply-k8s-enhancements.groovy'; e('vault')
                 }
             }
         }
@@ -128,6 +134,7 @@ pipeline {
                 script {
                     def s = load 'scripts/groovy/security-install-infisical.groovy'; s()
                     def c = load 'scripts/groovy/security-configure-infisical.groovy'; c()
+                    def e = load 'scripts/groovy/apply-k8s-enhancements.groovy'; e('infisical')
                 }
             }
         }
@@ -139,6 +146,7 @@ pipeline {
             steps {
                 script {
                     def s = load 'scripts/groovy/security-install-opa.groovy'; s()
+                    def e = load 'scripts/groovy/apply-k8s-enhancements.groovy'; e('gatekeeper-system')
                 }
             }
         }
@@ -148,6 +156,7 @@ pipeline {
             steps {
                 script {
                     def s = load 'scripts/groovy/security-install-kyverno.groovy'; s()
+                    def e = load 'scripts/groovy/apply-k8s-enhancements.groovy'; e('kyverno')
                 }
             }
         }
@@ -157,6 +166,7 @@ pipeline {
             steps {
                 script {
                     def s = load 'scripts/groovy/security-install-kubewarden.groovy'; s()
+                    def e = load 'scripts/groovy/apply-k8s-enhancements.groovy'; e('kubewarden')
                 }
             }
         }
@@ -166,6 +176,7 @@ pipeline {
             steps {
                 script {
                     def s = load 'scripts/groovy/security-install-openfga.groovy'; s()
+                    def e = load 'scripts/groovy/apply-k8s-enhancements.groovy'; e('openfga')
                 }
             }
         }
@@ -177,6 +188,7 @@ pipeline {
             steps {
                 script {
                     def s = load 'scripts/groovy/security-install-falco.groovy'; s()
+                    def e = load 'scripts/groovy/apply-k8s-enhancements.groovy'; e('falco')
                 }
             }
         }
@@ -186,6 +198,7 @@ pipeline {
             steps {
                 script {
                     def s = load 'scripts/groovy/security-install-tetragon.groovy'; s()
+                    def e = load 'scripts/groovy/apply-k8s-enhancements.groovy'; e('tetragon')
                 }
             }
         }
@@ -195,6 +208,7 @@ pipeline {
             steps {
                 script {
                     def s = load 'scripts/groovy/security-install-tracee.groovy'; s()
+                    def e = load 'scripts/groovy/apply-k8s-enhancements.groovy'; e('tracee')
                 }
             }
         }
@@ -204,6 +218,7 @@ pipeline {
             steps {
                 script {
                     def s = load 'scripts/groovy/security-install-kubearmor.groovy'; s()
+                    def e = load 'scripts/groovy/apply-k8s-enhancements.groovy'; e('kubearmor')
                 }
             }
         }
@@ -215,6 +230,7 @@ pipeline {
             steps {
                 script {
                     def s = load 'scripts/groovy/security-install-coraza-waf.groovy'; s()
+                    def e = load 'scripts/groovy/apply-k8s-enhancements.groovy'; e('coraza-waf')
                 }
             }
         }
@@ -224,6 +240,7 @@ pipeline {
             steps {
                 script {
                     def s = load 'scripts/groovy/security-install-cert-manager.groovy'; s()
+                    def e = load 'scripts/groovy/apply-k8s-enhancements.groovy'; e('cert-manager')
                 }
             }
         }
@@ -236,6 +253,7 @@ pipeline {
                 script {
                     def s = load 'scripts/groovy/security-install-sonarqube.groovy'; s()
                     def c = load 'scripts/groovy/security-configure-sonarqube.groovy'; c()
+                    def e = load 'scripts/groovy/apply-k8s-enhancements.groovy'; e('sonarqube')
                 }
             }
         }
@@ -247,6 +265,7 @@ pipeline {
             steps {
                 script {
                     def s = load 'scripts/groovy/security-install-trivy-operator.groovy'; s()
+                    def e = load 'scripts/groovy/apply-k8s-enhancements.groovy'; e('trivy-system')
                 }
             }
         }
@@ -256,6 +275,7 @@ pipeline {
             steps {
                 script {
                     def s = load 'scripts/groovy/security-install-clair.groovy'; s()
+                    def e = load 'scripts/groovy/apply-k8s-enhancements.groovy'; e('clair')
                 }
             }
         }
@@ -266,6 +286,7 @@ pipeline {
                 script {
                     def s = load 'scripts/groovy/security-install-openvas.groovy'; s()
                     def c = load 'scripts/groovy/security-configure-openvas.groovy'; c()
+                    def e = load 'scripts/groovy/apply-k8s-enhancements.groovy'; e('openvas')
                 }
             }
         }
@@ -276,6 +297,7 @@ pipeline {
                 script {
                     def s = load 'scripts/groovy/security-install-anchore.groovy'; s()
                     def c = load 'scripts/groovy/security-configure-anchore.groovy'; c()
+                    def e = load 'scripts/groovy/apply-k8s-enhancements.groovy'; e('anchore')
                 }
             }
         }
@@ -288,6 +310,7 @@ pipeline {
                 script {
                     def s = load 'scripts/groovy/security-install-zap.groovy'; s()
                     def c = load 'scripts/groovy/security-configure-zap.groovy'; c()
+                    def e = load 'scripts/groovy/apply-k8s-enhancements.groovy'; e('zap')
                 }
             }
         }
@@ -298,6 +321,7 @@ pipeline {
                 script {
                     def s = load 'scripts/groovy/security-install-nuclei.groovy'; s()
                     def c = load 'scripts/groovy/security-configure-nuclei.groovy'; c()
+                    def e = load 'scripts/groovy/apply-k8s-enhancements.groovy'; e('nuclei')
                 }
             }
         }
@@ -309,6 +333,7 @@ pipeline {
             steps {
                 script {
                     def s = load 'scripts/groovy/security-install-kubescape.groovy'; s()
+                    def e = load 'scripts/groovy/apply-k8s-enhancements.groovy'; e('kubescape')
                 }
             }
         }
@@ -318,6 +343,7 @@ pipeline {
             steps {
                 script {
                     def s = load 'scripts/groovy/security-install-polaris.groovy'; s()
+                    def e = load 'scripts/groovy/apply-k8s-enhancements.groovy'; e('polaris')
                 }
             }
         }
@@ -329,6 +355,7 @@ pipeline {
             steps {
                 script {
                     def s = load 'scripts/groovy/security-install-rekor.groovy'; s()
+                    def e = load 'scripts/groovy/apply-k8s-enhancements.groovy'; e('rekor')
                 }
             }
         }
@@ -338,6 +365,7 @@ pipeline {
             steps {
                 script {
                     def s = load 'scripts/groovy/security-install-fulcio.groovy'; s()
+                    def e = load 'scripts/groovy/apply-k8s-enhancements.groovy'; e('fulcio')
                 }
             }
         }
@@ -347,6 +375,7 @@ pipeline {
             steps {
                 script {
                     def s = load 'scripts/groovy/security-install-notary.groovy'; s()
+                    def e = load 'scripts/groovy/apply-k8s-enhancements.groovy'; e('notary')
                 }
             }
         }
@@ -358,6 +387,7 @@ pipeline {
             steps {
                 script {
                     def s = load 'scripts/groovy/security-install-suricata.groovy'; s()
+                    def e = load 'scripts/groovy/apply-k8s-enhancements.groovy'; e('suricata')
                 }
             }
         }
@@ -367,6 +397,7 @@ pipeline {
             steps {
                 script {
                     def s = load 'scripts/groovy/security-install-zeek.groovy'; s()
+                    def e = load 'scripts/groovy/apply-k8s-enhancements.groovy'; e('zeek')
                 }
             }
         }
@@ -379,6 +410,7 @@ pipeline {
                 script {
                     def s = load 'scripts/groovy/security-install-wazuh.groovy'; s()
                     def c = load 'scripts/groovy/security-configure-wazuh.groovy'; c()
+                    def e = load 'scripts/groovy/apply-k8s-enhancements.groovy'; e('wazuh')
                 }
             }
         }
@@ -391,6 +423,7 @@ pipeline {
                 script {
                     def s = load 'scripts/groovy/security-install-dependency-track.groovy'; s()
                     def c = load 'scripts/groovy/security-configure-dependency-track.groovy'; c()
+                    def e = load 'scripts/groovy/apply-k8s-enhancements.groovy'; e('dependency-track')
                 }
             }
         }
@@ -401,11 +434,12 @@ pipeline {
                 script {
                     def s = load 'scripts/groovy/security-install-defectdojo.groovy'; s()
                     def c = load 'scripts/groovy/security-configure-defectdojo.groovy'; c()
+                    def e = load 'scripts/groovy/apply-k8s-enhancements.groovy'; e('defectdojo')
                 }
             }
         }
 
-        // ── CLI Tool Images ───────────────────────────────────────────────────
+        // ── CLI Tool Images (no K8s enhancements — not deployed to cluster) ───
 
         stage('Pull SAST CLI Images') {
             when { expression { params.ACTION == 'INSTALL' } }
@@ -545,7 +579,7 @@ pipeline {
 
         stage('Uninstall Trivy Operator') {
             when { expression { params.ACTION == 'UNINSTALL' } }
-            steps { sh 'helm uninstall trivy-operator -n trivy-operator --ignore-not-found || true' }
+            steps { sh 'helm uninstall trivy-operator -n trivy-system --ignore-not-found || true' }
         }
 
         stage('Uninstall SonarQube') {
@@ -600,7 +634,7 @@ pipeline {
 
         stage('Uninstall OPA Gatekeeper') {
             when { expression { params.ACTION == 'UNINSTALL' } }
-            steps { sh 'helm uninstall opa -n opa --ignore-not-found || true' }
+            steps { sh 'helm uninstall opa -n gatekeeper-system --ignore-not-found || true' }
         }
 
         stage('Uninstall Infisical') {

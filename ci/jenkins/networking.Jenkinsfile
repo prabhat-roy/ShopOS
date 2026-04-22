@@ -12,7 +12,7 @@ pipeline {
         choice(
             name: 'ACTION',
             choices: ['INSTALL', 'UNINSTALL'],
-            description: 'INSTALL — deploy and configure all networking tools. UNINSTALL — remove all.'
+            description: 'INSTALL — deploy, configure and apply K8s enhancements for all networking tools. UNINSTALL — remove all.'
         )
     }
 
@@ -27,9 +27,7 @@ pipeline {
         stage('Load Kubeconfig') {
             steps {
                 script {
-                    if (!fileExists('infra.env')) {
-                        error "infra.env not found — run the k8s-infra pipeline first"
-                    }
+                    if (!fileExists('infra.env')) error "infra.env not found — run the k8s-infra pipeline first"
                     def content = readFile('infra.env').trim()
                         .split('\n').find { it.startsWith('KUBECONFIG_CONTENT=') }?.split('=', 2)?.last()
                     if (!content) error "KUBECONFIG_CONTENT missing from infra.env"
@@ -40,13 +38,14 @@ pipeline {
             }
         }
 
-        // ── INSTALL + CONFIGURE ───────────────────────────────────────────────
+        // ── INSTALL + CONFIGURE + K8s ENHANCEMENTS ───────────────────────────
 
         stage('Cilium') {
             when { expression { params.ACTION == 'INSTALL' } }
             steps {
                 script {
                     def s = load 'scripts/groovy/networking-install-cilium.groovy'; s()
+                    def e = load 'scripts/groovy/apply-k8s-enhancements.groovy'; e('cilium')
                 }
             }
         }
@@ -56,6 +55,7 @@ pipeline {
             steps {
                 script {
                     def s = load 'scripts/groovy/networking-install-calico.groovy'; s()
+                    def e = load 'scripts/groovy/apply-k8s-enhancements.groovy'; e('calico-system')
                 }
             }
         }
@@ -65,6 +65,7 @@ pipeline {
             steps {
                 script {
                     def s = load 'scripts/groovy/networking-install-flannel.groovy'; s()
+                    def e = load 'scripts/groovy/apply-k8s-enhancements.groovy'; e('kube-flannel')
                 }
             }
         }
@@ -74,6 +75,7 @@ pipeline {
             steps {
                 script {
                     def s = load 'scripts/groovy/networking-install-weave-net.groovy'; s()
+                    def e = load 'scripts/groovy/apply-k8s-enhancements.groovy'; e('weave-net')
                 }
             }
         }
@@ -83,6 +85,7 @@ pipeline {
             steps {
                 script {
                     def s = load 'scripts/groovy/networking-install-antrea.groovy'; s()
+                    def e = load 'scripts/groovy/apply-k8s-enhancements.groovy'; e('antrea')
                 }
             }
         }
@@ -93,6 +96,7 @@ pipeline {
                 script {
                     def s = load 'scripts/groovy/networking-install-nginx-ingress.groovy'; s()
                     def c = load 'scripts/groovy/networking-configure-nginx-ingress.groovy'; c()
+                    def e = load 'scripts/groovy/apply-k8s-enhancements.groovy'; e('nginx-ingress')
                 }
             }
         }
@@ -103,6 +107,7 @@ pipeline {
                 script {
                     def s = load 'scripts/groovy/networking-install-traefik.groovy'; s()
                     def c = load 'scripts/groovy/networking-configure-traefik.groovy'; c()
+                    def e = load 'scripts/groovy/apply-k8s-enhancements.groovy'; e('traefik')
                 }
             }
         }
@@ -112,6 +117,7 @@ pipeline {
             steps {
                 script {
                     def s = load 'scripts/groovy/networking-install-haproxy-ingress.groovy'; s()
+                    def e = load 'scripts/groovy/apply-k8s-enhancements.groovy'; e('haproxy-ingress')
                 }
             }
         }
@@ -121,6 +127,7 @@ pipeline {
             steps {
                 script {
                     def s = load 'scripts/groovy/networking-install-contour.groovy'; s()
+                    def e = load 'scripts/groovy/apply-k8s-enhancements.groovy'; e('projectcontour')
                 }
             }
         }
@@ -131,6 +138,7 @@ pipeline {
                 script {
                     def s = load 'scripts/groovy/networking-install-kong.groovy'; s()
                     def c = load 'scripts/groovy/networking-configure-kong.groovy'; c()
+                    def e = load 'scripts/groovy/apply-k8s-enhancements.groovy'; e('kong')
                 }
             }
         }
@@ -141,6 +149,7 @@ pipeline {
                 script {
                     def s = load 'scripts/groovy/networking-install-istio.groovy'; s()
                     def c = load 'scripts/groovy/networking-configure-istio.groovy'; c()
+                    def e = load 'scripts/groovy/apply-k8s-enhancements.groovy'; e('istio-system')
                 }
             }
         }
@@ -151,6 +160,7 @@ pipeline {
                 script {
                     def s = load 'scripts/groovy/networking-install-linkerd.groovy'; s()
                     def c = load 'scripts/groovy/networking-configure-linkerd.groovy'; c()
+                    def e = load 'scripts/groovy/apply-k8s-enhancements.groovy'; e('linkerd')
                 }
             }
         }
@@ -161,6 +171,7 @@ pipeline {
                 script {
                     def s = load 'scripts/groovy/networking-install-consul.groovy'; s()
                     def c = load 'scripts/groovy/networking-configure-consul.groovy'; c()
+                    def e = load 'scripts/groovy/apply-k8s-enhancements.groovy'; e('consul')
                 }
             }
         }
@@ -171,6 +182,7 @@ pipeline {
                 script {
                     def s = load 'scripts/groovy/networking-install-external-dns.groovy'; s()
                     def c = load 'scripts/groovy/networking-configure-external-dns.groovy'; c()
+                    def e = load 'scripts/groovy/apply-k8s-enhancements.groovy'; e('external-dns')
                 }
             }
         }
@@ -194,7 +206,7 @@ pipeline {
 
         stage('Uninstall Istio') {
             when { expression { params.ACTION == 'UNINSTALL' } }
-            steps { sh 'helm uninstall istio -n istio --ignore-not-found || true' }
+            steps { sh 'helm uninstall istio -n istio-system --ignore-not-found || true' }
         }
 
         stage('Uninstall Kong') {
@@ -204,7 +216,7 @@ pipeline {
 
         stage('Uninstall Contour') {
             when { expression { params.ACTION == 'UNINSTALL' } }
-            steps { sh 'helm uninstall contour -n contour --ignore-not-found || true' }
+            steps { sh 'helm uninstall contour -n projectcontour --ignore-not-found || true' }
         }
 
         stage('Uninstall HAProxy Ingress') {
@@ -234,12 +246,12 @@ pipeline {
 
         stage('Uninstall Flannel') {
             when { expression { params.ACTION == 'UNINSTALL' } }
-            steps { sh 'helm uninstall flannel -n flannel --ignore-not-found || true' }
+            steps { sh 'helm uninstall flannel -n kube-flannel --ignore-not-found || true' }
         }
 
         stage('Uninstall Calico') {
             when { expression { params.ACTION == 'UNINSTALL' } }
-            steps { sh 'helm uninstall calico -n calico --ignore-not-found || true' }
+            steps { sh 'helm uninstall calico -n calico-system --ignore-not-found || true' }
         }
 
         stage('Uninstall Cilium') {

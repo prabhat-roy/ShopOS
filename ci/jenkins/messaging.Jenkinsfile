@@ -12,7 +12,7 @@ pipeline {
         choice(
             name: 'ACTION',
             choices: ['INSTALL', 'UNINSTALL'],
-            description: 'INSTALL — deploy and configure all messaging tools. UNINSTALL — remove all.'
+            description: 'INSTALL — deploy, configure and apply K8s enhancements for all messaging tools. UNINSTALL — remove all.'
         )
     }
 
@@ -27,9 +27,7 @@ pipeline {
         stage('Load Kubeconfig') {
             steps {
                 script {
-                    if (!fileExists('infra.env')) {
-                        error "infra.env not found — run the k8s-infra pipeline first"
-                    }
+                    if (!fileExists('infra.env')) error "infra.env not found — run the k8s-infra pipeline first"
                     def content = readFile('infra.env').trim()
                         .split('\n').find { it.startsWith('KUBECONFIG_CONTENT=') }?.split('=', 2)?.last()
                     if (!content) error "KUBECONFIG_CONTENT missing from infra.env"
@@ -40,13 +38,14 @@ pipeline {
             }
         }
 
-        // ── INSTALL + CONFIGURE ───────────────────────────────────────────────
+        // ── INSTALL + CONFIGURE + K8s ENHANCEMENTS ───────────────────────────
 
         stage('Zookeeper') {
             when { expression { params.ACTION == 'INSTALL' } }
             steps {
                 script {
                     def s = load 'scripts/groovy/messaging-install-zookeeper.groovy'; s()
+                    def e = load 'scripts/groovy/apply-k8s-enhancements.groovy'; e('zookeeper')
                 }
             }
         }
@@ -57,6 +56,7 @@ pipeline {
                 script {
                     def s = load 'scripts/groovy/messaging-install-kafka.groovy'; s()
                     def c = load 'scripts/groovy/messaging-configure-kafka.groovy'; c()
+                    def e = load 'scripts/groovy/apply-k8s-enhancements.groovy'; e('kafka')
                 }
             }
         }
@@ -67,6 +67,7 @@ pipeline {
                 script {
                     def s = load 'scripts/groovy/messaging-install-schema-registry.groovy'; s()
                     def c = load 'scripts/groovy/messaging-configure-schema-registry.groovy'; c()
+                    def e = load 'scripts/groovy/apply-k8s-enhancements.groovy'; e('schema-registry')
                 }
             }
         }
@@ -77,6 +78,7 @@ pipeline {
                 script {
                     def s = load 'scripts/groovy/messaging-install-kafka-connect.groovy'; s()
                     def c = load 'scripts/groovy/messaging-configure-kafka-connect.groovy'; c()
+                    def e = load 'scripts/groovy/apply-k8s-enhancements.groovy'; e('kafka-connect')
                 }
             }
         }
@@ -86,6 +88,7 @@ pipeline {
             steps {
                 script {
                     def s = load 'scripts/groovy/messaging-install-ksqldb.groovy'; s()
+                    def e = load 'scripts/groovy/apply-k8s-enhancements.groovy'; e('ksqldb')
                 }
             }
         }
@@ -95,6 +98,7 @@ pipeline {
             steps {
                 script {
                     def s = load 'scripts/groovy/messaging-install-strimzi.groovy'; s()
+                    def e = load 'scripts/groovy/apply-k8s-enhancements.groovy'; e('strimzi')
                 }
             }
         }
@@ -105,6 +109,7 @@ pipeline {
                 script {
                     def s = load 'scripts/groovy/messaging-install-rabbitmq.groovy'; s()
                     def c = load 'scripts/groovy/messaging-configure-rabbitmq.groovy'; c()
+                    def e = load 'scripts/groovy/apply-k8s-enhancements.groovy'; e('rabbitmq')
                 }
             }
         }
@@ -115,6 +120,7 @@ pipeline {
                 script {
                     def s = load 'scripts/groovy/messaging-install-nats.groovy'; s()
                     def c = load 'scripts/groovy/messaging-configure-nats.groovy'; c()
+                    def e = load 'scripts/groovy/apply-k8s-enhancements.groovy'; e('nats')
                 }
             }
         }
@@ -124,6 +130,7 @@ pipeline {
             steps {
                 script {
                     def s = load 'scripts/groovy/messaging-install-pulsar.groovy'; s()
+                    def e = load 'scripts/groovy/apply-k8s-enhancements.groovy'; e('pulsar')
                 }
             }
         }
@@ -133,6 +140,7 @@ pipeline {
             steps {
                 script {
                     def s = load 'scripts/groovy/messaging-install-activemq-artemis.groovy'; s()
+                    def e = load 'scripts/groovy/apply-k8s-enhancements.groovy'; e('activemq-artemis')
                 }
             }
         }
@@ -143,6 +151,7 @@ pipeline {
                 script {
                     def s = load 'scripts/groovy/messaging-install-redpanda.groovy'; s()
                     def c = load 'scripts/groovy/messaging-configure-redpanda.groovy'; c()
+                    def e = load 'scripts/groovy/apply-k8s-enhancements.groovy'; e('redpanda')
                 }
             }
         }
@@ -153,6 +162,7 @@ pipeline {
                 script {
                     def s = load 'scripts/groovy/messaging-install-memphis.groovy'; s()
                     def c = load 'scripts/groovy/messaging-configure-memphis.groovy'; c()
+                    def e = load 'scripts/groovy/apply-k8s-enhancements.groovy'; e('memphis')
                 }
             }
         }
@@ -162,6 +172,7 @@ pipeline {
             steps {
                 script {
                     def s = load 'scripts/groovy/messaging-install-kafka-ui.groovy'; s()
+                    def e = load 'scripts/groovy/apply-k8s-enhancements.groovy'; e('kafka-ui')
                 }
             }
         }
@@ -171,6 +182,7 @@ pipeline {
             steps {
                 script {
                     def s = load 'scripts/groovy/messaging-install-akhq.groovy'; s()
+                    def e = load 'scripts/groovy/apply-k8s-enhancements.groovy'; e('akhq')
                 }
             }
         }

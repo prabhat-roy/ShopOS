@@ -11,27 +11,9 @@ pipeline {
     parameters {
         choice(
             name: 'ACTION',
-            choices: ['INSTALL', 'UNINSTALL', 'CONFIGURE'],
-            description: 'Install or uninstall the selected GitOps tools on Kubernetes. CONFIGURE applies post-install setup (app-of-apps, repo connections, image update policies, bootstrap).'
+            choices: ['INSTALL', 'UNINSTALL'],
+            description: 'INSTALL — deploy, configure and apply K8s enhancements for all GitOps tools. UNINSTALL — remove all.'
         )
-
-        // GitOps Continuous Delivery
-        booleanParam(name: 'ARGOCD',                defaultValue: false, description: 'ArgoCD — GitOps continuous delivery for Kubernetes')
-        booleanParam(name: 'ARGO_ROLLOUTS',         defaultValue: false, description: 'Argo Rollouts — advanced deployment strategies (canary, blue-green)')
-        booleanParam(name: 'ARGO_WORKFLOWS',        defaultValue: false, description: 'Argo Workflows — Kubernetes-native workflow engine')
-        booleanParam(name: 'ARGO_EVENTS',           defaultValue: false, description: 'Argo Events — event-driven workflow automation')
-        booleanParam(name: 'ARGOCD_IMAGE_UPDATER',  defaultValue: false, description: 'ArgoCD Image Updater — auto-update container images in ArgoCD apps')
-        booleanParam(name: 'FLUXCD',                defaultValue: false, description: 'Flux CD — GitOps toolkit for Kubernetes (CNCF)')
-        booleanParam(name: 'FLAGGER',               defaultValue: false, description: 'Flagger — progressive delivery operator (canary, A/B, blue-green)')
-        booleanParam(name: 'WEAVE_GITOPS',          defaultValue: false, description: 'Weave GitOps — GitOps dashboard and CLI for Flux')
-
-        // Secrets Management
-        booleanParam(name: 'SEALED_SECRETS',        defaultValue: false, description: 'Sealed Secrets — encrypt K8s secrets for safe GitOps storage')
-        booleanParam(name: 'EXTERNAL_SECRETS',      defaultValue: false, description: 'External Secrets Operator — sync secrets from Vault, AWS SSM, etc.')
-
-        // Multi-tenancy / Platform Engineering
-        booleanParam(name: 'VCLUSTER',              defaultValue: false, description: 'vCluster — virtual Kubernetes clusters for tenant isolation')
-        booleanParam(name: 'GIMLET',                defaultValue: false, description: 'Gimlet — developer platform built on top of GitOps')
     }
 
     stages {
@@ -45,92 +27,211 @@ pipeline {
         stage('Load Kubeconfig') {
             steps {
                 script {
-                    if (!fileExists('infra.env')) {
-                        error "infra.env not found — run the k8s-infra pipeline first to provision a cluster"
-                    }
-                    def kubeconfigContent = readFile('infra.env').trim()
-                        .split('
-').find { it.startsWith('KUBECONFIG_CONTENT=') }?.split('=', 2)?.last()
-                    if (!kubeconfigContent) {
-                        error "KUBECONFIG_CONTENT missing from infra.env — run the k8s-infra pipeline first"
-                    }
-                    writeFile file: "${env.WORKSPACE}/kubeconfig-b64", text: kubeconfigContent
+                    if (!fileExists('infra.env')) error "infra.env not found — run the k8s-infra pipeline first"
+                    def content = readFile('infra.env').trim()
+                        .split('\n').find { it.startsWith('KUBECONFIG_CONTENT=') }?.split('=', 2)?.last()
+                    if (!content) error "KUBECONFIG_CONTENT missing from infra.env"
+                    writeFile file: "${env.WORKSPACE}/kubeconfig-b64", text: content
                     sh "base64 -d ${env.WORKSPACE}/kubeconfig-b64 > ${env.WORKSPACE}/kubeconfig && rm -f ${env.WORKSPACE}/kubeconfig-b64"
                     env.KUBECONFIG = "${env.WORKSPACE}/kubeconfig"
                 }
             }
         }
 
-        stage('Install GitOps Tools') {
+        // ── INSTALL + CONFIGURE + K8s ENHANCEMENTS ───────────────────────────
+
+        stage('ArgoCD') {
             when { expression { params.ACTION == 'INSTALL' } }
             steps {
                 script {
-                    if (params.ARGOCD)               { def s = load 'scripts/groovy/gitops-install-argocd.groovy';               s() }
-                    if (params.ARGO_ROLLOUTS)        { def s = load 'scripts/groovy/gitops-install-argo-rollouts.groovy';        s() }
-                    if (params.ARGO_WORKFLOWS)       { def s = load 'scripts/groovy/gitops-install-argo-workflows.groovy';       s() }
-                    if (params.ARGO_EVENTS)          { def s = load 'scripts/groovy/gitops-install-argo-events.groovy';          s() }
-                    if (params.ARGOCD_IMAGE_UPDATER) { def s = load 'scripts/groovy/gitops-install-argocd-image-updater.groovy'; s() }
-                    if (params.FLUXCD)               { def s = load 'scripts/groovy/gitops-install-fluxcd.groovy';               s() }
-                    if (params.FLAGGER)              { def s = load 'scripts/groovy/gitops-install-flagger.groovy';              s() }
-                    if (params.WEAVE_GITOPS)         { def s = load 'scripts/groovy/gitops-install-weave-gitops.groovy';         s() }
-                    if (params.SEALED_SECRETS)       { def s = load 'scripts/groovy/gitops-install-sealed-secrets.groovy';       s() }
-                    if (params.EXTERNAL_SECRETS)     { def s = load 'scripts/groovy/gitops-install-external-secrets.groovy';     s() }
-                    if (params.VCLUSTER)             { def s = load 'scripts/groovy/gitops-install-vcluster.groovy';             s() }
-                    if (params.GIMLET)               { def s = load 'scripts/groovy/gitops-install-gimlet.groovy';               s() }
+                    def s = load 'scripts/groovy/gitops-install-argocd.groovy'; s()
+                    def c = load 'scripts/groovy/gitops-configure-argocd.groovy'; c()
+                    def e = load 'scripts/groovy/apply-k8s-enhancements.groovy'; e('argocd')
                 }
             }
         }
 
-        stage('Uninstall GitOps Tools') {
+        stage('Argo Rollouts') {
+            when { expression { params.ACTION == 'INSTALL' } }
+            steps {
+                script {
+                    def s = load 'scripts/groovy/gitops-install-argo-rollouts.groovy'; s()
+                    def c = load 'scripts/groovy/gitops-configure-argo-rollouts.groovy'; c()
+                    def e = load 'scripts/groovy/apply-k8s-enhancements.groovy'; e('argo-rollouts')
+                }
+            }
+        }
+
+        stage('Argo Workflows') {
+            when { expression { params.ACTION == 'INSTALL' } }
+            steps {
+                script {
+                    def s = load 'scripts/groovy/gitops-install-argo-workflows.groovy'; s()
+                    def c = load 'scripts/groovy/gitops-configure-argo-workflows.groovy'; c()
+                    def e = load 'scripts/groovy/apply-k8s-enhancements.groovy'; e('argo-workflows')
+                }
+            }
+        }
+
+        stage('Argo Events') {
+            when { expression { params.ACTION == 'INSTALL' } }
+            steps {
+                script {
+                    def s = load 'scripts/groovy/gitops-install-argo-events.groovy'; s()
+                    def c = load 'scripts/groovy/gitops-configure-argo-events.groovy'; c()
+                    def e = load 'scripts/groovy/apply-k8s-enhancements.groovy'; e('argo-events')
+                }
+            }
+        }
+
+        stage('ArgoCD Image Updater') {
+            when { expression { params.ACTION == 'INSTALL' } }
+            steps {
+                script {
+                    def s = load 'scripts/groovy/gitops-install-argocd-image-updater.groovy'; s()
+                    def c = load 'scripts/groovy/gitops-configure-argocd-image-updater.groovy'; c()
+                    def e = load 'scripts/groovy/apply-k8s-enhancements.groovy'; e('argocd-image-updater')
+                }
+            }
+        }
+
+        stage('Flux CD') {
+            when { expression { params.ACTION == 'INSTALL' } }
+            steps {
+                script {
+                    def s = load 'scripts/groovy/gitops-install-fluxcd.groovy'; s()
+                    def c = load 'scripts/groovy/gitops-configure-fluxcd.groovy'; c()
+                    def e = load 'scripts/groovy/apply-k8s-enhancements.groovy'; e('flux-system')
+                }
+            }
+        }
+
+        stage('Flagger') {
+            when { expression { params.ACTION == 'INSTALL' } }
+            steps {
+                script {
+                    def s = load 'scripts/groovy/gitops-install-flagger.groovy'; s()
+                    def c = load 'scripts/groovy/gitops-configure-flagger.groovy'; c()
+                    def e = load 'scripts/groovy/apply-k8s-enhancements.groovy'; e('flagger')
+                }
+            }
+        }
+
+        stage('Weave GitOps') {
+            when { expression { params.ACTION == 'INSTALL' } }
+            steps {
+                script {
+                    def s = load 'scripts/groovy/gitops-install-weave-gitops.groovy'; s()
+                    def c = load 'scripts/groovy/gitops-configure-weave-gitops.groovy'; c()
+                    def e = load 'scripts/groovy/apply-k8s-enhancements.groovy'; e('weave-gitops')
+                }
+            }
+        }
+
+        stage('Sealed Secrets') {
+            when { expression { params.ACTION == 'INSTALL' } }
+            steps {
+                script {
+                    def s = load 'scripts/groovy/gitops-install-sealed-secrets.groovy'; s()
+                    def c = load 'scripts/groovy/gitops-configure-sealed-secrets.groovy'; c()
+                    def e = load 'scripts/groovy/apply-k8s-enhancements.groovy'; e('sealed-secrets')
+                }
+            }
+        }
+
+        stage('External Secrets') {
+            when { expression { params.ACTION == 'INSTALL' } }
+            steps {
+                script {
+                    def s = load 'scripts/groovy/gitops-install-external-secrets.groovy'; s()
+                    def c = load 'scripts/groovy/gitops-configure-external-secrets.groovy'; c()
+                    def e = load 'scripts/groovy/apply-k8s-enhancements.groovy'; e('external-secrets')
+                }
+            }
+        }
+
+        stage('vCluster') {
+            when { expression { params.ACTION == 'INSTALL' } }
+            steps {
+                script {
+                    def s = load 'scripts/groovy/gitops-install-vcluster.groovy'; s()
+                    def c = load 'scripts/groovy/gitops-configure-vcluster.groovy'; c()
+                    def e = load 'scripts/groovy/apply-k8s-enhancements.groovy'; e('vcluster')
+                }
+            }
+        }
+
+        stage('Gimlet') {
+            when { expression { params.ACTION == 'INSTALL' } }
+            steps {
+                script {
+                    def s = load 'scripts/groovy/gitops-install-gimlet.groovy'; s()
+                    def c = load 'scripts/groovy/gitops-configure-gimlet.groovy'; c()
+                    def e = load 'scripts/groovy/apply-k8s-enhancements.groovy'; e('gimlet')
+                }
+            }
+        }
+
+        // ── UNINSTALL (reverse order) ─────────────────────────────────────────
+
+        stage('Uninstall Gimlet') {
             when { expression { params.ACTION == 'UNINSTALL' } }
-            steps {
-                script {
-                    if (params.ARGOCD)               { sh 'helm uninstall argocd               -n argocd               --ignore-not-found || true' }
-                    if (params.ARGO_ROLLOUTS)        { sh 'helm uninstall argo-rollouts        -n argo-rollouts        --ignore-not-found || true' }
-                    if (params.ARGO_WORKFLOWS)       { sh 'helm uninstall argo-workflows       -n argo-workflows       --ignore-not-found || true' }
-                    if (params.ARGO_EVENTS)          { sh 'helm uninstall argo-events          -n argo-events          --ignore-not-found || true' }
-                    if (params.ARGOCD_IMAGE_UPDATER) { sh 'helm uninstall argocd-image-updater -n argocd-image-updater --ignore-not-found || true' }
-                    if (params.FLUXCD)               { sh 'helm uninstall fluxcd               -n flux-system          --ignore-not-found || true' }
-                    if (params.FLAGGER)              { sh 'helm uninstall flagger              -n flagger              --ignore-not-found || true' }
-                    if (params.WEAVE_GITOPS)         { sh 'helm uninstall weave-gitops         -n weave-gitops         --ignore-not-found || true' }
-                    if (params.SEALED_SECRETS)       { sh 'helm uninstall sealed-secrets       -n sealed-secrets       --ignore-not-found || true' }
-                    if (params.EXTERNAL_SECRETS)     { sh 'helm uninstall external-secrets     -n external-secrets     --ignore-not-found || true' }
-                    if (params.VCLUSTER)             { sh 'helm uninstall vcluster             -n vcluster             --ignore-not-found || true' }
-                    if (params.GIMLET)               { sh 'helm uninstall gimlet               -n gimlet               --ignore-not-found || true' }
-                }
-            }
+            steps { sh 'helm uninstall gimlet -n gimlet --ignore-not-found || true' }
         }
 
-        stage('Configure GitOps Tools') {
-            when { expression { params.ACTION == 'CONFIGURE' } }
-            steps {
-                script {
-                    // ArgoCD — admin password, Git repo connection, app-of-apps
-                    if (params.ARGOCD)               { def s = load 'scripts/groovy/gitops-configure-argocd.groovy';               s() }
-                    // Argo Rollouts — default analysis templates
-                    if (params.ARGO_ROLLOUTS)        { def s = load 'scripts/groovy/gitops-configure-argo-rollouts.groovy';        s() }
-                    // Argo Workflows — default serviceaccount, artifact repo
-                    if (params.ARGO_WORKFLOWS)       { def s = load 'scripts/groovy/gitops-configure-argo-workflows.groovy';       s() }
-                    // Argo Events — event bus, event source
-                    if (params.ARGO_EVENTS)          { def s = load 'scripts/groovy/gitops-configure-argo-events.groovy';          s() }
-                    // ArgoCD Image Updater — registry credentials, update policy
-                    if (params.ARGOCD_IMAGE_UPDATER) { def s = load 'scripts/groovy/gitops-configure-argocd-image-updater.groovy'; s() }
-                    // Flux CD — bootstrap GitRepository, Kustomization
-                    if (params.FLUXCD)               { def s = load 'scripts/groovy/gitops-configure-fluxcd.groovy';               s() }
-                    // Flagger — canary analysis templates, Prometheus integration
-                    if (params.FLAGGER)              { def s = load 'scripts/groovy/gitops-configure-flagger.groovy';              s() }
-                    // External Secrets — ClusterSecretStore pointing to Vault
-                    if (params.EXTERNAL_SECRETS)     { def s = load 'scripts/groovy/gitops-configure-external-secrets.groovy';     s() }
-                    // Sealed Secrets — export controller public key to infra.env
-                    if (params.SEALED_SECRETS)       { def s = load 'scripts/groovy/gitops-configure-sealed-secrets.groovy';       s() }
-                    // Weave GitOps — dashboard admin credentials, Flux connection
-                    if (params.WEAVE_GITOPS)         { def s = load 'scripts/groovy/gitops-configure-weave-gitops.groovy';         s() }
-                    // vCluster — extract kubeconfig, create domain namespaces inside virtual cluster
-                    if (params.VCLUSTER)             { def s = load 'scripts/groovy/gitops-configure-vcluster.groovy';             s() }
-                    // Gimlet — register repo, generate API token, connect to ArgoCD
-                    if (params.GIMLET)               { def s = load 'scripts/groovy/gitops-configure-gimlet.groovy';               s() }
-                }
-            }
+        stage('Uninstall vCluster') {
+            when { expression { params.ACTION == 'UNINSTALL' } }
+            steps { sh 'helm uninstall vcluster -n vcluster --ignore-not-found || true' }
+        }
+
+        stage('Uninstall External Secrets') {
+            when { expression { params.ACTION == 'UNINSTALL' } }
+            steps { sh 'helm uninstall external-secrets -n external-secrets --ignore-not-found || true' }
+        }
+
+        stage('Uninstall Sealed Secrets') {
+            when { expression { params.ACTION == 'UNINSTALL' } }
+            steps { sh 'helm uninstall sealed-secrets -n sealed-secrets --ignore-not-found || true' }
+        }
+
+        stage('Uninstall Weave GitOps') {
+            when { expression { params.ACTION == 'UNINSTALL' } }
+            steps { sh 'helm uninstall weave-gitops -n weave-gitops --ignore-not-found || true' }
+        }
+
+        stage('Uninstall Flagger') {
+            when { expression { params.ACTION == 'UNINSTALL' } }
+            steps { sh 'helm uninstall flagger -n flagger --ignore-not-found || true' }
+        }
+
+        stage('Uninstall Flux CD') {
+            when { expression { params.ACTION == 'UNINSTALL' } }
+            steps { sh 'helm uninstall fluxcd -n flux-system --ignore-not-found || true' }
+        }
+
+        stage('Uninstall ArgoCD Image Updater') {
+            when { expression { params.ACTION == 'UNINSTALL' } }
+            steps { sh 'helm uninstall argocd-image-updater -n argocd-image-updater --ignore-not-found || true' }
+        }
+
+        stage('Uninstall Argo Events') {
+            when { expression { params.ACTION == 'UNINSTALL' } }
+            steps { sh 'helm uninstall argo-events -n argo-events --ignore-not-found || true' }
+        }
+
+        stage('Uninstall Argo Workflows') {
+            when { expression { params.ACTION == 'UNINSTALL' } }
+            steps { sh 'helm uninstall argo-workflows -n argo-workflows --ignore-not-found || true' }
+        }
+
+        stage('Uninstall Argo Rollouts') {
+            when { expression { params.ACTION == 'UNINSTALL' } }
+            steps { sh 'helm uninstall argo-rollouts -n argo-rollouts --ignore-not-found || true' }
+        }
+
+        stage('Uninstall ArgoCD') {
+            when { expression { params.ACTION == 'UNINSTALL' } }
+            steps { sh 'helm uninstall argocd -n argocd --ignore-not-found || true' }
         }
     }
 
@@ -138,14 +239,8 @@ pipeline {
         always {
             sh 'test -f infra.env && cp infra.env /var/lib/jenkins/infra.env || true'
         }
-        success {
-            echo "${params.ACTION} completed successfully."
-        }
-        failure {
-            echo "${params.ACTION} failed — check stage logs above."
-        }
-        cleanup {
-            sh "rm -f ${env.WORKSPACE}/kubeconfig 2>/dev/null || true"
-        }
+        success { echo "${params.ACTION} completed successfully." }
+        failure { echo "${params.ACTION} failed — check stage logs above." }
+        cleanup { sh "rm -f ${env.WORKSPACE}/kubeconfig 2>/dev/null || true" }
     }
 }

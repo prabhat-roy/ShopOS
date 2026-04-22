@@ -34,6 +34,11 @@ pipeline {
             defaultValue: false,
             description: 'Skip messaging bootstrap (Kafka + RabbitMQ + NATS) — use if already installed'
         )
+        booleanParam(
+            name: 'SKIP_GITOPS',
+            defaultValue: false,
+            description: 'Skip GitOps bootstrap (ArgoCD + Flux + Argo Workflows) — use if already installed'
+        )
     }
 
     stages {
@@ -46,111 +51,31 @@ pipeline {
         }
 
         // ── NETWORKING ──────────────────────────────────────────────────────
-        // Step 1 of 3: Install CNI first — nothing works without a network plugin.
-        // Step 2 of 3: Install Ingress + Service Mesh (after cert-manager from Security Step 1).
-        // Step 3 of 3: Configure mTLS, namespace injection, IngressClass, ExternalDNS.
+        // Installs all CNI, ingress, service mesh, and DNS tools in order.
 
-        stage('Networking — Install CNI') {
+        stage('Networking — Install') {
             when { expression { !params.SKIP_NETWORKING } }
             steps {
-                echo '=== Networking Step 1/3: CNI ==='
+                echo '=== Networking: CNI + Ingress + Service Mesh + DNS ==='
                 build job: 'networking',
                     wait: true,
                     parameters: [
-                        string(name: 'ACTION',       value: 'INSTALL'),
-                        booleanParam(name: 'CILIUM',  value: true),
+                        string(name: 'ACTION', value: 'INSTALL')
                     ]
             }
         }
 
-        stage('Security — Install TLS Foundation') {
+        // ── SECURITY ────────────────────────────────────────────────────────
+        // Installs cert-manager, Vault, Keycloak, OPA, Kyverno, Falco, etc.
+
+        stage('Security — Install') {
             when { expression { !params.SKIP_SECURITY } }
             steps {
-                echo '=== Security Step 1/4: cert-manager (required by Vault, Istio, Keycloak) ==='
+                echo '=== Security: cert-manager + Vault + Keycloak + ESO + Kyverno + OPA + Falco ==='
                 build job: 'security',
                     wait: true,
                     parameters: [
-                        string(name: 'ACTION',            value: 'INSTALL'),
-                        booleanParam(name: 'CERT_MANAGER', value: true),
-                    ]
-            }
-        }
-
-        stage('Networking — Install Ingress + Service Mesh') {
-            when { expression { !params.SKIP_NETWORKING } }
-            steps {
-                echo '=== Networking Step 2/3: Traefik + Istio + ExternalDNS ==='
-                build job: 'networking',
-                    wait: true,
-                    parameters: [
-                        string(name: 'ACTION',          value: 'INSTALL'),
-                        booleanParam(name: 'TRAEFIK',    value: true),
-                        booleanParam(name: 'ISTIO',      value: true),
-                        booleanParam(name: 'EXTERNAL_DNS', value: true),
-                    ]
-            }
-        }
-
-        stage('Security — Install Secrets + Identity + Policy') {
-            when { expression { !params.SKIP_SECURITY } }
-            steps {
-                echo '=== Security Step 2/4: Vault + Keycloak + ESO + Kyverno + OPA ==='
-                build job: 'security',
-                    wait: true,
-                    parameters: [
-                        string(name: 'ACTION',                   value: 'INSTALL'),
-                        booleanParam(name: 'VAULT',               value: true),
-                        booleanParam(name: 'KEYCLOAK',            value: true),
-                        booleanParam(name: 'EXTERNAL_SECRETS',    value: true),
-                        booleanParam(name: 'KYVERNO',             value: true),
-                        booleanParam(name: 'OPA',                 value: true),
-                        booleanParam(name: 'SPIRE',               value: true),
-                    ]
-            }
-        }
-
-        stage('Security — Configure Vault + Keycloak + Policies') {
-            when { expression { !params.SKIP_SECURITY } }
-            steps {
-                echo '=== Security Step 3/4: Configure Vault PKI, Keycloak realm, OPA policies, Kyverno ClusterPolicies ==='
-                build job: 'security',
-                    wait: true,
-                    parameters: [
-                        string(name: 'ACTION',                value: 'CONFIGURE'),
-                        booleanParam(name: 'VAULT',            value: true),
-                        booleanParam(name: 'KEYCLOAK',         value: true),
-                        booleanParam(name: 'EXTERNAL_SECRETS', value: true),
-                        booleanParam(name: 'OPA',              value: true),
-                        booleanParam(name: 'KYVERNO',          value: true),
-                    ]
-            }
-        }
-
-        stage('Networking — Configure mTLS + Ingress + DNS') {
-            when { expression { !params.SKIP_NETWORKING } }
-            steps {
-                echo '=== Networking Step 3/3: Istio namespace injection, Traefik IngressClass, ExternalDNS provider ==='
-                build job: 'networking',
-                    wait: true,
-                    parameters: [
-                        string(name: 'ACTION',            value: 'CONFIGURE'),
-                        booleanParam(name: 'ISTIO',        value: true),
-                        booleanParam(name: 'TRAEFIK',      value: true),
-                        booleanParam(name: 'EXTERNAL_DNS', value: true),
-                    ]
-            }
-        }
-
-        stage('Security — Install Runtime Threat Detection') {
-            when { expression { !params.SKIP_SECURITY } }
-            steps {
-                echo '=== Security Step 4/4: Falco + Tetragon (monitoring running pods — must be last) ==='
-                build job: 'security',
-                    wait: true,
-                    parameters: [
-                        string(name: 'ACTION',           value: 'INSTALL'),
-                        booleanParam(name: 'FALCO',       value: true),
-                        booleanParam(name: 'TETRAGON',    value: true),
+                        string(name: 'ACTION', value: 'INSTALL')
                     ]
             }
         }
@@ -165,42 +90,13 @@ pipeline {
                 build job: 'observability',
                     wait: true,
                     parameters: [
-                        string(name: 'ACTION',                   value: 'INSTALL'),
-                        booleanParam(name: 'PROMETHEUS',          value: true),
-                        booleanParam(name: 'GRAFANA',             value: true),
-                        booleanParam(name: 'ALERTMANAGER',        value: true),
-                        booleanParam(name: 'LOKI',                value: true),
-                        booleanParam(name: 'JAEGER',              value: true),
-                        booleanParam(name: 'OTEL_COLLECTOR',      value: true),
-                        booleanParam(name: 'FLUENT_BIT',          value: true),
-                        booleanParam(name: 'KUBE_STATE_METRICS',  value: true),
-                        booleanParam(name: 'NODE_EXPORTER',       value: true),
-                    ]
-            }
-        }
-
-        stage('Observability — Configure') {
-            when { expression { !params.SKIP_OBSERVABILITY } }
-            steps {
-                echo '=== Observability Configure: datasources, alert rules, OTel scrape configs ==='
-                build job: 'observability',
-                    wait: true,
-                    parameters: [
-                        string(name: 'ACTION',               value: 'CONFIGURE'),
-                        booleanParam(name: 'PROMETHEUS',      value: true),
-                        booleanParam(name: 'GRAFANA',         value: true),
-                        booleanParam(name: 'ALERTMANAGER',    value: true),
-                        booleanParam(name: 'LOKI',            value: true),
-                        booleanParam(name: 'JAEGER',          value: true),
-                        booleanParam(name: 'OTEL_COLLECTOR',  value: true),
-                        booleanParam(name: 'FLUENT_BIT',      value: true),
+                        string(name: 'ACTION', value: 'INSTALL')
                     ]
             }
         }
 
         // ── MESSAGING ───────────────────────────────────────────────────────
         // Services cannot start without Kafka + Schema Registry.
-        // This is the final bootstrap step before any service is deployed.
 
         stage('Messaging — Install') {
             when { expression { !params.SKIP_MESSAGING } }
@@ -209,29 +105,22 @@ pipeline {
                 build job: 'messaging',
                     wait: true,
                     parameters: [
-                        string(name: 'ACTION',                   value: 'INSTALL'),
-                        booleanParam(name: 'KAFKA',               value: true),
-                        booleanParam(name: 'ZOOKEEPER',           value: true),
-                        booleanParam(name: 'SCHEMA_REGISTRY',     value: true),
-                        booleanParam(name: 'RABBITMQ',            value: true),
-                        booleanParam(name: 'NATS',                value: true),
-                        booleanParam(name: 'AKHQ',                value: true),
+                        string(name: 'ACTION', value: 'INSTALL')
                     ]
             }
         }
 
-        stage('Messaging — Configure') {
-            when { expression { !params.SKIP_MESSAGING } }
+        // ── GITOPS ──────────────────────────────────────────────────────────
+        // Install after infrastructure is ready so ArgoCD can manage services.
+
+        stage('GitOps — Install') {
+            when { expression { !params.SKIP_GITOPS } }
             steps {
-                echo '=== Messaging Configure: Kafka topics, Avro schemas, RabbitMQ vhosts ==='
-                build job: 'messaging',
+                echo '=== GitOps: ArgoCD + Flux + Argo Workflows + Argo Events + Sealed Secrets ==='
+                build job: 'gitops',
                     wait: true,
                     parameters: [
-                        string(name: 'ACTION',               value: 'CONFIGURE'),
-                        booleanParam(name: 'KAFKA',           value: true),
-                        booleanParam(name: 'SCHEMA_REGISTRY', value: true),
-                        booleanParam(name: 'RABBITMQ',        value: true),
-                        booleanParam(name: 'NATS',            value: true),
+                        string(name: 'ACTION', value: 'INSTALL')
                     ]
             }
         }
@@ -243,19 +132,11 @@ pipeline {
   Cluster bootstrap complete for environment: ${params.ENVIRONMENT}
 
   Infrastructure ready:
-    CNI        : Cilium
-    Ingress    : Traefik
-    Mesh       : Istio (mTLS enabled on all domain namespaces)
-    DNS        : ExternalDNS
-    TLS        : cert-manager
-    Secrets    : Vault + External Secrets Operator
-    IAM        : Keycloak
-    Policy     : Kyverno + OPA
-    Runtime    : Falco + Tetragon
-    Metrics    : Prometheus + Grafana + Alertmanager
-    Logs       : Loki + Fluent Bit
-    Tracing    : Jaeger + OTel Collector
+    Networking : Cilium + Traefik + Istio + ExternalDNS
+    Security   : cert-manager + Vault + Keycloak + Kyverno + OPA + Falco
+    Observ.    : Prometheus + Grafana + Loki + Jaeger + OTel Collector
     Messaging  : Kafka + Schema Registry + RabbitMQ + NATS
+    GitOps     : ArgoCD + Flux + Argo Workflows + Argo Events
 
   Next step: trigger deploy.Jenkinsfile to deploy services.
 ==========================================================
