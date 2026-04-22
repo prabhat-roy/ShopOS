@@ -14,20 +14,16 @@ pipeline {
             choices: ['INSTALL', 'UNINSTALL'],
             description: 'INSTALL — deploy selected GitOps tools. UNINSTALL — remove selected.'
         )
-        // ── Argo suite ────────────────────────────────────────────────────────
         booleanParam(name: 'ARGOCD',               defaultValue: true,  description: 'ArgoCD — declarative GitOps continuous delivery')
         booleanParam(name: 'ARGO_ROLLOUTS',        defaultValue: true,  description: 'Argo Rollouts — canary and blue/green deployments')
         booleanParam(name: 'ARGO_WORKFLOWS',       defaultValue: true,  description: 'Argo Workflows — Kubernetes-native workflow engine')
         booleanParam(name: 'ARGO_EVENTS',          defaultValue: true,  description: 'Argo Events — event-driven workflow triggers')
         booleanParam(name: 'ARGOCD_IMAGE_UPDATER', defaultValue: true,  description: 'ArgoCD Image Updater — automatic container image updates')
-        // ── Flux suite ────────────────────────────────────────────────────────
         booleanParam(name: 'FLUX',                 defaultValue: true,  description: 'Flux CD — GitOps continuous delivery for Kubernetes')
         booleanParam(name: 'FLAGGER',              defaultValue: true,  description: 'Flagger — progressive delivery with traffic shifting')
         booleanParam(name: 'WEAVE_GITOPS',         defaultValue: true,  description: 'Weave GitOps — GitOps dashboard and management UI')
-        // ── Secrets ───────────────────────────────────────────────────────────
         booleanParam(name: 'SEALED_SECRETS',       defaultValue: true,  description: 'Sealed Secrets — encrypt secrets for GitOps storage')
         booleanParam(name: 'EXTERNAL_SECRETS',     defaultValue: true,  description: 'External Secrets Operator — sync secrets from Vault/AWS/GCP')
-        // ── Multi-tenancy ─────────────────────────────────────────────────────
         booleanParam(name: 'VCLUSTER',             defaultValue: true,  description: 'vCluster — virtual Kubernetes clusters for isolation')
         booleanParam(name: 'GIMLET',               defaultValue: false, description: 'Gimlet — developer-centric GitOps platform (optional)')
     }

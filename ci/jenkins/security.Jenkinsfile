@@ -14,7 +14,6 @@ pipeline {
             choices: ['INSTALL', 'UNINSTALL'],
             description: 'INSTALL — deploy selected security tools. UNINSTALL — remove selected.'
         )
-        // ── Identity & Access ─────────────────────────────────────────────────
         booleanParam(name: 'KEYCLOAK',         defaultValue: true,  description: 'Keycloak — IAM, SSO, OIDC provider')
         booleanParam(name: 'DEX',              defaultValue: true,  description: 'Dex — OIDC federation connector')
         booleanParam(name: 'AUTHENTIK',        defaultValue: true,  description: 'Authentik — identity provider alternative')
@@ -22,23 +21,18 @@ pipeline {
         booleanParam(name: 'AUTHELIA',         defaultValue: true,  description: 'Authelia — SSO and 2FA portal')
         booleanParam(name: 'SPIRE',            defaultValue: true,  description: 'SPIFFE/SPIRE — workload identity attestation')
         booleanParam(name: 'POMERIUM',         defaultValue: true,  description: 'Pomerium — identity-aware access proxy')
-        // ── Secrets management ────────────────────────────────────────────────
         booleanParam(name: 'VAULT',            defaultValue: true,  description: 'HashiCorp Vault — secrets management and PKI')
         booleanParam(name: 'INFISICAL',        defaultValue: true,  description: 'Infisical — open-source secrets manager')
-        // ── Policy engines ────────────────────────────────────────────────────
         booleanParam(name: 'OPA_GATEKEEPER',   defaultValue: true,  description: 'OPA Gatekeeper — policy-as-code admission control')
         booleanParam(name: 'KYVERNO',          defaultValue: true,  description: 'Kyverno — Kubernetes-native policy engine')
         booleanParam(name: 'KUBEWARDEN',       defaultValue: true,  description: 'Kubewarden — Wasm-based policy engine')
         booleanParam(name: 'OPENFGA',          defaultValue: true,  description: 'OpenFGA — relationship-based authorization')
-        // ── Runtime security ─────────────────────────────────────────────────
         booleanParam(name: 'FALCO',            defaultValue: true,  description: 'Falco — runtime threat detection')
         booleanParam(name: 'TETRAGON',         defaultValue: true,  description: 'Tetragon — eBPF-based security enforcement')
         booleanParam(name: 'TRACEE',           defaultValue: true,  description: 'Tracee — eBPF runtime security and forensics')
         booleanParam(name: 'KUBEARMOR',        defaultValue: true,  description: 'KubeArmor — container-aware runtime security')
-        // ── WAF & TLS ─────────────────────────────────────────────────────────
         booleanParam(name: 'CORAZA_WAF',       defaultValue: true,  description: 'Coraza WAF — OWASP ModSecurity-compatible WAF')
         booleanParam(name: 'CERT_MANAGER',     defaultValue: true,  description: 'cert-manager — TLS certificate automation')
-        // ── SAST / DAST / scanning ────────────────────────────────────────────
         booleanParam(name: 'SONARQUBE',        defaultValue: true,  description: 'SonarQube — static code analysis and quality gates')
         booleanParam(name: 'TRIVY_OPERATOR',   defaultValue: true,  description: 'Trivy Operator — continuous container vulnerability scanning')
         booleanParam(name: 'CLAIR',            defaultValue: true,  description: 'Clair — container image vulnerability analysis')
@@ -48,15 +42,12 @@ pipeline {
         booleanParam(name: 'NUCLEI',           defaultValue: true,  description: 'Nuclei — CVE template-based scanner')
         booleanParam(name: 'KUBESCAPE',        defaultValue: true,  description: 'Kubescape — K8s security posture and compliance scanning')
         booleanParam(name: 'POLARIS',          defaultValue: true,  description: 'Polaris — Kubernetes workload best-practice validation')
-        // ── Supply chain security ─────────────────────────────────────────────
         booleanParam(name: 'REKOR',            defaultValue: true,  description: 'Rekor — Sigstore transparency log')
         booleanParam(name: 'FULCIO',           defaultValue: true,  description: 'Fulcio — Sigstore certificate authority')
         booleanParam(name: 'NOTARY',           defaultValue: true,  description: 'Notary — container image signing and verification')
-        // ── Network security ─────────────────────────────────────────────────
         booleanParam(name: 'SURICATA',         defaultValue: true,  description: 'Suricata — network IDS/IPS')
         booleanParam(name: 'ZEEK',             defaultValue: true,  description: 'Zeek — network traffic analysis')
         booleanParam(name: 'WAZUH',            defaultValue: true,  description: 'Wazuh — SIEM and XDR platform')
-        // ── Vulnerability management ──────────────────────────────────────────
         booleanParam(name: 'DEPENDENCY_TRACK', defaultValue: true,  description: 'Dependency Track — SCA and SBOM analysis')
         booleanParam(name: 'DEFECTDOJO',       defaultValue: true,  description: 'DefectDojo — vulnerability management and deduplication')
     }

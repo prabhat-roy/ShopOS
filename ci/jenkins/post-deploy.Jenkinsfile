@@ -32,7 +32,6 @@ pipeline {
             description: 'Image tag of the deployed build (used in reports). Auto-detected from K8s if blank.'
         )
 
-        // ── Load testing ──────────────────────────────────────────────────────
         choice(
             name: 'LOAD_PROFILE',
             choices: ['medium','light','heavy','spike'],
@@ -49,14 +48,12 @@ pipeline {
             description: 'Override test duration e.g. 3m, 300s (blank = use profile default)'
         )
 
-        // ── Chaos ─────────────────────────────────────────────────────────────
         string(
             name: 'CHAOS_DURATION',
             defaultValue: '2m',
             description: 'How long each chaos experiment runs before measuring recovery'
         )
 
-        // ── Stage skip flags ──────────────────────────────────────────────────
         booleanParam(name: 'SKIP_SMOKE',        defaultValue: false, description: 'Skip smoke tests (health endpoints, gRPC probe)')
         booleanParam(name: 'SKIP_INTEGRATION',  defaultValue: false, description: 'Skip integration tests (cross-service API probes, DB + Kafka connectivity)')
         booleanParam(name: 'SKIP_K6',           defaultValue: false, description: 'Skip k6 load tests (checkout-flow, product-browse, search, spike)')

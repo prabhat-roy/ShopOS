@@ -14,27 +14,22 @@ pipeline {
             choices: ['INSTALL', 'UNINSTALL', 'CREATE_CLOUD_REGISTRY', 'DESTROY_CLOUD_REGISTRY'],
             description: 'INSTALL — deploy selected registry tools. UNINSTALL — remove selected. CREATE/DESTROY — manage cloud-native container registry (ECR/GCR/ACR).'
         )
-        // ── Container registries ──────────────────────────────────────────────
         booleanParam(name: 'HARBOR',        defaultValue: true,  description: 'Harbor — enterprise container registry with security scanning')
         booleanParam(name: 'ZOT',           defaultValue: true,  description: 'Zot — OCI-native lightweight registry')
         booleanParam(name: 'DISTRIBUTION',  defaultValue: true,  description: 'Distribution — CNCF reference OCI registry')
         booleanParam(name: 'QUAY',          defaultValue: true,  description: 'Quay — Red Hat enterprise registry')
         booleanParam(name: 'KRAKEN',        defaultValue: true,  description: 'Kraken — P2P Docker registry for large-scale builds')
         booleanParam(name: 'DRAGONFLY',     defaultValue: true,  description: 'Dragonfly — intelligent P2P-based image distribution')
-        // ── Universal artifact repositories ──────────────────────────────────
         booleanParam(name: 'NEXUS',         defaultValue: true,  description: 'Nexus — universal artifact repository (Maven, npm, PyPI, Go, Docker)')
         booleanParam(name: 'PULP',          defaultValue: true,  description: 'Pulp — on-prem package management (RPM, deb, Python, container)')
-        // ── Git servers ───────────────────────────────────────────────────────
         booleanParam(name: 'GITEA',         defaultValue: true,  description: 'Gitea — lightweight self-hosted Git service')
         booleanParam(name: 'FORGEJO',       defaultValue: true,  description: 'Forgejo — community-driven Gitea fork')
         booleanParam(name: 'GOGS',          defaultValue: true,  description: 'Gogs — minimal self-hosted Git service')
         booleanParam(name: 'GITBUCKET',     defaultValue: true,  description: 'GitBucket — GitHub-compatible Git platform (JVM)')
         booleanParam(name: 'ONEDEV',        defaultValue: true,  description: 'OneDev — Git server with built-in CI/CD')
         booleanParam(name: 'GITLAB',        defaultValue: false, description: 'GitLab — full DevOps platform (heavy, disabled by default)')
-        // ── Helm chart repositories ───────────────────────────────────────────
         booleanParam(name: 'CHARTMUSEUM',   defaultValue: true,  description: 'ChartMuseum — Helm chart repository server')
         booleanParam(name: 'TERRAREG',      defaultValue: true,  description: 'Terrareg — Terraform module registry')
-        // ── Language package registries ───────────────────────────────────────
         booleanParam(name: 'VERDACCIO',     defaultValue: true,  description: 'Verdaccio — npm/yarn private registry proxy')
         booleanParam(name: 'CNPMJS',        defaultValue: true,  description: 'Cnpmjs — npm private registry (cnpm)')
         booleanParam(name: 'PYPISERVER',    defaultValue: true,  description: 'Pypiserver — minimal PyPI-compatible server')

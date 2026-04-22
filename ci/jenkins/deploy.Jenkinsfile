@@ -37,7 +37,6 @@ pipeline {
             description: 'Harbor project / namespace'
         )
 
-        // ── Stage skip flags ──────────────────────────────────────────────────
         booleanParam(name: 'SKIP_SECRETS',    defaultValue: false, description: 'Skip secret scanning  (Gitleaks, TruffleHog, GitGuardian)')
         booleanParam(name: 'SKIP_SAST',       defaultValue: false, description: 'Skip SAST             (Semgrep, SonarQube, language linters, Snyk code)')
         booleanParam(name: 'SKIP_SCA',        defaultValue: false, description: 'Skip SCA & SBOM       (Trivy FS, Grype, Syft, OWASP DC, Docker Scout, Snyk OSS)')

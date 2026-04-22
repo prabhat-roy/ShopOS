@@ -14,22 +14,18 @@ pipeline {
             choices: ['INSTALL', 'UNINSTALL'],
             description: 'INSTALL — deploy selected networking tools. UNINSTALL — remove selected.'
         )
-        // ── CNI plugins ───────────────────────────────────────────────────────
         booleanParam(name: 'CILIUM',          defaultValue: true,  description: 'Cilium — eBPF-based CNI with NetworkPolicy and observability')
         booleanParam(name: 'CALICO',          defaultValue: true,  description: 'Calico — BGP-based CNI with NetworkPolicy')
         booleanParam(name: 'FLANNEL',         defaultValue: false, description: 'Flannel — simple overlay CNI (disable when Cilium/Calico active)')
         booleanParam(name: 'WEAVE_NET',       defaultValue: false, description: 'Weave Net — mesh overlay CNI')
         booleanParam(name: 'ANTREA',          defaultValue: false, description: 'Antrea — OVS-based CNI')
-        // ── Ingress controllers ───────────────────────────────────────────────
         booleanParam(name: 'NGINX_INGRESS',   defaultValue: true,  description: 'Nginx Ingress — standard ingress controller')
         booleanParam(name: 'TRAEFIK',         defaultValue: true,  description: 'Traefik — edge router with automatic service discovery')
         booleanParam(name: 'HAPROXY_INGRESS', defaultValue: true,  description: 'HAProxy Ingress — high-performance load balancer')
         booleanParam(name: 'CONTOUR',         defaultValue: true,  description: 'Contour — Envoy-based ingress for Kubernetes')
         booleanParam(name: 'KONG',            defaultValue: true,  description: 'Kong — API gateway and ingress controller')
-        // ── Service mesh ──────────────────────────────────────────────────────
         booleanParam(name: 'ISTIO',           defaultValue: true,  description: 'Istio — full service mesh with mTLS, traffic management, observability')
         booleanParam(name: 'LINKERD',         defaultValue: true,  description: 'Linkerd — lightweight Rust-based service mesh')
-        // ── Service discovery & DNS ───────────────────────────────────────────
         booleanParam(name: 'CONSUL',          defaultValue: true,  description: 'Consul — service discovery, health checking, K/V config')
         booleanParam(name: 'EXTERNAL_DNS',    defaultValue: true,  description: 'External DNS — sync Kubernetes services to external DNS providers')
     }

@@ -14,7 +14,6 @@ pipeline {
             choices: ['INSTALL', 'UNINSTALL'],
             description: 'INSTALL — deploy selected observability tools. UNINSTALL — remove selected.'
         )
-        // ── Metrics ───────────────────────────────────────────────────────────
         booleanParam(name: 'PROMETHEUS',           defaultValue: true,  description: 'Prometheus — metrics collection and alerting')
         booleanParam(name: 'ALERTMANAGER',         defaultValue: true,  description: 'Alertmanager — alert routing and grouping')
         booleanParam(name: 'THANOS',               defaultValue: true,  description: 'Thanos — long-term Prometheus storage and global query')
@@ -23,30 +22,24 @@ pipeline {
         booleanParam(name: 'BLACKBOX_EXPORTER',    defaultValue: true,  description: 'Blackbox Exporter — endpoint probing (HTTP, TCP, ICMP)')
         booleanParam(name: 'KUBE_STATE_METRICS',   defaultValue: true,  description: 'Kube State Metrics — K8s object state metrics')
         booleanParam(name: 'NODE_EXPORTER',        defaultValue: true,  description: 'Node Exporter — host-level hardware and OS metrics')
-        // ── Logs ──────────────────────────────────────────────────────────────
         booleanParam(name: 'ELASTICSEARCH',        defaultValue: true,  description: 'Elasticsearch — full-text search and log analytics')
         booleanParam(name: 'OPENSEARCH',           defaultValue: true,  description: 'OpenSearch — log analytics alternative')
         booleanParam(name: 'LOKI',                 defaultValue: true,  description: 'Grafana Loki — log aggregation system')
         booleanParam(name: 'FLUENTD',              defaultValue: true,  description: 'Fluentd — log collection and routing')
         booleanParam(name: 'FLUENT_BIT',           defaultValue: true,  description: 'Fluent Bit — lightweight log shipper')
         booleanParam(name: 'LOGSTASH',             defaultValue: true,  description: 'Logstash — log processing pipeline')
-        // ── Tracing ───────────────────────────────────────────────────────────
         booleanParam(name: 'JAEGER',               defaultValue: true,  description: 'Jaeger — distributed tracing')
         booleanParam(name: 'TEMPO',                defaultValue: true,  description: 'Grafana Tempo — distributed tracing backend')
         booleanParam(name: 'ZIPKIN',               defaultValue: true,  description: 'Zipkin — lightweight distributed tracing')
-        // ── Dashboards ────────────────────────────────────────────────────────
         booleanParam(name: 'GRAFANA',              defaultValue: true,  description: 'Grafana — dashboards and visualization')
         booleanParam(name: 'KIBANA',               defaultValue: true,  description: 'Kibana — Elasticsearch dashboards')
         booleanParam(name: 'OPENSEARCH_DASHBOARDS',defaultValue: true,  description: 'OpenSearch Dashboards — OpenSearch visualization')
-        // ── OTel & Errors ─────────────────────────────────────────────────────
         booleanParam(name: 'OTEL_COLLECTOR',       defaultValue: true,  description: 'OTel Collector — OpenTelemetry pipeline')
         booleanParam(name: 'SENTRY',               defaultValue: true,  description: 'Sentry OSS — error tracking and performance monitoring')
         booleanParam(name: 'GLITCHTIP',            defaultValue: true,  description: 'GlitchTip — Sentry-compatible error tracking alternative')
-        // ── SLO & Uptime ──────────────────────────────────────────────────────
         booleanParam(name: 'PYRRA',                defaultValue: true,  description: 'Pyrra — SLO management and error budget tracking')
         booleanParam(name: 'SLOTH',                defaultValue: true,  description: 'Sloth — SLO definition and Prometheus rule generation')
         booleanParam(name: 'UPTIME_KUMA',          defaultValue: true,  description: 'Uptime Kuma — real-time uptime monitoring and status pages')
-        // ── Profiling & Cost ──────────────────────────────────────────────────
         booleanParam(name: 'PYROSCOPE',            defaultValue: true,  description: 'Grafana Pyroscope — continuous profiling')
         booleanParam(name: 'ROBUSTA',              defaultValue: true,  description: 'Robusta — Kubernetes alerting and runbook automation')
         booleanParam(name: 'OPENCOST',             defaultValue: true,  description: 'OpenCost — Kubernetes cost monitoring')
