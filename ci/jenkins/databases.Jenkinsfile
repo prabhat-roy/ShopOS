@@ -127,7 +127,13 @@ pipeline {
                             --set startupapicheck.enabled=false \
                             --wait --timeout=5m
                         kubectl rollout status deployment/cert-manager-webhook -n cert-manager --timeout=120s
-                        sleep 30
+                        kubectl rollout status deployment/cert-manager-cainjector -n cert-manager --timeout=120s
+                        echo "Waiting for cert-manager CA bundle injection..."
+                        for i in \$(seq 1 24); do
+                            CA=\$(kubectl get validatingwebhookconfiguration cert-manager-webhook -o jsonpath='{.webhooks[0].clientConfig.caBundle}' 2>/dev/null || echo "")
+                            if [ -n "\$CA" ]; then echo "CA bundle injected"; break; fi
+                            echo "Waiting... (\$i/24)"; sleep 5
+                        done
                         helm upgrade --install scylla-operator scylla/scylla-operator \
                             --namespace scylla-operator --create-namespace \
                             --wait --timeout=5m
