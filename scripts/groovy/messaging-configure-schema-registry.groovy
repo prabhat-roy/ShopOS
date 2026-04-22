@@ -1,15 +1,11 @@
 def call() {
     sh """
-        SR_URL=\$(grep '^SCHEMA_REGISTRY_URL=' infra.env | cut -d= -f2)
-        echo "Waiting for Schema Registry at \${SR_URL}..."
-        until curl -sf "\${SR_URL}/subjects" > /dev/null 2>&1; do sleep 10; done
-
-        # Set compatibility to BACKWARD (default is BACKWARD, confirm it)
-        curl -sf -X PUT "\${SR_URL}/config" \
-            -H "Content-Type: application/vnd.schemaregistry.v1+json" \
+        echo "Configuring Schema Registry via kubectl exec..."
+        kubectl exec -n schema-registry deploy/schema-registry-schema-registry -- \
+            curl -sf -X PUT http://localhost:8081/config \
+            -H 'Content-Type: application/vnd.schemaregistry.v1+json' \
             -d '{"compatibility":"BACKWARD"}' || true
-
-        echo "Schema Registry ready — compatibility set to BACKWARD"
+        echo "Schema Registry compatibility set to BACKWARD"
     """
     echo 'schema-registry configured'
 }
