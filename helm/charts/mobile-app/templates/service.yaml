@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{- include "mobile-app.fullname" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "mobile-app.labels" . | nindent 4 }}
+spec:
+  type: {{ .Values.service.type }}
+  ports:
+    - port: {{ .Values.service.port }}
+      targetPort: {{ .Values.service.port }}
+      protocol: TCP
+  selector:
+    app.kubernetes.io/name: mobile-app

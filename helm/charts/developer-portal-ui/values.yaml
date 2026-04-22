@@ -1,0 +1,30 @@
+replicaCount: 2
+
+image:
+  repository: shopos/developer-portal-ui
+  pullPolicy: IfNotPresent
+  tag: "latest"
+
+service:
+  type: ClusterIP
+  port: 3004
+
+ingress:
+  enabled: true
+  className: traefik
+  hosts:
+    - host: developer-portal-ui.shopos.local
+      paths:
+        - path: /
+          pathType: Prefix
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 128Mi
+  limits:
+    cpu: 500m
+    memory: 512Mi
+
+autoscaling:
+  enabled: false

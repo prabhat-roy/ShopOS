@@ -197,3 +197,11 @@ metadata:
   name: databases
   labels:
     team: platform
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: shopos-web
+  labels:
+    istio-injection: enabled
+    team: web

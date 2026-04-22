@@ -1,0 +1,30 @@
+replicaCount: 2
+
+image:
+  repository: shopos/seller-portal
+  pullPolicy: IfNotPresent
+  tag: "latest"
+
+service:
+  type: ClusterIP
+  port: 3002
+
+ingress:
+  enabled: true
+  className: traefik
+  hosts:
+    - host: seller-portal.shopos.local
+      paths:
+        - path: /
+          pathType: Prefix
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 128Mi
+  limits:
+    cpu: 500m
+    memory: 512Mi
+
+autoscaling:
+  enabled: false

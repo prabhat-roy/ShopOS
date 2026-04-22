@@ -4478,3 +4478,123 @@ spec:
       repository: shopos/offset-service
       tag: latest
     namespaceOverride: shopos-sustainability
+---
+apiVersion: helm.toolkit.fluxcd.io/v2beta1
+kind: HelmRelease
+metadata:
+  name: storefront
+  namespace: shopos-web
+spec:
+  interval: 5m
+  chart:
+    spec:
+      chart: helm/charts/storefront
+      sourceRef:
+        kind: GitRepository
+        name: shopos
+        namespace: flux-system
+  values:
+    image:
+      repository: shopos/storefront
+      tag: latest
+    namespaceOverride: shopos-web
+---
+apiVersion: helm.toolkit.fluxcd.io/v2beta1
+kind: HelmRelease
+metadata:
+  name: admin-dashboard
+  namespace: shopos-web
+spec:
+  interval: 5m
+  chart:
+    spec:
+      chart: helm/charts/admin-dashboard
+      sourceRef:
+        kind: GitRepository
+        name: shopos
+        namespace: flux-system
+  values:
+    image:
+      repository: shopos/admin-dashboard
+      tag: latest
+    namespaceOverride: shopos-web
+---
+apiVersion: helm.toolkit.fluxcd.io/v2beta1
+kind: HelmRelease
+metadata:
+  name: seller-portal
+  namespace: shopos-web
+spec:
+  interval: 5m
+  chart:
+    spec:
+      chart: helm/charts/seller-portal
+      sourceRef:
+        kind: GitRepository
+        name: shopos
+        namespace: flux-system
+  values:
+    image:
+      repository: shopos/seller-portal
+      tag: latest
+    namespaceOverride: shopos-web
+---
+apiVersion: helm.toolkit.fluxcd.io/v2beta1
+kind: HelmRelease
+metadata:
+  name: partner-portal
+  namespace: shopos-web
+spec:
+  interval: 5m
+  chart:
+    spec:
+      chart: helm/charts/partner-portal
+      sourceRef:
+        kind: GitRepository
+        name: shopos
+        namespace: flux-system
+  values:
+    image:
+      repository: shopos/partner-portal
+      tag: latest
+    namespaceOverride: shopos-web
+---
+apiVersion: helm.toolkit.fluxcd.io/v2beta1
+kind: HelmRelease
+metadata:
+  name: mobile-app
+  namespace: shopos-web
+spec:
+  interval: 5m
+  chart:
+    spec:
+      chart: helm/charts/mobile-app
+      sourceRef:
+        kind: GitRepository
+        name: shopos
+        namespace: flux-system
+  values:
+    image:
+      repository: shopos/mobile-app
+      tag: latest
+    namespaceOverride: shopos-web
+---
+apiVersion: helm.toolkit.fluxcd.io/v2beta1
+kind: HelmRelease
+metadata:
+  name: developer-portal-ui
+  namespace: shopos-web
+spec:
+  interval: 5m
+  chart:
+    spec:
+      chart: helm/charts/developer-portal-ui
+      sourceRef:
+        kind: GitRepository
+        name: shopos
+        namespace: flux-system
+  values:
+    image:
+      repository: shopos/developer-portal-ui
+      tag: latest
+    namespaceOverride: shopos-web

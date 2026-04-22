@@ -4598,6 +4598,79 @@ networks:
     networks:
       - shopos
 
+# ── WEB FRONTENDS ─────────────────────────────────────────────────────────────
+
+  storefront:
+    build:
+      context: ./src/web/storefront
+    image: shopos/storefront:latest
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - NEXT_PUBLIC_API_URL=http://web-bff:8081
+    depends_on:
+      - web-bff
+    restart: unless-stopped
+    networks:
+      - shopos
+
+  admin-dashboard:
+    build:
+      context: ./src/web/admin-dashboard
+    image: shopos/admin-dashboard:latest
+    ports:
+      - "3001:3001"
+    environment:
+      - VITE_API_URL=http://api-gateway:8080
+    depends_on:
+      - api-gateway
+    restart: unless-stopped
+    networks:
+      - shopos
+
+  seller-portal:
+    build:
+      context: ./src/web/seller-portal
+    image: shopos/seller-portal:latest
+    ports:
+      - "3002:3002"
+    environment:
+      - VITE_API_URL=http://partner-bff:8083
+    depends_on:
+      - partner-bff
+    restart: unless-stopped
+    networks:
+      - shopos
+
+  partner-portal:
+    build:
+      context: ./src/web/partner-portal
+    image: shopos/partner-portal:latest
+    ports:
+      - "3003:3003"
+    environment:
+      - API_URL=http://partner-bff:8083
+    depends_on:
+      - partner-bff
+    restart: unless-stopped
+    networks:
+      - shopos
+
+  developer-portal-ui:
+    build:
+      context: ./src/web/developer-portal-ui
+    image: shopos/developer-portal-ui:latest
+    ports:
+      - "3004:3004"
+    environment:
+      - VITE_API_URL=http://developer-portal-backend:8208
+    depends_on:
+      - developer-portal-backend
+    restart: unless-stopped
+    networks:
+      - shopos
+
 # VOLUMES
 # =============================================================================
 

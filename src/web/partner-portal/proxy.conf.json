@@ -1,0 +1,7 @@
+{
+  "/api": {
+    "target": "http://partner-bff",
+    "secure": false,
+    "changeOrigin": true
+  }
+}

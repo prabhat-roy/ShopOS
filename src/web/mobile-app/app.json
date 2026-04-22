@@ -1,0 +1,11 @@
+{
+  "expo": {
+    "name": "ShopOS",
+    "slug": "shopos-mobile",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "scheme": "shopos",
+    "platforms": ["ios", "android"],
+    "assetBundlePatterns": ["**/*"]
+  }
+}

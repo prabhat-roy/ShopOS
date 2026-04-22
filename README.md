@@ -1,6 +1,6 @@
 # ShopOS — Enterprise Commerce Platform
 
-An enterprise-grade, cloud-native commerce platform — 224 microservices, 18 domains, 8 languages, full open source stack.
+An enterprise-grade, cloud-native commerce platform — 230 services (224 microservices + 6 frontend apps), 19 domains, 13 languages, full open source stack.
 
 ---
 
@@ -21,7 +21,7 @@ An enterprise-grade, cloud-native commerce platform — 224 microservices, 18 do
 | 11 | B2B | 7 |
 | 12 | Integrations | 10 |
 | 13 | Affiliate | 4 |
-| | **Total** | **224** |
+| | **Total** | **230** |
 
 ---
 
@@ -92,7 +92,7 @@ An enterprise-grade, cloud-native commerce platform — 224 microservices, 18 do
 |---|---|---|
 | Docker | latest | Container runtime, multi-stage builds |
 | Kubernetes | 1.31 | Container orchestration |
-| Helm | 3.x | 224 per-service charts + 30 tool charts |
+| Helm | 3.x | 230 per-service charts + 30 tool charts |
 | KEDA | 2.15 | Kafka/Redis-driven autoscaling (alongside HPA) |
 | Velero | 7.x | Kubernetes backup and restore |
 | Skaffold | latest | Local dev hot-reload |
@@ -106,7 +106,7 @@ An enterprise-grade, cloud-native commerce platform — 224 microservices, 18 do
 | OpenTofu | 1.8 | Open source Terraform alternative (same targets) |
 | Crossplane | 1.17 | Kubernetes-native IaC — database and cloud resource claims |
 | Ansible | 2.17 | Kubernetes node bootstrapping |
-| Docker Compose | v2 | Full local stack (224 services + infra) |
+| Docker Compose | v2 | Full local stack (230 services + infra) |
 
 ### CI/CD
 
@@ -519,6 +519,21 @@ An enterprise-grade, cloud-native commerce platform — 224 microservices, 18 do
 | referral-service | Go | Customer referral codes, conversion tracking, reward triggers |
 | influencer-service | Go | Influencer campaign management and UTM attribution |
 | commission-payout-service | Go | Commission aggregation, tax rules, and payout batching |
+
+### 14–18. New Domains (marketplace, gamification, developer-platform, compliance, sustainability)
+
+See [CLAUDE.md](CLAUDE.md) for full service registry of all 224 microservices.
+
+### 19. Web Frontend (6 apps)
+
+| App | Framework | Responsibility |
+|---|---|---|
+| storefront | Next.js 14 (React/TS) | Customer-facing shopping experience — SSR for SEO |
+| admin-dashboard | React + Vite (TS) | Admin and merchant management portal |
+| seller-portal | Vue.js 3 (TS) | Marketplace seller portal — listings, analytics, payouts |
+| partner-portal | Angular 18 (TS) | B2B partner portal — contracts, orders, invoices |
+| mobile-app | React Native / Expo (TS) | iOS + Android customer app |
+| developer-portal-ui | React + Vite (TS) | Developer portal — API docs, sandbox, OAuth apps |
 
 ---
 

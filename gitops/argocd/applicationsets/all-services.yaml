@@ -697,6 +697,25 @@ spec:
           - service: offset-service
             domain: sustainability
             namespace: shopos-sustainability
+          # Web (6)
+          - service: storefront
+            domain: web
+            namespace: shopos-web
+          - service: admin-dashboard
+            domain: web
+            namespace: shopos-web
+          - service: seller-portal
+            domain: web
+            namespace: shopos-web
+          - service: partner-portal
+            domain: web
+            namespace: shopos-web
+          - service: mobile-app
+            domain: web
+            namespace: shopos-web
+          - service: developer-portal-ui
+            domain: web
+            namespace: shopos-web
   template:
     metadata:
       name: '{{service}}'
