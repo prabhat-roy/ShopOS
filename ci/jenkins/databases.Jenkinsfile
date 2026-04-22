@@ -167,28 +167,52 @@ pipeline {
         stage('Uninstall Temporal') {
             when { allOf { expression { params.ACTION == 'UNINSTALL' }; expression { params.TEMPORAL } } }
             steps {
-                sh "helm uninstall temporal -n temporal-system --ignore-not-found || true"
+                sh """
+                    helm uninstall temporal -n temporal-system --ignore-not-found || true
+                    kubectl delete pvc --all -n temporal-system --ignore-not-found || true
+                    kubectl delete namespace temporal-system --ignore-not-found || true
+                """
             }
         }
 
         stage('Uninstall Neo4j') {
             when { allOf { expression { params.ACTION == 'UNINSTALL' }; expression { params.NEO4J } } }
             steps {
-                sh "helm uninstall neo4j -n databases --ignore-not-found || true"
+                sh """
+                    helm uninstall neo4j -n databases --ignore-not-found || true
+                    kubectl delete pvc -l app.kubernetes.io/instance=neo4j -n databases --ignore-not-found || true
+                """
             }
         }
 
         stage('Uninstall Weaviate') {
             when { allOf { expression { params.ACTION == 'UNINSTALL' }; expression { params.WEAVIATE } } }
             steps {
-                sh "helm uninstall weaviate -n databases --ignore-not-found || true"
+                sh """
+                    helm uninstall weaviate -n databases --ignore-not-found || true
+                    kubectl delete pvc -l app.kubernetes.io/instance=weaviate -n databases --ignore-not-found || true
+                """
             }
         }
 
         stage('Uninstall ClickHouse') {
             when { allOf { expression { params.ACTION == 'UNINSTALL' }; expression { params.CLICKHOUSE } } }
             steps {
-                sh "helm uninstall clickhouse -n databases --ignore-not-found || true"
+                sh """
+                    helm uninstall clickhouse -n databases --ignore-not-found || true
+                    kubectl delete pvc -l app.kubernetes.io/instance=clickhouse -n databases --ignore-not-found || true
+                """
+            }
+        }
+
+        stage('Cleanup Namespaces') {
+            when { expression { params.ACTION == 'UNINSTALL' } }
+            steps {
+                sh """
+                    kubectl delete namespace databases --ignore-not-found || true
+                    kubectl delete namespace cert-manager --ignore-not-found || true
+                    kubectl delete namespace scylla-operator --ignore-not-found || true
+                """
             }
         }
     }
