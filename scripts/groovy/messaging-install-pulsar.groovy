@@ -1,5 +1,14 @@
 def call() {
     sh """
+        # Clear any pending/failed helm state before installing
+        STATUS=\$(helm status pulsar -n pulsar 2>/dev/null | grep STATUS | awk '{print \$2}')
+        if [ "\$STATUS" = "pending-install" ] || [ "\$STATUS" = "pending-upgrade" ] || [ "\$STATUS" = "failed" ]; then
+            echo "Clearing stuck helm release: \$STATUS"
+            helm uninstall pulsar -n pulsar 2>/dev/null || true
+            kubectl delete pvc pulsar-pvc -n pulsar 2>/dev/null || true
+            kubectl delete pod --all -n pulsar --force 2>/dev/null || true
+        fi
+
         helm upgrade --install pulsar messaging/pulsar/charts \
             --namespace pulsar \
             --create-namespace \
