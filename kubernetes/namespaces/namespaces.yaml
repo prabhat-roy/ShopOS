@@ -143,3 +143,57 @@ metadata:
   name: keda
   labels:
     team: platform
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: marketplace
+  labels:
+    istio-injection: enabled
+    team: marketplace
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: gamification
+  labels:
+    istio-injection: enabled
+    team: gamification
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: developer-platform
+  labels:
+    istio-injection: enabled
+    team: developer-platform
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: compliance
+  labels:
+    istio-injection: enabled
+    team: compliance
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: sustainability
+  labels:
+    istio-injection: enabled
+    team: sustainability
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: streaming
+  labels:
+    team: platform
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: databases
+  labels:
+    team: platform

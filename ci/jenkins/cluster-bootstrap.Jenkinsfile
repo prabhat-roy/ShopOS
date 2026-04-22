@@ -44,6 +44,21 @@ pipeline {
             defaultValue: false,
             description: 'Install Crossplane for Kubernetes-native IaC resource management'
         )
+        booleanParam(
+            name: 'SKIP_DATABASES',
+            defaultValue: false,
+            description: 'Skip specialist databases (ClickHouse, Weaviate, Neo4j, ScyllaDB, Temporal)'
+        )
+        booleanParam(
+            name: 'SKIP_STREAMING',
+            defaultValue: false,
+            description: 'Skip streaming bootstrap (Flink operator + Debezium CDC connectors)'
+        )
+        booleanParam(
+            name: 'SKIP_REGISTRY',
+            defaultValue: false,
+            description: 'Skip registry bootstrap (Harbor + Nexus + Gitea + ChartMuseum)'
+        )
     }
 
     stages {
@@ -130,6 +145,51 @@ pipeline {
             }
         }
 
+        // ── REGISTRY ────────────────────────────────────────────────────────
+        // Harbor + Nexus + Gitea for artifact storage before builds run.
+
+        stage('Registry — Install') {
+            when { expression { !params.SKIP_REGISTRY } }
+            steps {
+                echo '=== Registry: Harbor + Nexus + Gitea + ChartMuseum + Zot ==='
+                build job: 'registry',
+                    wait: true,
+                    parameters: [
+                        string(name: 'ACTION', value: 'INSTALL')
+                    ]
+            }
+        }
+
+        // ── DATABASES ───────────────────────────────────────────────────────
+        // ClickHouse, Weaviate, Neo4j, ScyllaDB, Temporal.
+
+        stage('Databases — Install') {
+            when { expression { !params.SKIP_DATABASES } }
+            steps {
+                echo '=== Databases: ClickHouse + Weaviate + Neo4j + ScyllaDB + Temporal ==='
+                build job: 'databases',
+                    wait: true,
+                    parameters: [
+                        string(name: 'ACTION', value: 'INSTALL')
+                    ]
+            }
+        }
+
+        // ── STREAMING ───────────────────────────────────────────────────────
+        // Flink operator + Debezium CDC connectors (after Kafka is running).
+
+        stage('Streaming — Install') {
+            when { expression { !params.SKIP_STREAMING } }
+            steps {
+                echo '=== Streaming: Flink Operator + Debezium Postgres/MongoDB CDC ==='
+                build job: 'streaming',
+                    wait: true,
+                    parameters: [
+                        string(name: 'ACTION', value: 'INSTALL')
+                    ]
+            }
+        }
+
         stage('Crossplane — Install') {
             when { expression { params.INSTALL_CROSSPLANE } }
             steps {
@@ -147,13 +207,16 @@ pipeline {
   Cluster bootstrap complete for environment: ${params.ENVIRONMENT}
 
   Infrastructure ready:
-    Networking : Cilium + Traefik + Istio + ExternalDNS
-    Security   : cert-manager + Vault + Keycloak + Kyverno + OPA + Falco
-    Observ.    : Prometheus + Grafana + Loki + Jaeger + OTel Collector
-    Messaging  : Kafka + Schema Registry + RabbitMQ + NATS
-    GitOps     : ArgoCD + Flux + Argo Workflows + Argo Events
+    Networking   : Cilium + Traefik + Istio + ExternalDNS
+    Security     : cert-manager + Vault + Keycloak + Kyverno + OPA + Falco
+    Observability: Prometheus + Grafana + Loki + Jaeger + OTel Collector
+    Messaging    : Kafka + Schema Registry + RabbitMQ + NATS
+    GitOps       : ArgoCD + Flux + Argo Workflows + Argo Events
+    Registry     : Harbor + Nexus + Gitea + ChartMuseum
+    Databases    : ClickHouse + Weaviate + Neo4j + ScyllaDB + Temporal
+    Streaming    : Flink + Debezium (Postgres + MongoDB CDC)
 
-  Next step: trigger deploy.Jenkinsfile to deploy services.
+  Next step: trigger deploy.Jenkinsfile to deploy all 224 services.
 ==========================================================
                 """
             }

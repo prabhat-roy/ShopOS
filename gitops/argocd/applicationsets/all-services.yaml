@@ -7,7 +7,7 @@ spec:
   generators:
     - list:
         elements:
-          # Platform (22)
+          # Platform (27)
           - service: api-gateway
             domain: platform
             namespace: shopos-platform
@@ -74,7 +74,22 @@ spec:
           - service: tenant-service
             domain: platform
             namespace: shopos-platform
-          # Identity (8)
+          - service: notification-preferences-service
+            domain: platform
+            namespace: shopos-platform
+          - service: circuit-breaker-service
+            domain: platform
+            namespace: shopos-platform
+          - service: idempotency-service
+            domain: platform
+            namespace: shopos-platform
+          - service: correlation-id-service
+            domain: platform
+            namespace: shopos-platform
+          - service: data-masking-service
+            domain: platform
+            namespace: shopos-platform
+          # Identity (11)
           - service: auth-service
             domain: identity
             namespace: shopos-identity
@@ -99,7 +114,16 @@ spec:
           - service: device-fingerprint-service
             domain: identity
             namespace: shopos-identity
-          # Catalog (12)
+          - service: sso-service
+            domain: identity
+            namespace: shopos-identity
+          - service: password-policy-service
+            domain: identity
+            namespace: shopos-identity
+          - service: bot-detection-service
+            domain: identity
+            namespace: shopos-identity
+          # Catalog (15)
           - service: product-catalog-service
             domain: catalog
             namespace: shopos-catalog
@@ -136,7 +160,16 @@ spec:
           - service: price-list-service
             domain: catalog
             namespace: shopos-catalog
-          # Commerce (23)
+          - service: product-label-service
+            domain: catalog
+            namespace: shopos-catalog
+          - service: variant-service
+            domain: catalog
+            namespace: shopos-catalog
+          - service: stock-reservation-service
+            domain: catalog
+            namespace: shopos-catalog
+          # Commerce (28)
           - service: cart-service
             domain: commerce
             namespace: shopos-commerce
@@ -206,7 +239,22 @@ spec:
           - service: bnpl-service
             domain: commerce
             namespace: shopos-commerce
-          # Supply Chain (13)
+          - service: split-payment-service
+            domain: commerce
+            namespace: shopos-commerce
+          - service: installment-service
+            domain: commerce
+            namespace: shopos-commerce
+          - service: dynamic-pricing-service
+            domain: commerce
+            namespace: shopos-commerce
+          - service: coupon-service
+            domain: commerce
+            namespace: shopos-commerce
+          - service: order-amendment-service
+            domain: commerce
+            namespace: shopos-commerce
+          # Supply Chain (17)
           - service: vendor-service
             domain: supply-chain
             namespace: shopos-supply-chain
@@ -246,7 +294,19 @@ spec:
           - service: supplier-rating-service
             domain: supply-chain
             namespace: shopos-supply-chain
-          # Financial (11)
+          - service: route-optimization-service
+            domain: supply-chain
+            namespace: shopos-supply-chain
+          - service: packaging-service
+            domain: supply-chain
+            namespace: shopos-supply-chain
+          - service: cross-dock-service
+            domain: supply-chain
+            namespace: shopos-supply-chain
+          - service: duty-drawback-service
+            domain: supply-chain
+            namespace: shopos-supply-chain
+          # Financial (15)
           - service: invoice-service
             domain: financial
             namespace: shopos-financial
@@ -280,50 +340,71 @@ spec:
           - service: revenue-recognition-service
             domain: financial
             namespace: shopos-financial
-          # Customer Experience (14)
+          - service: escrow-service
+            domain: financial
+            namespace: shopos-financial
+          - service: forex-service
+            domain: financial
+            namespace: shopos-financial
+          - service: audit-trail-service
+            domain: financial
+            namespace: shopos-financial
+          - service: dunning-service
+            domain: financial
+            namespace: shopos-financial
+          # Customer Experience (17)
           - service: review-rating-service
             domain: customer-experience
-            namespace: shopos-customer-experience
+            namespace: shopos-cx
           - service: qa-service
             domain: customer-experience
-            namespace: shopos-customer-experience
+            namespace: shopos-cx
           - service: wishlist-service
             domain: customer-experience
-            namespace: shopos-customer-experience
+            namespace: shopos-cx
           - service: compare-service
             domain: customer-experience
-            namespace: shopos-customer-experience
+            namespace: shopos-cx
           - service: recently-viewed-service
             domain: customer-experience
-            namespace: shopos-customer-experience
+            namespace: shopos-cx
           - service: support-ticket-service
             domain: customer-experience
-            namespace: shopos-customer-experience
+            namespace: shopos-cx
           - service: live-chat-service
             domain: customer-experience
-            namespace: shopos-customer-experience
+            namespace: shopos-cx
           - service: consent-management-service
             domain: customer-experience
-            namespace: shopos-customer-experience
+            namespace: shopos-cx
           - service: age-verification-service
             domain: customer-experience
-            namespace: shopos-customer-experience
+            namespace: shopos-cx
           - service: survey-service
             domain: customer-experience
-            namespace: shopos-customer-experience
+            namespace: shopos-cx
           - service: feedback-service
             domain: customer-experience
-            namespace: shopos-customer-experience
+            namespace: shopos-cx
           - service: price-alert-service
             domain: customer-experience
-            namespace: shopos-customer-experience
+            namespace: shopos-cx
           - service: back-in-stock-service
             domain: customer-experience
-            namespace: shopos-customer-experience
+            namespace: shopos-cx
           - service: gift-registry-service
             domain: customer-experience
-            namespace: shopos-customer-experience
-          # Communications (9)
+            namespace: shopos-cx
+          - service: loyalty-tier-service
+            domain: customer-experience
+            namespace: shopos-cx
+          - service: accessibility-service
+            domain: customer-experience
+            namespace: shopos-cx
+          - service: return-portal-service
+            domain: customer-experience
+            namespace: shopos-cx
+          # Communications (12)
           - service: notification-orchestrator
             domain: communications
             namespace: shopos-communications
@@ -351,7 +432,16 @@ spec:
           - service: chatbot-service
             domain: communications
             namespace: shopos-communications
-          # Content (8)
+          - service: telegram-service
+            domain: communications
+            namespace: shopos-communications
+          - service: voice-service
+            domain: communications
+            namespace: shopos-communications
+          - service: webhook-delivery-service
+            domain: communications
+            namespace: shopos-communications
+          # Content (9)
           - service: media-asset-service
             domain: content
             namespace: shopos-content
@@ -376,7 +466,10 @@ spec:
           - service: data-export-service
             domain: content
             namespace: shopos-content
-          # Analytics/AI (13)
+          - service: ab-content-service
+            domain: content
+            namespace: shopos-content
+          # Analytics Ai (13)
           - service: analytics-service
             domain: analytics-ai
             namespace: shopos-analytics-ai
@@ -416,7 +509,7 @@ spec:
           - service: search-analytics-service
             domain: analytics-ai
             namespace: shopos-analytics-ai
-          # B2B (7)
+          # B2B (10)
           - service: organization-service
             domain: b2b
             namespace: shopos-b2b
@@ -438,7 +531,16 @@ spec:
           - service: marketplace-seller-service
             domain: b2b
             namespace: shopos-b2b
-          # Integrations (10)
+          - service: rfp-service
+            domain: b2b
+            namespace: shopos-b2b
+          - service: vendor-onboarding-service
+            domain: b2b
+            namespace: shopos-b2b
+          - service: purchase-requisition-service
+            domain: b2b
+            namespace: shopos-b2b
+          # Integrations (14)
           - service: erp-integration-service
             domain: integrations
             namespace: shopos-integrations
@@ -469,7 +571,19 @@ spec:
           - service: accounting-integration-service
             domain: integrations
             namespace: shopos-integrations
-          # Affiliate (4)
+          - service: webhook-ingestion-service
+            domain: integrations
+            namespace: shopos-integrations
+          - service: etl-service
+            domain: integrations
+            namespace: shopos-integrations
+          - service: data-sync-service
+            domain: integrations
+            namespace: shopos-integrations
+          - service: ipaas-connector-service
+            domain: integrations
+            namespace: shopos-integrations
+          # Affiliate (6)
           - service: affiliate-service
             domain: affiliate
             namespace: shopos-affiliate
@@ -482,6 +596,107 @@ spec:
           - service: commission-payout-service
             domain: affiliate
             namespace: shopos-affiliate
+          - service: click-tracking-service
+            domain: affiliate
+            namespace: shopos-affiliate
+          - service: fraud-prevention-affiliate-service
+            domain: affiliate
+            namespace: shopos-affiliate
+          # Marketplace (8)
+          - service: seller-registration-service
+            domain: marketplace
+            namespace: shopos-marketplace
+          - service: listing-approval-service
+            domain: marketplace
+            namespace: shopos-marketplace
+          - service: marketplace-commission-service
+            domain: marketplace
+            namespace: shopos-marketplace
+          - service: dispute-resolution-service
+            domain: marketplace
+            namespace: shopos-marketplace
+          - service: seller-analytics-service
+            domain: marketplace
+            namespace: shopos-marketplace
+          - service: product-syndication-service
+            domain: marketplace
+            namespace: shopos-marketplace
+          - service: storefront-service
+            domain: marketplace
+            namespace: shopos-marketplace
+          - service: seller-payout-service
+            domain: marketplace
+            namespace: shopos-marketplace
+          # Gamification (6)
+          - service: points-service
+            domain: gamification
+            namespace: shopos-gamification
+          - service: badge-service
+            domain: gamification
+            namespace: shopos-gamification
+          - service: leaderboard-service
+            domain: gamification
+            namespace: shopos-gamification
+          - service: challenge-service
+            domain: gamification
+            namespace: shopos-gamification
+          - service: reward-redemption-service
+            domain: gamification
+            namespace: shopos-gamification
+          - service: streak-service
+            domain: gamification
+            namespace: shopos-gamification
+          # Developer Platform (6)
+          - service: api-management-service
+            domain: developer-platform
+            namespace: shopos-developer
+          - service: sandbox-service
+            domain: developer-platform
+            namespace: shopos-developer
+          - service: developer-portal-backend
+            domain: developer-platform
+            namespace: shopos-developer
+          - service: oauth-client-service
+            domain: developer-platform
+            namespace: shopos-developer
+          - service: api-analytics-service
+            domain: developer-platform
+            namespace: shopos-developer
+          - service: webhook-management-service
+            domain: developer-platform
+            namespace: shopos-developer
+          # Compliance (5)
+          - service: data-retention-service
+            domain: compliance
+            namespace: shopos-compliance
+          - service: consent-audit-service
+            domain: compliance
+            namespace: shopos-compliance
+          - service: privacy-request-service
+            domain: compliance
+            namespace: shopos-compliance
+          - service: compliance-reporting-service
+            domain: compliance
+            namespace: shopos-compliance
+          - service: data-lineage-service
+            domain: compliance
+            namespace: shopos-compliance
+          # Sustainability (5)
+          - service: carbon-tracker-service
+            domain: sustainability
+            namespace: shopos-sustainability
+          - service: eco-score-service
+            domain: sustainability
+            namespace: shopos-sustainability
+          - service: green-shipping-service
+            domain: sustainability
+            namespace: shopos-sustainability
+          - service: sustainability-reporting-service
+            domain: sustainability
+            namespace: shopos-sustainability
+          - service: offset-service
+            domain: sustainability
+            namespace: shopos-sustainability
   template:
     metadata:
       name: '{{service}}'
