@@ -2,7 +2,7 @@ replicaCount: 1
 
 image:
   repository: cnpm/cnpmjs.org
-  tag: "latest"
+  tag: "3.0.0-beta.37"
   pullPolicy: IfNotPresent
 
 service:
@@ -12,7 +12,7 @@ service:
 
 persistence:
   enabled: true
-  storageClass: ""
+  storageClass: "standard-rwo"
   size: 10Gi
   accessMode: ReadWriteOnce
   mountPath: /data

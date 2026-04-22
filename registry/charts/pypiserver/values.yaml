@@ -2,7 +2,7 @@ replicaCount: 1
 
 image:
   repository: pypiserver/pypiserver
-  tag: "2.1"
+  tag: "v2.3.2"
   pullPolicy: IfNotPresent
 
 service:
@@ -12,7 +12,7 @@ service:
 
 persistence:
   enabled: true
-  storageClass: ""
+  storageClass: "standard-rwo"
   size: 10Gi
   accessMode: ReadWriteOnce
   mountPath: /data

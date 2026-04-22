@@ -1,17 +1,1 @@
-{{- if .Values.persistence.enabled }}
-apiVersion: v1
-kind: PersistentVolumeClaim
-metadata:
-  name: {{ include "app.fullname" . }}-pvc
-  labels:
-    {{- include "app.labels" . | nindent 4 }}
-spec:
-  accessModes:
-    - {{ .Values.persistence.accessMode }}
-  {{- if .Values.persistence.storageClass }}
-  storageClassName: {{ .Values.persistence.storageClass }}
-  {{- end }}
-  resources:
-    requests:
-      storage: {{ .Values.persistence.size }}
-{{- end }}
+# PVC is managed by StatefulSet volumeClaimTemplates

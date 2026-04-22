@@ -2,7 +2,7 @@ replicaCount: 1
 
 image:
   repository: gitbucket/gitbucket
-  tag: "4.39"
+  tag: "4.42.0"
   pullPolicy: IfNotPresent
 
 service:
@@ -12,7 +12,7 @@ service:
 
 persistence:
   enabled: true
-  storageClass: ""
+  storageClass: "standard-rwo"
   size: 10Gi
   accessMode: ReadWriteOnce
   mountPath: /data

@@ -1,8 +1,8 @@
 replicaCount: 1
 
 image:
-  repository: matthewjohn/terrareg
-  tag: "3.45"
+  repository: ghcr.io/matthewjohn/terrareg
+  tag: "v3.9.0"
   pullPolicy: IfNotPresent
 
 service:
@@ -12,7 +12,7 @@ service:
 
 persistence:
   enabled: true
-  storageClass: ""
+  storageClass: "standard-rwo"
   size: 10Gi
   accessMode: ReadWriteOnce
   mountPath: /data

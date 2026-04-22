@@ -2,7 +2,7 @@ replicaCount: 1
 
 image:
   repository: gogs/gogs
-  tag: "0.13"
+  tag: "0.13.0"
   pullPolicy: IfNotPresent
 
 service:
@@ -12,7 +12,7 @@ service:
 
 persistence:
   enabled: true
-  storageClass: ""
+  storageClass: "standard-rwo"
   size: 10Gi
   accessMode: ReadWriteOnce
   mountPath: /data

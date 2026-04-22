@@ -2,7 +2,7 @@ replicaCount: 1
 
 image:
   repository: registry
-  tag: "2.8"
+  tag: "2.8.3"
   pullPolicy: IfNotPresent
 
 service:
@@ -12,7 +12,7 @@ service:
 
 persistence:
   enabled: true
-  storageClass: ""
+  storageClass: "standard-rwo"
   size: 10Gi
   accessMode: ReadWriteOnce
   mountPath: /data

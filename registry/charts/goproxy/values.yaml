@@ -1,8 +1,8 @@
 replicaCount: 1
 
 image:
-  repository: goproxy/goproxy
-  tag: "latest"
+  repository: goproxyio/goproxy
+  tag: "v1.11.11"
   pullPolicy: IfNotPresent
 
 service:
@@ -12,7 +12,7 @@ service:
 
 persistence:
   enabled: true
-  storageClass: ""
+  storageClass: "standard-rwo"
   size: 10Gi
   accessMode: ReadWriteOnce
   mountPath: /data

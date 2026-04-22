@@ -2,7 +2,7 @@ replicaCount: 1
 
 image:
   repository: conanio/conan_server
-  tag: "2.5"
+  tag: "2.7.0"
   pullPolicy: IfNotPresent
 
 service:
@@ -12,7 +12,7 @@ service:
 
 persistence:
   enabled: true
-  storageClass: ""
+  storageClass: "standard-rwo"
   size: 10Gi
   accessMode: ReadWriteOnce
   mountPath: /data

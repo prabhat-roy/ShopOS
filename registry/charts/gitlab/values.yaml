@@ -2,7 +2,7 @@ replicaCount: 1
 
 image:
   repository: gitlab/gitlab-ce
-  tag: "17.0.0-ce.0"
+  tag: "17.4.1-ce.0"
   pullPolicy: IfNotPresent
 
 service:
@@ -12,7 +12,7 @@ service:
 
 persistence:
   enabled: true
-  storageClass: ""
+  storageClass: "standard-rwo"
   size: 50Gi
   accessMode: ReadWriteOnce
   mountPath: /var/opt/gitlab

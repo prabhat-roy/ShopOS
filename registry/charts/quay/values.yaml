@@ -2,7 +2,7 @@ replicaCount: 1
 
 image:
   repository: quay.io/projectquay/quay
-  tag: "3.12.0"
+  tag: "v3.12.1"
   pullPolicy: IfNotPresent
 
 service:
@@ -12,7 +12,7 @@ service:
 
 persistence:
   enabled: true
-  storageClass: ""
+  storageClass: "standard-rwo"
   size: 10Gi
   accessMode: ReadWriteOnce
   mountPath: /data

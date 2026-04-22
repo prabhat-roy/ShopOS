@@ -2,7 +2,7 @@ replicaCount: 1
 
 image:
   repository: verdaccio/verdaccio
-  tag: "5.32.0"
+  tag: "6.0.5"
   pullPolicy: IfNotPresent
 
 service:
@@ -12,7 +12,7 @@ service:
 
 persistence:
   enabled: true
-  storageClass: ""
+  storageClass: "standard-rwo"
   size: 10Gi
   accessMode: ReadWriteOnce
   mountPath: /verdaccio/storage

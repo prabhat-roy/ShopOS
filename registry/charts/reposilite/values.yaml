@@ -2,7 +2,7 @@ replicaCount: 1
 
 image:
   repository: dzikoysk/reposilite
-  tag: "3.5"
+  tag: "3.5.19"
   pullPolicy: IfNotPresent
 
 service:
@@ -12,7 +12,7 @@ service:
 
 persistence:
   enabled: true
-  storageClass: ""
+  storageClass: "standard-rwo"
   size: 10Gi
   accessMode: ReadWriteOnce
   mountPath: /data
