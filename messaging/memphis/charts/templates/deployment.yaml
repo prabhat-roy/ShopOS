@@ -32,7 +32,7 @@ spec:
           image: busybox:1.36
           securityContext:
             runAsUser: 0
-          command: ['sh', '-c', 'grep -v "^::1.*localhost" /etc/hosts > /tmp/hosts.new && cp /tmp/hosts.new /etc/hosts && echo "127.0.0.1 localhost" >> /etc/hosts && echo "Fixed /etc/hosts:" && cat /etc/hosts']
+          command: ['sh', '-c', '(grep -v "^::1.*localhost" /etc/hosts; echo "127.0.0.1 localhost") > /tmp/hosts.new && cat /tmp/hosts.new > /etc/hosts && echo "Fixed /etc/hosts:" && cat /etc/hosts']
       containers:
         - name: memphis-metadata
           image: postgres:15-alpine
