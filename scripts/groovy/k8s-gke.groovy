@@ -29,17 +29,18 @@ def call(String tfDir, String environment = 'dev') {
     }
     if (!region) region = 'us-central1'
 
-    echo "Provisioning GKE cluster — project=${projectId}  region=${region}  environment=${environment}"
+    def iacCmd = env.IaC_TOOL == 'opentofu' ? 'tofu' : 'terraform'
+    echo "Provisioning GKE cluster — project=${projectId}  region=${region}  environment=${environment}  iacCmd=${iacCmd}"
 
     sh """
         cd ${tfDir}
-        terraform apply \
+        ${iacCmd} apply \
             -var project_id=${projectId} \
             -var region=${region} \
             -var environment=${environment} \
             -auto-approve -input=false
         echo "=== GKE outputs ==="
-        terraform output
+        ${iacCmd} output
     """
 
     def lines = fileExists('infra.env') ? readFile('infra.env').readLines() : []

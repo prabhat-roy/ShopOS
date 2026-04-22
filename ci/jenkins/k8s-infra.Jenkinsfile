@@ -19,6 +19,16 @@ pipeline {
             choices: ['dev', 'staging', 'prod'],
             description: 'Target environment — passed to Terraform as var.environment'
         )
+        choice(
+            name: 'IaC_TOOL',
+            choices: ['terraform', 'opentofu'],
+            description: 'IaC tool to use for cluster provisioning'
+        )
+        booleanParam(
+            name: 'RUN_ANSIBLE',
+            defaultValue: false,
+            description: 'Run Ansible to bootstrap Jenkins host with Docker, kubectl, Helm before Terraform'
+        )
     }
 
     stages {
@@ -31,13 +41,27 @@ pipeline {
         stage('Detect Cloud Provider') {
             steps {
                 script {
+                    env.IaC_TOOL = params.IaC_TOOL ?: 'terraform'
                     def detectCloud = load 'scripts/groovy/k8s-detect-cloud.groovy'
                     detectCloud()
                     env.TF_DIR = readFile('infra.env').trim()
                         .split('\n').find { it.startsWith('TF_DIR=') }?.split('=', 2)?.last()
                     env.CLOUD_PROVIDER = readFile('infra.env').trim()
                         .split('\n').find { it.startsWith('CLOUD_PROVIDER=') }?.split('=', 2)?.last()
-                    echo "CLOUD_PROVIDER=${env.CLOUD_PROVIDER}  TF_DIR=${env.TF_DIR}"
+                    echo "CLOUD_PROVIDER=${env.CLOUD_PROVIDER}  TF_DIR=${env.TF_DIR}  IaC_TOOL=${env.IaC_TOOL}"
+                }
+            }
+        }
+
+        stage('Ansible Bootstrap') {
+            when {
+                beforeAgent true
+                expression { params.RUN_ANSIBLE }
+            }
+            steps {
+                script {
+                    def s = load 'scripts/groovy/run-ansible.groovy'
+                    s()
                 }
             }
         }

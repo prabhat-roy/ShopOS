@@ -16,16 +16,17 @@ def call(String tfDir, String environment = 'dev') {
     ).trim()
     if (!region) region = 'us-east-1'
 
-    echo "Provisioning EKS cluster — region=${region}  environment=${environment}"
+    def iacCmd = env.IaC_TOOL == 'opentofu' ? 'tofu' : 'terraform'
+    echo "Provisioning EKS cluster — region=${region}  environment=${environment}  iacCmd=${iacCmd}"
 
     sh """
         cd ${tfDir}
-        terraform apply \
+        ${iacCmd} apply \
             -var region=${region} \
             -var environment=${environment} \
             -auto-approve -input=false
         echo "=== EKS outputs ==="
-        terraform output
+        ${iacCmd} output
     """
 
     def lines = fileExists('infra.env') ? readFile('infra.env').readLines() : []

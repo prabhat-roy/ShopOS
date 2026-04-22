@@ -1,6 +1,7 @@
 #!/usr/bin/env groovy
 
 def call(String tfDir) {
+    def iacCmd = env.IaC_TOOL == 'opentofu' ? 'tofu' : 'terraform'
     def cloud = ''
     if (fileExists('infra.env')) {
         cloud = readFile('infra.env').trim().split('\n')
@@ -45,11 +46,11 @@ def call(String tfDir) {
         """
         sh """
             cd ${tfDir}
-            terraform init -input=false \
+            ${iacCmd} init -input=false \
                 -backend-config="bucket=${bucket}" \
                 -backend-config="prefix=gke" \
                 -reconfigure
-            terraform validate
+            ${iacCmd} validate
         """
 
     } else if (cloud == 'AWS') {
@@ -84,14 +85,14 @@ def call(String tfDir) {
         """
         sh """
             cd ${tfDir}
-            terraform init -input=false \
+            ${iacCmd} init -input=false \
                 -backend-config="bucket=${bucket}" \
                 -backend-config="key=eks/terraform.tfstate" \
                 -backend-config="region=${region}" \
                 -backend-config="dynamodb_table=${table}" \
                 -backend-config="encrypt=true" \
                 -reconfigure
-            terraform validate
+            ${iacCmd} validate
         """
 
     } else if (cloud == 'AZURE') {
@@ -122,21 +123,21 @@ def call(String tfDir) {
         ).trim()
         sh """
             cd ${tfDir}
-            terraform init -input=false \
+            ${iacCmd} init -input=false \
                 -backend-config="resource_group_name=${rgName}" \
                 -backend-config="storage_account_name=${accountName}" \
                 -backend-config="container_name=${containerName}" \
                 -backend-config="key=aks/terraform.tfstate" \
                 -backend-config="access_key=${accessKey}" \
                 -reconfigure
-            terraform validate
+            ${iacCmd} validate
         """
 
     } else {
         sh """
             cd ${tfDir}
-            terraform init -input=false
-            terraform validate
+            ${iacCmd} init -input=false
+            ${iacCmd} validate
         """
     }
 }

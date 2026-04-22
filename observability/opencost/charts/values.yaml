@@ -1,0 +1,24 @@
+replicaCount: 1
+image:
+  repository: ghcr.io/opencost/opencost
+  tag: "1.112.0"
+  pullPolicy: IfNotPresent
+service:
+  type: ClusterIP
+  port: 9003
+  targetPort: 9003
+persistence:
+  enabled: false
+  storageClass: ""
+  size: 1Gi
+  mountPath: /data
+resources:
+  requests:
+    cpu: 100m
+    memory: 256Mi
+  limits:
+    cpu: 1
+    memory: 1Gi
+env:
+  PROMETHEUS_SERVER_ENDPOINT: http://prometheus-prometheus.prometheus.svc.cluster.local:9090
+  CLUSTER_ID: shopos-prod

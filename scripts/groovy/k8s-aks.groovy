@@ -12,16 +12,17 @@ def call(String tfDir, String environment = 'dev') {
         returnStdout: true
     ).trim() ?: 'East US'
 
-    echo "Provisioning AKS cluster — subscription=${subscriptionId}  environment=${environment}"
+    def iacCmd = env.IaC_TOOL == 'opentofu' ? 'tofu' : 'terraform'
+    echo "Provisioning AKS cluster — subscription=${subscriptionId}  environment=${environment}  iacCmd=${iacCmd}"
 
     sh """
         cd ${tfDir}
-        terraform apply \
+        ${iacCmd} apply \
             -var subscription_id=${subscriptionId} \
             -var environment=${environment} \
             -auto-approve -input=false
         echo "=== AKS outputs ==="
-        terraform output
+        ${iacCmd} output
     """
 
     def lines = fileExists('infra.env') ? readFile('infra.env').readLines() : []

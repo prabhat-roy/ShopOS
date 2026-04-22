@@ -1,0 +1,23 @@
+replicaCount: 1
+image:
+  repository: us-central1-docker.pkg.dev/genuine-flight-317411/devel/robusta-runner
+  tag: "0.13.3"
+  pullPolicy: IfNotPresent
+service:
+  type: ClusterIP
+  port: 80
+  targetPort: 80
+persistence:
+  enabled: false
+  storageClass: ""
+  size: 1Gi
+  mountPath: /data
+resources:
+  requests:
+    cpu: 100m
+    memory: 256Mi
+  limits:
+    cpu: 500m
+    memory: 512Mi
+env:
+  ROBUSTA_CLUSTER_NAME: shopos-prod

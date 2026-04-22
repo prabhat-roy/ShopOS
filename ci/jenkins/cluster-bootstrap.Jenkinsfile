@@ -39,6 +39,11 @@ pipeline {
             defaultValue: false,
             description: 'Skip GitOps bootstrap (ArgoCD + Flux + Argo Workflows) — use if already installed'
         )
+        booleanParam(
+            name: 'INSTALL_CROSSPLANE',
+            defaultValue: false,
+            description: 'Install Crossplane for Kubernetes-native IaC resource management'
+        )
     }
 
     stages {
@@ -122,6 +127,16 @@ pipeline {
                     parameters: [
                         string(name: 'ACTION', value: 'INSTALL')
                     ]
+            }
+        }
+
+        stage('Crossplane — Install') {
+            when { expression { params.INSTALL_CROSSPLANE } }
+            steps {
+                script {
+                    def s = load 'scripts/groovy/install-crossplane.groovy'
+                    s()
+                }
             }
         }
 

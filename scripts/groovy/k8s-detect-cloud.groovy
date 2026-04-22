@@ -1,7 +1,12 @@
 #!/usr/bin/env groovy
 
 def call() {
-    def tfDirMap = [
+    def iacTool = env.IaC_TOOL ?: 'terraform'
+    def tfDirMap = (iacTool == 'opentofu') ? [
+        AWS   : 'infra/opentofu/aws/eks',
+        GCP   : 'infra/opentofu/gcp/gke',
+        AZURE : 'infra/opentofu/azure/aks',
+    ] : [
         AWS   : 'infra/terraform/aws/eks',
         GCP   : 'infra/terraform/gcp/gke',
         AZURE : 'infra/terraform/azure/aks',

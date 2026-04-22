@@ -335,7 +335,68 @@ pipeline {
             }
         }
 
+        stage('Robusta') {
+            when { expression { params.ACTION == 'INSTALL' } }
+            steps {
+                script {
+                    def s = load 'scripts/groovy/observability-install-robusta.groovy'; s()
+                    def c = load 'scripts/groovy/observability-configure-robusta.groovy'; c()
+                    def e = load 'scripts/groovy/apply-k8s-enhancements.groovy'; e('monitoring')
+                }
+            }
+        }
+
+        stage('OpenCost') {
+            when { expression { params.ACTION == 'INSTALL' } }
+            steps {
+                script {
+                    def s = load 'scripts/groovy/observability-install-opencost.groovy'; s()
+                    def c = load 'scripts/groovy/observability-configure-opencost.groovy'; c()
+                    def e = load 'scripts/groovy/apply-k8s-enhancements.groovy'; e('monitoring')
+                }
+            }
+        }
+
+        stage('Goldilocks') {
+            when { expression { params.ACTION == 'INSTALL' } }
+            steps {
+                script {
+                    def s = load 'scripts/groovy/observability-install-goldilocks.groovy'; s()
+                    def c = load 'scripts/groovy/observability-configure-goldilocks.groovy'; c()
+                    def e = load 'scripts/groovy/apply-k8s-enhancements.groovy'; e('monitoring')
+                }
+            }
+        }
+
         // ── UNINSTALL (reverse order) ─────────────────────────────────────────
+
+        stage('Uninstall Goldilocks') {
+            when { expression { params.ACTION == 'UNINSTALL' } }
+            steps {
+                sh '''
+                    helm uninstall goldilocks -n monitoring --ignore-not-found || true
+                '''
+            }
+        }
+
+        stage('Uninstall OpenCost') {
+            when { expression { params.ACTION == 'UNINSTALL' } }
+            steps {
+                sh '''
+                    helm uninstall opencost -n monitoring --ignore-not-found || true
+                '''
+            }
+        }
+
+        stage('Uninstall Robusta') {
+            when { expression { params.ACTION == 'UNINSTALL' } }
+            steps {
+                sh '''
+                    helm uninstall robusta -n monitoring --ignore-not-found || true
+                    kubectl delete namespace monitoring --ignore-not-found || true
+                '''
+            }
+        }
 
         stage('Uninstall Pyroscope') {
             when { expression { params.ACTION == 'UNINSTALL' } }
