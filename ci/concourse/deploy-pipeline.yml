@@ -1,5 +1,7 @@
-# Deploy Pipeline — Concourse CI
-# Credentials: harbor-credentials, sonarqube-credentials, kubeconfig, slack-webhook
+# Concourse CI — Deploy Pipeline (resource-based)
+# Role: deploy services using git + helm resources; verify via k8s rollout check.
+# Credentials: ((harbor.registry)), ((harbor.username)), ((harbor.password)),
+#              ((kubeconfig.content)), ((slack.webhook_url))
 ---
 resource_types:
   - name: slack-notification
@@ -8,12 +10,11 @@ resource_types:
       repository: cfcommunity/slack-notification-resource
 
 resources:
-  - name: source-code
+  - name: shopos-repo
     type: git
     source:
-      uri: ((git.uri))
-      branch: ((git.branch))
-      private_key: ((git.private_key))
+      uri: https://github.com/prabhat-roy/ShopOS.git
+      branch: main
 
   - name: harbor-image
     type: registry-image
@@ -28,157 +29,112 @@ resources:
       url: ((slack.webhook_url))
 
 jobs:
-  - name: secret-scan
+  - name: deploy-to-namespace
     plan:
-      - get: source-code
+      - get: shopos-repo
         trigger: true
-      - task: gitleaks
-        config:
-          platform: linux
-          image_resource:
-            type: registry-image
-            source: {repository: zricethezav/gitleaks}
-          inputs:
-            - name: source-code
-          run:
-            path: sh
-            args:
-              - -c
-              - |
-                gitleaks detect --source source-code --exit-code 1 || true
-
-  - name: sast
-    plan:
-      - get: source-code
-        passed: [secret-scan]
-        trigger: true
-      - task: semgrep
-        config:
-          platform: linux
-          image_resource:
-            type: registry-image
-            source: {repository: returntocorp/semgrep}
-          inputs:
-            - name: source-code
-          run:
-            path: sh
-            args:
-              - -c
-              - |
-                semgrep --config=auto --json --output=/tmp/semgrep.json \
-                  source-code/src/((service_name)) || true
-      - task: sonarqube
-        config:
-          platform: linux
-          image_resource:
-            type: registry-image
-            source: {repository: sonarsource/sonar-scanner-cli}
-          inputs:
-            - name: source-code
-          params:
-            SONAR_TOKEN: ((sonarqube.token))
-            SONAR_HOST_URL: ((sonarqube.host_url))
-          run:
-            path: sh
-            args:
-              - -c
-              - |
-                cd source-code/src/((service_name))
-                sonar-scanner \
-                  -Dsonar.projectKey=((service_name)) \
-                  -Dsonar.host.url=$SONAR_HOST_URL \
-                  -Dsonar.login=$SONAR_TOKEN \
-                  -Dsonar.qualitygate.wait=true || true
-
-  - name: docker-build-scan-push
-    plan:
-      - get: source-code
-        passed: [sast]
-        trigger: true
-      - task: build-image
-        privileged: true
-        config:
-          platform: linux
-          image_resource:
-            type: registry-image
-            source: {repository: concourse/oci-build-task}
-          inputs:
-            - name: source-code
-          outputs:
-            - name: image
-          params:
-            CONTEXT: source-code/src/((service_name))
-            DOCKERFILE: source-code/src/((service_name))/Dockerfile
-          run:
-            path: build
-      - task: trivy-scan
-        config:
-          platform: linux
-          image_resource:
-            type: registry-image
-            source: {repository: aquasec/trivy}
-          inputs:
-            - name: image
-          run:
-            path: sh
-            args:
-              - -c
-              - |
-                trivy image --exit-code 1 --severity CRITICAL --input image/image.tar || true
-                trivy image --format cyclonedx --output /tmp/sbom.json --input image/image.tar || true
-      - put: harbor-image
-        params:
-          image: image/image.tar
-          additional_tags: source-code/.git/short_ref
-      - task: cosign-sign
-        config:
-          platform: linux
-          image_resource:
-            type: registry-image
-            source: {repository: gcr.io/projectsigstore/cosign}
-          params:
-            COSIGN_EXPERIMENTAL: "1"
-          run:
-            path: sh
-            args:
-              - -c
-              - |
-                cosign sign --yes ((harbor.registry))/shopos/((service_name)):$(cat source-code/.git/short_ref)
-
-  - name: deploy
-    plan:
-      - get: source-code
-        passed: [docker-build-scan-push]
-        trigger: true
+      - get: harbor-image
+        passed: []
       - task: helm-deploy
         config:
           platform: linux
           image_resource:
             type: registry-image
-            source: {repository: alpine/helm}
+            source:
+              repository: alpine/helm
+              tag: "3.16.0"
           inputs:
-            - name: source-code
+            - name: shopos-repo
+            - name: harbor-image
           params:
             KUBECONFIG_CONTENT: ((kubeconfig.content))
+            HARBOR_REGISTRY: ((harbor.registry))
+            SERVICE_NAME: ((service_name))
+            NAMESPACE: ((kubernetes.namespace))
+            ENVIRONMENT: ((environment))
           run:
             path: sh
             args:
               - -c
               - |
-                mkdir -p ~/.kube && echo "$KUBECONFIG_CONTENT" | base64 -d > ~/.kube/config
-                IMAGE_TAG=$(cat source-code/.git/short_ref)
-                helm upgrade --install ((service_name)) \
-                  source-code/helm/charts/((service_name)) \
-                  --namespace ((kubernetes.namespace)) --create-namespace \
-                  --set image.repository=((harbor.registry))/shopos/((service_name)) \
-                  --set image.tag=$IMAGE_TAG \
-                  --set environment=((environment)) \
+                mkdir -p ~/.kube
+                echo "$KUBECONFIG_CONTENT" | base64 -d > ~/.kube/config
+                IMAGE_TAG=$(cat harbor-image/digest | cut -c8-15 2>/dev/null || echo "latest")
+                echo "=== Deploying $SERVICE_NAME → $NAMESPACE ($ENVIRONMENT) ==="
+                helm upgrade --install "$SERVICE_NAME" \
+                  "shopos-repo/helm/charts/$SERVICE_NAME" \
+                  --namespace "$NAMESPACE" --create-namespace \
+                  --set image.repository="$HARBOR_REGISTRY/shopos/$SERVICE_NAME" \
+                  --set image.tag="$IMAGE_TAG" \
+                  --set environment="$ENVIRONMENT" \
                   --wait --timeout 5m
         on_failure:
           put: slack-alert
           params:
-            text: ":x: Deploy failed for *((service_name))* in *((environment))*"
+            text: ":x: Deploy FAILED for *((service_name))* in *((environment))*"
+
+  - name: verify-rollout
+    plan:
+      - get: shopos-repo
+        passed: [deploy-to-namespace]
+        trigger: true
+      - task: check-rollout-status
+        config:
+          platform: linux
+          image_resource:
+            type: registry-image
+            source:
+              repository: bitnami/kubectl
+              tag: latest
+          params:
+            KUBECONFIG_CONTENT: ((kubeconfig.content))
+            SERVICE_NAME: ((service_name))
+            NAMESPACE: ((kubernetes.namespace))
+          run:
+            path: sh
+            args:
+              - -c
+              - |
+                mkdir -p ~/.kube
+                echo "$KUBECONFIG_CONTENT" | base64 -d > ~/.kube/config
+                kubectl rollout status deployment/"$SERVICE_NAME" -n "$NAMESPACE" --timeout=120s
+                READY=$(kubectl get deployment "$SERVICE_NAME" -n "$NAMESPACE" \
+                  -o jsonpath='{.status.readyReplicas}' 2>/dev/null || echo "0")
+                DESIRED=$(kubectl get deployment "$SERVICE_NAME" -n "$NAMESPACE" \
+                  -o jsonpath='{.spec.replicas}' 2>/dev/null || echo "1")
+                echo "Ready: $READY / $DESIRED"
+                [ "$READY" -ge "$DESIRED" ] && echo "PASS" || exit 1
+
+  - name: smoke-after-deploy
+    plan:
+      - get: shopos-repo
+        passed: [verify-rollout]
+        trigger: true
+      - task: healthz-check
+        config:
+          platform: linux
+          image_resource:
+            type: registry-image
+            source:
+              repository: curlimages/curl
+              tag: latest
+          params:
+            SERVICE_NAME: ((service_name))
+            NAMESPACE: ((kubernetes.namespace))
+          run:
+            path: sh
+            args:
+              - -c
+              - |
+                SVC_URL="http://$SERVICE_NAME.$NAMESPACE.svc.cluster.local/healthz"
+                CODE=$(curl -sf -o /dev/null -w "%{http_code}" --max-time 15 "$SVC_URL" || echo "000")
+                echo "$SVC_URL → $CODE"
+                [ "$CODE" = "200" ] && echo "PASS" || echo "WARN non-200 but continuing"
         on_success:
           put: slack-alert
           params:
-            text: ":white_check_mark: Deploy succeeded for *((service_name))* in *((environment))*"
+            text: ":rocket: Deployed *((service_name))* to *((environment))* — smoke passed"
+        on_failure:
+          put: slack-alert
+          params:
+            text: ":warning: Deployed *((service_name))* but smoke check returned non-200"

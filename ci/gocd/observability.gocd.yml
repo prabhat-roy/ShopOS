@@ -1,4 +1,7 @@
-# Observability Stack Pipeline — GoCD
+# GoCD — Observability Stack Pipeline
+# Role: Progressive install of the full observability stack with manual gate before dashboards.
+#       metrics → [manual] dashboards+logs → tracing → configure
+# Credentials: KUBECONFIG_CONTENT, GRAFANA_ADMIN_PASSWORD, MINIO_SECRET_KEY, SLACK_WEBHOOK
 format_version: 10
 
 pipelines:
@@ -12,9 +15,11 @@ pipelines:
         branch: main
 
     stages:
-      - metrics:
+      - install-metrics:
+          approval:
+            type: success
           jobs:
-            prometheus:
+            prometheus-stack:
               elastic_profile_id: helm-agent
               tasks:
                 - exec:
@@ -28,9 +33,15 @@ pipelines:
                           --namespace observability --create-namespace \
                           --set prometheus.prometheusSpec.retention=30d \
                           --set prometheus.prometheusSpec.replicas=2 \
-                          --set grafana.enabled=false --wait --timeout 10m
+                          --set alertmanager.alertmanagerSpec.replicas=2 \
+                          --set grafana.enabled=false \
+                          --wait --timeout 10m
+                        echo "Prometheus stack installed"
 
-      - dashboards-logs:
+      - install-dashboards-logs:
+          approval:
+            type: manual
+          allow_only_on_success: true
           jobs:
             grafana:
               elastic_profile_id: helm-agent
@@ -48,6 +59,7 @@ pipelines:
                           --set persistence.enabled=true --set replicas=2 \
                           --wait --timeout 5m
                         kubectl apply -f observability/grafana/ 2>/dev/null || true
+                        echo "Grafana installed"
             loki:
               elastic_profile_id: helm-agent
               tasks:
@@ -67,8 +79,15 @@ pipelines:
                           --set loki.storage.s3.s3ForcePathStyle=true \
                           --set deploymentMode=SimpleScalable \
                           --wait --timeout 8m
+                        helm upgrade --install promtail grafana/promtail \
+                          --namespace observability \
+                          --set config.lokiAddress=http://loki.observability.svc:3100/loki/api/v1/push \
+                          --wait --timeout 5m || true
+                        echo "Loki + Promtail installed"
 
-      - tracing:
+      - install-tracing:
+          approval:
+            type: success
           jobs:
             jaeger:
               elastic_profile_id: helm-agent
@@ -83,8 +102,11 @@ pipelines:
                         helm upgrade --install jaeger jaegertracing/jaeger \
                           --namespace observability \
                           --set provisionDataStore.cassandra=false \
-                          --set collector.replicaCount=2 --set query.replicaCount=2 \
+                          --set allInOne.enabled=false \
+                          --set collector.replicaCount=2 \
+                          --set query.replicaCount=2 \
                           --wait --timeout 8m
+                        echo "Jaeger installed"
             otel-collector:
               elastic_profile_id: helm-agent
               tasks:
@@ -100,3 +122,33 @@ pipelines:
                           --set mode=daemonset \
                           --set config.exporters.otlp.endpoint=jaeger-collector.observability.svc:4317 \
                           --wait --timeout 5m
+                        echo "OTel Collector installed"
+
+      - configure-and-verify:
+          approval:
+            type: success
+          jobs:
+            health-check:
+              elastic_profile_id: curl-agent
+              tasks:
+                - exec:
+                    command: /bin/sh
+                    arguments:
+                      - -c
+                      - |
+                        PASS=0
+                        FAIL=0
+                        check() {
+                          local name=$1 url=$2
+                          CODE=$(curl -sf -o /dev/null -w "%{http_code}" --max-time 15 "$url" || echo "000")
+                          [ "$CODE" = "200" ] && { echo "PASS $name"; PASS=$((PASS+1)); } \
+                            || { echo "WARN $name ($CODE)"; }
+                        }
+                        check "Prometheus" "http://kube-prometheus-stack-prometheus.observability.svc:9090/-/ready"
+                        check "Grafana"    "http://grafana.observability.svc:3000/api/health"
+                        check "Loki"       "http://loki.observability.svc:3100/ready"
+                        check "Jaeger"     "http://jaeger-query.observability.svc:16686/"
+                        echo "Observability: $PASS endpoints healthy"
+                        curl -sf -X POST "$SLACK_WEBHOOK" \
+                          -H 'Content-type: application/json' \
+                          --data "{\"text\":\":chart_with_upwards_trend: *Observability stack ready* — Prometheus, Grafana, Loki, Jaeger — GoCD\"}" || true

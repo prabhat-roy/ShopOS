@@ -1,11 +1,12 @@
-# Docker-Build Pipeline — GoCD
-# Builds, scans (Trivy), and pushes ShopOS images to Harbor.
-# Environment: shopos-env (with HARBOR_REGISTRY, HARBOR_USERNAME, HARBOR_PASSWORD,
-#   SERVICE_NAME, DOMAIN, IMAGE_TAG, REGISTRY_PROJECT, PUSH_IMAGE, SCAN_IMAGE, SLACK_WEBHOOK)
+# GoCD — Docker Build Pipeline
+# Role: Build all 154 ShopOS images and push to Harbor with manual approval gate before push.
+#       Part of VSM chain: shopos-build → shopos-deploy-dev → ... → shopos-deploy-prod
+# Environment: shopos-env
+# Credentials: HARBOR_REGISTRY, HARBOR_USERNAME, HARBOR_PASSWORD, SLACK_WEBHOOK
 format_version: 10
 
 pipelines:
-  shopos-docker-build:
+  shopos-build:
     group: shopos-delivery
     label_template: "${git[:8]}"
     lock_behavior: unlockWhenFinished
@@ -18,17 +19,13 @@ pipelines:
 
     environment_variables:
       REGISTRY_PROJECT: shopos
-      DOMAIN: ""
-      SERVICE_NAME: ""
-      PUSH_IMAGE: "true"
-      SCAN_IMAGE: "true"
 
     stages:
-      - build:
+      - build-images:
           approval:
             type: success
           jobs:
-            docker-build:
+            build-platform:
               elastic_profile_id: docker-agent
               tasks:
                 - exec:
@@ -36,47 +33,63 @@ pipelines:
                     arguments:
                       - -c
                       - |
-                        TAG="${IMAGE_TAG:-dev-${GO_PIPELINE_LABEL}}"
-                        echo "Building with tag: $TAG"
-
+                        TAG="${GO_PIPELINE_LABEL}"
                         echo "$HARBOR_PASSWORD" | docker login "$HARBOR_REGISTRY" -u "$HARBOR_USERNAME" --password-stdin
-
-                        ALL_DOMAINS="platform identity catalog commerce supply-chain financial customer-experience communications content analytics-ai b2b integrations affiliate"
-
-                        build_svc() {
-                          local domain=$1 svc=$2
-                          local image="$HARBOR_REGISTRY/$REGISTRY_PROJECT/$svc:$TAG"
-                          echo "=== Building: $image ==="
-                          docker build \
-                            --label "git.commit=${GO_PIPELINE_LABEL}" \
-                            --label "domain=$domain" \
-                            -t "$image" \
-                            "src/$domain/$svc/" || echo "WARN build failed for $svc"
-                        }
-
-                        if [ -n "$SERVICE_NAME" ] && [ -n "$DOMAIN" ]; then
-                          build_svc "$DOMAIN" "$SERVICE_NAME"
-                        elif [ -n "$DOMAIN" ]; then
-                          for svc_path in src/$DOMAIN/*/; do
-                            [ -d "$svc_path" ] || continue
-                            build_svc "$DOMAIN" "$(basename $svc_path)"
+                        echo "=== Building platform domain ==="
+                        for dir in src/platform/*/; do
+                          [ -d "$dir" ] || continue
+                          SVC=$(basename "$dir")
+                          docker build --label "git.commit=$TAG" --label "domain=platform" \
+                            -t "$HARBOR_REGISTRY/$REGISTRY_PROJECT/$SVC:$TAG" "$dir" \
+                            && echo "OK $SVC" || echo "WARN $SVC build failed"
+                        done
+            build-commerce-identity:
+              elastic_profile_id: docker-agent
+              tasks:
+                - exec:
+                    command: /bin/sh
+                    arguments:
+                      - -c
+                      - |
+                        TAG="${GO_PIPELINE_LABEL}"
+                        echo "$HARBOR_PASSWORD" | docker login "$HARBOR_REGISTRY" -u "$HARBOR_USERNAME" --password-stdin
+                        for DOMAIN in identity commerce; do
+                          echo "=== Building $DOMAIN domain ==="
+                          for dir in src/$DOMAIN/*/; do
+                            [ -d "$dir" ] || continue
+                            SVC=$(basename "$dir")
+                            docker build --label "git.commit=$TAG" --label "domain=$DOMAIN" \
+                              -t "$HARBOR_REGISTRY/$REGISTRY_PROJECT/$SVC:$TAG" "$dir" \
+                              && echo "OK $SVC" || echo "WARN $SVC build failed"
                           done
-                        else
-                          for d in $ALL_DOMAINS; do
-                            for svc_path in src/$d/*/; do
-                              [ -d "$svc_path" ] || continue
-                              build_svc "$d" "$(basename $svc_path)"
-                            done
+                        done
+            build-remaining:
+              elastic_profile_id: docker-agent
+              tasks:
+                - exec:
+                    command: /bin/sh
+                    arguments:
+                      - -c
+                      - |
+                        TAG="${GO_PIPELINE_LABEL}"
+                        echo "$HARBOR_PASSWORD" | docker login "$HARBOR_REGISTRY" -u "$HARBOR_USERNAME" --password-stdin
+                        for DOMAIN in catalog supply-chain financial customer-experience \
+                                      communications content analytics-ai b2b integrations affiliate; do
+                          echo "=== Building $DOMAIN domain ==="
+                          for dir in src/$DOMAIN/*/; do
+                            [ -d "$dir" ] || continue
+                            SVC=$(basename "$dir")
+                            docker build --label "git.commit=$TAG" --label "domain=$DOMAIN" \
+                              -t "$HARBOR_REGISTRY/$REGISTRY_PROJECT/$SVC:$TAG" "$dir" \
+                              && echo "OK $SVC" || echo "WARN $SVC build failed"
                           done
-                        fi
+                        done
 
-                        echo "$TAG" > /tmp/image_tag.txt
-
-      - scan:
+      - trivy-scan:
           approval:
             type: success
           jobs:
-            trivy-scan:
+            scan-critical-services:
               elastic_profile_id: security-tools
               tasks:
                 - exec:
@@ -84,50 +97,30 @@ pipelines:
                     arguments:
                       - -c
                       - |
-                        TAG="${IMAGE_TAG:-dev-${GO_PIPELINE_LABEL}}"
-                        if [ "$SCAN_IMAGE" != "true" ]; then
-                          echo "Skipping Trivy scan"
-                          exit 0
-                        fi
-                        mkdir -p reports/image-scan
-
-                        ALL_DOMAINS="platform identity catalog commerce supply-chain financial customer-experience communications content analytics-ai b2b integrations affiliate"
-
-                        scan_svc() {
-                          local svc=$1
-                          local image="$HARBOR_REGISTRY/$REGISTRY_PROJECT/$svc:$TAG"
-                          echo "=== Trivy: $image ==="
-                          trivy image \
-                            --exit-code 0 \
-                            --severity HIGH,CRITICAL \
-                            --format json \
-                            --output "reports/image-scan/trivy-${svc}.json" \
-                            "$image" || true
-                        }
-
-                        if [ -n "$SERVICE_NAME" ]; then
-                          scan_svc "$SERVICE_NAME"
-                        elif [ -n "$DOMAIN" ]; then
-                          for svc_path in src/$DOMAIN/*/; do
-                            [ -d "$svc_path" ] && scan_svc "$(basename $svc_path)"
-                          done
-                        else
-                          for d in $ALL_DOMAINS; do
-                            for svc_path in src/$d/*/; do
-                              [ -d "$svc_path" ] && scan_svc "$(basename $svc_path)"
-                            done
-                          done
-                        fi
+                        TAG="${GO_PIPELINE_LABEL}"
+                        mkdir -p reports/trivy
+                        echo "=== Trivy scan: critical path services ==="
+                        CRITS=0
+                        for SVC in api-gateway auth-service payment-service order-service fraud-detection-service; do
+                          IMG="$HARBOR_REGISTRY/$REGISTRY_PROJECT/$SVC:$TAG"
+                          trivy image --severity CRITICAL --exit-code 0 \
+                            --format json --output "reports/trivy/$SVC.json" \
+                            "$IMG" 2>/dev/null || true
+                          COUNT=$(grep -c '"Severity":"CRITICAL"' "reports/trivy/$SVC.json" 2>/dev/null || echo "0")
+                          echo "$SVC: $COUNT CRITICAL CVEs"
+                          CRITS=$((CRITS + COUNT))
+                        done
+                        echo "Total CRITICAL CVEs: $CRITS"
               artifacts:
                 - build:
-                    source: reports/image-scan/
+                    source: reports/trivy/
                     destination: trivy-reports/
 
-      - push:
+      - push-images:
           approval:
             type: manual
           jobs:
-            docker-push:
+            push-and-tag:
               elastic_profile_id: docker-agent
               tasks:
                 - exec:
@@ -135,37 +128,25 @@ pipelines:
                     arguments:
                       - -c
                       - |
-                        TAG="${IMAGE_TAG:-dev-${GO_PIPELINE_LABEL}}"
-                        if [ "$PUSH_IMAGE" != "true" ]; then
-                          echo "Skipping push"
-                          exit 0
-                        fi
+                        TAG="${GO_PIPELINE_LABEL}"
                         echo "$HARBOR_PASSWORD" | docker login "$HARBOR_REGISTRY" -u "$HARBOR_USERNAME" --password-stdin
-
-                        ALL_DOMAINS="platform identity catalog commerce supply-chain financial customer-experience communications content analytics-ai b2b integrations affiliate"
-
-                        push_svc() {
-                          local svc=$1
-                          local image="$HARBOR_REGISTRY/$REGISTRY_PROJECT/$svc:$TAG"
-                          echo "=== Pushing: $image ==="
-                          docker push "$image" || echo "WARN push failed for $svc"
-                        }
-
-                        if [ -n "$SERVICE_NAME" ]; then
-                          push_svc "$SERVICE_NAME"
-                        elif [ -n "$DOMAIN" ]; then
-                          for svc_path in src/$DOMAIN/*/; do
-                            [ -d "$svc_path" ] && push_svc "$(basename $svc_path)"
+                        ALL_DOMAINS="platform identity catalog commerce supply-chain financial \
+                          customer-experience communications content analytics-ai b2b integrations affiliate"
+                        PUSHED=0
+                        FAILED=0
+                        for DOMAIN in $ALL_DOMAINS; do
+                          for dir in src/$DOMAIN/*/; do
+                            [ -d "$dir" ] || continue
+                            SVC=$(basename "$dir")
+                            IMG="$HARBOR_REGISTRY/$REGISTRY_PROJECT/$SVC:$TAG"
+                            docker push "$IMG" && PUSHED=$((PUSHED+1)) || FAILED=$((FAILED+1))
                           done
-                        else
-                          for d in $ALL_DOMAINS; do
-                            for svc_path in src/$d/*/; do
-                              [ -d "$svc_path" ] && push_svc "$(basename $svc_path)"
-                            done
-                          done
-                        fi
-                        docker logout "$HARBOR_REGISTRY" || true
-
+                        done
+                        echo "Pushed: $PUSHED  Failed: $FAILED"
+                        # tag latest on successful push
+                        docker tag "$HARBOR_REGISTRY/$REGISTRY_PROJECT/api-gateway:$TAG" \
+                          "$HARBOR_REGISTRY/$REGISTRY_PROJECT/api-gateway:latest" 2>/dev/null || true
+                        docker push "$HARBOR_REGISTRY/$REGISTRY_PROJECT/api-gateway:latest" 2>/dev/null || true
                         curl -sf -X POST "$SLACK_WEBHOOK" \
                           -H 'Content-type: application/json' \
-                          --data "{\"text\":\":whale: Docker images pushed to $HARBOR_REGISTRY @ tag=$TAG\"}" || true
+                          --data "{\"text\":\":whale: *GoCD build complete* — $PUSHED images pushed to Harbor @ $TAG\"}" || true

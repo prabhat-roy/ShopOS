@@ -1,53 +1,184 @@
-# Networking Infrastructure Pipeline — Concourse CI
-# Credentials: kubeconfig
+# Concourse CI — Networking Health Check Pipeline (resource-based)
+# Role: Periodically verify Traefik, Consul, and Istio control plane health.
+#       Nightly connectivity report. Install jobs are manual-trigger only.
+# Credentials: ((kubeconfig.content)), ((slack.webhook_url))
 ---
+resource_types:
+  - name: slack-notification
+    type: docker-image
+    source:
+      repository: cfcommunity/slack-notification-resource
+
 resources:
+  - name: shopos-repo
+    type: git
+    source:
+      uri: https://github.com/prabhat-roy/ShopOS.git
+      branch: main
+
+  - name: networking-check
+    type: time
+    source:
+      interval: 15m
+
+  - name: nightly-check
+    type: time
+    source:
+      interval: 24h
+      start: 4:00 AM
+      stop: 5:00 AM
+      location: UTC
+
   - name: trigger-manual
     type: time
     source:
       interval: 8760h
 
-jobs:
-  - name: install-cilium
-    plan:
-      - get: trigger-manual
-        trigger: false
-      - task: helm-install
-        config:
-          platform: linux
-          image_resource:
-            type: registry-image
-            source: {repository: alpine/helm}
-          params:
-            KUBECONFIG_CONTENT: ((kubeconfig.content))
-            ACTION: ((action))
-          run:
-            path: sh
-            args:
-              - -c
-              - |
-                mkdir -p ~/.kube && echo "$KUBECONFIG_CONTENT" | base64 -d > ~/.kube/config
-                if [ "$ACTION" = "UNINSTALL" ]; then
-                  helm uninstall cilium -n kube-system 2>/dev/null || true; exit 0
-                fi
-                helm repo add cilium https://helm.cilium.io --force-update
-                helm upgrade --install cilium cilium/cilium \
-                  --namespace kube-system \
-                  --set hubble.enabled=true --set hubble.relay.enabled=true \
-                  --set hubble.ui.enabled=true --set prometheus.enabled=true \
-                  --wait --timeout 8m
+  - name: slack-alert
+    type: slack-notification
+    source:
+      url: ((slack.webhook_url))
 
-  - name: install-istio
+jobs:
+  - name: check-traefik-health
     plan:
-      - get: trigger-manual
-        trigger: false
-        passed: [install-cilium]
-      - task: helm-install
+      - get: networking-check
+        trigger: true
+      - task: traefik-ping
         config:
           platform: linux
           image_resource:
             type: registry-image
-            source: {repository: alpine/helm}
+            source:
+              repository: curlimages/curl
+              tag: latest
+          run:
+            path: sh
+            args:
+              - -c
+              - |
+                TRAEFIK_URL="http://traefik.networking.svc:9000"
+                CODE=$(curl -sf -o /dev/null -w "%{http_code}" --max-time 10 "$TRAEFIK_URL/ping" || echo "000")
+                echo "Traefik /ping → $CODE"
+                [ "$CODE" = "200" ] && echo "PASS" || { echo "FAIL"; exit 1; }
+        on_failure:
+          put: slack-alert
+          params:
+            text: ":warning: *Traefik health check FAILED* — /ping returned non-200 (Concourse)"
+
+  - name: check-consul-leader
+    plan:
+      - get: networking-check
+        trigger: true
+      - task: consul-leader
+        config:
+          platform: linux
+          image_resource:
+            type: registry-image
+            source:
+              repository: curlimages/curl
+              tag: latest
+          run:
+            path: sh
+            args:
+              - -c
+              - |
+                CONSUL_URL="http://consul-server.consul.svc:8500"
+                LEADER=$(curl -sf --max-time 10 "$CONSUL_URL/v1/status/leader" 2>/dev/null || echo "")
+                echo "Consul leader: $LEADER"
+                [ -n "$LEADER" ] && [ "$LEADER" != '""' ] && echo "PASS" || echo "WARN no Consul leader (may not be installed)"
+
+  - name: check-istio-control-plane
+    plan:
+      - get: networking-check
+        trigger: true
+      - task: istiod-ready
+        config:
+          platform: linux
+          image_resource:
+            type: registry-image
+            source:
+              repository: bitnami/kubectl
+              tag: latest
+          params:
+            KUBECONFIG_CONTENT: ((kubeconfig.content))
+          run:
+            path: sh
+            args:
+              - -c
+              - |
+                mkdir -p ~/.kube
+                echo "$KUBECONFIG_CONTENT" | base64 -d > ~/.kube/config
+                READY=$(kubectl get deployment istiod -n istio-system \
+                  -o jsonpath='{.status.readyReplicas}' 2>/dev/null || echo "0")
+                echo "istiod ready replicas: $READY"
+                [ "${READY:-0}" -gt 0 ] && echo "PASS" || echo "WARN istiod not ready (may not be installed)"
+
+  - name: nightly-networking-report
+    plan:
+      - get: nightly-check
+        trigger: true
+      - task: full-networking-health
+        config:
+          platform: linux
+          image_resource:
+            type: registry-image
+            source:
+              repository: bitnami/kubectl
+              tag: latest
+          params:
+            KUBECONFIG_CONTENT: ((kubeconfig.content))
+          run:
+            path: sh
+            args:
+              - -c
+              - |
+                mkdir -p ~/.kube
+                echo "$KUBECONFIG_CONTENT" | base64 -d > ~/.kube/config
+                echo "=== Nightly Networking Health Report ==="
+                FAIL=0
+
+                # Traefik
+                kubectl get deployment traefik -n networking 2>/dev/null && echo "PASS  Traefik deployment" || { echo "FAIL  Traefik"; FAIL=$((FAIL+1)); }
+
+                # Istiod
+                ISTIOD=$(kubectl get deployment istiod -n istio-system -o jsonpath='{.status.readyReplicas}' 2>/dev/null || echo "0")
+                [ "${ISTIOD:-0}" -gt 0 ] && echo "PASS  istiod ($ISTIOD replicas)" || echo "WARN  istiod not ready"
+
+                # Cilium
+                CILIUM=$(kubectl get daemonset cilium -n kube-system -o jsonpath='{.status.numberReady}' 2>/dev/null || echo "0")
+                [ "${CILIUM:-0}" -gt 0 ] && echo "PASS  Cilium ($CILIUM nodes)" || echo "WARN  Cilium not ready"
+
+                # Consul
+                CONSUL=$(kubectl get statefulset consul-server -n consul -o jsonpath='{.status.readyReplicas}' 2>/dev/null || echo "0")
+                [ "${CONSUL:-0}" -gt 0 ] && echo "PASS  Consul ($CONSUL replicas)" || echo "WARN  Consul not running"
+
+                echo ""
+                echo "Networking report complete — $FAIL critical failures"
+                [ "$FAIL" -eq 0 ] || exit 1
+        on_failure:
+          put: slack-alert
+          params:
+            text: ":rotating_light: *Nightly networking health FAILED* — critical networking components down (Concourse)"
+        on_success:
+          put: slack-alert
+          params:
+            text: ":white_check_mark: *Nightly networking health PASS* — Traefik, Istio, Cilium healthy (Concourse)"
+
+  - name: install-networking
+    plan:
+      - get: shopos-repo
+      - get: trigger-manual
+        trigger: false
+      - task: helm-install-networking
+        config:
+          platform: linux
+          image_resource:
+            type: registry-image
+            source:
+              repository: alpine/helm
+          inputs:
+            - name: shopos-repo
           params:
             KUBECONFIG_CONTENT: ((kubeconfig.content))
             ACTION: ((action))
@@ -57,10 +188,15 @@ jobs:
               - -c
               - |
                 mkdir -p ~/.kube && echo "$KUBECONFIG_CONTENT" | base64 -d > ~/.kube/config
-                if [ "$ACTION" = "UNINSTALL" ]; then
-                  helm uninstall istio-ingress istiod istio-base -n istio-system 2>/dev/null || true; exit 0
-                fi
-                helm repo add istio https://istio-release.storage.googleapis.com/charts --force-update
+                [ "$ACTION" = "UNINSTALL" ] && {
+                  helm uninstall traefik -n networking 2>/dev/null || true
+                  helm uninstall istio-ingress istiod istio-base -n istio-system 2>/dev/null || true
+                  helm uninstall cilium -n kube-system 2>/dev/null || true
+                  exit 0
+                }
+                helm repo add istio https://istio-release.storage.googleapis.com/charts \
+                  traefik https://traefik.github.io/charts \
+                  cilium https://helm.cilium.io --force-update
                 helm upgrade --install istio-base istio/base \
                   --namespace istio-system --create-namespace --wait --timeout 3m
                 helm upgrade --install istiod istio/istiod \
@@ -69,67 +205,14 @@ jobs:
                   --wait --timeout 5m
                 helm upgrade --install istio-ingress istio/gateway \
                   --namespace istio-ingress --create-namespace --wait --timeout 5m
-
-  - name: install-traefik
-    plan:
-      - get: trigger-manual
-        trigger: false
-        passed: [install-cilium]
-      - task: helm-install
-        config:
-          platform: linux
-          image_resource:
-            type: registry-image
-            source: {repository: alpine/helm}
-          params:
-            KUBECONFIG_CONTENT: ((kubeconfig.content))
-            ACTION: ((action))
-          run:
-            path: sh
-            args:
-              - -c
-              - |
-                mkdir -p ~/.kube && echo "$KUBECONFIG_CONTENT" | base64 -d > ~/.kube/config
-                if [ "$ACTION" = "UNINSTALL" ]; then
-                  helm uninstall traefik -n networking 2>/dev/null || true; exit 0
-                fi
-                helm repo add traefik https://traefik.github.io/charts --force-update
                 helm upgrade --install traefik traefik/traefik \
                   --namespace networking --create-namespace \
                   --set deployment.replicas=2 \
                   --set ingressClass.enabled=true --set ingressClass.isDefaultClass=true \
                   --set metrics.prometheus.enabled=true \
                   --wait --timeout 5m
-
-  - name: install-consul
-    plan:
-      - get: trigger-manual
-        trigger: false
-        passed: [install-istio, install-traefik]
-      - task: helm-install
-        config:
-          platform: linux
-          image_resource:
-            type: registry-image
-            source: {repository: alpine/helm}
+                echo "Networking stack installed"
+        on_failure:
+          put: slack-alert
           params:
-            KUBECONFIG_CONTENT: ((kubeconfig.content))
-            ACTION: ((action))
-            CONSUL_ENABLED: ((consul_enabled))
-          run:
-            path: sh
-            args:
-              - -c
-              - |
-                [ "$CONSUL_ENABLED" = "true" ] || { echo "Skipped"; exit 0; }
-                mkdir -p ~/.kube && echo "$KUBECONFIG_CONTENT" | base64 -d > ~/.kube/config
-                if [ "$ACTION" = "UNINSTALL" ]; then
-                  helm uninstall consul -n consul 2>/dev/null || true; exit 0
-                fi
-                helm repo add hashicorp https://helm.releases.hashicorp.com --force-update
-                helm upgrade --install consul hashicorp/consul \
-                  --namespace consul --create-namespace \
-                  --set global.datacenter=shopos-dc1 \
-                  --set server.replicas=3 \
-                  --set connectInject.enabled=true \
-                  --wait --timeout 8m
+            text: ":x: *Networking install FAILED* — Concourse"

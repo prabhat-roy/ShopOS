@@ -1,22 +1,17 @@
+# Drone CI — Networking Infrastructure Install
+# Role: install Traefik, Istio, Consul, MetalLB, Kong, external-dns via Helm containers.
+# Secrets: kubeconfig_b64, slack_webhook
+# Params: ACTION=INSTALL|UNINSTALL|CONFIGURE
+
 kind: pipeline
 type: docker
 name: networking
 
 trigger:
-  event:
-    - custom
-
-# Secrets required:
-#   kubeconfig_b64
-
-# Variables (set via Drone UI / API):
-#   ACTION — INSTALL | UNINSTALL | CONFIGURE
-#   ISTIO, LINKERD, CONSUL, TRAEFIK, NGINX_INGRESS, KONG, EXTERNAL_DNS
-#   METALLB, CERT_MANAGER, GATEWAY_API
+  event: [custom]
 
 steps:
-
-  - name: load-kubeconfig
+  - name: setup-kubeconfig
     image: alpine:3.21
     environment:
       KUBECONFIG_B64:
@@ -24,159 +19,85 @@ steps:
     commands:
       - echo "$KUBECONFIG_B64" | base64 -d > /tmp/kubeconfig
 
-  # ── Service Mesh ───────────────────────────────────────────────────────────
-
-  - name: install-istio
-    image: alpine:3.21
-    environment:
-      KUBECONFIG: /tmp/kubeconfig
-    commands:
-      - apk add --no-cache curl
-      - curl -L https://istio.io/downloadIstio | ISTIO_VERSION=1.23.0 sh -
-      - ./istio-*/bin/istioctl install --set profile=default -y
-      - GATEWAY_IP=$(kubectl get svc istio-ingressgateway -n istio-system -o jsonpath='{.status.loadBalancer.ingress[0].ip}' 2>/dev/null || echo "")
-      - sed -i '/^ISTIO_GATEWAY_URL=/d' infra.env && echo "ISTIO_GATEWAY_URL=http://$GATEWAY_IP" >> infra.env
-    when:
-      branch: [main]
-
-  - name: install-linkerd
-    image: alpine:3.21
-    environment:
-      KUBECONFIG: /tmp/kubeconfig
-    commands:
-      - apk add --no-cache curl
-      - curl -fsL https://run.linkerd.io/install | sh
-      - export PATH=$PATH:$HOME/.linkerd2/bin
-      - linkerd install --crds | kubectl apply -f -
-      - linkerd install | kubectl apply -f -
-      - linkerd check
-    when:
-      branch: [main]
-
-  - name: install-consul
-    image: alpine/helm:3.16.2
-    environment:
-      KUBECONFIG: /tmp/kubeconfig
-    commands:
-      - helm repo add hashicorp https://helm.releases.hashicorp.com
-      - helm upgrade --install consul hashicorp/consul --namespace consul --create-namespace \
-          --set global.name=consul --set connectInject.enabled=true \
-          --wait --timeout 10m
-      - CONSUL_IP=$(kubectl get svc consul-ui -n consul -o jsonpath='{.spec.clusterIP}' 2>/dev/null)
-      - sed -i '/^CONSUL_URL=/d' infra.env && echo "CONSUL_URL=http://$CONSUL_IP:8500" >> infra.env
-    when:
-      branch: [main]
-
   - name: install-traefik
     image: alpine/helm:3.16.2
     environment:
       KUBECONFIG: /tmp/kubeconfig
     commands:
-      - helm repo add traefik https://traefik.github.io/charts
-      - helm upgrade --install traefik traefik/traefik --namespace traefik --create-namespace --wait --timeout 5m
-      - TRAEFIK_IP=$(kubectl get svc traefik -n traefik -o jsonpath='{.status.loadBalancer.ingress[0].ip}' 2>/dev/null || kubectl get svc traefik -n traefik -o jsonpath='{.spec.clusterIP}' 2>/dev/null)
-      - sed -i '/^TRAEFIK_URL=/d' infra.env && echo "TRAEFIK_URL=http://$TRAEFIK_IP" >> infra.env
-    when:
-      branch: [main]
-
-  - name: install-nginx-ingress
-    image: alpine/helm:3.16.2
-    environment:
-      KUBECONFIG: /tmp/kubeconfig
-    commands:
-      - helm repo add ingress-nginx https://kubernetes.github.io/ingress-nginx
-      - helm upgrade --install ingress-nginx ingress-nginx/ingress-nginx --namespace ingress-nginx --create-namespace --wait --timeout 5m
-    when:
-      branch: [main]
-
-  - name: install-kong
-    image: alpine/helm:3.16.2
-    environment:
-      KUBECONFIG: /tmp/kubeconfig
-    commands:
-      - helm repo add kong https://charts.konghq.com
-      - helm upgrade --install kong kong/kong --namespace kong --create-namespace \
-          --set ingressController.installCRDs=false \
-          --wait --timeout 5m
-      - KONG_ADMIN_IP=$(kubectl get svc kong-kong-admin -n kong -o jsonpath='{.spec.clusterIP}' 2>/dev/null)
-      - sed -i '/^KONG_ADMIN_URL=/d' infra.env && echo "KONG_ADMIN_URL=http://$KONG_ADMIN_IP:8001" >> infra.env
-    when:
-      branch: [main]
-
-  - name: install-external-dns
-    image: alpine/helm:3.16.2
-    environment:
-      KUBECONFIG: /tmp/kubeconfig
-    commands:
-      - helm repo add external-dns https://kubernetes-sigs.github.io/external-dns
-      - helm upgrade --install external-dns external-dns/external-dns --namespace external-dns --create-namespace --wait --timeout 5m
-    when:
-      branch: [main]
+      - '[ "${ACTION:-INSTALL}" = "INSTALL" ] || exit 0'
+      - helm repo add traefik https://traefik.github.io/charts --force-update
+      - helm upgrade --install traefik traefik/traefik \
+          --namespace traefik --create-namespace --wait --timeout 5m || true
+    depends_on: [setup-kubeconfig]
 
   - name: install-metallb
     image: alpine/helm:3.16.2
     environment:
       KUBECONFIG: /tmp/kubeconfig
     commands:
-      - helm repo add metallb https://metallb.github.io/metallb
-      - helm upgrade --install metallb metallb/metallb --namespace metallb-system --create-namespace --wait --timeout 5m
-    when:
-      branch: [main]
+      - '[ "${ACTION:-INSTALL}" = "INSTALL" ] || exit 0'
+      - helm repo add metallb https://metallb.github.io/metallb --force-update
+      - helm upgrade --install metallb metallb/metallb \
+          --namespace metallb-system --create-namespace --wait --timeout 5m || true
+    depends_on: [setup-kubeconfig]
 
-  - name: uninstall-tools
+  - name: install-consul
     image: alpine/helm:3.16.2
     environment:
       KUBECONFIG: /tmp/kubeconfig
     commands:
-      - helm uninstall traefik      -n traefik       --ignore-not-found || true
-      - helm uninstall ingress-nginx -n ingress-nginx --ignore-not-found || true
-      - helm uninstall kong         -n kong          --ignore-not-found || true
-      - helm uninstall consul       -n consul        --ignore-not-found || true
-      - helm uninstall external-dns -n external-dns  --ignore-not-found || true
-      - helm uninstall metallb      -n metallb-system --ignore-not-found || true
-    when:
-      branch: [main]
+      - '[ "${ACTION:-INSTALL}" = "INSTALL" ] || exit 0'
+      - helm repo add hashicorp https://helm.releases.hashicorp.com --force-update
+      - helm upgrade --install consul hashicorp/consul \
+          --namespace consul --create-namespace \
+          --set global.name=consul \
+          --set connectInject.enabled=true \
+          --wait --timeout 10m || true
+    depends_on: [setup-kubeconfig]
 
-  - name: configure-istio-mtls
-    image: bitnami/kubectl:latest
+  - name: install-kong
+    image: alpine/helm:3.16.2
     environment:
       KUBECONFIG: /tmp/kubeconfig
     commands:
-      - |
-        kubectl apply -f - <<EOF
-        apiVersion: security.istio.io/v1beta1
-        kind: PeerAuthentication
-        metadata:
-          name: default
-          namespace: istio-system
-        spec:
-          mtls:
-            mode: STRICT
-        EOF
-      - for ns in platform identity catalog commerce supply-chain financial customer-experience communications content analytics-ai b2b integrations affiliate; do
-          kubectl label namespace $ns istio-injection=enabled --overwrite 2>/dev/null || true
-        done
-    when:
-      branch: [main]
+      - '[ "${ACTION:-INSTALL}" = "INSTALL" ] || exit 0'
+      - helm repo add kong https://charts.konghq.com --force-update
+      - helm upgrade --install kong kong/kong \
+          --namespace kong --create-namespace \
+          --set ingressController.installCRDs=false \
+          --wait --timeout 5m || true
+    depends_on: [setup-kubeconfig]
 
-  - name: configure-linkerd-injection
-    image: bitnami/kubectl:latest
+  - name: install-external-dns
+    image: alpine/helm:3.16.2
     environment:
       KUBECONFIG: /tmp/kubeconfig
     commands:
-      - for ns in platform identity catalog commerce supply-chain financial customer-experience communications content analytics-ai b2b integrations affiliate; do
-          kubectl annotate namespace $ns linkerd.io/inject=enabled --overwrite 2>/dev/null || true
-        done
-    when:
-      branch: [main]
+      - '[ "${ACTION:-INSTALL}" = "INSTALL" ] || exit 0'
+      - helm repo add external-dns https://kubernetes-sigs.github.io/external-dns --force-update
+      - helm upgrade --install external-dns external-dns/external-dns \
+          --namespace external-dns --create-namespace --wait --timeout 5m || true
+    depends_on: [setup-kubeconfig]
+
+  - name: install-nginx-ingress
+    image: alpine/helm:3.16.2
+    environment:
+      KUBECONFIG: /tmp/kubeconfig
+    commands:
+      - '[ "${ACTION:-INSTALL}" = "INSTALL" ] || exit 0'
+      - helm repo add ingress-nginx https://kubernetes.github.io/ingress-nginx --force-update
+      - helm upgrade --install ingress-nginx ingress-nginx/ingress-nginx \
+          --namespace ingress-nginx --create-namespace --wait --timeout 5m || true
+    depends_on: [setup-kubeconfig]
 
   - name: configure-traefik-middlewares
     image: bitnami/kubectl:latest
     environment:
       KUBECONFIG: /tmp/kubeconfig
     commands:
+      - '[ "${ACTION}" = "CONFIGURE" ] || [ "${ACTION:-INSTALL}" = "INSTALL" ] || exit 0'
       - |
-        kubectl apply -f - <<EOF
+        kubectl apply -f - <<EOF || true
         apiVersion: traefik.io/v1alpha1
         kind: Middleware
         metadata:
@@ -186,27 +107,33 @@ steps:
           rateLimit:
             average: 100
             burst: 200
-        ---
-        apiVersion: traefik.io/v1alpha1
-        kind: IngressClass
-        metadata:
-          name: traefik
-          annotations:
-            ingressclass.kubernetes.io/is-default-class: "true"
-        spec:
-          controller: traefik.io/ingress-controller
         EOF
-    when:
-      branch: [main]
+    depends_on: [install-traefik]
 
   - name: configure-kong-plugins
-    image: alpine/curl:latest
+    image: curlimages/curl:latest
     commands:
-      - KONG_ADMIN_URL=$(grep '^KONG_ADMIN_URL=' infra.env | cut -d= -f2 || echo "http://kong-kong-admin.kong.svc.cluster.local:8001")
-      - curl -sf -X POST $KONG_ADMIN_URL/plugins -d "name=rate-limiting&config.minute=1000&config.policy=local" || true
-      - curl -sf -X POST $KONG_ADMIN_URL/plugins -d "name=request-size-limiting&config.allowed_payload_size=10" || true
-    when:
-      branch: [main]
+      - '[ "${ACTION}" = "CONFIGURE" ] || [ "${ACTION:-INSTALL}" = "INSTALL" ] || exit 0'
+      - KONG_ADMIN="http://kong-kong-admin.kong.svc.cluster.local:8001"
+      - curl -sf -X POST "$KONG_ADMIN/plugins" \
+          -d "name=rate-limiting&config.minute=1000&config.policy=local" || true
+      - curl -sf -X POST "$KONG_ADMIN/plugins" \
+          -d "name=request-size-limiting&config.allowed_payload_size=10" || true
+    depends_on: [install-kong]
+
+  - name: uninstall-networking
+    image: alpine/helm:3.16.2
+    environment:
+      KUBECONFIG: /tmp/kubeconfig
+    commands:
+      - '[ "${ACTION}" = "UNINSTALL" ] || exit 0'
+      - helm uninstall traefik       -n traefik        --ignore-not-found || true
+      - helm uninstall metallb       -n metallb-system --ignore-not-found || true
+      - helm uninstall consul        -n consul         --ignore-not-found || true
+      - helm uninstall kong          -n kong           --ignore-not-found || true
+      - helm uninstall external-dns  -n external-dns   --ignore-not-found || true
+      - helm uninstall ingress-nginx -n ingress-nginx  --ignore-not-found || true
+    depends_on: [setup-kubeconfig]
 
   - name: notify-slack
     image: plugins/slack
@@ -218,7 +145,7 @@ steps:
         {{#success build.status}}
         :white_check_mark: *Networking {{build.params.ACTION}} succeeded* — build {{build.number}}
         {{else}}
-        :x: *Networking {{build.params.ACTION}} failed* — build {{build.number}}
+        :x: *Networking {{build.params.ACTION}} FAILED* — build {{build.number}}
         {{/success}}
     when:
       status: [success, failure]

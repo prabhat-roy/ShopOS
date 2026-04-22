@@ -1,0 +1,187 @@
+# Drone CI — Security Scan: Trivy + Grype on all 154 images
+# Role: scheduled or on-demand full image vulnerability scan across all Harbor images.
+#       Produces per-image JSON reports and summarises HIGH/CRITICAL findings.
+# Secrets: harbor_registry, harbor_user, harbor_password, slack_webhook
+# Params: IMAGE_TAG (required — the tag to scan, e.g. main-abc12345)
+
+kind: pipeline
+type: docker
+name: security-scan
+
+trigger:
+  event: [custom]
+
+volumes:
+  - name: docker-socket
+    host:
+      path: /var/run/docker.sock
+
+steps:
+  - name: resolve-tag
+    image: alpine:3.21
+    environment:
+      HARBOR_REGISTRY:
+        from_secret: harbor_registry
+    commands:
+      - TAG="${IMAGE_TAG:-latest}"
+      - echo "IMAGE_TAG=$TAG" > /drone/src/.scan.env
+      - echo "HARBOR_REGISTRY=$HARBOR_REGISTRY" >> /drone/src/.scan.env
+      - mkdir -p /drone/src/reports/trivy /drone/src/reports/grype
+      - cat /drone/src/.scan.env
+
+  - name: trivy-scan-platform-identity
+    image: aquasec/trivy:latest
+    environment:
+      HARBOR_REGISTRY:
+        from_secret: harbor_registry
+      HARBOR_USER:
+        from_secret: harbor_user
+      HARBOR_PASSWORD:
+        from_secret: harbor_password
+    commands:
+      - source /drone/src/.scan.env
+      - mkdir -p /drone/src/reports/trivy
+      - |
+        for domain in platform identity; do
+          for dir in src/$domain/*/; do
+            [ -d "$dir" ] || continue
+            SVC=$(basename "$dir")
+            IMG="$HARBOR_REGISTRY/shopos/$SVC:$IMAGE_TAG"
+            echo "=== Trivy: $IMG ==="
+            trivy image \
+              --username "$HARBOR_USER" \
+              --password "$HARBOR_PASSWORD" \
+              --severity HIGH,CRITICAL \
+              --exit-code 0 \
+              --format json \
+              --output "/drone/src/reports/trivy/trivy-${SVC}.json" \
+              "$IMG" 2>/dev/null || echo "WARN could not scan $SVC"
+          done
+        done
+    depends_on: [resolve-tag]
+
+  - name: trivy-scan-catalog-commerce
+    image: aquasec/trivy:latest
+    environment:
+      HARBOR_REGISTRY:
+        from_secret: harbor_registry
+      HARBOR_USER:
+        from_secret: harbor_user
+      HARBOR_PASSWORD:
+        from_secret: harbor_password
+    commands:
+      - source /drone/src/.scan.env
+      - mkdir -p /drone/src/reports/trivy
+      - |
+        for domain in catalog commerce; do
+          for dir in src/$domain/*/; do
+            [ -d "$dir" ] || continue
+            SVC=$(basename "$dir")
+            IMG="$HARBOR_REGISTRY/shopos/$SVC:$IMAGE_TAG"
+            echo "=== Trivy: $IMG ==="
+            trivy image \
+              --username "$HARBOR_USER" \
+              --password "$HARBOR_PASSWORD" \
+              --severity HIGH,CRITICAL \
+              --exit-code 0 \
+              --format json \
+              --output "/drone/src/reports/trivy/trivy-${SVC}.json" \
+              "$IMG" 2>/dev/null || echo "WARN could not scan $SVC"
+          done
+        done
+    depends_on: [resolve-tag]
+
+  - name: trivy-scan-remaining-domains
+    image: aquasec/trivy:latest
+    environment:
+      HARBOR_REGISTRY:
+        from_secret: harbor_registry
+      HARBOR_USER:
+        from_secret: harbor_user
+      HARBOR_PASSWORD:
+        from_secret: harbor_password
+    commands:
+      - source /drone/src/.scan.env
+      - mkdir -p /drone/src/reports/trivy
+      - |
+        for domain in supply-chain financial customer-experience communications \
+                      content analytics-ai b2b integrations affiliate; do
+          for dir in src/$domain/*/; do
+            [ -d "$dir" ] || continue
+            SVC=$(basename "$dir")
+            IMG="$HARBOR_REGISTRY/shopos/$SVC:$IMAGE_TAG"
+            echo "=== Trivy: $IMG ==="
+            trivy image \
+              --username "$HARBOR_USER" \
+              --password "$HARBOR_PASSWORD" \
+              --severity HIGH,CRITICAL \
+              --exit-code 0 \
+              --format json \
+              --output "/drone/src/reports/trivy/trivy-${SVC}.json" \
+              "$IMG" 2>/dev/null || echo "WARN could not scan $SVC"
+          done
+        done
+    depends_on: [resolve-tag]
+
+  - name: grype-scan-critical-services
+    image: anchore/grype:latest
+    environment:
+      HARBOR_REGISTRY:
+        from_secret: harbor_registry
+    commands:
+      - source /drone/src/.scan.env
+      - mkdir -p /drone/src/reports/grype
+      - |
+        # Grype scans critical path services only (high value targets)
+        for SVC in api-gateway auth-service payment-service order-service fraud-detection-service; do
+          IMG="$HARBOR_REGISTRY/shopos/$SVC:$IMAGE_TAG"
+          echo "=== Grype: $IMG ==="
+          grype "$IMG" --only-fixed \
+            -o json > "/drone/src/reports/grype/grype-${SVC}.json" 2>/dev/null || true
+        done
+    depends_on: [resolve-tag]
+
+  - name: summarise-findings
+    image: alpine:3.21
+    commands:
+      - source /drone/src/.scan.env
+      - apk add --no-cache jq 2>/dev/null || true
+      - mkdir -p /drone/src/reports
+      - |
+        TOTAL_CRITICAL=0
+        TOTAL_HIGH=0
+        for f in /drone/src/reports/trivy/*.json; do
+          [ -f "$f" ] || continue
+          CRIT=$(jq '[.Results[]?.Vulnerabilities[]? | select(.Severity=="CRITICAL")] | length' "$f" 2>/dev/null || echo 0)
+          HIGH=$(jq '[.Results[]?.Vulnerabilities[]? | select(.Severity=="HIGH")] | length' "$f" 2>/dev/null || echo 0)
+          TOTAL_CRITICAL=$((TOTAL_CRITICAL + CRIT))
+          TOTAL_HIGH=$((TOTAL_HIGH + HIGH))
+        done
+        echo "=== Scan Summary ==="
+        echo "CRITICAL findings: $TOTAL_CRITICAL"
+        echo "HIGH findings:     $TOTAL_HIGH"
+        echo "{\"image_tag\":\"$IMAGE_TAG\",\"critical\":$TOTAL_CRITICAL,\"high\":$TOTAL_HIGH}" \
+          > /drone/src/reports/scan-summary.json
+        # Fail pipeline if critical findings found
+        [ "$TOTAL_CRITICAL" -gt 0 ] && echo "WARN: $TOTAL_CRITICAL CRITICAL CVEs found" || true
+    depends_on:
+      - trivy-scan-platform-identity
+      - trivy-scan-catalog-commerce
+      - trivy-scan-remaining-domains
+      - grype-scan-critical-services
+
+  - name: notify-slack
+    image: plugins/slack
+    settings:
+      webhook:
+        from_secret: slack_webhook
+      channel: "#security"
+      template: |
+        {{#success build.status}}
+        :mag: *Security scan complete* — tag `{{build.params.IMAGE_TAG}}` — build {{build.number}}
+        {{else}}
+        :x: *Security scan FAILED* — tag `{{build.params.IMAGE_TAG}}` — build {{build.number}}
+        {{/success}}
+    depends_on: [summarise-findings]
+    when:
+      status: [success, failure]

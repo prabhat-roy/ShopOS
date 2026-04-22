@@ -1,4 +1,8 @@
-# GitOps Tools Pipeline — GoCD
+# GoCD — GitOps Tools Pipeline
+# Role: Install ArgoCD + supporting tools, then [manual] bootstrap app-of-apps.
+#       argocd → gitops-tools → [manual] bootstrap-argocd
+# Credentials: KUBECONFIG_CONTENT, ARGOCD_ADMIN_PASSWORD_HASH, MINIO_ACCESS_KEY,
+#              MINIO_SECRET_KEY, SLACK_WEBHOOK
 format_version: 10
 
 pipelines:
@@ -12,9 +16,11 @@ pipelines:
         branch: main
 
     stages:
-      - argocd:
+      - install-argocd:
+          approval:
+            type: success
           jobs:
-            install:
+            argocd:
               elastic_profile_id: helm-agent
               tasks:
                 - exec:
@@ -26,12 +32,17 @@ pipelines:
                         helm repo add argo https://argoproj.github.io/argo-helm --force-update
                         helm upgrade --install argocd argo/argo-cd \
                           --namespace argocd --create-namespace \
-                          --set server.replicas=2 --set redis-ha.enabled=true \
-                          --set controller.replicas=1 --set repoServer.replicas=2 \
+                          --set server.replicas=2 \
+                          --set redis-ha.enabled=true \
+                          --set controller.replicas=1 \
+                          --set repoServer.replicas=2 \
                           --set configs.secret.argocdServerAdminPassword="$ARGOCD_ADMIN_PASSWORD_HASH" \
                           --wait --timeout 10m
+                        echo "ArgoCD installed"
 
-      - gitops-tools:
+      - install-gitops-tools:
+          approval:
+            type: success
           jobs:
             argo-rollouts:
               elastic_profile_id: helm-agent
@@ -45,7 +56,9 @@ pipelines:
                         helm repo add argo https://argoproj.github.io/argo-helm --force-update
                         helm upgrade --install argo-rollouts argo/argo-rollouts \
                           --namespace argo-rollouts --create-namespace \
-                          --set dashboard.enabled=true --wait --timeout 5m
+                          --set dashboard.enabled=true \
+                          --wait --timeout 5m
+                        echo "Argo Rollouts installed"
             keda:
               elastic_profile_id: helm-agent
               tasks:
@@ -58,8 +71,10 @@ pipelines:
                         helm repo add kedacore https://kedacore.github.io/charts --force-update
                         helm upgrade --install keda kedacore/keda \
                           --namespace keda --create-namespace \
-                          --set metricsServer.replicaCount=2 --wait --timeout 5m
+                          --set metricsServer.replicaCount=2 \
+                          --wait --timeout 5m
                         kubectl apply -f kubernetes/keda/ 2>/dev/null || true
+                        echo "KEDA installed"
             velero:
               elastic_profile_id: helm-agent
               tasks:
@@ -78,10 +93,12 @@ pipelines:
                           --set configuration.backupStorageLocation[0].config.s3ForcePathStyle=true \
                           --set "credentials.secretContents.cloud=[default]\naws_access_key_id=$MINIO_ACCESS_KEY\naws_secret_access_key=$MINIO_SECRET_KEY" \
                           --wait --timeout 5m
+                        echo "Velero installed"
 
-      - bootstrap:
+      - bootstrap-argocd:
           approval:
             type: manual
+          allow_only_on_success: true
           jobs:
             app-of-apps:
               elastic_profile_id: kubectl-agent
@@ -92,6 +109,30 @@ pipelines:
                       - -c
                       - |
                         mkdir -p ~/.kube && echo "$KUBECONFIG_CONTENT" | base64 -d > ~/.kube/config
-                        kubectl wait --for=condition=available deployment/argocd-server -n argocd --timeout=120s
+                        echo "=== Waiting for ArgoCD server ==="
+                        kubectl wait --for=condition=available deployment/argocd-server \
+                          -n argocd --timeout=120s
+                        echo "=== Applying app-of-apps ==="
                         kubectl apply -f gitops/argocd/app-of-apps.yaml
                         kubectl apply -f gitops/argocd/applicationsets/ 2>/dev/null || true
+                        echo "App-of-apps applied"
+                        curl -sf -X POST "$SLACK_WEBHOOK" \
+                          -H 'Content-type: application/json' \
+                          --data '{"text":":argo: *GitOps bootstrap complete* — ArgoCD app-of-apps applied — GoCD"}' || true
+
+      - verify-argocd-health:
+          approval:
+            type: success
+          jobs:
+            argocd-api-check:
+              elastic_profile_id: curl-agent
+              tasks:
+                - exec:
+                    command: /bin/sh
+                    arguments:
+                      - -c
+                      - |
+                        CODE=$(curl -sf -o /dev/null -w "%{http_code}" --max-time 15 \
+                          "http://argocd-server.argocd.svc:80/healthz" || echo "000")
+                        echo "ArgoCD /healthz → $CODE"
+                        [ "$CODE" = "200" ] && echo "PASS" || echo "WARN ArgoCD returned $CODE"

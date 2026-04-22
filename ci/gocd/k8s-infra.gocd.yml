@@ -1,10 +1,14 @@
-# Kubernetes Infrastructure (Terraform) Pipeline — GoCD
+# GoCD — Kubernetes Infrastructure Pipeline
+# Role: Terraform plan/apply/destroy for EKS, GKE, AKS.
+#       Each cloud has its own pipeline with plan → [manual] apply stages.
+#       Artifact: tfplan saved between stages via GoCD artifact store.
 format_version: 10
 
 pipelines:
   shopos-k8s-infra-aws:
     group: shopos-infra
     label_template: "eks-${COUNT}"
+    lock_behavior: lockOnFailure
     materials:
       git:
         git: https://github.com/prabhat-roy/ShopOS.git
@@ -12,8 +16,11 @@ pipelines:
     environment_variables:
       TF_ACTION: PLAN
       AWS_DEFAULT_REGION: us-east-1
+
     stages:
       - terraform-plan:
+          approval:
+            type: success
           jobs:
             plan:
               elastic_profile_id: terraform-agent
@@ -27,15 +34,18 @@ pipelines:
                         terraform init \
                           -backend-config="bucket=shopos-tfstate" \
                           -backend-config="key=infra/terraform/aws/eks/terraform.tfstate" \
-                          -backend-config="region=$AWS_DEFAULT_REGION"
+                          -backend-config="region=$AWS_DEFAULT_REGION" \
+                          -reconfigure
                         terraform plan -out=tfplan
               artifacts:
                 - build:
                     source: infra/terraform/aws/eks/tfplan
                     destination: tfplan/
+
       - terraform-apply:
           approval:
             type: manual
+          allow_only_on_success: true
           jobs:
             apply:
               elastic_profile_id: terraform-agent
@@ -51,21 +61,44 @@ pipelines:
                     arguments:
                       - -c
                       - |
-                        [ "$TF_ACTION" = "APPLY" ] || { echo "Skipped (set TF_ACTION=APPLY)"; exit 0; }
+                        [ "$TF_ACTION" = "APPLY" ] || { echo "Skipped — set TF_ACTION=APPLY to proceed"; exit 0; }
                         cd infra/terraform/aws/eks
                         terraform apply -auto-approve tfplan/tfplan
+                        curl -sf -X POST "$SLACK_WEBHOOK" \
+                          -H 'Content-type: application/json' \
+                          --data '{"text":":white_check_mark: *EKS Terraform apply complete* — GoCD"}' || true
+
+      - terraform-destroy:
+          approval:
+            type: manual
+          jobs:
+            destroy:
+              elastic_profile_id: terraform-agent
+              tasks:
+                - exec:
+                    command: /bin/sh
+                    arguments:
+                      - -c
+                      - |
+                        [ "$TF_ACTION" = "DESTROY" ] || { echo "Skipped — set TF_ACTION=DESTROY"; exit 0; }
+                        cd infra/terraform/aws/eks
+                        terraform destroy -auto-approve
 
   shopos-k8s-infra-gcp:
     group: shopos-infra
     label_template: "gke-${COUNT}"
+    lock_behavior: lockOnFailure
     materials:
       git:
         git: https://github.com/prabhat-roy/ShopOS.git
         branch: main
     environment_variables:
       TF_ACTION: PLAN
+
     stages:
       - terraform-plan:
+          approval:
+            type: success
           jobs:
             plan:
               elastic_profile_id: terraform-agent
@@ -80,21 +113,59 @@ pipelines:
                         cd infra/opentofu/gcp/gke
                         terraform init \
                           -backend-config="bucket=shopos-tfstate-gcp" \
-                          -backend-config="prefix=infra/opentofu/gcp/gke"
-                        terraform plan
+                          -backend-config="prefix=infra/opentofu/gcp/gke" \
+                          -reconfigure
+                        terraform plan -out=tfplan
                         rm -f /tmp/gcp-key.json
+              artifacts:
+                - build:
+                    source: infra/opentofu/gcp/gke/tfplan
+                    destination: tfplan/
+
+      - terraform-apply:
+          approval:
+            type: manual
+          allow_only_on_success: true
+          jobs:
+            apply:
+              elastic_profile_id: terraform-agent
+              tasks:
+                - fetch:
+                    pipeline: shopos-k8s-infra-gcp
+                    stage: terraform-plan
+                    job: plan
+                    source: tfplan/
+                    destination: infra/opentofu/gcp/gke/
+                - exec:
+                    command: /bin/sh
+                    arguments:
+                      - -c
+                      - |
+                        [ "$TF_ACTION" = "APPLY" ] || { echo "Skipped"; exit 0; }
+                        echo "$GCP_SA_KEY" > /tmp/gcp-key.json
+                        export GOOGLE_APPLICATION_CREDENTIALS=/tmp/gcp-key.json
+                        cd infra/opentofu/gcp/gke
+                        terraform apply -auto-approve tfplan/tfplan
+                        rm -f /tmp/gcp-key.json
+                        curl -sf -X POST "$SLACK_WEBHOOK" \
+                          -H 'Content-type: application/json' \
+                          --data '{"text":":white_check_mark: *GKE Terraform apply complete* — GoCD"}' || true
 
   shopos-k8s-infra-azure:
     group: shopos-infra
     label_template: "aks-${COUNT}"
+    lock_behavior: lockOnFailure
     materials:
       git:
         git: https://github.com/prabhat-roy/ShopOS.git
         branch: main
     environment_variables:
       TF_ACTION: PLAN
+
     stages:
       - terraform-plan:
+          approval:
+            type: success
           jobs:
             plan:
               elastic_profile_id: terraform-agent
@@ -109,5 +180,36 @@ pipelines:
                           -backend-config="resource_group_name=shopos-tfstate-rg" \
                           -backend-config="storage_account_name=shoposterraform" \
                           -backend-config="container_name=tfstate" \
-                          -backend-config="key=infra/opentofu/azure/aks/terraform.tfstate"
-                        terraform plan
+                          -backend-config="key=infra/opentofu/azure/aks/terraform.tfstate" \
+                          -reconfigure
+                        terraform plan -out=tfplan
+              artifacts:
+                - build:
+                    source: infra/opentofu/azure/aks/tfplan
+                    destination: tfplan/
+
+      - terraform-apply:
+          approval:
+            type: manual
+          allow_only_on_success: true
+          jobs:
+            apply:
+              elastic_profile_id: terraform-agent
+              tasks:
+                - fetch:
+                    pipeline: shopos-k8s-infra-azure
+                    stage: terraform-plan
+                    job: plan
+                    source: tfplan/
+                    destination: infra/opentofu/azure/aks/
+                - exec:
+                    command: /bin/sh
+                    arguments:
+                      - -c
+                      - |
+                        [ "$TF_ACTION" = "APPLY" ] || { echo "Skipped"; exit 0; }
+                        cd infra/opentofu/azure/aks
+                        terraform apply -auto-approve tfplan/tfplan
+                        curl -sf -X POST "$SLACK_WEBHOOK" \
+                          -H 'Content-type: application/json' \
+                          --data '{"text":":white_check_mark: *AKS Terraform apply complete* — GoCD"}' || true

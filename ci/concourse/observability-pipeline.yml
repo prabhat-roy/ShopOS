@@ -1,179 +1,189 @@
-# Observability Stack Pipeline — Concourse CI
-# Credentials: kubeconfig, grafana-credentials, minio-credentials
+# Concourse CI — Observability Stack Health Check Pipeline (resource-based)
+# Role: Periodically verify Prometheus, Grafana, Loki, Jaeger, and OTel Collector
+#       health endpoints. Nightly full-stack health report with Slack alert on failure.
+# Credentials: ((kubeconfig.content)), ((slack.webhook_url))
 ---
+resource_types:
+  - name: slack-notification
+    type: docker-image
+    source:
+      repository: cfcommunity/slack-notification-resource
+
 resources:
-  - name: source-code
+  - name: shopos-repo
     type: git
     source:
-      uri: ((git.uri))
-      branch: ((git.branch))
-      private_key: ((git.private_key))
+      uri: https://github.com/prabhat-roy/ShopOS.git
+      branch: main
 
-  - name: trigger-manual
+  - name: observability-check
     type: time
     source:
-      interval: 8760h
+      interval: 30m
+
+  - name: nightly-report
+    type: time
+    source:
+      interval: 24h
+      start: 3:00 AM
+      stop: 4:00 AM
+      location: UTC
+
+  - name: slack-alert
+    type: slack-notification
+    source:
+      url: ((slack.webhook_url))
 
 jobs:
-  - name: install-prometheus-stack
+  - name: check-prometheus
     plan:
-      - get: trigger-manual
-        trigger: false
-      - task: helm-install
+      - get: observability-check
+        trigger: true
+      - task: prometheus-ready
         config:
           platform: linux
           image_resource:
             type: registry-image
-            source: {repository: alpine/helm}
+            source:
+              repository: curlimages/curl
+              tag: latest
           params:
             KUBECONFIG_CONTENT: ((kubeconfig.content))
-            ACTION: ((action))
           run:
             path: sh
             args:
               - -c
               - |
-                mkdir -p ~/.kube && echo "$KUBECONFIG_CONTENT" | base64 -d > ~/.kube/config
-                if [ "$ACTION" = "UNINSTALL" ]; then
-                  helm uninstall kube-prometheus-stack -n observability 2>/dev/null || true; exit 0
-                fi
-                helm repo add prometheus-community https://prometheus-community.github.io/helm-charts --force-update
-                helm upgrade --install kube-prometheus-stack prometheus-community/kube-prometheus-stack \
-                  --namespace observability --create-namespace \
-                  --set prometheus.prometheusSpec.retention=30d \
-                  --set prometheus.prometheusSpec.replicas=2 \
-                  --set alertmanager.alertmanagerSpec.replicas=2 \
-                  --set grafana.enabled=false \
-                  --wait --timeout 10m
+                PROM_URL="http://kube-prometheus-stack-prometheus.observability.svc:9090"
+                CODE=$(curl -sf -o /dev/null -w "%{http_code}" --max-time 10 "$PROM_URL/-/ready" || echo "000")
+                echo "Prometheus /-/ready → $CODE"
+                [ "$CODE" = "200" ] && echo "PASS" || { echo "FAIL"; exit 1; }
+        on_failure:
+          put: slack-alert
+          params:
+            text: ":fire: *Prometheus not ready* — health check failed (Concourse)"
 
-  - name: install-grafana
+  - name: check-grafana
     plan:
-      - get: source-code
-      - get: trigger-manual
-        trigger: false
-        passed: [install-prometheus-stack]
-      - task: helm-install
+      - get: observability-check
+        trigger: true
+      - task: grafana-health
         config:
           platform: linux
           image_resource:
             type: registry-image
-            source: {repository: alpine/helm}
-          inputs:
-            - name: source-code
-          params:
-            KUBECONFIG_CONTENT: ((kubeconfig.content))
-            GRAFANA_ADMIN_PASSWORD: ((grafana.admin_password))
-            ACTION: ((action))
+            source:
+              repository: curlimages/curl
+              tag: latest
           run:
             path: sh
             args:
               - -c
               - |
-                mkdir -p ~/.kube && echo "$KUBECONFIG_CONTENT" | base64 -d > ~/.kube/config
-                if [ "$ACTION" = "UNINSTALL" ]; then
-                  helm uninstall grafana -n observability 2>/dev/null || true; exit 0
-                fi
-                helm repo add grafana https://grafana.github.io/helm-charts --force-update
-                helm upgrade --install grafana grafana/grafana \
-                  --namespace observability \
-                  --set adminPassword="$GRAFANA_ADMIN_PASSWORD" \
-                  --set persistence.enabled=true --set replicas=2 \
-                  --wait --timeout 5m
-                kubectl apply -f source-code/observability/grafana/ 2>/dev/null || true
+                GRAFANA_URL="http://grafana.observability.svc:3000"
+                CODE=$(curl -sf -o /dev/null -w "%{http_code}" --max-time 10 "$GRAFANA_URL/api/health" || echo "000")
+                echo "Grafana /api/health → $CODE"
+                [ "$CODE" = "200" ] && echo "PASS" || { echo "FAIL"; exit 1; }
+        on_failure:
+          put: slack-alert
+          params:
+            text: ":warning: *Grafana unhealthy* — /api/health returned non-200 (Concourse)"
 
-  - name: install-loki
+  - name: check-loki
     plan:
-      - get: trigger-manual
-        trigger: false
-        passed: [install-prometheus-stack]
-      - task: helm-install
+      - get: observability-check
+        trigger: true
+      - task: loki-ready
         config:
           platform: linux
           image_resource:
             type: registry-image
-            source: {repository: alpine/helm}
-          params:
-            KUBECONFIG_CONTENT: ((kubeconfig.content))
-            MINIO_SECRET_KEY: ((minio.secret_key))
-            ACTION: ((action))
+            source:
+              repository: curlimages/curl
+              tag: latest
           run:
             path: sh
             args:
               - -c
               - |
-                mkdir -p ~/.kube && echo "$KUBECONFIG_CONTENT" | base64 -d > ~/.kube/config
-                if [ "$ACTION" = "UNINSTALL" ]; then
-                  helm uninstall loki -n observability 2>/dev/null || true; exit 0
-                fi
-                helm repo add grafana https://grafana.github.io/helm-charts --force-update
-                helm upgrade --install loki grafana/loki \
-                  --namespace observability \
-                  --set loki.storage.type=s3 \
-                  --set loki.storage.s3.endpoint="http://minio.registry.svc:9000" \
-                  --set loki.storage.s3.bucketnames=loki-chunks \
-                  --set loki.storage.s3.secretAccessKey="$MINIO_SECRET_KEY" \
-                  --set loki.storage.s3.s3ForcePathStyle=true \
-                  --set deploymentMode=SimpleScalable \
-                  --wait --timeout 8m
+                LOKI_URL="http://loki.observability.svc:3100"
+                CODE=$(curl -sf -o /dev/null -w "%{http_code}" --max-time 10 "$LOKI_URL/ready" || echo "000")
+                echo "Loki /ready → $CODE"
+                [ "$CODE" = "200" ] && echo "PASS" || { echo "WARN (non-critical)"; }
 
-  - name: install-jaeger
+  - name: check-jaeger
     plan:
-      - get: trigger-manual
-        trigger: false
-        passed: [install-prometheus-stack]
-      - task: helm-install
+      - get: observability-check
+        trigger: true
+      - task: jaeger-health
         config:
           platform: linux
           image_resource:
             type: registry-image
-            source: {repository: alpine/helm}
-          params:
-            KUBECONFIG_CONTENT: ((kubeconfig.content))
-            ACTION: ((action))
+            source:
+              repository: curlimages/curl
+              tag: latest
           run:
             path: sh
             args:
               - -c
               - |
-                mkdir -p ~/.kube && echo "$KUBECONFIG_CONTENT" | base64 -d > ~/.kube/config
-                if [ "$ACTION" = "UNINSTALL" ]; then
-                  helm uninstall jaeger -n observability 2>/dev/null || true; exit 0
-                fi
-                helm repo add jaegertracing https://jaegertracing.github.io/helm-charts --force-update
-                helm upgrade --install jaeger jaegertracing/jaeger \
-                  --namespace observability \
-                  --set provisionDataStore.cassandra=false \
-                  --set allInOne.enabled=false \
-                  --set collector.replicaCount=2 \
-                  --set query.replicaCount=2 \
-                  --wait --timeout 8m
+                JAEGER_URL="http://jaeger-query.observability.svc:16686"
+                CODE=$(curl -sf -o /dev/null -w "%{http_code}" --max-time 10 "$JAEGER_URL/" || echo "000")
+                echo "Jaeger query UI → $CODE"
+                [ "$CODE" = "200" ] && echo "PASS" || echo "WARN Jaeger query returned $CODE"
 
-  - name: install-otel-collector
+  - name: nightly-observability-report
     plan:
-      - get: trigger-manual
-        trigger: false
-        passed: [install-jaeger]
-      - task: helm-install
+      - get: nightly-report
+        trigger: true
+      - get: shopos-repo
+      - task: full-stack-health
         config:
           platform: linux
           image_resource:
             type: registry-image
-            source: {repository: alpine/helm}
+            source:
+              repository: curlimages/curl
+              tag: latest
           params:
             KUBECONFIG_CONTENT: ((kubeconfig.content))
-            ACTION: ((action))
           run:
             path: sh
             args:
               - -c
               - |
-                mkdir -p ~/.kube && echo "$KUBECONFIG_CONTENT" | base64 -d > ~/.kube/config
-                if [ "$ACTION" = "UNINSTALL" ]; then
-                  helm uninstall otel-collector -n observability 2>/dev/null || true; exit 0
-                fi
-                helm repo add open-telemetry https://open-telemetry.github.io/opentelemetry-helm-charts --force-update
-                helm upgrade --install otel-collector open-telemetry/opentelemetry-collector \
-                  --namespace observability \
-                  --set mode=daemonset \
-                  --set config.exporters.otlp.endpoint=jaeger-collector.observability.svc:4317 \
-                  --wait --timeout 5m
+                echo "=== Nightly Observability Stack Health Report ==="
+                PASS=0
+                FAIL=0
+
+                check() {
+                  local name=$1 url=$2
+                  CODE=$(curl -sf -o /dev/null -w "%{http_code}" --max-time 15 "$url" || echo "000")
+                  if [ "$CODE" = "200" ]; then
+                    echo "PASS  $name ($CODE)"
+                    PASS=$((PASS + 1))
+                  else
+                    echo "FAIL  $name ($CODE)"
+                    FAIL=$((FAIL + 1))
+                  fi
+                }
+
+                check "Prometheus ready"    "http://kube-prometheus-stack-prometheus.observability.svc:9090/-/ready"
+                check "Alertmanager ready"  "http://kube-prometheus-stack-alertmanager.observability.svc:9093/-/ready"
+                check "Grafana health"      "http://grafana.observability.svc:3000/api/health"
+                check "Loki ready"          "http://loki.observability.svc:3100/ready"
+                check "Jaeger query"        "http://jaeger-query.observability.svc:16686/"
+                check "OTel metrics"        "http://otel-collector.observability.svc:8888/metrics"
+
+                echo ""
+                echo "Summary: $PASS PASS / $FAIL FAIL"
+                [ "$FAIL" -eq 0 ] && echo "All observability endpoints healthy" || exit 1
+        on_failure:
+          put: slack-alert
+          params:
+            text: ":rotating_light: *Nightly observability health check FAILED* — one or more endpoints down (Concourse)"
+        on_success:
+          put: slack-alert
+          params:
+            text: ":white_check_mark: *Nightly observability health: all endpoints healthy* — Prometheus, Grafana, Loki, Jaeger, OTel (Concourse)"

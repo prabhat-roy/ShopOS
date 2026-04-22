@@ -1,6 +1,10 @@
-# Cluster Bootstrap Pipeline — Concourse CI (6-phase ordered bootstrap)
-# Credentials: kubeconfig, keycloak-credentials, grafana-credentials,
-#   rabbitmq-credentials, harbor-credentials, minio-credentials, argocd-credentials, slack-webhook
+# Concourse CI — Cluster Bootstrap Pipeline (resource-based)
+# Role: Ordered 6-phase cluster bootstrap using Concourse's passed[] dependency model.
+#       Health-check tasks run between phases to gate progression.
+#       All jobs are manual-trigger (8760h interval) — set fly trigger or use fly execute.
+# Credentials: ((kubeconfig.content)), ((keycloak.admin_password)), ((grafana.admin_password)),
+#              ((rabbitmq.password)), ((harbor.admin_password)), ((minio.root_user)),
+#              ((minio.root_password)), ((argocd.admin_password_hash)), ((slack.webhook_url))
 ---
 resource_types:
   - name: slack-notification
@@ -9,12 +13,11 @@ resource_types:
       repository: cfcommunity/slack-notification-resource
 
 resources:
-  - name: source-code
+  - name: shopos-repo
     type: git
     source:
-      uri: ((git.uri))
-      branch: ((git.branch))
-      private_key: ((git.private_key))
+      uri: https://github.com/prabhat-roy/ShopOS.git
+      branch: main
 
   - name: trigger-manual
     type: time
@@ -31,12 +34,13 @@ jobs:
     plan:
       - get: trigger-manual
         trigger: false
-      - task: install
+      - task: install-networking
         config:
           platform: linux
           image_resource:
             type: registry-image
-            source: {repository: alpine/helm}
+            source:
+              repository: alpine/helm
           params:
             KUBECONFIG_CONTENT: ((kubeconfig.content))
           run:
@@ -45,30 +49,67 @@ jobs:
               - -c
               - |
                 mkdir -p ~/.kube && echo "$KUBECONFIG_CONTENT" | base64 -d > ~/.kube/config
-                helm repo add istio https://istio-release.storage.googleapis.com/charts \
-                  traefik https://traefik.github.io/charts --force-update
+                helm repo add \
+                  istio https://istio-release.storage.googleapis.com/charts \
+                  traefik https://traefik.github.io/charts \
+                  cilium https://helm.cilium.io --force-update
                 helm upgrade --install istio-base istio/base \
                   --namespace istio-system --create-namespace --wait --timeout 3m
                 helm upgrade --install istiod istio/istiod \
-                  --namespace istio-system --set telemetry.enabled=true --wait --timeout 5m
+                  --namespace istio-system \
+                  --set telemetry.enabled=true --set pilot.traceSampling=1.0 \
+                  --wait --timeout 5m
+                helm upgrade --install istio-ingress istio/gateway \
+                  --namespace istio-ingress --create-namespace --wait --timeout 5m
                 helm upgrade --install traefik traefik/traefik \
                   --namespace networking --create-namespace \
                   --set deployment.replicas=2 \
                   --set ingressClass.enabled=true --set ingressClass.isDefaultClass=true \
+                  --set metrics.prometheus.enabled=true \
                   --wait --timeout 5m
                 echo "Phase 1 Networking — DONE"
+        on_failure:
+          put: slack-alert
+          params:
+            text: ":x: *Bootstrap FAILED at Phase 1 (Networking)* — Concourse"
+
+  - name: phase1-smoke
+    plan:
+      - get: trigger-manual
+        trigger: false
+        passed: [phase1-networking]
+      - task: verify-networking
+        config:
+          platform: linux
+          image_resource:
+            type: registry-image
+            source:
+              repository: bitnami/kubectl
+              tag: latest
+          params:
+            KUBECONFIG_CONTENT: ((kubeconfig.content))
+          run:
+            path: sh
+            args:
+              - -c
+              - |
+                mkdir -p ~/.kube && echo "$KUBECONFIG_CONTENT" | base64 -d > ~/.kube/config
+                kubectl wait --for=condition=available deployment/istiod -n istio-system --timeout=120s
+                kubectl wait --for=condition=available deployment/traefik -n networking --timeout=120s
+                echo "Phase 1 networking smoke — PASS"
 
   - name: phase2-security
     plan:
       - get: trigger-manual
         trigger: false
-        passed: [phase1-networking]
-      - task: install
+        passed: [phase1-smoke]
+      - task: install-security
         config:
           platform: linux
           image_resource:
             type: registry-image
-            source: {repository: alpine/helm}
+            source:
+              repository: alpine/helm
           params:
             KUBECONFIG_CONTENT: ((kubeconfig.content))
             KEYCLOAK_ADMIN_PASSWORD: ((keycloak.admin_password))
@@ -79,10 +120,15 @@ jobs:
               - -c
               - |
                 mkdir -p ~/.kube && echo "$KUBECONFIG_CONTENT" | base64 -d > ~/.kube/config
-                helm repo add hashicorp https://helm.releases.hashicorp.com \
+                helm repo add \
+                  hashicorp https://helm.releases.hashicorp.com \
                   bitnami https://charts.bitnami.com/bitnami \
+                  jetstack https://charts.jetstack.io \
                   kyverno https://kyverno.github.io/kyverno \
                   falcosecurity https://falcosecurity.github.io/charts --force-update
+                helm upgrade --install cert-manager jetstack/cert-manager \
+                  --namespace cert-manager --create-namespace \
+                  --set installCRDs=true --set replicaCount=2 --wait --timeout 5m
                 helm upgrade --install vault hashicorp/vault \
                   --namespace vault --create-namespace \
                   --set server.ha.enabled=true --set server.ha.raft.enabled=true \
@@ -102,50 +148,84 @@ jobs:
                   --set falcosidekick.config.slack.webhookurl="$SLACK_WEBHOOK" \
                   --wait --timeout 8m
                 echo "Phase 2 Security — DONE"
+        on_failure:
+          put: slack-alert
+          params:
+            text: ":x: *Bootstrap FAILED at Phase 2 (Security)* — Concourse"
 
   - name: phase3-observability
     plan:
       - get: trigger-manual
         trigger: false
         passed: [phase2-security]
-      - task: install
+      - task: install-observability
         config:
           platform: linux
           image_resource:
             type: registry-image
-            source: {repository: alpine/helm}
+            source:
+              repository: alpine/helm
           params:
             KUBECONFIG_CONTENT: ((kubeconfig.content))
             GRAFANA_ADMIN_PASSWORD: ((grafana.admin_password))
+            MINIO_SECRET_KEY: ((minio.root_password))
           run:
             path: sh
             args:
               - -c
               - |
                 mkdir -p ~/.kube && echo "$KUBECONFIG_CONTENT" | base64 -d > ~/.kube/config
-                helm repo add prometheus-community https://prometheus-community.github.io/helm-charts \
-                  grafana https://grafana.github.io/helm-charts --force-update
+                helm repo add \
+                  prometheus-community https://prometheus-community.github.io/helm-charts \
+                  grafana https://grafana.github.io/helm-charts \
+                  jaegertracing https://jaegertracing.github.io/helm-charts \
+                  open-telemetry https://open-telemetry.github.io/opentelemetry-helm-charts --force-update
                 helm upgrade --install kube-prometheus-stack prometheus-community/kube-prometheus-stack \
                   --namespace observability --create-namespace \
                   --set prometheus.prometheusSpec.retention=30d \
+                  --set prometheus.prometheusSpec.replicas=2 \
                   --set grafana.enabled=false --wait --timeout 10m
                 helm upgrade --install grafana grafana/grafana \
                   --namespace observability \
                   --set adminPassword="$GRAFANA_ADMIN_PASSWORD" \
-                  --set persistence.enabled=true --wait --timeout 5m
+                  --set persistence.enabled=true --set replicas=2 \
+                  --wait --timeout 5m
+                helm upgrade --install loki grafana/loki \
+                  --namespace observability \
+                  --set loki.storage.type=s3 \
+                  --set loki.storage.s3.endpoint="http://minio.registry.svc:9000" \
+                  --set loki.storage.s3.bucketnames=loki-chunks \
+                  --set loki.storage.s3.secretAccessKey="$MINIO_SECRET_KEY" \
+                  --set loki.storage.s3.s3ForcePathStyle=true \
+                  --set deploymentMode=SimpleScalable --wait --timeout 8m
+                helm upgrade --install jaeger jaegertracing/jaeger \
+                  --namespace observability \
+                  --set provisionDataStore.cassandra=false \
+                  --set collector.replicaCount=2 --set query.replicaCount=2 \
+                  --wait --timeout 8m
+                helm upgrade --install otel-collector open-telemetry/opentelemetry-collector \
+                  --namespace observability \
+                  --set mode=daemonset \
+                  --set config.exporters.otlp.endpoint=jaeger-collector.observability.svc:4317 \
+                  --wait --timeout 5m
                 echo "Phase 3 Observability — DONE"
+        on_failure:
+          put: slack-alert
+          params:
+            text: ":x: *Bootstrap FAILED at Phase 3 (Observability)* — Concourse"
 
   - name: phase4-messaging
     plan:
       - get: trigger-manual
         trigger: false
         passed: [phase3-observability]
-      - task: install
+      - task: install-messaging
         config:
           platform: linux
           image_resource:
             type: registry-image
-            source: {repository: alpine/helm}
+            source:
+              repository: alpine/helm
           params:
             KUBECONFIG_CONTENT: ((kubeconfig.content))
             RABBITMQ_PASSWORD: ((rabbitmq.password))
@@ -155,18 +235,14 @@ jobs:
               - -c
               - |
                 mkdir -p ~/.kube && echo "$KUBECONFIG_CONTENT" | base64 -d > ~/.kube/config
-                helm repo add bitnami https://charts.bitnami.com/bitnami \
+                helm repo add \
+                  bitnami https://charts.bitnami.com/bitnami \
                   nats https://nats-io.github.io/k8s/helm/charts --force-update
-                helm upgrade --install zookeeper bitnami/zookeeper \
-                  --namespace messaging --create-namespace \
-                  --set replicaCount=3 --wait --timeout 8m
                 helm upgrade --install kafka bitnami/kafka \
-                  --namespace messaging \
-                  --set replicaCount=3 \
-                  --set zookeeper.enabled=false \
-                  --set externalZookeeper.servers=zookeeper.messaging.svc:2181 \
-                  --set autoCreateTopicsEnable=false \
-                  --set defaultReplicationFactor=3 --wait --timeout 10m
+                  --namespace messaging --create-namespace \
+                  --set replicaCount=3 --set kraft.enabled=true \
+                  --set defaultReplicationFactor=3 \
+                  --wait --timeout 10m
                 helm upgrade --install rabbitmq bitnami/rabbitmq \
                   --namespace messaging \
                   --set replicaCount=3 \
@@ -174,21 +250,27 @@ jobs:
                   --set clustering.enabled=true --wait --timeout 8m
                 helm upgrade --install nats nats/nats \
                   --namespace messaging \
-                  --set nats.jetstream.enabled=true \
-                  --set cluster.enabled=true --set cluster.replicas=3 --wait --timeout 5m
+                  --set config.jetstream.enabled=true \
+                  --set cluster.enabled=true --set cluster.replicas=3 \
+                  --wait --timeout 5m
                 echo "Phase 4 Messaging — DONE"
+        on_failure:
+          put: slack-alert
+          params:
+            text: ":x: *Bootstrap FAILED at Phase 4 (Messaging)* — Concourse"
 
   - name: phase5-registry
     plan:
       - get: trigger-manual
         trigger: false
         passed: [phase2-security]
-      - task: install
+      - task: install-registry
         config:
           platform: linux
           image_resource:
             type: registry-image
-            source: {repository: alpine/helm}
+            source:
+              repository: alpine/helm
           params:
             KUBECONFIG_CONTENT: ((kubeconfig.content))
             HARBOR_ADMIN_PASSWORD: ((harbor.admin_password))
@@ -200,10 +282,15 @@ jobs:
               - -c
               - |
                 mkdir -p ~/.kube && echo "$KUBECONFIG_CONTENT" | base64 -d > ~/.kube/config
-                helm repo add harbor https://helm.goharbor.io \
+                helm repo add \
+                  harbor https://helm.goharbor.io \
                   minio https://charts.min.io --force-update
                 helm upgrade --install harbor harbor/harbor \
                   --namespace registry --create-namespace \
+                  --set expose.type=ingress \
+                  --set expose.ingress.className=traefik \
+                  --set expose.ingress.hosts.core=harbor.shopos.internal \
+                  --set externalURL=https://harbor.shopos.internal \
                   --set harborAdminPassword="$HARBOR_ADMIN_PASSWORD" \
                   --set trivy.enabled=true --set persistence.enabled=true \
                   --wait --timeout 10m
@@ -215,21 +302,26 @@ jobs:
                   --set persistence.enabled=true --set persistence.size=100Gi \
                   --wait --timeout 8m
                 echo "Phase 5 Registry — DONE"
+        on_failure:
+          put: slack-alert
+          params:
+            text: ":x: *Bootstrap FAILED at Phase 5 (Registry)* — Concourse"
 
   - name: phase6-gitops
     plan:
-      - get: source-code
+      - get: shopos-repo
       - get: trigger-manual
         trigger: false
         passed: [phase4-messaging, phase5-registry]
-      - task: install
+      - task: install-gitops
         config:
           platform: linux
           image_resource:
             type: registry-image
-            source: {repository: alpine/helm}
+            source:
+              repository: alpine/helm
           inputs:
-            - name: source-code
+            - name: shopos-repo
           params:
             KUBECONFIG_CONTENT: ((kubeconfig.content))
             ARGOCD_ADMIN_PASSWORD_HASH: ((argocd.admin_password_hash))
@@ -239,23 +331,33 @@ jobs:
               - -c
               - |
                 mkdir -p ~/.kube && echo "$KUBECONFIG_CONTENT" | base64 -d > ~/.kube/config
-                helm repo add argo https://argoproj.github.io/argo-helm \
-                  kedacore https://kedacore.github.io/charts --force-update
+                helm repo add \
+                  argo https://argoproj.github.io/argo-helm \
+                  kedacore https://kedacore.github.io/charts \
+                  vmware-tanzu https://vmware-tanzu.github.io/helm-charts --force-update
                 helm upgrade --install argocd argo/argo-cd \
                   --namespace argocd --create-namespace \
                   --set server.replicas=2 --set redis-ha.enabled=true \
+                  --set controller.replicas=1 --set repoServer.replicas=2 \
                   --set configs.secret.argocdServerAdminPassword="$ARGOCD_ADMIN_PASSWORD_HASH" \
                   --wait --timeout 10m
+                helm upgrade --install argo-rollouts argo/argo-rollouts \
+                  --namespace argo-rollouts --create-namespace \
+                  --set dashboard.enabled=true --wait --timeout 5m
                 helm upgrade --install keda kedacore/keda \
-                  --namespace keda --create-namespace --wait --timeout 5m
-                kubectl wait --for=condition=available deployment/argocd-server -n argocd --timeout=120s
-                kubectl apply -f source-code/gitops/argocd/app-of-apps.yaml 2>/dev/null || true
+                  --namespace keda --create-namespace \
+                  --set metricsServer.replicaCount=2 --wait --timeout 5m
+                kubectl wait --for=condition=available deployment/argocd-server \
+                  -n argocd --timeout=120s
+                kubectl apply -f shopos-repo/gitops/argocd/app-of-apps.yaml
+                kubectl apply -f shopos-repo/gitops/argocd/applicationsets/ 2>/dev/null || true
+                kubectl apply -f shopos-repo/kubernetes/keda/ 2>/dev/null || true
                 echo "Phase 6 GitOps — DONE"
         on_success:
           put: slack-alert
           params:
-            text: ":rocket: Cluster bootstrap complete — all 6 phases succeeded"
+            text: ":rocket: *Cluster bootstrap COMPLETE* — all 6 phases succeeded (Networking → Security → Observability → Messaging → Registry → GitOps) — Concourse"
         on_failure:
           put: slack-alert
           params:
-            text: ":x: Cluster bootstrap FAILED at Phase 6 GitOps"
+            text: ":x: *Bootstrap FAILED at Phase 6 (GitOps)* — check ArgoCD and KEDA — Concourse"

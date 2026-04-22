@@ -1,26 +1,19 @@
+# Drone CI — Registry Configuration
+# Role: configure Harbor projects and Nexus repos after Harbor is deployed.
+#       Runs entirely in containers — no host tooling.
+# Secrets: kubeconfig_b64, harbor_registry, harbor_user, harbor_password,
+#          aws_access_key_id, aws_secret_access_key, aws_account_id, aws_region, slack_webhook
+# Params: ACTION=CONFIGURE_HARBOR|CONFIGURE_NEXUS|CREATE_ECR|DESTROY_ECR|INSTALL_K8S_REPOS
+
 kind: pipeline
 type: docker
 name: registry
 
 trigger:
-  event:
-    - custom
-
-# Secrets required:
-#   kubeconfig_b64
-#   aws_access_key_id, aws_secret_access_key, aws_account_id, aws_region
-#   gcp_credentials_json, gcp_project_id
-#   azure_client_id, azure_client_secret, azure_tenant_id, azure_subscription_id
-
-# Variables (set via Drone UI / API):
-#   ACTION — INSTALL_K8S_REPOS | UNINSTALL_K8S_REPOS | CONFIGURE_K8S_REPOS
-#            | CREATE_CLOUD_REGISTRY | DESTROY_CLOUD_REGISTRY
-#   HARBOR, NEXUS, GITEA, ZOT, CHARTMUSEUM, GITLAB, FORGEJO, DISTRIBUTION
-#   QUAY, DOCKER_REGISTRY, PORTUS, KRAKEN, DRAGONFLY, NYDUS
+  event: [custom]
 
 steps:
-
-  - name: load-kubeconfig
+  - name: setup-kubeconfig
     image: alpine:3.21
     environment:
       KUBECONFIG_B64:
@@ -28,201 +21,127 @@ steps:
     commands:
       - echo "$KUBECONFIG_B64" | base64 -d > /tmp/kubeconfig
 
-  # ── Install K8s Registry Tools ─────────────────────────────────────────────
-
-  - name: install-harbor
+  - name: install-harbor-k8s
     image: alpine/helm:3.16.2
     environment:
       KUBECONFIG: /tmp/kubeconfig
     commands:
-      - helm repo add harbor https://helm.goharbor.io
-      - helm upgrade --install harbor harbor/harbor --namespace harbor --create-namespace \
+      - '[ "${ACTION}" = "INSTALL_K8S_REPOS" ] || exit 0'
+      - helm repo add harbor https://helm.goharbor.io --force-update
+      - helm upgrade --install harbor harbor/harbor \
+          --namespace harbor --create-namespace \
           --set expose.type=clusterIP \
           --set persistence.enabled=true \
-          --wait --timeout 10m
-      - HARBOR_IP=$(kubectl get svc harbor -n harbor -o jsonpath='{.spec.clusterIP}' 2>/dev/null)
-      - sed -i '/^HARBOR_URL=/d' infra.env && echo "HARBOR_URL=https://$HARBOR_IP" >> infra.env
-    when:
-      branch: [main]
-
-  - name: install-nexus
-    image: alpine/helm:3.16.2
-    environment:
-      KUBECONFIG: /tmp/kubeconfig
-    commands:
-      - helm repo add sonatype https://sonatype.github.io/helm3-charts
-      - helm upgrade --install nexus sonatype/nexus-repository-manager --namespace nexus --create-namespace --wait --timeout 10m
-      - NEXUS_IP=$(kubectl get svc nexus-sonatype-nexus-service -n nexus -o jsonpath='{.spec.clusterIP}' 2>/dev/null)
-      - sed -i '/^NEXUS_URL=/d' infra.env && echo "NEXUS_URL=http://$NEXUS_IP:8081" >> infra.env
-    when:
-      branch: [main]
-
-  - name: install-gitea
-    image: alpine/helm:3.16.2
-    environment:
-      KUBECONFIG: /tmp/kubeconfig
-    commands:
-      - helm repo add gitea-charts https://dl.gitea.com/charts
-      - helm upgrade --install gitea gitea-charts/gitea --namespace gitea --create-namespace \
+          --wait --timeout 10m || true
+      - helm repo add gitea-charts https://dl.gitea.com/charts --force-update
+      - helm upgrade --install gitea gitea-charts/gitea \
+          --namespace gitea --create-namespace \
           --set gitea.admin.username=admin \
-          --wait --timeout 5m
-      - GITEA_IP=$(kubectl get svc gitea-http -n gitea -o jsonpath='{.spec.clusterIP}' 2>/dev/null)
-      - sed -i '/^GITEA_URL=/d' infra.env && echo "GITEA_URL=http://$GITEA_IP:3000" >> infra.env
-    when:
-      branch: [main]
-
-  - name: install-chartmuseum
-    image: alpine/helm:3.16.2
-    environment:
-      KUBECONFIG: /tmp/kubeconfig
-    commands:
-      - helm repo add chartmuseum https://chartmuseum.github.io/charts
-      - helm upgrade --install chartmuseum chartmuseum/chartmuseum --namespace chartmuseum --create-namespace \
+          --wait --timeout 5m || true
+      - helm repo add chartmuseum https://chartmuseum.github.io/charts --force-update
+      - helm upgrade --install chartmuseum chartmuseum/chartmuseum \
+          --namespace chartmuseum --create-namespace \
           --set env.open.DISABLE_API=false \
-          --wait --timeout 5m
-      - CM_IP=$(kubectl get svc chartmuseum -n chartmuseum -o jsonpath='{.spec.clusterIP}' 2>/dev/null)
-      - sed -i '/^CHARTMUSEUM_URL=/d' infra.env && echo "CHARTMUSEUM_URL=http://$CM_IP:8080" >> infra.env
-    when:
-      branch: [main]
+          --wait --timeout 5m || true
+    depends_on: [setup-kubeconfig]
 
-  - name: install-zot
-    image: alpine/helm:3.16.2
+  - name: configure-harbor-projects
+    image: curlimages/curl:latest
     environment:
-      KUBECONFIG: /tmp/kubeconfig
+      HARBOR_REGISTRY:
+        from_secret: harbor_registry
+      HARBOR_USER:
+        from_secret: harbor_user
+      HARBOR_PASSWORD:
+        from_secret: harbor_password
     commands:
-      - helm repo add zot https://zotregistry.dev/helm-charts
-      - helm upgrade --install zot zot/zot --namespace zot --create-namespace --wait --timeout 5m
-      - ZOT_IP=$(kubectl get svc zot -n zot -o jsonpath='{.spec.clusterIP}' 2>/dev/null)
-      - sed -i '/^ZOT_URL=/d' infra.env && echo "ZOT_URL=http://$ZOT_IP:5000" >> infra.env
-    when:
-      branch: [main]
-
-  - name: install-gitlab
-    image: alpine/helm:3.16.2
-    environment:
-      KUBECONFIG: /tmp/kubeconfig
-    commands:
-      - helm repo add gitlab https://charts.gitlab.io
-      - helm upgrade --install gitlab gitlab/gitlab --namespace gitlab --create-namespace \
-          --set global.edition=ce \
-          --set certmanager.install=false \
-          --wait --timeout 20m
-      - GITLAB_IP=$(kubectl get svc gitlab-webservice-default -n gitlab -o jsonpath='{.spec.clusterIP}' 2>/dev/null)
-      - sed -i '/^GITLAB_URL=/d' infra.env && echo "GITLAB_URL=http://$GITLAB_IP" >> infra.env
-    when:
-      branch: [main]
-
-  - name: install-forgejo
-    image: alpine/helm:3.16.2
-    environment:
-      KUBECONFIG: /tmp/kubeconfig
-    commands:
-      - helm repo add forgejo https://codeberg.org/forgejo-contrib/forgejo-helm
-      - helm upgrade --install forgejo forgejo/forgejo --namespace forgejo --create-namespace --wait --timeout 5m
-      - FJ_IP=$(kubectl get svc forgejo-http -n forgejo -o jsonpath='{.spec.clusterIP}' 2>/dev/null)
-      - sed -i '/^FORGEJO_URL=/d' infra.env && echo "FORGEJO_URL=http://$FJ_IP:3000" >> infra.env
-    when:
-      branch: [main]
-
-  - name: uninstall-k8s-repos
-    image: alpine/helm:3.16.2
-    environment:
-      KUBECONFIG: /tmp/kubeconfig
-    commands:
-      - helm uninstall harbor      -n harbor      --ignore-not-found || true
-      - helm uninstall nexus       -n nexus       --ignore-not-found || true
-      - helm uninstall gitea       -n gitea       --ignore-not-found || true
-      - helm uninstall chartmuseum -n chartmuseum --ignore-not-found || true
-      - helm uninstall zot         -n zot         --ignore-not-found || true
-      - helm uninstall gitlab      -n gitlab      --ignore-not-found || true
-      - helm uninstall forgejo     -n forgejo     --ignore-not-found || true
-    when:
-      branch: [main]
-
-  - name: configure-harbor
-    image: alpine/curl:latest
-    commands:
-      - HARBOR_URL=$(grep '^HARBOR_URL=' infra.env | cut -d= -f2 || echo "https://harbor.harbor.svc.cluster.local")
+      - '[ "${ACTION}" = "CONFIGURE_HARBOR" ] || [ "${ACTION:-CONFIGURE_HARBOR}" = "CONFIGURE_HARBOR" ] || exit 0'
+      - HARBOR_URL="https://${HARBOR_REGISTRY}"
       - |
-        for proj in platform identity catalog commerce supply-chain financial customer-experience communications content analytics-ai b2b integrations affiliate shopos; do
-          curl -sf -X POST $HARBOR_URL/api/v2.0/projects \
-            -u admin:Harbor12345 \
+        for proj in platform identity catalog commerce supply-chain financial \
+                    customer-experience communications content analytics-ai \
+                    b2b integrations affiliate shopos; do
+          curl -sf -X POST "$HARBOR_URL/api/v2.0/projects" \
+            -u "$HARBOR_USER:$HARBOR_PASSWORD" \
             -H "Content-Type: application/json" \
             -d "{\"project_name\":\"$proj\",\"public\":false}" || true
+          echo "Project ready: $proj"
         done
-      - curl -sf -X PUT $HARBOR_URL/api/v2.0/projects/shopos/scanner \
-          -u admin:Harbor12345 -H "Content-Type: application/json" \
+      - |
+        # Enable Trivy scanner on shopos project
+        curl -sf -X PUT "$HARBOR_URL/api/v2.0/projects/shopos/scanner" \
+          -u "$HARBOR_USER:$HARBOR_PASSWORD" \
+          -H "Content-Type: application/json" \
           -d '{"name":"Trivy"}' || true
-    when:
-      branch: [main]
+      - |
+        # Set replication rules: pull from Docker Hub for base images
+        curl -sf -X POST "$HARBOR_URL/api/v2.0/replication/policies" \
+          -u "$HARBOR_USER:$HARBOR_PASSWORD" \
+          -H "Content-Type: application/json" \
+          -d '{"name":"dockerhub-pull","description":"Pull base images from Docker Hub","type":"pull","src_registry":{"id":1},"dest_namespace":"library","trigger":{"type":"manual"},"enabled":true}' || true
+    depends_on: [setup-kubeconfig]
 
   - name: configure-nexus-repos
-    image: alpine/curl:latest
+    image: curlimages/curl:latest
     commands:
-      - NEXUS_URL=$(grep '^NEXUS_URL=' infra.env | cut -d= -f2 || echo "http://nexus.nexus.svc.cluster.local:8081")
+      - '[ "${ACTION}" = "CONFIGURE_NEXUS" ] || exit 0'
+      - NEXUS_URL="http://nexus.nexus.svc.cluster.local:8081"
       - |
-        for repo_type in maven2 npm pypi go docker helm cargo nuget; do
-          curl -sf -X POST $NEXUS_URL/service/rest/v1/repositories/$repo_type/hosted \
+        for repo_type in maven2 npm pypi go docker helm; do
+          curl -sf -X POST "$NEXUS_URL/service/rest/v1/repositories/$repo_type/hosted" \
             -u admin:admin123 \
             -H "Content-Type: application/json" \
             -d "{\"name\":\"shopos-$repo_type\",\"online\":true,\"storage\":{\"blobStoreName\":\"default\",\"strictContentTypeValidation\":true,\"writePolicy\":\"allow\"}}" || true
+          echo "Nexus repo: shopos-$repo_type"
         done
-    when:
-      branch: [main]
+    depends_on: [setup-kubeconfig]
 
-  - name: configure-chartmuseum-repo
-    image: alpine/helm:3.16.2
-    environment:
-      KUBECONFIG: /tmp/kubeconfig
-    commands:
-      - CM_URL=$(grep '^CHARTMUSEUM_URL=' infra.env | cut -d= -f2 || echo "http://chartmuseum.chartmuseum.svc.cluster.local:8080")
-      - helm repo add shopos-charts $CM_URL || true
-      - helm repo update
-    when:
-      branch: [main]
-
-  # ── Cloud Registry ─────────────────────────────────────────────────────────
-
-  - name: create-ecr
+  - name: create-ecr-repos
     image: amazon/aws-cli:latest
     environment:
       AWS_ACCESS_KEY_ID:
         from_secret: aws_access_key_id
       AWS_SECRET_ACCESS_KEY:
         from_secret: aws_secret_access_key
-      AWS_ACCOUNT_ID:
-        from_secret: aws_account_id
       AWS_DEFAULT_REGION:
         from_secret: aws_region
     commands:
+      - '[ "${ACTION}" = "CREATE_ECR" ] || exit 0'
       - |
-        for domain in platform identity catalog commerce supply-chain financial customer-experience communications content analytics-ai b2b integrations affiliate; do
-          for svc in src/$domain/*/; do
-            svc_name=$(basename $svc)
-            aws ecr create-repository --repository-name shopos/$svc_name --region $AWS_DEFAULT_REGION 2>/dev/null || true
+        for domain in platform identity catalog commerce supply-chain financial \
+                      customer-experience communications content analytics-ai \
+                      b2b integrations affiliate; do
+          for svc_path in src/$domain/*/; do
+            SVC=$(basename "$svc_path")
+            aws ecr create-repository \
+              --repository-name "shopos/$SVC" \
+              --region "$AWS_DEFAULT_REGION" \
+              --image-scanning-configuration scanOnPush=true 2>/dev/null || true
+            echo "ECR repo: shopos/$SVC"
           done
         done
-    when:
-      branch: [main]
+    depends_on: [setup-kubeconfig]
 
-  - name: destroy-ecr
+  - name: destroy-ecr-repos
     image: amazon/aws-cli:latest
     environment:
       AWS_ACCESS_KEY_ID:
         from_secret: aws_access_key_id
       AWS_SECRET_ACCESS_KEY:
         from_secret: aws_secret_access_key
-      AWS_ACCOUNT_ID:
-        from_secret: aws_account_id
       AWS_DEFAULT_REGION:
         from_secret: aws_region
     commands:
+      - '[ "${ACTION}" = "DESTROY_ECR" ] || exit 0'
       - |
-        for repo in $(aws ecr describe-repositories --query 'repositories[?starts_with(repositoryName, `shopos/`)].repositoryName' --output text 2>/dev/null); do
-          aws ecr delete-repository --repository-name $repo --force --region $AWS_DEFAULT_REGION 2>/dev/null || true
+        for repo in $(aws ecr describe-repositories \
+          --query 'repositories[?starts_with(repositoryName, `shopos/`)].repositoryName' \
+          --output text 2>/dev/null); do
+          aws ecr delete-repository --repository-name "$repo" --force \
+            --region "$AWS_DEFAULT_REGION" 2>/dev/null || true
+          echo "Deleted ECR: $repo"
         done
-    when:
-      branch: [main]
+    depends_on: [setup-kubeconfig]
 
   - name: notify-slack
     image: plugins/slack
@@ -234,7 +153,7 @@ steps:
         {{#success build.status}}
         :white_check_mark: *Registry {{build.params.ACTION}} succeeded* — build {{build.number}}
         {{else}}
-        :x: *Registry {{build.params.ACTION}} failed* — build {{build.number}}
+        :x: *Registry {{build.params.ACTION}} FAILED* — build {{build.number}}
         {{/success}}
     when:
       status: [success, failure]

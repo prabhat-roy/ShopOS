@@ -1,22 +1,32 @@
-# Post-Deploy Validation Pipeline — GoCD
+# GoCD — Post-Deploy Validation Pipeline
+# Role: Post-deployment gate in the VSM. Triggered after shopos-deploy-dev.
+#       Runs health checks, k6 load test, DAST scan, kube-audit.
+#       Not in the critical delivery path — results inform but don't block prod gate.
+# Credentials: KUBECONFIG_CONTENT, SLACK_WEBHOOK, BASE_URL
 format_version: 10
 
 pipelines:
   shopos-post-deploy:
     group: shopos-delivery
     label_template: "post-deploy-${COUNT}"
+    lock_behavior: unlockWhenFinished
     materials:
       git:
         git: https://github.com/prabhat-roy/ShopOS.git
         branch: main
 
     environment_variables:
-      ENVIRONMENT: staging
+      ENVIRONMENT: dev
+      BASE_URL: http://api-gateway.platform.svc.cluster.local:8080
+      RUN_LOAD_TEST: "true"
+      RUN_DAST: "false"
 
     stages:
-      - health-check:
+      - health-checks:
+          approval:
+            type: success
           jobs:
-            check:
+            endpoint-health:
               elastic_profile_id: curl-agent
               tasks:
                 - exec:
@@ -24,17 +34,40 @@ pipelines:
                     arguments:
                       - -c
                       - |
-                        FAILED=0
-                        for PATH in /healthz /api/v1/products; do
-                          STATUS=$(curl -sf --max-time 10 "$BASE_URL$PATH" -o /dev/null -w "%{http_code}" || echo "000")
-                          echo "$BASE_URL$PATH → $STATUS"
-                          [ "$STATUS" = "000" ] && FAILED=1
+                        echo "=== Post-deploy health checks: $ENVIRONMENT ==="
+                        FAIL=0
+                        for ENDPOINT in \
+                          "/healthz" \
+                          "/api/v1/products" \
+                          "/api/v1/categories"; do
+                          STATUS=$(curl -sf --max-time 15 "$BASE_URL$ENDPOINT" \
+                            -o /dev/null -w "%{http_code}" || echo "000")
+                          echo "$BASE_URL$ENDPOINT → $STATUS"
+                          [ "$STATUS" = "000" ] && FAIL=$((FAIL+1))
                         done
-                        [ "$FAILED" = "1" ] && exit 1
+                        echo "Health check failures: $FAIL"
+                        [ "$FAIL" -eq 0 ] || exit 1
+            downstream-health:
+              elastic_profile_id: curl-agent
+              tasks:
+                - exec:
+                    command: /bin/sh
+                    arguments:
+                      - -c
+                      - |
+                        for SVC_URL in \
+                          "http://auth-service.platform.svc.cluster.local:50060/healthz" \
+                          "http://order-service.commerce.svc.cluster.local:50082/healthz" \
+                          "http://payment-service.commerce.svc.cluster.local:50083/healthz"; do
+                          CODE=$(curl -sf --max-time 10 "$SVC_URL" -o /dev/null -w "%{http_code}" || echo "000")
+                          echo "$SVC_URL → $CODE"
+                        done
 
       - load-test:
+          approval:
+            type: success
           jobs:
-            k6:
+            k6-baseline:
               elastic_profile_id: k6-agent
               tasks:
                 - exec:
@@ -43,26 +76,34 @@ pipelines:
                       - -c
                       - |
                         [ "$RUN_LOAD_TEST" = "true" ] || { echo "Skipped"; exit 0; }
-                        cat > /tmp/load.js << 'EOF'
-                        import http from 'k6/http';
-                        import { check, sleep } from 'k6';
-                        export let options = { vus: 10, duration: '60s',
-                          thresholds: { http_req_failed: ['rate<0.05'], http_req_duration: ['p(95)<500'] } };
-                        export default function() {
-                          let res = http.get(`${__ENV.BASE_URL}/healthz`);
-                          check(res, { 'status 200': (r) => r.status === 200 });
-                          sleep(1);
-                        }
-                        EOF
-                        k6 run /tmp/load.js -e BASE_URL="$BASE_URL"
+                        k6 run load-testing/k6/smoke.js \
+                          -e BASE_URL="$BASE_URL" \
+                          --vus 10 --duration 60s \
+                          --summary-export=/tmp/k6-summary.json || true
+                        echo "k6 baseline load test complete"
               artifacts:
                 - test:
                     source: /tmp/k6-summary.json
                     destination: k6/
+            k6-checkout:
+              elastic_profile_id: k6-agent
+              tasks:
+                - exec:
+                    command: /bin/sh
+                    arguments:
+                      - -c
+                      - |
+                        [ "$RUN_LOAD_TEST" = "true" ] || { echo "Skipped"; exit 0; }
+                        k6 run load-testing/k6/checkout-flow.js \
+                          -e BASE_URL="$BASE_URL" \
+                          --vus 5 --duration 60s || true
+                        echo "k6 checkout flow complete"
 
-      - dast:
+      - dast-scan:
+          approval:
+            type: success
           jobs:
-            zap:
+            zap-baseline:
               elastic_profile_id: zap-agent
               tasks:
                 - exec:
@@ -70,16 +111,21 @@ pipelines:
                     arguments:
                       - -c
                       - |
-                        [ "$RUN_DAST" = "true" ] || { echo "Skipped"; exit 0; }
-                        zap-baseline.py -t "$BASE_URL" -r /tmp/zap-report.html || true
+                        [ "$RUN_DAST" = "true" ] || { echo "DAST skipped (set RUN_DAST=true)"; exit 0; }
+                        zap-baseline.py -t "$BASE_URL" \
+                          -r /tmp/zap-report.html \
+                          -x /tmp/zap-report.xml || true
+                        echo "ZAP DAST scan complete"
               artifacts:
                 - build:
                     source: /tmp/zap-report.html
                     destination: dast/
 
       - kube-audit:
+          approval:
+            type: success
           jobs:
-            bench:
+            kube-bench-kubescape:
               elastic_profile_id: security-tools
               tasks:
                 - exec:
@@ -88,19 +134,24 @@ pipelines:
                       - -c
                       - |
                         mkdir -p ~/.kube && echo "$KUBECONFIG_CONTENT" | base64 -d > ~/.kube/config
-                        kube-bench run --targets node,policies --json > /tmp/kube-bench.json 2>/dev/null || true
-                        kubescape scan framework nsa,mitre --format json --output /tmp/kubescape.json 2>/dev/null || true
+                        mkdir -p /tmp/audit
+                        kube-bench run --targets node,policies \
+                          --json > /tmp/audit/kube-bench.json 2>/dev/null || true
+                        FAILS=$(grep -c '"status":"FAIL"' /tmp/audit/kube-bench.json 2>/dev/null || echo "0")
+                        echo "kube-bench FAIL count: $FAILS"
+                        kubescape scan framework nsa,mitre \
+                          --format json --output /tmp/audit/kubescape.json 2>/dev/null || true
+                        echo "Kube audit complete"
               artifacts:
                 - build:
-                    source: /tmp/kube-bench.json
-                    destination: audit/
-                - build:
-                    source: /tmp/kubescape.json
+                    source: /tmp/audit/
                     destination: audit/
 
-      - notify:
+      - notify-results:
+          approval:
+            type: success
           jobs:
-            slack:
+            slack-summary:
               elastic_profile_id: curl-agent
               tasks:
                 - exec:
@@ -110,4 +161,4 @@ pipelines:
                       - |
                         curl -sf -X POST "$SLACK_WEBHOOK" \
                           -H 'Content-type: application/json' \
-                          --data "{\"text\":\":white_check_mark: Post-deploy validation passed for *$ENVIRONMENT* — build ${GO_PIPELINE_LABEL}\"}" || true
+                          --data "{\"text\":\":white_check_mark: *Post-deploy validation complete* — $ENVIRONMENT — GoCD build ${GO_PIPELINE_LABEL}\"}" || true

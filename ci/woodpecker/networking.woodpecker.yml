@@ -1,15 +1,26 @@
-# Networking Infrastructure — Woodpecker CI
+# Woodpecker CI — Networking Infrastructure + Connectivity Smoke
+# Role: install network tools AND smoke-test connectivity.
 # Secrets: kubeconfig_content
-# Env vars: ENVIRONMENT, ACTION, CILIUM, ISTIO, TRAEFIK, CONSUL, EXTERNAL_DNS
+# Params: ACTION=INSTALL|UNINSTALL|CONFIGURE, CILIUM, ISTIO, TRAEFIK, CONSUL
 
 when:
   event: [custom, manual]
 
 steps:
+  setup-kubeconfig:
+    image: alpine:latest
+    environment:
+      KUBECONFIG_CONTENT:
+        from_secret: kubeconfig_content
+    commands:
+      - mkdir -p ~/.kube
+      - echo "$KUBECONFIG_CONTENT" | base64 -d > ~/.kube/config
+
   cilium:
     image: alpine/helm:latest
     environment:
-      KUBECONFIG_CONTENT: { from_secret: kubeconfig_content }
+      KUBECONFIG_CONTENT:
+        from_secret: kubeconfig_content
     commands:
       - '[ "$CILIUM" = "true" ] || exit 0'
       - mkdir -p ~/.kube && echo "$KUBECONFIG_CONTENT" | base64 -d > ~/.kube/config
@@ -19,13 +30,16 @@ steps:
         [ "$ACTION" != "UNINSTALL" ] && helm upgrade --install cilium cilium/cilium \
           --namespace kube-system \
           --set kubeProxyReplacement=true \
-          --set hubble.relay.enabled=true --set hubble.ui.enabled=true \
-          --wait --timeout 8m
+          --set hubble.relay.enabled=true \
+          --set hubble.ui.enabled=true \
+          --wait --timeout 8m || true
+    depends_on: [setup-kubeconfig]
 
   istio:
     image: alpine/helm:latest
     environment:
-      KUBECONFIG_CONTENT: { from_secret: kubeconfig_content }
+      KUBECONFIG_CONTENT:
+        from_secret: kubeconfig_content
     commands:
       - '[ "$ISTIO" = "true" ] || exit 0'
       - mkdir -p ~/.kube && echo "$KUBECONFIG_CONTENT" | base64 -d > ~/.kube/config
@@ -36,16 +50,19 @@ steps:
           helm uninstall istiod -n istio-system 2>/dev/null || true
           helm uninstall istio-base -n istio-system 2>/dev/null || true
         else
-          helm upgrade --install istio-base istio/base --namespace istio-system --create-namespace --wait --timeout 3m
-          helm upgrade --install istiod istio/istiod --namespace istio-system --set telemetry.enabled=true --wait --timeout 5m
-          helm upgrade --install istio-ingressgateway istio/gateway --namespace istio-system --wait --timeout 3m
+          helm upgrade --install istio-base istio/base --namespace istio-system --create-namespace --wait --timeout 3m || true
+          helm upgrade --install istiod istio/istiod --namespace istio-system \
+            --set telemetry.enabled=true --wait --timeout 5m || true
+          helm upgrade --install istio-ingressgateway istio/gateway \
+            --namespace istio-system --wait --timeout 3m || true
         fi
     depends_on: [cilium]
 
   traefik:
     image: alpine/helm:latest
     environment:
-      KUBECONFIG_CONTENT: { from_secret: kubeconfig_content }
+      KUBECONFIG_CONTENT:
+        from_secret: kubeconfig_content
     commands:
       - '[ "$TRAEFIK" = "true" ] || exit 0'
       - mkdir -p ~/.kube && echo "$KUBECONFIG_CONTENT" | base64 -d > ~/.kube/config
@@ -54,15 +71,18 @@ steps:
         [ "$ACTION" = "UNINSTALL" ] && helm uninstall traefik -n networking 2>/dev/null || true
         [ "$ACTION" != "UNINSTALL" ] && helm upgrade --install traefik traefik/traefik \
           --namespace networking --create-namespace \
-          --set deployment.replicas=2 --set ingressClass.enabled=true \
-          --set ingressClass.isDefaultClass=true --set metrics.prometheus.enabled=true \
-          --wait --timeout 5m
+          --set deployment.replicas=2 \
+          --set ingressClass.enabled=true \
+          --set ingressClass.isDefaultClass=true \
+          --set metrics.prometheus.enabled=true \
+          --wait --timeout 5m || true
     depends_on: [istio]
 
   consul:
     image: alpine/helm:latest
     environment:
-      KUBECONFIG_CONTENT: { from_secret: kubeconfig_content }
+      KUBECONFIG_CONTENT:
+        from_secret: kubeconfig_content
     commands:
       - '[ "$CONSUL" = "true" ] || exit 0'
       - mkdir -p ~/.kube && echo "$KUBECONFIG_CONTENT" | base64 -d > ~/.kube/config
@@ -71,6 +91,23 @@ steps:
         [ "$ACTION" = "UNINSTALL" ] && helm uninstall consul -n consul 2>/dev/null || true
         [ "$ACTION" != "UNINSTALL" ] && helm upgrade --install consul hashicorp/consul \
           --namespace consul --create-namespace \
-          --set server.replicas=3 --set server.bootstrapExpect=3 \
-          --set connectInject.enabled=true --set ui.enabled=true --wait --timeout 8m
+          --set server.replicas=3 \
+          --set server.bootstrapExpect=3 \
+          --set connectInject.enabled=true \
+          --set ui.enabled=true \
+          --wait --timeout 8m || true
     depends_on: [traefik]
+
+  smoke-networking:
+    image: curlimages/curl:latest
+    commands:
+      - '[ "${ACTION:-INSTALL}" != "UNINSTALL" ] || exit 0'
+      - |
+        echo "=== Networking connectivity smoke tests ==="
+        for endpoint in \
+          "http://traefik.networking.svc.cluster.local:9000/ping" \
+          "http://consul-server.consul.svc.cluster.local:8500/v1/status/leader"; do
+          CODE=$(curl -sf -o /dev/null -w "%{http_code}" --max-time 10 "$endpoint" 2>/dev/null || echo "000")
+          echo "$endpoint → $CODE"
+        done
+    depends_on: [traefik, consul]

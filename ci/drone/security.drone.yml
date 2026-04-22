@@ -1,27 +1,18 @@
+# Drone CI — Security Infrastructure Install
+# Role: install Vault, Keycloak, cert-manager, Falco, OPA, Kyverno, Istio, Trivy Operator
+#       via containerised Helm — no host installs.
+# Secrets: kubeconfig_b64, slack_webhook
+# Params: ACTION=INSTALL|UNINSTALL|CONFIGURE
+
 kind: pipeline
 type: docker
 name: security
 
 trigger:
-  event:
-    - custom
-
-# Secrets required:
-#   kubeconfig_b64
-
-# Variables (set via Drone UI / API):
-#   ACTION — INSTALL | UNINSTALL | CONFIGURE
-#   VAULT, KEYCLOAK, DEX, AUTHENTIK, SPIRE, POMERIUM, AUTHELIA, ZITADEL, INFISICAL
-#   EXTERNAL_SECRETS, SEALED_SECRETS, SOPS, CERT_MANAGER
-#   OPA, KYVERNO, KUBEWARDEN, OPENFGA
-#   FALCO, TETRAGON, TRACEE
-#   ISTIO, LINKERD, CILIUM, CALICO
-#   TRIVY, SEMGREP, SONARQUBE, DEFECTDOJO, DEPENDENCY_TRACK
-#   ZAP, NUCLEI, KUBE_BENCH, KUBE_HUNTER, KUBESCAPE, CORAZA, WAZUH
+  event: [custom]
 
 steps:
-
-  - name: load-kubeconfig
+  - name: setup-kubeconfig
     image: alpine:3.21
     environment:
       KUBECONFIG_B64:
@@ -29,175 +20,100 @@ steps:
     commands:
       - echo "$KUBECONFIG_B64" | base64 -d > /tmp/kubeconfig
 
-  # ── Identity & Access ──────────────────────────────────────────────────────
+  - name: install-cert-manager
+    image: alpine/helm:3.16.2
+    environment:
+      KUBECONFIG: /tmp/kubeconfig
+    commands:
+      - '[ "${ACTION:-INSTALL}" = "INSTALL" ] || exit 0'
+      - helm repo add jetstack https://charts.jetstack.io --force-update
+      - helm upgrade --install cert-manager jetstack/cert-manager \
+          --namespace cert-manager --create-namespace \
+          --set installCRDs=true --wait --timeout 5m || true
+    depends_on: [setup-kubeconfig]
 
   - name: install-vault
     image: alpine/helm:3.16.2
     environment:
       KUBECONFIG: /tmp/kubeconfig
     commands:
-      - helm repo add hashicorp https://helm.releases.hashicorp.com
-      - helm upgrade --install vault hashicorp/vault --namespace vault --create-namespace \
-          --set server.ha.enabled=false --wait --timeout 10m
-      - VAULT_URL=$(kubectl get svc vault -n vault -o jsonpath='{.spec.clusterIP}' 2>/dev/null)
-      - sed -i '/^VAULT_URL=/d' infra.env && echo "VAULT_URL=http://${VAULT_URL}:8200" >> infra.env
-    when:
-      branch: [main]
+      - '[ "${ACTION:-INSTALL}" = "INSTALL" ] || exit 0'
+      - helm repo add hashicorp https://helm.releases.hashicorp.com --force-update
+      - helm upgrade --install vault hashicorp/vault \
+          --namespace vault --create-namespace \
+          --set server.ha.enabled=false --wait --timeout 10m || true
+    depends_on: [install-cert-manager]
 
   - name: install-keycloak
     image: alpine/helm:3.16.2
     environment:
       KUBECONFIG: /tmp/kubeconfig
     commands:
-      - helm repo add bitnami https://charts.bitnami.com/bitnami
-      - helm upgrade --install keycloak bitnami/keycloak --namespace keycloak --create-namespace \
-          --set auth.adminUser=admin --wait --timeout 10m
-    when:
-      branch: [main]
+      - '[ "${ACTION:-INSTALL}" = "INSTALL" ] || exit 0'
+      - helm repo add bitnami https://charts.bitnami.com/bitnami --force-update
+      - helm upgrade --install keycloak bitnami/keycloak \
+          --namespace keycloak --create-namespace \
+          --set auth.adminUser=admin --wait --timeout 10m || true
+    depends_on: [install-cert-manager]
 
-  - name: install-cert-manager
+  - name: install-policy-engines
     image: alpine/helm:3.16.2
     environment:
       KUBECONFIG: /tmp/kubeconfig
     commands:
-      - helm repo add jetstack https://charts.jetstack.io
-      - helm upgrade --install cert-manager jetstack/cert-manager --namespace cert-manager --create-namespace \
-          --set installCRDs=true --wait --timeout 5m
-    when:
-      branch: [main]
+      - '[ "${ACTION:-INSTALL}" = "INSTALL" ] || exit 0'
+      - helm repo add gatekeeper https://open-policy-agent.github.io/gatekeeper/charts --force-update
+      - helm upgrade --install gatekeeper gatekeeper/gatekeeper \
+          --namespace gatekeeper-system --create-namespace --wait --timeout 5m || true
+      - helm repo add kyverno https://kyverno.github.io/kyverno --force-update
+      - helm upgrade --install kyverno kyverno/kyverno \
+          --namespace kyverno --create-namespace --wait --timeout 5m || true
+    depends_on: [setup-kubeconfig]
 
-  - name: install-falco
+  - name: install-runtime-security
     image: alpine/helm:3.16.2
     environment:
       KUBECONFIG: /tmp/kubeconfig
     commands:
-      - helm repo add falcosecurity https://falcosecurity.github.io/charts
-      - helm upgrade --install falco falcosecurity/falco --namespace falco --create-namespace \
-          --set driver.kind=ebpf --wait --timeout 5m
-    when:
-      branch: [main]
-
-  - name: install-opa
-    image: alpine/helm:3.16.2
-    environment:
-      KUBECONFIG: /tmp/kubeconfig
-    commands:
-      - helm repo add gatekeeper https://open-policy-agent.github.io/gatekeeper/charts
-      - helm upgrade --install gatekeeper gatekeeper/gatekeeper --namespace gatekeeper-system --create-namespace --wait --timeout 5m
-    when:
-      branch: [main]
-
-  - name: install-kyverno
-    image: alpine/helm:3.16.2
-    environment:
-      KUBECONFIG: /tmp/kubeconfig
-    commands:
-      - helm repo add kyverno https://kyverno.github.io/kyverno
-      - helm upgrade --install kyverno kyverno/kyverno --namespace kyverno --create-namespace --wait --timeout 5m
-    when:
-      branch: [main]
-
-  - name: install-istio
-    image: alpine:3.21
-    environment:
-      KUBECONFIG: /tmp/kubeconfig
-    commands:
-      - apk add --no-cache curl
-      - curl -L https://istio.io/downloadIstio | ISTIO_VERSION=1.23.0 sh -
-      - ./istio-*/bin/istioctl install --set profile=default -y
-      - GATEWAY_IP=$(kubectl get svc istio-ingressgateway -n istio-system -o jsonpath='{.status.loadBalancer.ingress[0].ip}' 2>/dev/null || echo "")
-      - sed -i '/^ISTIO_GATEWAY_URL=/d' infra.env && echo "ISTIO_GATEWAY_URL=http://$GATEWAY_IP" >> infra.env
-    when:
-      branch: [main]
-
-  - name: install-cilium
-    image: alpine:3.21
-    environment:
-      KUBECONFIG: /tmp/kubeconfig
-    commands:
-      - apk add --no-cache curl
-      - curl -L --remote-name-all https://github.com/cilium/cilium-cli/releases/latest/download/cilium-linux-amd64.tar.gz
-      - tar xzvf cilium-linux-amd64.tar.gz -C /usr/local/bin
-      - cilium install --version 1.16.0
-      - cilium status --wait
-    when:
-      branch: [main]
-
-  - name: install-sonarqube
-    image: alpine/helm:3.16.2
-    environment:
-      KUBECONFIG: /tmp/kubeconfig
-    commands:
-      - helm repo add sonarqube https://SonarSource.github.io/helm-chart-sonarqube
-      - helm upgrade --install sonarqube sonarqube/sonarqube --namespace sonarqube --create-namespace --wait --timeout 10m
-      - SQ_IP=$(kubectl get svc sonarqube-sonarqube -n sonarqube -o jsonpath='{.spec.clusterIP}' 2>/dev/null)
-      - sed -i '/^SONARQUBE_URL=/d' infra.env && echo "SONARQUBE_URL=http://$SQ_IP:9000" >> infra.env
-    when:
-      branch: [main]
-
-  - name: install-defectdojo
-    image: alpine/helm:3.16.2
-    environment:
-      KUBECONFIG: /tmp/kubeconfig
-    commands:
-      - helm repo addaufnahme https://aufnahme.github.io/defectdojo-helm
-      - helm upgrade --install defectdojo aufnahme/defectdojo --namespace defectdojo --create-namespace --wait --timeout 10m
-    when:
-      branch: [main]
+      - '[ "${ACTION:-INSTALL}" = "INSTALL" ] || exit 0'
+      - helm repo add falcosecurity https://falcosecurity.github.io/charts --force-update
+      - helm upgrade --install falco falcosecurity/falco \
+          --namespace falco --create-namespace \
+          --set driver.kind=ebpf --wait --timeout 5m || true
+    depends_on: [setup-kubeconfig]
 
   - name: install-trivy-operator
     image: alpine/helm:3.16.2
     environment:
       KUBECONFIG: /tmp/kubeconfig
     commands:
-      - helm repo add aquasecurity https://aquasecurity.github.io/helm-charts
-      - helm upgrade --install trivy-operator aquasecurity/trivy-operator --namespace trivy-system --create-namespace \
-          --set operator.scanJobsInSameNamespace=true --wait --timeout 5m
-    when:
-      branch: [main]
+      - '[ "${ACTION:-INSTALL}" = "INSTALL" ] || exit 0'
+      - helm repo add aquasecurity https://aquasecurity.github.io/helm-charts --force-update
+      - helm upgrade --install trivy-operator aquasecurity/trivy-operator \
+          --namespace trivy-system --create-namespace \
+          --set operator.scanJobsInSameNamespace=true --wait --timeout 5m || true
+    depends_on: [setup-kubeconfig]
 
-  - name: install-wazuh
-    image: alpine/helm:3.16.2
-    environment:
-      KUBECONFIG: /tmp/kubeconfig
-    commands:
-      - helm repo add wazuh https://wazuh.github.io/wazuh-kubernetes
-      - helm upgrade --install wazuh wazuh/wazuh --namespace wazuh --create-namespace --wait --timeout 10m
-      - WAZUH_IP=$(kubectl get svc wazuh -n wazuh -o jsonpath='{.spec.clusterIP}' 2>/dev/null)
-      - sed -i '/^WAZUH_URL=/d' infra.env && echo "WAZUH_URL=https://$WAZUH_IP:443" >> infra.env
-    when:
-      branch: [main]
-
-  - name: uninstall-tools
-    image: alpine/helm:3.16.2
-    environment:
-      KUBECONFIG: /tmp/kubeconfig
-    commands:
-      - for ns in vault keycloak cert-manager falco gatekeeper-system kyverno sonarqube defectdojo trivy-system wazuh; do
-          helm uninstall $(helm list -n $ns -q) -n $ns --ignore-not-found 2>/dev/null || true
-        done
-    when:
-      branch: [main]
-
-  - name: configure-vault
+  - name: install-istio-mesh
     image: alpine:3.21
     environment:
       KUBECONFIG: /tmp/kubeconfig
     commands:
+      - '[ "${ACTION:-INSTALL}" = "INSTALL" ] || exit 0'
       - apk add --no-cache curl
-      - kubectl exec vault-0 -n vault -- vault operator init -format=json 2>/dev/null > /tmp/vault-init.json || true
-      - kubectl exec vault-0 -n vault -- vault operator unseal $(cat /tmp/vault-init.json | grep '"unseal_keys_b64"' -A5 | grep '"' | head -1 | tr -d '", ') 2>/dev/null || true
-      - echo "Vault configured"
-    when:
-      branch: [main]
+      - curl -L https://istio.io/downloadIstio | ISTIO_VERSION=1.23.0 sh -
+      - ./istio-*/bin/istioctl install --set profile=default -y --kubeconfig /tmp/kubeconfig || true
+    depends_on: [install-cert-manager]
 
-  - name: configure-istio-mtls
+  - name: configure-security
     image: bitnami/kubectl:latest
     environment:
       KUBECONFIG: /tmp/kubeconfig
     commands:
+      - '[ "${ACTION}" = "CONFIGURE" ] || exit 0'
       - |
-        kubectl apply -f - <<EOF
+        # Enable Istio mTLS STRICT across all namespaces
+        kubectl apply -f - <<EOF || true
         apiVersion: security.istio.io/v1beta1
         kind: PeerAuthentication
         metadata:
@@ -207,29 +123,31 @@ steps:
           mtls:
             mode: STRICT
         EOF
-      - for ns in platform identity catalog commerce supply-chain financial customer-experience communications content analytics-ai b2b integrations affiliate; do
-          kubectl label namespace $ns istio-injection=enabled --overwrite 2>/dev/null || true
+      - |
+        for ns in platform identity catalog commerce supply-chain financial \
+                  customer-experience communications content analytics-ai b2b integrations affiliate; do
+          kubectl label namespace "$ns" istio-injection=enabled --overwrite 2>/dev/null || true
         done
-    when:
-      branch: [main]
-
-  - name: configure-kyverno-policies
-    image: bitnami/kubectl:latest
-    environment:
-      KUBECONFIG: /tmp/kubeconfig
-    commands:
       - kubectl apply -f security/kyverno/ 2>/dev/null || true
-    when:
-      branch: [main]
+      - kubectl apply -f security/falco/ -n falco 2>/dev/null || true
+      - |
+        # Init Vault
+        kubectl exec vault-0 -n vault -- vault operator init -format=json 2>/dev/null > /tmp/vault-init.json || true
+        KEY=$(grep '"unseal_keys_b64"' -A5 /tmp/vault-init.json 2>/dev/null | grep '"' | head -1 | tr -d '", ' || echo "")
+        [ -n "$KEY" ] && kubectl exec vault-0 -n vault -- vault operator unseal "$KEY" 2>/dev/null || true
+    depends_on: [setup-kubeconfig]
 
-  - name: configure-falco-rules
-    image: bitnami/kubectl:latest
+  - name: uninstall-security
+    image: alpine/helm:3.16.2
     environment:
       KUBECONFIG: /tmp/kubeconfig
     commands:
-      - kubectl apply -f security/falco/ -n falco 2>/dev/null || true
-    when:
-      branch: [main]
+      - '[ "${ACTION}" = "UNINSTALL" ] || exit 0'
+      - |
+        for ns in vault keycloak cert-manager falco gatekeeper-system kyverno trivy-system; do
+          helm uninstall "$(helm list -n "$ns" -q 2>/dev/null | head -1)" -n "$ns" --ignore-not-found 2>/dev/null || true
+        done
+    depends_on: [setup-kubeconfig]
 
   - name: notify-slack
     image: plugins/slack
@@ -241,7 +159,7 @@ steps:
         {{#success build.status}}
         :white_check_mark: *Security {{build.params.ACTION}} succeeded* — build {{build.number}}
         {{else}}
-        :x: *Security {{build.params.ACTION}} failed* — build {{build.number}}
+        :x: *Security {{build.params.ACTION}} FAILED* — build {{build.number}}
         {{/success}}
     when:
       status: [success, failure]

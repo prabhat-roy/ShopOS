@@ -1,74 +1,102 @@
-# Kubernetes Infrastructure (Terraform) Pipeline — Concourse CI
-# Credentials: aws-credentials, gcp-sa-key, azure-credentials
+# Concourse CI — Kubernetes Infrastructure Pipeline (resource-based)
+# Role: Terraform plan/apply/destroy for EKS, GKE, and AKS clusters.
+#       Uses git resource for source and time resource for manual-equivalent trigger.
+#       Manual gate: set ((action)) to PLAN (default), APPLY, or DESTROY.
+# Credentials: ((aws.access_key_id)), ((aws.secret_access_key)),
+#              ((gcp.sa_key)), ((azure.client_id)), ((azure.client_secret)),
+#              ((azure.subscription_id)), ((azure.tenant_id)),
+#              ((slack.webhook_url))
 ---
+resource_types:
+  - name: slack-notification
+    type: docker-image
+    source:
+      repository: cfcommunity/slack-notification-resource
+
 resources:
-  - name: source-code
+  - name: shopos-repo
     type: git
     source:
-      uri: ((git.uri))
-      branch: ((git.branch))
-      private_key: ((git.private_key))
+      uri: https://github.com/prabhat-roy/ShopOS.git
+      branch: main
 
   - name: trigger-manual
     type: time
     source:
       interval: 8760h
 
+  - name: slack-alert
+    type: slack-notification
+    source:
+      url: ((slack.webhook_url))
+
 jobs:
   - name: terraform-eks
     plan:
-      - get: source-code
+      - get: shopos-repo
       - get: trigger-manual
         trigger: false
-      - task: tf-plan-apply
+      - task: tf-eks
         config:
           platform: linux
           image_resource:
             type: registry-image
-            source: {repository: hashicorp/terraform, tag: "1.9.0"}
+            source:
+              repository: hashicorp/terraform
+              tag: "1.9.0"
           inputs:
-            - name: source-code
+            - name: shopos-repo
           params:
             AWS_ACCESS_KEY_ID: ((aws.access_key_id))
             AWS_SECRET_ACCESS_KEY: ((aws.secret_access_key))
             AWS_DEFAULT_REGION: us-east-1
             TF_ACTION: ((action))
-            TF_DIR: infra/terraform/aws/eks
           run:
             path: sh
             args:
               - -c
               - |
-                cd source-code/$TF_DIR
+                TF_DIR="shopos-repo/infra/terraform/aws/eks"
+                cd "$TF_DIR"
+                echo "=== EKS Terraform: $TF_ACTION ==="
                 terraform init \
                   -backend-config="bucket=shopos-tfstate" \
-                  -backend-config="key=$TF_DIR/terraform.tfstate" \
-                  -backend-config="region=$AWS_DEFAULT_REGION"
-                if [ "$TF_ACTION" = "PLAN" ]; then
-                  terraform plan
-                elif [ "$TF_ACTION" = "APPLY" ]; then
-                  terraform apply -auto-approve
-                elif [ "$TF_ACTION" = "DESTROY" ]; then
-                  terraform destroy -auto-approve
-                fi
+                  -backend-config="key=infra/terraform/aws/eks/terraform.tfstate" \
+                  -backend-config="region=$AWS_DEFAULT_REGION" \
+                  -reconfigure
+                case "$TF_ACTION" in
+                  PLAN)    terraform plan ;;
+                  APPLY)   terraform apply -auto-approve ;;
+                  DESTROY) terraform destroy -auto-approve ;;
+                  *)       echo "Unknown TF_ACTION=$TF_ACTION (use PLAN/APPLY/DESTROY)"; exit 1 ;;
+                esac
+        on_failure:
+          put: slack-alert
+          params:
+            text: ":x: *Terraform EKS FAILED* — action: ((action)) (Concourse)"
+        on_success:
+          put: slack-alert
+          params:
+            text: ":white_check_mark: *Terraform EKS succeeded* — action: ((action)) (Concourse)"
 
   - name: terraform-gke
     plan:
-      - get: source-code
+      - get: shopos-repo
       - get: trigger-manual
         trigger: false
-      - task: tf-plan-apply
+      - task: tf-gke
         config:
           platform: linux
           image_resource:
             type: registry-image
-            source: {repository: hashicorp/terraform, tag: "1.9.0"}
+            source:
+              repository: hashicorp/terraform
+              tag: "1.9.0"
           inputs:
-            - name: source-code
+            - name: shopos-repo
           params:
             GCP_SA_KEY: ((gcp.sa_key))
             TF_ACTION: ((action))
-            TF_DIR: infra/opentofu/gcp/gke
           run:
             path: sh
             args:
@@ -76,54 +104,100 @@ jobs:
               - |
                 echo "$GCP_SA_KEY" > /tmp/gcp-key.json
                 export GOOGLE_APPLICATION_CREDENTIALS=/tmp/gcp-key.json
-                cd source-code/$TF_DIR
+                TF_DIR="shopos-repo/infra/opentofu/gcp/gke"
+                cd "$TF_DIR"
+                echo "=== GKE Terraform: $TF_ACTION ==="
                 terraform init \
                   -backend-config="bucket=shopos-tfstate-gcp" \
-                  -backend-config="prefix=$TF_DIR"
-                if [ "$TF_ACTION" = "PLAN" ]; then
-                  terraform plan
-                elif [ "$TF_ACTION" = "APPLY" ]; then
-                  terraform apply -auto-approve
-                elif [ "$TF_ACTION" = "DESTROY" ]; then
-                  terraform destroy -auto-approve
-                fi
+                  -backend-config="prefix=infra/opentofu/gcp/gke" \
+                  -reconfigure
+                case "$TF_ACTION" in
+                  PLAN)    terraform plan ;;
+                  APPLY)   terraform apply -auto-approve ;;
+                  DESTROY) terraform destroy -auto-approve ;;
+                  *)       echo "Unknown TF_ACTION=$TF_ACTION"; exit 1 ;;
+                esac
                 rm -f /tmp/gcp-key.json
+        on_failure:
+          put: slack-alert
+          params:
+            text: ":x: *Terraform GKE FAILED* — action: ((action)) (Concourse)"
 
   - name: terraform-aks
     plan:
-      - get: source-code
+      - get: shopos-repo
       - get: trigger-manual
         trigger: false
-      - task: tf-plan-apply
+      - task: tf-aks
         config:
           platform: linux
           image_resource:
             type: registry-image
-            source: {repository: hashicorp/terraform, tag: "1.9.0"}
+            source:
+              repository: hashicorp/terraform
+              tag: "1.9.0"
           inputs:
-            - name: source-code
+            - name: shopos-repo
           params:
             ARM_CLIENT_ID: ((azure.client_id))
             ARM_CLIENT_SECRET: ((azure.client_secret))
             ARM_SUBSCRIPTION_ID: ((azure.subscription_id))
             ARM_TENANT_ID: ((azure.tenant_id))
             TF_ACTION: ((action))
-            TF_DIR: infra/opentofu/azure/aks
           run:
             path: sh
             args:
               - -c
               - |
-                cd source-code/$TF_DIR
+                TF_DIR="shopos-repo/infra/opentofu/azure/aks"
+                cd "$TF_DIR"
+                echo "=== AKS Terraform: $TF_ACTION ==="
                 terraform init \
                   -backend-config="resource_group_name=shopos-tfstate-rg" \
                   -backend-config="storage_account_name=shoposterraform" \
                   -backend-config="container_name=tfstate" \
-                  -backend-config="key=$TF_DIR/terraform.tfstate"
-                if [ "$TF_ACTION" = "PLAN" ]; then
-                  terraform plan
-                elif [ "$TF_ACTION" = "APPLY" ]; then
-                  terraform apply -auto-approve
-                elif [ "$TF_ACTION" = "DESTROY" ]; then
-                  terraform destroy -auto-approve
-                fi
+                  -backend-config="key=infra/opentofu/azure/aks/terraform.tfstate" \
+                  -reconfigure
+                case "$TF_ACTION" in
+                  PLAN)    terraform plan ;;
+                  APPLY)   terraform apply -auto-approve ;;
+                  DESTROY) terraform destroy -auto-approve ;;
+                  *)       echo "Unknown TF_ACTION=$TF_ACTION"; exit 1 ;;
+                esac
+        on_failure:
+          put: slack-alert
+          params:
+            text: ":x: *Terraform AKS FAILED* — action: ((action)) (Concourse)"
+
+  - name: verify-cluster-connectivity
+    plan:
+      - get: trigger-manual
+        trigger: false
+        passed: [terraform-eks]
+      - task: kubectl-verify
+        config:
+          platform: linux
+          image_resource:
+            type: registry-image
+            source:
+              repository: bitnami/kubectl
+              tag: latest
+          params:
+            KUBECONFIG_CONTENT: ((kubeconfig.content))
+          run:
+            path: sh
+            args:
+              - -c
+              - |
+                mkdir -p ~/.kube
+                echo "$KUBECONFIG_CONTENT" | base64 -d > ~/.kube/config
+                echo "=== Cluster connectivity check ==="
+                kubectl cluster-info
+                kubectl get nodes -o wide
+                READY=$(kubectl get nodes --no-headers | grep -c " Ready" || echo "0")
+                echo "Ready nodes: $READY"
+                [ "$READY" -gt 0 ] && echo "PASS" || exit 1
+        on_failure:
+          put: slack-alert
+          params:
+            text: ":warning: *Cluster connectivity check FAILED* — nodes not ready (Concourse)"

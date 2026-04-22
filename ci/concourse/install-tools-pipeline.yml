@@ -1,156 +1,197 @@
-# Install CI Tools — Concourse CI
-# Verifies all required runtimes and security tools are available
+# Concourse CI — Install Tools Verification Pipeline (resource-based)
+# Role: Verify all container images required for ShopOS CI/CD pipelines are
+#       accessible and contain expected tool versions. Runs nightly and on demand.
+# Credentials: ((harbor.registry)), ((harbor.username)), ((harbor.password)),
+#              ((slack.webhook_url))
 ---
+resource_types:
+  - name: slack-notification
+    type: docker-image
+    source:
+      repository: cfcommunity/slack-notification-resource
+
 resources:
-  - name: trigger-manual
+  - name: shopos-repo
+    type: git
+    source:
+      uri: https://github.com/prabhat-roy/ShopOS.git
+      branch: main
+
+  - name: nightly-verify
     type: time
     source:
-      interval: 8760h
+      interval: 24h
+      start: 12:00 AM
+      stop: 1:00 AM
+      location: UTC
+
+  - name: slack-alert
+    type: slack-notification
+    source:
+      url: ((slack.webhook_url))
 
 jobs:
-  - name: verify-kubectl-helm
+  - name: verify-build-images
     plan:
-      - get: trigger-manual
-        trigger: false
-      - task: verify
+      - get: nightly-verify
+        trigger: true
+      - task: check-build-images
         config:
           platform: linux
           image_resource:
             type: registry-image
-            source: {repository: alpine/helm}
+            source:
+              repository: docker
+              tag: 26-cli
+          params:
+            HARBOR_REGISTRY: ((harbor.registry))
+            HARBOR_USER: ((harbor.username))
+            HARBOR_PASSWORD: ((harbor.password))
           run:
             path: sh
             args:
               - -c
               - |
-                helm version --short
-                echo "kubectl: $(kubectl version --client --short 2>/dev/null || echo 'not in image')"
+                echo "=== Verifying build images ==="
+                echo "$HARBOR_PASSWORD" | docker login "$HARBOR_REGISTRY" -u "$HARBOR_USER" --password-stdin 2>/dev/null || true
+                FAIL=0
+                for IMG in \
+                  "concourse/oci-build-task:latest" \
+                  "docker:26-cli" \
+                  "alpine/helm:3.16.0" \
+                  "hashicorp/terraform:1.9.0" \
+                  "bitnami/kubectl:latest"; do
+                  docker pull "$IMG" >/dev/null 2>&1 && echo "OK  $IMG" || { echo "FAIL $IMG"; FAIL=$((FAIL+1)); }
+                done
+                echo "Build image check: $FAIL failures"
+                [ "$FAIL" -eq 0 ] || exit 1
 
-  - name: verify-terraform
+  - name: verify-language-runtimes
     plan:
-      - get: trigger-manual
-        trigger: false
-      - task: verify
+      - get: nightly-verify
+        trigger: true
+      - task: check-language-images
         config:
           platform: linux
           image_resource:
             type: registry-image
-            source: {repository: hashicorp/terraform, tag: "1.9.0"}
-          run:
-            path: terraform
-            args: [version]
-
-  - name: verify-golang
-    plan:
-      - get: trigger-manual
-        trigger: false
-      - task: verify
-        config:
-          platform: linux
-          image_resource:
-            type: registry-image
-            source: {repository: golang, tag: "1.23"}
-          run:
-            path: go
-            args: [version]
-
-  - name: verify-java
-    plan:
-      - get: trigger-manual
-        trigger: false
-      - task: verify
-        config:
-          platform: linux
-          image_resource:
-            type: registry-image
-            source: {repository: eclipse-temurin, tag: "21"}
-          run:
-            path: java
-            args: [-version]
-
-  - name: verify-nodejs
-    plan:
-      - get: trigger-manual
-        trigger: false
-      - task: verify
-        config:
-          platform: linux
-          image_resource:
-            type: registry-image
-            source: {repository: node, tag: "22"}
+            source:
+              repository: docker
+              tag: 26-cli
           run:
             path: sh
             args:
               - -c
               - |
-                node --version
-                npm --version
+                echo "=== Verifying language runtime images ==="
+                FAIL=0
+                for IMG in \
+                  "golang:1.23" \
+                  "eclipse-temurin:21" \
+                  "node:22" \
+                  "python:3.13" \
+                  "mcr.microsoft.com/dotnet/sdk:8.0" \
+                  "rust:latest" \
+                  "gradle:8-jdk21" \
+                  "sbtscala/scala-sbt:eclipse-temurin-21_1.10.1_3.5.1"; do
+                  docker pull "$IMG" >/dev/null 2>&1 && echo "OK  $IMG" || { echo "WARN $IMG (non-critical)"; }
+                done
+                echo "Language runtime check complete"
 
-  - name: verify-python
+  - name: verify-security-tool-images
     plan:
-      - get: trigger-manual
-        trigger: false
-      - task: verify
+      - get: nightly-verify
+        trigger: true
+      - task: check-security-images
         config:
           platform: linux
           image_resource:
             type: registry-image
-            source: {repository: python, tag: "3.13"}
-          run:
-            path: python
-            args: [--version]
-
-  - name: verify-dotnet
-    plan:
-      - get: trigger-manual
-        trigger: false
-      - task: verify
-        config:
-          platform: linux
-          image_resource:
-            type: registry-image
-            source: {repository: mcr.microsoft.com/dotnet/sdk, tag: "8.0"}
-          run:
-            path: dotnet
-            args: [--version]
-
-  - name: verify-rust
-    plan:
-      - get: trigger-manual
-        trigger: false
-      - task: verify
-        config:
-          platform: linux
-          image_resource:
-            type: registry-image
-            source: {repository: rust}
-          run:
-            path: rustc
-            args: [--version]
-
-  - name: verify-security-tools
-    plan:
-      - get: trigger-manual
-        trigger: false
-      - task: verify
-        config:
-          platform: linux
-          image_resource:
-            type: registry-image
-            source: {repository: ubuntu, tag: "24.04"}
+            source:
+              repository: docker
+              tag: 26-cli
           run:
             path: sh
             args:
               - -c
               - |
-                apt-get update -qq && apt-get install -y curl --quiet
-                curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh -s -- -b /usr/local/bin
-                curl -sSfL https://raw.githubusercontent.com/anchore/grype/main/install.sh | sh -s -- -b /usr/local/bin
-                curl -sSfL https://raw.githubusercontent.com/anchore/syft/main/install.sh | sh -s -- -b /usr/local/bin
-                curl -fsSL "https://github.com/sigstore/cosign/releases/download/v2.4.0/cosign-linux-amd64" -o /usr/local/bin/cosign && chmod +x /usr/local/bin/cosign
-                pip3 install semgrep checkov --quiet
-                trivy --version | head -1
-                grype version | head -1
-                syft --version
-                cosign version
-                semgrep --version
+                echo "=== Verifying security tool images ==="
+                FAIL=0
+                for IMG in \
+                  "aquasec/trivy:latest" \
+                  "anchore/grype:latest" \
+                  "anchore/syft:latest" \
+                  "aquasec/kube-bench:latest" \
+                  "owasp/zap2docker-stable:latest"; do
+                  docker pull "$IMG" >/dev/null 2>&1 && echo "OK  $IMG" || { echo "FAIL $IMG"; FAIL=$((FAIL+1)); }
+                done
+                echo "Security image check: $FAIL failures"
+                [ "$FAIL" -eq 0 ] || exit 1
+
+  - name: verify-test-tool-images
+    plan:
+      - get: nightly-verify
+        trigger: true
+      - task: check-test-images
+        config:
+          platform: linux
+          image_resource:
+            type: registry-image
+            source:
+              repository: docker
+              tag: 26-cli
+          run:
+            path: sh
+            args:
+              - -c
+              - |
+                echo "=== Verifying test tool images ==="
+                for IMG in \
+                  "grafana/k6:latest" \
+                  "locustio/locust:latest" \
+                  "curlimages/curl:latest" \
+                  "bitnami/kafka:latest"; do
+                  docker pull "$IMG" >/dev/null 2>&1 && echo "OK  $IMG" || echo "WARN $IMG"
+                done
+                echo "Test image check complete"
+
+  - name: verify-harbor-connectivity
+    plan:
+      - get: nightly-verify
+        trigger: true
+      - task: harbor-ping
+        config:
+          platform: linux
+          image_resource:
+            type: registry-image
+            source:
+              repository: curlimages/curl
+              tag: latest
+          params:
+            HARBOR_REGISTRY: ((harbor.registry))
+            HARBOR_USER: ((harbor.username))
+            HARBOR_PASSWORD: ((harbor.password))
+          run:
+            path: sh
+            args:
+              - -c
+              - |
+                echo "=== Verifying Harbor registry connectivity ==="
+                CODE=$(curl -sf -o /dev/null -w "%{http_code}" --max-time 15 \
+                  -u "$HARBOR_USER:$HARBOR_PASSWORD" \
+                  "https://$HARBOR_REGISTRY/api/v2.0/ping" || echo "000")
+                echo "Harbor ping → $CODE"
+                [ "$CODE" = "200" ] && echo "PASS" || { echo "FAIL"; exit 1; }
+        on_failure:
+          put: slack-alert
+          params:
+            text: ":x: *Harbor registry unreachable* — CI tool verification failed (Concourse nightly)"
+
+  - name: notify-verify-complete
+    plan:
+      - get: nightly-verify
+        trigger: true
+        passed: [verify-build-images, verify-security-tool-images, verify-harbor-connectivity]
+      - put: slack-alert
+        params:
+          text: ":white_check_mark: *Nightly CI tool image verification passed* — all required images accessible (Concourse)"

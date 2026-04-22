@@ -1,6 +1,7 @@
-# Docker-Build Pipeline — Concourse CI
-# Builds Docker images for all ShopOS services and pushes to Harbor with Trivy scanning.
-# Credentials: harbor-credentials, slack-webhook
+# Concourse CI — Docker Build Pipeline (resource-based)
+# Role: build images using Concourse's OCI build task resource model.
+# Credentials: ((harbor.registry)), ((harbor.username)), ((harbor.password)),
+#              ((slack.webhook_url))
 ---
 resource_types:
   - name: slack-notification
@@ -9,12 +10,25 @@ resource_types:
       repository: cfcommunity/slack-notification-resource
 
 resources:
-  - name: source-code
+  - name: shopos-repo
     type: git
     source:
-      uri: ((git.uri))
-      branch: ((git.branch))
-      private_key: ((git.private_key))
+      uri: https://github.com/prabhat-roy/ShopOS.git
+      branch: main
+
+  - name: harbor-api-gateway
+    type: registry-image
+    source:
+      repository: ((harbor.registry))/shopos/api-gateway
+      username: ((harbor.username))
+      password: ((harbor.password))
+
+  - name: harbor-order-service
+    type: registry-image
+    source:
+      repository: ((harbor.registry))/shopos/order-service
+      username: ((harbor.username))
+      password: ((harbor.password))
 
   - name: slack-alert
     type: slack-notification
@@ -22,197 +36,117 @@ resources:
       url: ((slack.webhook_url))
 
 jobs:
-  - name: docker-build-scan-push
+  - name: build-api-gateway
     plan:
-      - get: source-code
+      - get: shopos-repo
         trigger: true
-
-      - task: resolve-services
+      - task: build-image
+        privileged: true
         config:
           platform: linux
           image_resource:
             type: registry-image
-            source: {repository: alpine/git}
+            source:
+              repository: concourse/oci-build-task
           inputs:
-            - name: source-code
+            - name: shopos-repo
           outputs:
-            - name: build-meta
+            - name: image
+          params:
+            CONTEXT: shopos-repo/src/platform/api-gateway
+            DOCKERFILE: shopos-repo/src/platform/api-gateway/Dockerfile
+          run:
+            path: build
+      - task: trivy-scan
+        config:
+          platform: linux
+          image_resource:
+            type: registry-image
+            source:
+              repository: aquasec/trivy
+          inputs:
+            - name: image
           run:
             path: sh
             args:
               - -c
               - |
-                cd source-code
-                GIT_SHA=$(git rev-parse --short HEAD 2>/dev/null || echo "unknown")
-                TAG="${IMAGE_TAG:-dev-${GIT_SHA}-$(date +%s)}"
-                echo "IMAGE_TAG=${TAG}"          > ../build-meta/env
-                echo "REGISTRY_PROJECT=${REGISTRY_PROJECT:-shopos}" >> ../build-meta/env
-                echo "Resolved TAG=${TAG}"
+                trivy image --severity HIGH,CRITICAL --exit-code 0 \
+                  --input image/image.tar || true
+      - put: harbor-api-gateway
         params:
-          IMAGE_TAG: ((image_tag))
-          REGISTRY_PROJECT: ((registry_project))
+          image: image/image.tar
+          additional_tags: shopos-repo/.git/short_ref
 
-      - task: build-all-services
+  - name: build-order-service
+    plan:
+      - get: shopos-repo
+        trigger: true
+      - task: build-image
         privileged: true
         config:
           platform: linux
           image_resource:
             type: registry-image
-            source: {repository: docker, tag: "27-dind"}
+            source:
+              repository: concourse/oci-build-task
           inputs:
-            - name: source-code
-            - name: build-meta
+            - name: shopos-repo
+          outputs:
+            - name: image
           params:
-            HARBOR_URL: ((harbor.registry))
-            HARBOR_USER: ((harbor.username))
-            HARBOR_PASSWORD: ((harbor.password))
-            SERVICE_NAME: ((service_name))
-            DOMAIN: ((domain))
+            CONTEXT: shopos-repo/src/commerce/order-service
+            DOCKERFILE: shopos-repo/src/commerce/order-service/Dockerfile
           run:
-            path: sh
-            args:
-              - -c
-              - |
-                source build-meta/env
-                echo "$HARBOR_PASSWORD" | docker login "$HARBOR_URL" -u "$HARBOR_USER" --password-stdin
+            path: build
+      - put: harbor-order-service
+        params:
+          image: image/image.tar
+          additional_tags: shopos-repo/.git/short_ref
 
-                ALL_DOMAINS="platform identity catalog commerce supply-chain financial customer-experience communications content analytics-ai b2b integrations affiliate"
-
-                build_svc() {
-                  local domain=$1 svc=$2
-                  local image="$HARBOR_URL/$REGISTRY_PROJECT/$svc:$IMAGE_TAG"
-                  echo "=== Building: $image ==="
-                  docker build \
-                    --label "git.commit=$IMAGE_TAG" \
-                    --label "domain=$domain" \
-                    -t "$image" \
-                    "source-code/src/$domain/$svc/" || echo "WARN build failed for $svc"
-                }
-
-                if [ -n "$SERVICE_NAME" ] && [ -n "$DOMAIN" ]; then
-                  build_svc "$DOMAIN" "$SERVICE_NAME"
-                elif [ -n "$DOMAIN" ]; then
-                  for svc_path in source-code/src/$DOMAIN/*/; do
-                    [ -d "$svc_path" ] || continue
-                    build_svc "$DOMAIN" "$(basename $svc_path)"
-                  done
-                else
-                  for d in $ALL_DOMAINS; do
-                    for svc_path in source-code/src/$d/*/; do
-                      [ -d "$svc_path" ] || continue
-                      build_svc "$d" "$(basename $svc_path)"
-                    done
-                  done
-                fi
-
-      - task: trivy-scan-all
-        config:
-          platform: linux
-          image_resource:
-            type: registry-image
-            source: {repository: aquasec/trivy}
-          inputs:
-            - name: source-code
-            - name: build-meta
-          params:
-            HARBOR_URL: ((harbor.registry))
-            REGISTRY_PROJECT: ((registry_project))
-            SERVICE_NAME: ((service_name))
-            DOMAIN: ((domain))
-            SCAN_IMAGE: ((scan_image))
-          run:
-            path: sh
-            args:
-              - -c
-              - |
-                source build-meta/env
-                if [ "${SCAN_IMAGE:-true}" != "true" ]; then
-                  echo "SCAN_IMAGE=false — skipping Trivy scan"
-                  exit 0
-                fi
-
-                ALL_DOMAINS="platform identity catalog commerce supply-chain financial customer-experience communications content analytics-ai b2b integrations affiliate"
-
-                scan_svc() {
-                  local svc=$1
-                  local image="$HARBOR_URL/$REGISTRY_PROJECT/$svc:$IMAGE_TAG"
-                  echo "=== Trivy: $image ==="
-                  trivy image --exit-code 0 --severity HIGH,CRITICAL --no-progress "$image" || true
-                }
-
-                if [ -n "$SERVICE_NAME" ]; then
-                  scan_svc "$SERVICE_NAME"
-                elif [ -n "$DOMAIN" ]; then
-                  for svc_path in source-code/src/$DOMAIN/*/; do
-                    [ -d "$svc_path" ] && scan_svc "$(basename $svc_path)"
-                  done
-                else
-                  for d in $ALL_DOMAINS; do
-                    for svc_path in source-code/src/$d/*/; do
-                      [ -d "$svc_path" ] && scan_svc "$(basename $svc_path)"
-                    done
-                  done
-                fi
-
-      - task: push-all-images
+  - name: build-remaining-batch
+    plan:
+      - get: shopos-repo
+        passed: [build-api-gateway, build-order-service]
+        trigger: true
+      - task: batch-build-push
         privileged: true
         config:
           platform: linux
           image_resource:
             type: registry-image
-            source: {repository: docker, tag: "27-dind"}
+            source:
+              repository: docker
+              tag: 26-cli
           inputs:
-            - name: source-code
-            - name: build-meta
+            - name: shopos-repo
           params:
-            HARBOR_URL: ((harbor.registry))
+            HARBOR_REGISTRY: ((harbor.registry))
             HARBOR_USER: ((harbor.username))
             HARBOR_PASSWORD: ((harbor.password))
-            SERVICE_NAME: ((service_name))
-            DOMAIN: ((domain))
-            PUSH_IMAGE: ((push_image))
           run:
             path: sh
             args:
               - -c
               - |
-                source build-meta/env
-                if [ "${PUSH_IMAGE:-true}" != "true" ]; then
-                  echo "PUSH_IMAGE=false — skipping push"
-                  exit 0
-                fi
-
-                echo "$HARBOR_PASSWORD" | docker login "$HARBOR_URL" -u "$HARBOR_USER" --password-stdin
-
-                ALL_DOMAINS="platform identity catalog commerce supply-chain financial customer-experience communications content analytics-ai b2b integrations affiliate"
-
-                push_svc() {
-                  local svc=$1
-                  local image="$HARBOR_URL/$REGISTRY_PROJECT/$svc:$IMAGE_TAG"
-                  echo "=== Pushing: $image ==="
-                  docker push "$image" || echo "WARN push failed for $svc"
-                }
-
-                if [ -n "$SERVICE_NAME" ]; then
-                  push_svc "$SERVICE_NAME"
-                elif [ -n "$DOMAIN" ]; then
-                  for svc_path in source-code/src/$DOMAIN/*/; do
-                    [ -d "$svc_path" ] && push_svc "$(basename $svc_path)"
+                echo "$HARBOR_PASSWORD" | docker login "$HARBOR_REGISTRY" -u "$HARBOR_USER" --password-stdin
+                IMAGE_TAG=$(cat shopos-repo/.git/short_ref 2>/dev/null || echo "latest")
+                for domain in platform identity catalog commerce supply-chain financial \
+                              customer-experience communications content analytics-ai \
+                              b2b integrations affiliate; do
+                  for dir in shopos-repo/src/$domain/*/; do
+                    [ -d "$dir" ] || continue
+                    SVC=$(basename "$dir")
+                    docker build -t "$HARBOR_REGISTRY/shopos/$SVC:$IMAGE_TAG" "$dir" \
+                      && docker push "$HARBOR_REGISTRY/shopos/$SVC:$IMAGE_TAG" \
+                      || echo "WARN $SVC build/push failed"
                   done
-                else
-                  for d in $ALL_DOMAINS; do
-                    for svc_path in source-code/src/$d/*/; do
-                      [ -d "$svc_path" ] && push_svc "$(basename $svc_path)"
-                    done
-                  done
-                fi
-                docker logout "$HARBOR_URL" || true
-
+                done
         on_success:
           put: slack-alert
           params:
-            text: ":whale: *Docker Build succeeded* — ShopOS images pushed to ((harbor.registry)) @ tag built from ((git.branch))"
+            text: ":whale: *Concourse batch build complete* — all images pushed"
         on_failure:
           put: slack-alert
           params:
-            text: ":x: *Docker Build FAILED* — check Concourse logs"
+            text: ":x: *Concourse batch build FAILED*"

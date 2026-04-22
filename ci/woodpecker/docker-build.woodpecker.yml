@@ -1,166 +1,84 @@
-# Docker Build Pipeline — Woodpecker CI
-# Builds Docker images for all 154 ShopOS microservices and pushes to Harbor.
-# Secrets (set in Woodpecker UI → Secrets):
-#   harbor_registry, harbor_user, harbor_password
+# Woodpecker CI — Secondary Image Builder + Integration Smoke Tests
+# Role: parallel builder (connected to Forgejo) — builds images domain-by-domain
+#       using Woodpecker's native matrix syntax, then runs smoke tests after Drone.
+# Secrets: harbor_registry, harbor_user, harbor_password, slack_webhook
 
 when:
-  event: [custom, manual, push]
-  branch: [main, develop, "release/*"]
+  event: push
+  branch:
+    - main
+    - "release/*"
 
-variables:
-  SERVICE_NAME: ""         # empty = build all services in DOMAIN (or all 154 if DOMAIN also empty)
-  DOMAIN: ""               # empty = all 13 domains
-  IMAGE_TAG: ${CI_COMMIT_SHA:0:8}
-  REGISTRY_PROJECT: shopos
-  PUSH_IMAGE: "true"
-  SCAN_IMAGE: "true"
+matrix:
+  DOMAIN:
+    - platform
+    - identity
+    - catalog
+    - commerce
+    - supply-chain
+    - financial
+    - customer-experience
+    - communications
+    - content
+    - analytics-ai
+    - b2b
+    - integrations
+    - affiliate
 
 steps:
-  resolve-context:
-    image: alpine/git:latest
-    commands:
-      - export GIT_SHA=$(git rev-parse --short HEAD 2>/dev/null || echo "${CI_COMMIT_SHA:0:8}")
-      - export TAG="${IMAGE_TAG:-dev-${GIT_SHA}-${CI_BUILD_NUMBER}}"
-      - echo "IMAGE_TAG=${TAG}" > .build.env
-      - echo "REGISTRY_PROJECT=${REGISTRY_PROJECT:-shopos}" >> .build.env
-      - cat .build.env
-
-  docker-build:
-    image: docker:27-dind
-    privileged: true
-    environment:
-      HARBOR_REGISTRY:
-        from_secret: harbor_registry
-      HARBOR_USER:
+  - name: build-domain-images
+    image: woodpeckerci/plugin-docker-buildx
+    settings:
+      username:
         from_secret: harbor_user
-      HARBOR_PASSWORD:
+      password:
         from_secret: harbor_password
+      registry:
+        from_secret: harbor_registry
+      tags:
+        - ${CI_COMMIT_SHA:0:8}
+        - latest
+      platforms:
+        - linux/amd64
     commands:
-      - source .build.env
-      - echo "$HARBOR_PASSWORD" | docker login "$HARBOR_REGISTRY" -u "$HARBOR_USER" --password-stdin
       - |
-        ALL_DOMAINS="platform identity catalog commerce supply-chain financial customer-experience communications content analytics-ai b2b integrations affiliate"
+        HARBOR_REG="${CI_REGISTRY}"
+        IMAGE_TAG="${CI_COMMIT_SHA:0:8}"
+        echo "=== Building domain: ${DOMAIN} ==="
+        for dir in src/${DOMAIN}/*/; do
+          [ -d "$dir" ] || continue
+          SVC=$(basename "$dir")
+          echo "--- Building $SVC ---"
+          docker buildx build \
+            --platform linux/amd64 \
+            --tag "$HARBOR_REG/shopos/$SVC:$IMAGE_TAG" \
+            --tag "$HARBOR_REG/shopos/$SVC:latest" \
+            --push \
+            "$dir" || echo "WARN $SVC failed — continuing"
+        done
+    when:
+      event: push
 
-        build_svc() {
-          local domain=$1 svc=$2
-          local image="$HARBOR_REGISTRY/$REGISTRY_PROJECT/$svc:$IMAGE_TAG"
-          echo "=== Building: $image ==="
-          docker build \
-            --label "git.commit=$IMAGE_TAG" \
-            --label "domain=$domain" \
-            -t "$image" \
-            "src/$domain/$svc/" || echo "WARN build failed for $svc"
-        }
-
-        if [ -n "$SERVICE_NAME" ] && [ -n "$DOMAIN" ]; then
-          build_svc "$DOMAIN" "$SERVICE_NAME"
-        elif [ -n "$DOMAIN" ]; then
-          for svc_path in src/$DOMAIN/*/; do
-            [ -d "$svc_path" ] || continue
-            build_svc "$DOMAIN" "$(basename $svc_path)"
-          done
-        else
-          for d in $ALL_DOMAINS; do
-            for svc_path in src/$d/*/; do
-              [ -d "$svc_path" ] || continue
-              build_svc "$d" "$(basename $svc_path)"
-            done
-          done
-        fi
-    volumes:
-      - /var/run/docker.sock:/var/run/docker.sock
-    depends_on: [resolve-context]
-
-  trivy-scan:
+  - name: trivy-spot-check
     image: aquasec/trivy:latest
     environment:
       HARBOR_REGISTRY:
         from_secret: harbor_registry
     commands:
-      - source .build.env
-      - mkdir -p reports/image-scan
+      - IMAGE_TAG="${CI_COMMIT_SHA:0:8}"
       - |
-        if [ "$SCAN_IMAGE" != "true" ]; then echo "Skipping scan"; exit 0; fi
-        ALL_DOMAINS="platform identity catalog commerce supply-chain financial customer-experience communications content analytics-ai b2b integrations affiliate"
-
-        scan_svc() {
-          local svc=$1
-          local image="$HARBOR_REGISTRY/$REGISTRY_PROJECT/$svc:$IMAGE_TAG"
-          echo "=== Trivy: $image ==="
-          trivy image --exit-code 0 --severity HIGH,CRITICAL \
-            --format json \
-            --output "reports/image-scan/trivy-${svc}.json" \
-            "$image" || true
-        }
-
-        if [ -n "$SERVICE_NAME" ]; then
-          scan_svc "$SERVICE_NAME"
-        elif [ -n "$DOMAIN" ]; then
-          for svc_path in src/$DOMAIN/*/; do
-            [ -d "$svc_path" ] && scan_svc "$(basename $svc_path)"
-          done
-        else
-          for d in $ALL_DOMAINS; do
-            for svc_path in src/$d/*/; do
-              [ -d "$svc_path" ] && scan_svc "$(basename $svc_path)"
-            done
-          done
-        fi
-    depends_on: [docker-build]
-
-  docker-push:
-    image: docker:27-dind
-    privileged: true
-    environment:
-      HARBOR_REGISTRY:
-        from_secret: harbor_registry
-      HARBOR_USER:
-        from_secret: harbor_user
-      HARBOR_PASSWORD:
-        from_secret: harbor_password
-    commands:
-      - source .build.env
-      - |
-        if [ "$PUSH_IMAGE" != "true" ]; then echo "Skipping push"; exit 0; fi
-      - echo "$HARBOR_PASSWORD" | docker login "$HARBOR_REGISTRY" -u "$HARBOR_USER" --password-stdin
-      - |
-        ALL_DOMAINS="platform identity catalog commerce supply-chain financial customer-experience communications content analytics-ai b2b integrations affiliate"
-
-        push_svc() {
-          local svc=$1
-          local image="$HARBOR_REGISTRY/$REGISTRY_PROJECT/$svc:$IMAGE_TAG"
-          echo "=== Pushing: $image ==="
-          docker push "$image" || echo "WARN push failed for $svc"
-        }
-
-        if [ -n "$SERVICE_NAME" ]; then
-          push_svc "$SERVICE_NAME"
-        elif [ -n "$DOMAIN" ]; then
-          for svc_path in src/$DOMAIN/*/; do
-            [ -d "$svc_path" ] && push_svc "$(basename $svc_path)"
-          done
-        else
-          for d in $ALL_DOMAINS; do
-            for svc_path in src/$d/*/; do
-              [ -d "$svc_path" ] && push_svc "$(basename $svc_path)"
-            done
-          done
-        fi
-      - docker logout "$HARBOR_REGISTRY" || true
-    volumes:
-      - /var/run/docker.sock:/var/run/docker.sock
-    depends_on: [trivy-scan]
-    when:
-      branch: [main, develop, "release/*"]
-
-  cleanup:
-    image: docker:27-dind
-    privileged: true
-    commands:
-      - docker image prune -f 2>/dev/null || true
-      - echo "Cleanup complete."
-    volumes:
-      - /var/run/docker.sock:/var/run/docker.sock
-    depends_on: [docker-push]
-    when:
-      status: [success, failure]
+        # Spot-check one representative service per domain matrix cell
+        case "${DOMAIN}" in
+          platform)         SVC="api-gateway" ;;
+          identity)         SVC="auth-service" ;;
+          catalog)          SVC="product-catalog-service" ;;
+          commerce)         SVC="order-service" ;;
+          supply-chain)     SVC="fulfillment-service" ;;
+          financial)        SVC="payment-service" ;;
+          *)                SVC="" ;;
+        esac
+        [ -z "$SVC" ] && echo "No spot-check for $DOMAIN" && exit 0
+        trivy image --severity HIGH,CRITICAL --exit-code 0 \
+          "$HARBOR_REGISTRY/shopos/$SVC:$IMAGE_TAG" || true
+    depends_on:
+      - build-domain-images

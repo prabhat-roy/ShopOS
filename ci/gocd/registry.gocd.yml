@@ -1,4 +1,8 @@
-# Registry Tools Pipeline — GoCD
+# GoCD — Registry Infrastructure Pipeline
+# Role: Install Harbor and MinIO with manual gate before bucket/project configuration.
+#       install → [manual] configure
+# Credentials: KUBECONFIG_CONTENT, HARBOR_ADMIN_PASSWORD, MINIO_ROOT_USER,
+#              MINIO_ROOT_PASSWORD, SLACK_WEBHOOK
 format_version: 10
 
 pipelines:
@@ -12,7 +16,9 @@ pipelines:
         branch: main
 
     stages:
-      - install:
+      - install-registry:
+          approval:
+            type: success
           jobs:
             harbor:
               elastic_profile_id: helm-agent
@@ -31,8 +37,10 @@ pipelines:
                           --set expose.ingress.hosts.core=harbor.shopos.internal \
                           --set externalURL=https://harbor.shopos.internal \
                           --set harborAdminPassword="$HARBOR_ADMIN_PASSWORD" \
-                          --set trivy.enabled=true --set persistence.enabled=true \
+                          --set trivy.enabled=true \
+                          --set persistence.enabled=true \
                           --wait --timeout 10m
+                        echo "Harbor installed"
             minio:
               elastic_profile_id: helm-agent
               tasks:
@@ -48,14 +56,33 @@ pipelines:
                           --set rootUser="$MINIO_ROOT_USER" \
                           --set rootPassword="$MINIO_ROOT_PASSWORD" \
                           --set replicas=4 \
-                          --set persistence.enabled=true --set persistence.size=100Gi \
+                          --set persistence.enabled=true \
+                          --set persistence.size=100Gi \
                           --wait --timeout 8m
+                        echo "MinIO installed"
+            nexus:
+              elastic_profile_id: helm-agent
+              tasks:
+                - exec:
+                    command: /bin/sh
+                    arguments:
+                      - -c
+                      - |
+                        mkdir -p ~/.kube && echo "$KUBECONFIG_CONTENT" | base64 -d > ~/.kube/config
+                        helm repo add sonatype https://sonatype.github.io/helm3-charts --force-update
+                        helm upgrade --install nexus sonatype/nexus-repository-manager \
+                          --namespace registry \
+                          --set persistence.enabled=true \
+                          --set persistence.storageSize=200Gi \
+                          --wait --timeout 8m || echo "WARN Nexus install failed (optional)"
+                        echo "Nexus installed"
 
-      - configure:
+      - configure-registry:
           approval:
             type: manual
+          allow_only_on_success: true
           jobs:
-            buckets:
+            minio-buckets:
               elastic_profile_id: minio-agent
               tasks:
                 - exec:
@@ -66,4 +93,27 @@ pipelines:
                         mc alias set shopos http://minio.registry.svc:9000 "$MINIO_ROOT_USER" "$MINIO_ROOT_PASSWORD"
                         for BUCKET in harbor-registry velero-backups loki-chunks tempo-traces thanos mlflow artifacts media-assets; do
                           mc mb --ignore-existing "shopos/$BUCKET" || true
+                          echo "Bucket ready: $BUCKET"
                         done
+            harbor-projects:
+              elastic_profile_id: curl-agent
+              tasks:
+                - exec:
+                    command: /bin/sh
+                    arguments:
+                      - -c
+                      - |
+                        HARBOR_URL="https://harbor.shopos.internal"
+                        AUTH="$HARBOR_ADMIN_USER:$HARBOR_ADMIN_PASSWORD"
+                        for PROJECT in shopos platform identity catalog commerce supply-chain \
+                                       financial customer-experience communications content \
+                                       analytics-ai b2b integrations affiliate; do
+                          curl -sf -X POST "$HARBOR_URL/api/v2.0/projects" \
+                            -u "$AUTH" \
+                            -H 'Content-Type: application/json' \
+                            --data "{\"project_name\":\"$PROJECT\",\"public\":false}" 2>/dev/null \
+                            && echo "Project created: $PROJECT" || echo "Project exists: $PROJECT"
+                        done
+                        curl -sf -X POST "$SLACK_WEBHOOK" \
+                          -H 'Content-type: application/json' \
+                          --data '{"text":":anchor: *Registry configured* — Harbor projects + MinIO buckets ready — GoCD"}' || true

@@ -1,26 +1,17 @@
+# Drone CI — GitOps: Trigger ArgoCD Sync
+# Role: after a successful image build, sync ArgoCD apps so deployments pick up
+#       the new image tags. Runs entirely in containers.
+# Secrets: kubeconfig_b64, argocd_auth_token, gitea_url, gitea_token, slack_webhook
+
 kind: pipeline
 type: docker
 name: gitops
 
 trigger:
-  event:
-    - custom
-
-# Secrets required:
-#   kubeconfig_b64
-#   harbor_url, harbor_user, harbor_password
-#   gitea_url, gitea_token
-#   argocd_auth_token
-
-# Variables (set via Drone UI / API):
-#   ACTION — INSTALL | UNINSTALL | CONFIGURE
-#   ARGOCD, ARGO_ROLLOUTS, ARGO_WORKFLOWS, ARGO_EVENTS, ARGOCD_IMAGE_UPDATER
-#   FLUXCD, FLAGGER, WEAVE_GITOPS, SEALED_SECRETS, EXTERNAL_SECRETS
-#   VCLUSTER, GIMLET
+  event: [custom]
 
 steps:
-
-  - name: load-kubeconfig
+  - name: setup-kubeconfig
     image: alpine:3.21
     environment:
       KUBECONFIG_B64:
@@ -28,202 +19,90 @@ steps:
     commands:
       - echo "$KUBECONFIG_B64" | base64 -d > /tmp/kubeconfig
 
-  - name: install-argocd
-    image: alpine/helm:3.16.2
+  - name: argocd-sync-platform
+    image: argoproj/argocd:latest
     environment:
       KUBECONFIG: /tmp/kubeconfig
+      ARGOCD_AUTH_TOKEN:
+        from_secret: argocd_auth_token
     commands:
-      - helm repo add argo https://argoproj.github.io/argo-helm
-      - helm repo update
-      - helm upgrade --install argocd argo/argo-cd --namespace argocd --create-namespace --wait --timeout 10m
-      - ARGOCD_URL=$(kubectl get svc argocd-server -n argocd -o jsonpath='{.status.loadBalancer.ingress[0].ip}' 2>/dev/null || echo "http://argocd-server.argocd.svc.cluster.local")
-      - sed -i '/^ARGOCD_URL=/d' infra.env && echo "ARGOCD_URL=$ARGOCD_URL" >> infra.env
-    when:
-      branch: [main]
-
-  - name: install-argo-rollouts
-    image: alpine/helm:3.16.2
-    environment:
-      KUBECONFIG: /tmp/kubeconfig
-    commands:
-      - helm repo add argo https://argoproj.github.io/argo-helm
-      - helm upgrade --install argo-rollouts argo/argo-rollouts --namespace argo-rollouts --create-namespace --wait --timeout 5m
-    when:
-      branch: [main]
-
-  - name: install-argo-workflows
-    image: alpine/helm:3.16.2
-    environment:
-      KUBECONFIG: /tmp/kubeconfig
-    commands:
-      - helm repo add argo https://argoproj.github.io/argo-helm
-      - helm upgrade --install argo-workflows argo/argo-workflows --namespace argo-workflows --create-namespace --wait --timeout 5m
-    when:
-      branch: [main]
-
-  - name: install-argo-events
-    image: alpine/helm:3.16.2
-    environment:
-      KUBECONFIG: /tmp/kubeconfig
-    commands:
-      - helm repo add argo https://argoproj.github.io/argo-helm
-      - helm upgrade --install argo-events argo/argo-events --namespace argo-events --create-namespace --wait --timeout 5m
-    when:
-      branch: [main]
-
-  - name: install-argocd-image-updater
-    image: alpine/helm:3.16.2
-    environment:
-      KUBECONFIG: /tmp/kubeconfig
-    commands:
-      - helm repo add argo https://argoproj.github.io/argo-helm
-      - helm upgrade --install argocd-image-updater argo/argocd-image-updater \
-          --namespace argocd-image-updater --create-namespace \
-          --set config.argocd.serverAddress=http://argocd-server.argocd.svc.cluster.local \
-          --wait --timeout 5m
-    when:
-      branch: [main]
-
-  - name: install-fluxcd
-    image: fluxcd/flux-cli:v2.3.0
-    environment:
-      KUBECONFIG: /tmp/kubeconfig
-    commands:
-      - flux install --namespace=flux-system --components-extra=image-reflector-controller,image-automation-controller
-    when:
-      branch: [main]
-
-  - name: install-flagger
-    image: alpine/helm:3.16.2
-    environment:
-      KUBECONFIG: /tmp/kubeconfig
-    commands:
-      - helm repo add flagger https://flagger.app
-      - helm upgrade --install flagger flagger/flagger --namespace flagger --create-namespace \
-          --set meshProvider=istio --set metricsServer=http://prometheus-prometheus.prometheus.svc.cluster.local:9090 \
-          --wait --timeout 5m
-    when:
-      branch: [main]
-
-  - name: install-weave-gitops
-    image: alpine/helm:3.16.2
-    environment:
-      KUBECONFIG: /tmp/kubeconfig
-    commands:
-      - helm repo add ww-gitops https://helm.gitops.weave.works
-      - helm upgrade --install weave-gitops ww-gitops/weave-gitops --namespace weave-gitops --create-namespace --wait --timeout 5m
-    when:
-      branch: [main]
-
-  - name: install-sealed-secrets
-    image: alpine/helm:3.16.2
-    environment:
-      KUBECONFIG: /tmp/kubeconfig
-    commands:
-      - helm repo add sealed-secrets https://bitnami-labs.github.io/sealed-secrets
-      - helm upgrade --install sealed-secrets sealed-secrets/sealed-secrets --namespace sealed-secrets --create-namespace --wait --timeout 5m
-    when:
-      branch: [main]
-
-  - name: install-external-secrets
-    image: alpine/helm:3.16.2
-    environment:
-      KUBECONFIG: /tmp/kubeconfig
-    commands:
-      - helm repo add external-secrets https://charts.external-secrets.io
-      - helm upgrade --install external-secrets external-secrets/external-secrets --namespace external-secrets --create-namespace --wait --timeout 5m
-    when:
-      branch: [main]
-
-  - name: install-vcluster
-    image: alpine/helm:3.16.2
-    environment:
-      KUBECONFIG: /tmp/kubeconfig
-    commands:
-      - helm repo add loft-sh https://charts.loft.sh
-      - helm upgrade --install vcluster loft-sh/vcluster --namespace vcluster --create-namespace --wait --timeout 5m
-    when:
-      branch: [main]
-
-  - name: install-gimlet
-    image: alpine/helm:3.16.2
-    environment:
-      KUBECONFIG: /tmp/kubeconfig
-    commands:
-      - helm repo add onechart https://chart.onechart.dev
-      - helm upgrade --install gimlet onechart/gimlet --namespace gimlet --create-namespace --wait --timeout 5m
-    when:
-      branch: [main]
-
-  - name: uninstall-tools
-    image: alpine/helm:3.16.2
-    environment:
-      KUBECONFIG: /tmp/kubeconfig
-    commands:
-      - helm uninstall argocd               -n argocd               --ignore-not-found || true
-      - helm uninstall argo-rollouts        -n argo-rollouts        --ignore-not-found || true
-      - helm uninstall argo-workflows       -n argo-workflows       --ignore-not-found || true
-      - helm uninstall argo-events          -n argo-events          --ignore-not-found || true
-      - helm uninstall argocd-image-updater -n argocd-image-updater --ignore-not-found || true
-      - helm uninstall fluxcd               -n flux-system          --ignore-not-found || true
-      - helm uninstall flagger              -n flagger              --ignore-not-found || true
-      - helm uninstall weave-gitops         -n weave-gitops         --ignore-not-found || true
-      - helm uninstall sealed-secrets       -n sealed-secrets       --ignore-not-found || true
-      - helm uninstall external-secrets     -n external-secrets     --ignore-not-found || true
-      - helm uninstall vcluster             -n vcluster             --ignore-not-found || true
-      - helm uninstall gimlet               -n gimlet               --ignore-not-found || true
-    when:
-      branch: [main]
-
-  - name: configure-argocd
-    image: alpine/helm:3.16.2
-    environment:
-      KUBECONFIG: /tmp/kubeconfig
-      GITEA_URL:
-        from_secret: gitea_url
-      GITEA_TOKEN:
-        from_secret: gitea_token
-    commands:
-      - apk add --no-cache curl
-      - kubectl rollout status deploy/argocd-server -n argocd --timeout=120s || true
-      - ADMIN_PASS=$(kubectl get secret argocd-initial-admin-secret -n argocd -o jsonpath='{.data.password}' | base64 -d 2>/dev/null || echo "")
-      - sed -i '/^ARGOCD_ADMIN_PASSWORD=/d' infra.env && echo "ARGOCD_ADMIN_PASSWORD=$ADMIN_PASS" >> infra.env
+      - ARGOCD_SERVER="argocd-server.argocd.svc.cluster.local"
       - |
-        if [ -n "$GITEA_URL" ]; then
-          curl -sf -X POST http://argocd-server.argocd.svc.cluster.local/api/v1/repositories \
-            -H "Authorization: Bearer $(argocd account generate-token --account admin 2>/dev/null || echo '')" \
-            -H "Content-Type: application/json" \
-            -d "{\"repo\":\"$GITEA_URL/shopos/enterprise-platform\",\"username\":\"ci\",\"password\":\"$GITEA_TOKEN\"}" || true
-        fi
-      - kubectl apply -f gitops/argocd/ -n argocd || true
-    when:
-      branch: [main]
+        for app in api-gateway web-bff mobile-bff partner-bff graphql-gateway tenant-service; do
+          argocd app sync "$app" \
+            --server "$ARGOCD_SERVER" \
+            --auth-token "$ARGOCD_AUTH_TOKEN" \
+            --insecure \
+            --timeout 120 \
+            --grpc-web || echo "WARN sync failed for $app — continuing"
+        done
+    depends_on: [setup-kubeconfig]
 
-  - name: configure-fluxcd
-    image: fluxcd/flux-cli:v2.3.0
+  - name: argocd-sync-commerce
+    image: argoproj/argocd:latest
     environment:
       KUBECONFIG: /tmp/kubeconfig
-      GITEA_TOKEN:
-        from_secret: gitea_token
-      GITEA_URL:
-        from_secret: gitea_url
+      ARGOCD_AUTH_TOKEN:
+        from_secret: argocd_auth_token
     commands:
-      - flux create source git enterprise-platform --url=$GITEA_URL/shopos/enterprise-platform --branch=main --interval=1m --namespace=flux-system || true
-      - flux create kustomization shopos --source=enterprise-platform --path=./gitops/flux --prune=true --interval=5m --namespace=flux-system || true
-    when:
-      branch: [main]
+      - ARGOCD_SERVER="argocd-server.argocd.svc.cluster.local"
+      - |
+        for app in cart-service checkout-service order-service payment-service \
+                   shipping-service fraud-detection-service; do
+          argocd app sync "$app" \
+            --server "$ARGOCD_SERVER" \
+            --auth-token "$ARGOCD_AUTH_TOKEN" \
+            --insecure \
+            --timeout 120 \
+            --grpc-web || echo "WARN sync failed for $app — continuing"
+        done
+    depends_on: [argocd-sync-platform]
 
-  - name: configure-sealed-secrets
+  - name: argocd-sync-remaining-domains
+    image: argoproj/argocd:latest
+    environment:
+      KUBECONFIG: /tmp/kubeconfig
+      ARGOCD_AUTH_TOKEN:
+        from_secret: argocd_auth_token
+    commands:
+      - ARGOCD_SERVER="argocd-server.argocd.svc.cluster.local"
+      - |
+        # Sync the App-of-Apps to cascade to all remaining domain apps
+        argocd app sync shopos-app-of-apps \
+          --server "$ARGOCD_SERVER" \
+          --auth-token "$ARGOCD_AUTH_TOKEN" \
+          --insecure \
+          --timeout 300 \
+          --grpc-web || echo "WARN app-of-apps sync failed — check ArgoCD UI"
+    depends_on: [argocd-sync-commerce]
+
+  - name: wait-for-healthy
+    image: argoproj/argocd:latest
+    environment:
+      ARGOCD_AUTH_TOKEN:
+        from_secret: argocd_auth_token
+    commands:
+      - ARGOCD_SERVER="argocd-server.argocd.svc.cluster.local"
+      - |
+        # Wait up to 5 min for platform apps to reach Synced+Healthy
+        for app in api-gateway web-bff; do
+          argocd app wait "$app" \
+            --server "$ARGOCD_SERVER" \
+            --auth-token "$ARGOCD_AUTH_TOKEN" \
+            --insecure \
+            --grpc-web \
+            --health --timeout 300 || echo "WARN $app not healthy after 5m"
+        done
+    depends_on: [argocd-sync-remaining-domains]
+
+  - name: apply-gitops-manifests
     image: bitnami/kubectl:latest
     environment:
       KUBECONFIG: /tmp/kubeconfig
     commands:
-      - kubectl rollout status deploy/sealed-secrets -n sealed-secrets --timeout=120s || true
-      - CERT=$(kubectl get secret -n sealed-secrets -l sealedsecrets.bitnami.com/sealed-secrets-key -o jsonpath='{.items[0].data.tls\.crt}' 2>/dev/null | base64 -d | base64 -w0 || echo "")
-      - sed -i '/^SEALED_SECRETS_CERT=/d' infra.env && echo "SEALED_SECRETS_CERT=$CERT" >> infra.env
-      - echo "Sealed Secrets public key saved to infra.env"
-    when:
-      branch: [main]
+      - kubectl apply -f gitops/argocd/ -n argocd 2>/dev/null || true
+      - echo "ArgoCD App-of-Apps manifests applied"
+    depends_on: [setup-kubeconfig]
 
   - name: notify-slack
     image: plugins/slack
@@ -233,9 +112,10 @@ steps:
       channel: "#deployments"
       template: |
         {{#success build.status}}
-        :white_check_mark: *GitOps {{build.params.ACTION}} succeeded* — build {{build.number}}
+        :arrows_counterclockwise: *ArgoCD sync triggered* — build {{build.number}} — apps syncing
         {{else}}
-        :x: *GitOps {{build.params.ACTION}} failed* — build {{build.number}}
+        :x: *ArgoCD sync FAILED* — build {{build.number}}
         {{/success}}
+    depends_on: [wait-for-healthy, apply-gitops-manifests]
     when:
       status: [success, failure]

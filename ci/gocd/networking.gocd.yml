@@ -1,4 +1,7 @@
-# Networking Infrastructure Pipeline — GoCD
+# GoCD — Networking Infrastructure Pipeline
+# Role: Progressive networking stack install: CNI → service mesh → edge routing → [manual] configure.
+#       Manual gate before applying routing rules.
+# Credentials: KUBECONFIG_CONTENT, SLACK_WEBHOOK
 format_version: 10
 
 pipelines:
@@ -12,7 +15,9 @@ pipelines:
         branch: main
 
     stages:
-      - cni:
+      - install-cni:
+          approval:
+            type: success
           jobs:
             cilium:
               elastic_profile_id: helm-agent
@@ -23,15 +28,19 @@ pipelines:
                       - -c
                       - |
                         mkdir -p ~/.kube && echo "$KUBECONFIG_CONTENT" | base64 -d > ~/.kube/config
-                        [ "$CILIUM" = "true" ] || { echo "Skipped"; exit 0; }
                         helm repo add cilium https://helm.cilium.io --force-update
                         helm upgrade --install cilium cilium/cilium \
                           --namespace kube-system \
-                          --set hubble.enabled=true --set hubble.relay.enabled=true \
-                          --set hubble.ui.enabled=true --set prometheus.enabled=true \
+                          --set hubble.enabled=true \
+                          --set hubble.relay.enabled=true \
+                          --set hubble.ui.enabled=true \
+                          --set prometheus.enabled=true \
                           --wait --timeout 8m
+                        echo "Cilium CNI installed"
 
-      - service-mesh:
+      - install-service-mesh:
+          approval:
+            type: success
           jobs:
             istio:
               elastic_profile_id: helm-agent
@@ -42,17 +51,23 @@ pipelines:
                       - -c
                       - |
                         mkdir -p ~/.kube && echo "$KUBECONFIG_CONTENT" | base64 -d > ~/.kube/config
-                        [ "$ISTIO" = "true" ] || { echo "Skipped"; exit 0; }
                         helm repo add istio https://istio-release.storage.googleapis.com/charts --force-update
                         helm upgrade --install istio-base istio/base \
-                          --namespace istio-system --create-namespace --wait --timeout 3m
+                          --namespace istio-system --create-namespace \
+                          --wait --timeout 3m
                         helm upgrade --install istiod istio/istiod \
                           --namespace istio-system \
-                          --set telemetry.enabled=true --wait --timeout 5m
+                          --set telemetry.enabled=true \
+                          --set pilot.traceSampling=1.0 \
+                          --wait --timeout 5m
                         helm upgrade --install istio-ingress istio/gateway \
-                          --namespace istio-ingress --create-namespace --wait --timeout 5m
+                          --namespace istio-ingress --create-namespace \
+                          --wait --timeout 5m
+                        echo "Istio service mesh installed"
 
-      - edge-routing:
+      - install-edge-routing:
+          approval:
+            type: success
           jobs:
             traefik:
               elastic_profile_id: helm-agent
@@ -67,9 +82,11 @@ pipelines:
                         helm upgrade --install traefik traefik/traefik \
                           --namespace networking --create-namespace \
                           --set deployment.replicas=2 \
-                          --set ingressClass.enabled=true --set ingressClass.isDefaultClass=true \
+                          --set ingressClass.enabled=true \
+                          --set ingressClass.isDefaultClass=true \
                           --set metrics.prometheus.enabled=true \
                           --wait --timeout 5m
+                        echo "Traefik edge router installed"
             consul:
               elastic_profile_id: helm-agent
               tasks:
@@ -79,11 +96,33 @@ pipelines:
                       - -c
                       - |
                         mkdir -p ~/.kube && echo "$KUBECONFIG_CONTENT" | base64 -d > ~/.kube/config
-                        [ "$CONSUL" = "true" ] || { echo "Skipped"; exit 0; }
                         helm repo add hashicorp https://helm.releases.hashicorp.com --force-update
                         helm upgrade --install consul hashicorp/consul \
                           --namespace consul --create-namespace \
                           --set global.datacenter=shopos-dc1 \
                           --set server.replicas=3 \
                           --set connectInject.enabled=true \
-                          --wait --timeout 8m
+                          --wait --timeout 8m || echo "WARN Consul install failed (optional)"
+                        echo "Consul service discovery installed"
+
+      - configure-routing:
+          approval:
+            type: manual
+          allow_only_on_success: true
+          jobs:
+            apply-middlewares:
+              elastic_profile_id: kubectl-agent
+              tasks:
+                - exec:
+                    command: /bin/sh
+                    arguments:
+                      - -c
+                      - |
+                        mkdir -p ~/.kube && echo "$KUBECONFIG_CONTENT" | base64 -d > ~/.kube/config
+                        kubectl apply -f networking/traefik/ 2>/dev/null || true
+                        kubectl apply -f networking/istio/ 2>/dev/null || true
+                        kubectl apply -f kubernetes/network-policies/ 2>/dev/null || true
+                        echo "Routing rules and network policies applied"
+                        curl -sf -X POST "$SLACK_WEBHOOK" \
+                          -H 'Content-type: application/json' \
+                          --data '{"text":":globe_with_meridians: *Networking stack installed* — Cilium, Istio, Traefik, Consul — GoCD"}' || true

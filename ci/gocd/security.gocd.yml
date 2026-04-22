@@ -1,4 +1,7 @@
-# Security Infrastructure Pipeline — GoCD
+# GoCD — Security Infrastructure Pipeline
+# Role: Progressive security stack install with manual approval gates.
+#       cert-manager → [manual] vault+keycloak → [manual] policy+runtime → configure
+# Credentials: KUBECONFIG_CONTENT, KEYCLOAK_ADMIN_PASSWORD, SLACK_WEBHOOK
 format_version: 10
 
 pipelines:
@@ -15,11 +18,11 @@ pipelines:
       ACTION: INSTALL
 
     stages:
-      - cert-manager:
+      - install-cert-manager:
           approval:
             type: success
           jobs:
-            install:
+            cert-manager:
               elastic_profile_id: helm-agent
               tasks:
                 - exec:
@@ -28,15 +31,18 @@ pipelines:
                       - -c
                       - |
                         mkdir -p ~/.kube && echo "$KUBECONFIG_CONTENT" | base64 -d > ~/.kube/config
-                        [ "$CERT_MANAGER" = "true" ] || { echo "Skipped"; exit 0; }
                         helm repo add jetstack https://charts.jetstack.io --force-update
                         helm upgrade --install cert-manager jetstack/cert-manager \
                           --namespace cert-manager --create-namespace \
-                          --set installCRDs=true --set replicaCount=2 --wait --timeout 5m
+                          --set installCRDs=true --set replicaCount=2 \
+                          --wait --timeout 5m
+                        kubectl apply -f security/cert-manager/ 2>/dev/null || true
+                        echo "cert-manager installed"
 
-      - vault-keycloak:
+      - install-identity:
           approval:
-            type: success
+            type: manual
+          allow_only_on_success: true
           jobs:
             vault:
               elastic_profile_id: helm-agent
@@ -47,12 +53,14 @@ pipelines:
                       - -c
                       - |
                         mkdir -p ~/.kube && echo "$KUBECONFIG_CONTENT" | base64 -d > ~/.kube/config
-                        [ "$VAULT" = "true" ] || { echo "Skipped"; exit 0; }
                         helm repo add hashicorp https://helm.releases.hashicorp.com --force-update
                         helm upgrade --install vault hashicorp/vault \
                           --namespace vault --create-namespace \
-                          --set server.ha.enabled=true --set server.ha.raft.enabled=true \
-                          --set server.ha.replicas=3 --wait --timeout 10m
+                          --set server.ha.enabled=true \
+                          --set server.ha.raft.enabled=true \
+                          --set server.ha.replicas=3 \
+                          --wait --timeout 10m
+                        echo "Vault installed (requires manual unseal)"
             keycloak:
               elastic_profile_id: helm-agent
               tasks:
@@ -62,17 +70,19 @@ pipelines:
                       - -c
                       - |
                         mkdir -p ~/.kube && echo "$KUBECONFIG_CONTENT" | base64 -d > ~/.kube/config
-                        [ "$KEYCLOAK" = "true" ] || { echo "Skipped"; exit 0; }
                         helm repo add bitnami https://charts.bitnami.com/bitnami --force-update
                         helm upgrade --install keycloak bitnami/keycloak \
                           --namespace keycloak --create-namespace \
                           --set replicaCount=2 \
                           --set auth.adminPassword="$KEYCLOAK_ADMIN_PASSWORD" \
-                          --set postgresql.enabled=true --wait --timeout 10m
+                          --set postgresql.enabled=true \
+                          --wait --timeout 10m
+                        echo "Keycloak installed"
 
-      - policy-runtime:
+      - install-policy-runtime:
           approval:
-            type: success
+            type: manual
+          allow_only_on_success: true
           jobs:
             kyverno:
               elastic_profile_id: helm-agent
@@ -83,12 +93,13 @@ pipelines:
                       - -c
                       - |
                         mkdir -p ~/.kube && echo "$KUBECONFIG_CONTENT" | base64 -d > ~/.kube/config
-                        [ "$KYVERNO" = "true" ] || { echo "Skipped"; exit 0; }
                         helm repo add kyverno https://kyverno.github.io/kyverno --force-update
                         helm upgrade --install kyverno kyverno/kyverno \
                           --namespace kyverno --create-namespace \
-                          --set replicaCount=3 --wait --timeout 5m
+                          --set replicaCount=3 \
+                          --wait --timeout 5m
                         kubectl apply -f security/kyverno/ 2>/dev/null || true
+                        echo "Kyverno installed"
             falco:
               elastic_profile_id: helm-agent
               tasks:
@@ -98,7 +109,6 @@ pipelines:
                       - -c
                       - |
                         mkdir -p ~/.kube && echo "$KUBECONFIG_CONTENT" | base64 -d > ~/.kube/config
-                        [ "$FALCO" = "true" ] || { echo "Skipped"; exit 0; }
                         helm repo add falcosecurity https://falcosecurity.github.io/charts --force-update
                         helm upgrade --install falco falcosecurity/falco \
                           --namespace falco --create-namespace \
@@ -106,3 +116,40 @@ pipelines:
                           --set falcosidekick.enabled=true \
                           --set falcosidekick.config.slack.webhookurl="$SLACK_WEBHOOK" \
                           --wait --timeout 8m
+                        echo "Falco installed"
+            trivy-operator:
+              elastic_profile_id: helm-agent
+              tasks:
+                - exec:
+                    command: /bin/sh
+                    arguments:
+                      - -c
+                      - |
+                        mkdir -p ~/.kube && echo "$KUBECONFIG_CONTENT" | base64 -d > ~/.kube/config
+                        helm repo add aqua https://aquasecurity.github.io/helm-charts --force-update
+                        helm upgrade --install trivy-operator aqua/trivy-operator \
+                          --namespace trivy-system --create-namespace \
+                          --set trivy.ignoreUnfixed=true \
+                          --wait --timeout 5m
+                        echo "Trivy Operator installed"
+
+      - configure-security:
+          approval:
+            type: success
+          jobs:
+            apply-policies:
+              elastic_profile_id: kubectl-agent
+              tasks:
+                - exec:
+                    command: /bin/sh
+                    arguments:
+                      - -c
+                      - |
+                        mkdir -p ~/.kube && echo "$KUBECONFIG_CONTENT" | base64 -d > ~/.kube/config
+                        kubectl apply -f kubernetes/network-policies/ 2>/dev/null || true
+                        kubectl apply -f security/opa/ 2>/dev/null || true
+                        kubectl apply -f security/falco/ 2>/dev/null || true
+                        echo "Security policies applied"
+                        curl -sf -X POST "$SLACK_WEBHOOK" \
+                          -H 'Content-type: application/json' \
+                          --data '{"text":":lock: *Security stack installed* — cert-manager, Vault, Keycloak, Kyverno, Falco, Trivy Operator — GoCD"}' || true

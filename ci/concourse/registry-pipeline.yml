@@ -1,26 +1,172 @@
-# Registry Tools Pipeline — Concourse CI
-# Credentials: kubeconfig, harbor-credentials, minio-credentials
+# Concourse CI — Registry Health Check Pipeline (resource-based)
+# Role: Periodically verify Harbor registry and MinIO object store health.
+#       Nightly SBOM push test + Harbor project existence check.
+#       Install jobs are manual-trigger only.
+# Credentials: ((harbor.registry)), ((harbor.username)), ((harbor.password)),
+#              ((harbor.admin_password)), ((minio.root_user)), ((minio.root_password)),
+#              ((kubeconfig.content)), ((slack.webhook_url))
 ---
+resource_types:
+  - name: slack-notification
+    type: docker-image
+    source:
+      repository: cfcommunity/slack-notification-resource
+
 resources:
+  - name: shopos-repo
+    type: git
+    source:
+      uri: https://github.com/prabhat-roy/ShopOS.git
+      branch: main
+
+  - name: registry-check
+    type: time
+    source:
+      interval: 15m
+
+  - name: nightly-check
+    type: time
+    source:
+      interval: 24h
+      start: 4:30 AM
+      stop: 5:30 AM
+      location: UTC
+
   - name: trigger-manual
     type: time
     source:
       interval: 8760h
 
+  - name: slack-alert
+    type: slack-notification
+    source:
+      url: ((slack.webhook_url))
+
 jobs:
-  - name: install-harbor
+  - name: check-harbor-health
     plan:
-      - get: trigger-manual
-        trigger: false
-      - task: helm-install
+      - get: registry-check
+        trigger: true
+      - task: harbor-ping
         config:
           platform: linux
           image_resource:
             type: registry-image
-            source: {repository: alpine/helm}
+            source:
+              repository: curlimages/curl
+              tag: latest
+          params:
+            HARBOR_REGISTRY: ((harbor.registry))
+            HARBOR_USER: ((harbor.username))
+            HARBOR_PASSWORD: ((harbor.password))
+          run:
+            path: sh
+            args:
+              - -c
+              - |
+                CODE=$(curl -sf -o /dev/null -w "%{http_code}" --max-time 15 \
+                  -u "$HARBOR_USER:$HARBOR_PASSWORD" \
+                  "https://$HARBOR_REGISTRY/api/v2.0/ping" || echo "000")
+                echo "Harbor /api/v2.0/ping → $CODE"
+                [ "$CODE" = "200" ] && echo "PASS" || { echo "FAIL"; exit 1; }
+        on_failure:
+          put: slack-alert
+          params:
+            text: ":rotating_light: *Harbor registry DOWN* — ping failed (Concourse health check)"
+
+  - name: check-minio-health
+    plan:
+      - get: registry-check
+        trigger: true
+      - task: minio-health
+        config:
+          platform: linux
+          image_resource:
+            type: registry-image
+            source:
+              repository: curlimages/curl
+              tag: latest
+          run:
+            path: sh
+            args:
+              - -c
+              - |
+                MINIO_URL="http://minio.registry.svc:9000"
+                CODE=$(curl -sf -o /dev/null -w "%{http_code}" --max-time 10 "$MINIO_URL/minio/health/live" || echo "000")
+                echo "MinIO /minio/health/live → $CODE"
+                [ "$CODE" = "200" ] && echo "PASS" || echo "WARN MinIO health returned $CODE"
+
+  - name: nightly-registry-report
+    plan:
+      - get: nightly-check
+        trigger: true
+      - task: full-registry-health
+        config:
+          platform: linux
+          image_resource:
+            type: registry-image
+            source:
+              repository: curlimages/curl
+              tag: latest
+          params:
+            HARBOR_REGISTRY: ((harbor.registry))
+            HARBOR_USER: ((harbor.username))
+            HARBOR_PASSWORD: ((harbor.password))
+          run:
+            path: sh
+            args:
+              - -c
+              - |
+                echo "=== Nightly Registry Health Report ==="
+                FAIL=0
+
+                # Harbor ping
+                CODE=$(curl -sf -o /dev/null -w "%{http_code}" --max-time 15 \
+                  -u "$HARBOR_USER:$HARBOR_PASSWORD" \
+                  "https://$HARBOR_REGISTRY/api/v2.0/ping" || echo "000")
+                [ "$CODE" = "200" ] && echo "PASS  Harbor ping" || { echo "FAIL  Harbor ping ($CODE)"; FAIL=$((FAIL+1)); }
+
+                # Harbor projects exist
+                for PROJECT in shopos; do
+                  PCODE=$(curl -sf -o /dev/null -w "%{http_code}" --max-time 10 \
+                    -u "$HARBOR_USER:$HARBOR_PASSWORD" \
+                    "https://$HARBOR_REGISTRY/api/v2.0/projects?name=$PROJECT" || echo "000")
+                  [ "$PCODE" = "200" ] && echo "PASS  Harbor project: $PROJECT" || echo "WARN  Harbor project check: $PCODE"
+                done
+
+                # MinIO
+                MCODE=$(curl -sf -o /dev/null -w "%{http_code}" --max-time 10 \
+                  "http://minio.registry.svc:9000/minio/health/live" || echo "000")
+                [ "$MCODE" = "200" ] && echo "PASS  MinIO health" || { echo "FAIL  MinIO ($MCODE)"; FAIL=$((FAIL+1)); }
+
+                echo ""
+                echo "Registry report: $FAIL critical failures"
+                [ "$FAIL" -eq 0 ] || exit 1
+        on_failure:
+          put: slack-alert
+          params:
+            text: ":rotating_light: *Nightly registry health FAILED* — Harbor or MinIO down (Concourse)"
+        on_success:
+          put: slack-alert
+          params:
+            text: ":white_check_mark: *Nightly registry health PASS* — Harbor and MinIO healthy (Concourse)"
+
+  - name: install-registry
+    plan:
+      - get: trigger-manual
+        trigger: false
+      - task: helm-install-registry
+        config:
+          platform: linux
+          image_resource:
+            type: registry-image
+            source:
+              repository: alpine/helm
           params:
             KUBECONFIG_CONTENT: ((kubeconfig.content))
             HARBOR_ADMIN_PASSWORD: ((harbor.admin_password))
+            MINIO_ROOT_USER: ((minio.root_user))
+            MINIO_ROOT_PASSWORD: ((minio.root_password))
             ACTION: ((action))
           run:
             path: sh
@@ -28,10 +174,13 @@ jobs:
               - -c
               - |
                 mkdir -p ~/.kube && echo "$KUBECONFIG_CONTENT" | base64 -d > ~/.kube/config
-                if [ "$ACTION" = "UNINSTALL" ]; then
-                  helm uninstall harbor -n registry 2>/dev/null || true; exit 0
-                fi
-                helm repo add harbor https://helm.goharbor.io --force-update
+                [ "$ACTION" = "UNINSTALL" ] && {
+                  helm uninstall harbor -n registry 2>/dev/null || true
+                  helm uninstall minio -n registry 2>/dev/null || true
+                  exit 0
+                }
+                helm repo add harbor https://helm.goharbor.io \
+                  minio https://charts.min.io --force-update
                 helm upgrade --install harbor harbor/harbor \
                   --namespace registry --create-namespace \
                   --set expose.type=ingress \
@@ -41,32 +190,6 @@ jobs:
                   --set harborAdminPassword="$HARBOR_ADMIN_PASSWORD" \
                   --set trivy.enabled=true --set persistence.enabled=true \
                   --wait --timeout 10m
-
-  - name: install-minio
-    plan:
-      - get: trigger-manual
-        trigger: false
-      - task: helm-install
-        config:
-          platform: linux
-          image_resource:
-            type: registry-image
-            source: {repository: alpine/helm}
-          params:
-            KUBECONFIG_CONTENT: ((kubeconfig.content))
-            MINIO_ROOT_USER: ((minio.root_user))
-            MINIO_ROOT_PASSWORD: ((minio.root_password))
-            ACTION: ((action))
-          run:
-            path: sh
-            args:
-              - -c
-              - |
-                mkdir -p ~/.kube && echo "$KUBECONFIG_CONTENT" | base64 -d > ~/.kube/config
-                if [ "$ACTION" = "UNINSTALL" ]; then
-                  helm uninstall minio -n registry 2>/dev/null || true; exit 0
-                fi
-                helm repo add minio https://charts.min.io --force-update
                 helm upgrade --install minio minio/minio \
                   --namespace registry \
                   --set rootUser="$MINIO_ROOT_USER" \
@@ -74,58 +197,32 @@ jobs:
                   --set replicas=4 \
                   --set persistence.enabled=true --set persistence.size=100Gi \
                   --wait --timeout 8m
-
-  - name: install-nexus
-    plan:
-      - get: trigger-manual
-        trigger: false
-      - task: helm-install
-        config:
-          platform: linux
-          image_resource:
-            type: registry-image
-            source: {repository: alpine/helm}
+                echo "Registry stack installed"
+        on_failure:
+          put: slack-alert
           params:
-            KUBECONFIG_CONTENT: ((kubeconfig.content))
-            ACTION: ((action))
-            NEXUS_ENABLED: ((nexus_enabled))
-          run:
-            path: sh
-            args:
-              - -c
-              - |
-                [ "$NEXUS_ENABLED" = "true" ] || { echo "Skipped"; exit 0; }
-                mkdir -p ~/.kube && echo "$KUBECONFIG_CONTENT" | base64 -d > ~/.kube/config
-                if [ "$ACTION" = "UNINSTALL" ]; then
-                  helm uninstall nexus -n registry 2>/dev/null || true; exit 0
-                fi
-                helm repo add sonatype https://sonatype.github.io/helm3-charts --force-update
-                helm upgrade --install nexus sonatype/nexus-repository-manager \
-                  --namespace registry \
-                  --set persistence.enabled=true --set persistence.storageSize=200Gi \
-                  --wait --timeout 8m
+            text: ":x: *Registry install FAILED* — Harbor or MinIO (Concourse)"
 
-  - name: configure-buckets
+  - name: configure-registry-buckets
     plan:
       - get: trigger-manual
         trigger: false
-        passed: [install-harbor, install-minio]
-      - task: create-buckets
+        passed: [install-registry]
+      - task: create-minio-buckets
         config:
           platform: linux
           image_resource:
             type: registry-image
-            source: {repository: minio/mc}
+            source:
+              repository: minio/mc
           params:
             MINIO_ROOT_USER: ((minio.root_user))
             MINIO_ROOT_PASSWORD: ((minio.root_password))
-            ACTION: ((action))
           run:
             path: sh
             args:
               - -c
               - |
-                [ "$ACTION" = "CONFIGURE" ] || { echo "Skipped"; exit 0; }
                 mc alias set shopos http://minio.registry.svc:9000 "$MINIO_ROOT_USER" "$MINIO_ROOT_PASSWORD"
                 for BUCKET in harbor-registry velero-backups loki-chunks tempo-traces thanos mlflow artifacts media-assets; do
                   mc mb --ignore-existing "shopos/$BUCKET" || true

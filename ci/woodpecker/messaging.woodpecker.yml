@@ -1,31 +1,29 @@
-# Messaging Infrastructure — Woodpecker CI
+# Woodpecker CI — Messaging Infrastructure + Connectivity Smoke
+# Role: install messaging tools AND run connectivity integration checks
+#       (Woodpecker specialises in smoke tests after install).
 # Secrets: kubeconfig_content, rabbitmq_password
-# Env vars: ENVIRONMENT, ACTION (INSTALL|UPGRADE|UNINSTALL|CONFIGURE)
+# Params: ACTION=INSTALL|UNINSTALL|CONFIGURE
 
 when:
   event: [custom, manual]
 
 steps:
-  zookeeper:
-    image: alpine/helm:latest
+  setup-kubeconfig:
+    image: alpine:latest
     environment:
-      KUBECONFIG_CONTENT: { from_secret: kubeconfig_content }
+      KUBECONFIG_CONTENT:
+        from_secret: kubeconfig_content
     commands:
-      - '[ "$ZOOKEEPER" = "true" ] && [ "$ACTION" != "CONFIGURE" ] || exit 0'
-      - mkdir -p ~/.kube && echo "$KUBECONFIG_CONTENT" | base64 -d > ~/.kube/config
-      - helm repo add bitnami https://charts.bitnami.com/bitnami --force-update
-      - |
-        [ "$ACTION" = "UNINSTALL" ] && helm uninstall zookeeper -n messaging 2>/dev/null || true
-        [ "$ACTION" != "UNINSTALL" ] && helm upgrade --install zookeeper bitnami/zookeeper \
-          --namespace messaging --create-namespace \
-          --set replicaCount=3 --set auth.enabled=false --wait --timeout 8m
+      - mkdir -p ~/.kube
+      - echo "$KUBECONFIG_CONTENT" | base64 -d > ~/.kube/config
 
-  kafka:
+  install-kafka:
     image: alpine/helm:latest
     environment:
-      KUBECONFIG_CONTENT: { from_secret: kubeconfig_content }
+      KUBECONFIG_CONTENT:
+        from_secret: kubeconfig_content
     commands:
-      - '[ "$KAFKA" = "true" ] && [ "$ACTION" != "CONFIGURE" ] || exit 0'
+      - '[ "$KAFKA" = "true" ] && [ "${ACTION:-INSTALL}" != "CONFIGURE" ] || exit 0'
       - mkdir -p ~/.kube && echo "$KUBECONFIG_CONTENT" | base64 -d > ~/.kube/config
       - helm repo add bitnami https://charts.bitnami.com/bitnami --force-update
       - |
@@ -33,65 +31,99 @@ steps:
         [ "$ACTION" != "UNINSTALL" ] && helm upgrade --install kafka bitnami/kafka \
           --namespace messaging --create-namespace \
           --set replicaCount=3 \
-          --set zookeeper.enabled=false \
-          --set externalZookeeper.servers=zookeeper.messaging.svc:2181 \
-          --set autoCreateTopicsEnable=false \
-          --set defaultReplicationFactor=3 --wait --timeout 10m
-    depends_on: [zookeeper]
+          --set kraft.enabled=true \
+          --set defaultReplicationFactor=3 \
+          --wait --timeout 10m || true
+    depends_on: [setup-kubeconfig]
 
-  rabbitmq:
+  install-rabbitmq:
     image: alpine/helm:latest
     environment:
-      KUBECONFIG_CONTENT: { from_secret: kubeconfig_content }
-      RABBITMQ_PASSWORD: { from_secret: rabbitmq_password }
+      KUBECONFIG_CONTENT:
+        from_secret: kubeconfig_content
+      RABBITMQ_PASSWORD:
+        from_secret: rabbitmq_password
     commands:
-      - '[ "$RABBITMQ" = "true" ] && [ "$ACTION" != "CONFIGURE" ] || exit 0'
+      - '[ "$RABBITMQ" = "true" ] && [ "${ACTION:-INSTALL}" != "CONFIGURE" ] || exit 0'
       - mkdir -p ~/.kube && echo "$KUBECONFIG_CONTENT" | base64 -d > ~/.kube/config
       - helm repo add bitnami https://charts.bitnami.com/bitnami --force-update
       - |
         [ "$ACTION" = "UNINSTALL" ] && helm uninstall rabbitmq -n messaging 2>/dev/null || true
         [ "$ACTION" != "UNINSTALL" ] && helm upgrade --install rabbitmq bitnami/rabbitmq \
           --namespace messaging --create-namespace \
-          --set replicaCount=3 --set auth.password="$RABBITMQ_PASSWORD" \
-          --set clustering.enabled=true --wait --timeout 8m
-    depends_on: [zookeeper]
+          --set replicaCount=3 \
+          --set auth.password="$RABBITMQ_PASSWORD" \
+          --set clustering.enabled=true \
+          --wait --timeout 8m || true
+    depends_on: [setup-kubeconfig]
 
-  nats:
+  install-nats:
     image: alpine/helm:latest
     environment:
-      KUBECONFIG_CONTENT: { from_secret: kubeconfig_content }
+      KUBECONFIG_CONTENT:
+        from_secret: kubeconfig_content
     commands:
-      - '[ "$NATS" = "true" ] && [ "$ACTION" != "CONFIGURE" ] || exit 0'
+      - '[ "$NATS" = "true" ] && [ "${ACTION:-INSTALL}" != "CONFIGURE" ] || exit 0'
       - mkdir -p ~/.kube && echo "$KUBECONFIG_CONTENT" | base64 -d > ~/.kube/config
       - helm repo add nats https://nats-io.github.io/k8s/helm/charts --force-update
       - |
         [ "$ACTION" = "UNINSTALL" ] && helm uninstall nats -n messaging 2>/dev/null || true
         [ "$ACTION" != "UNINSTALL" ] && helm upgrade --install nats nats/nats \
           --namespace messaging --create-namespace \
-          --set nats.jetstream.enabled=true \
-          --set cluster.enabled=true --set cluster.replicas=3 --wait --timeout 5m
-    depends_on: [zookeeper]
+          --set config.jetstream.enabled=true \
+          --set cluster.enabled=true \
+          --set cluster.replicas=3 \
+          --wait --timeout 5m || true
+    depends_on: [setup-kubeconfig]
 
-  create-topics:
-    image: bitnami/kubectl:latest
-    environment:
-      KUBECONFIG_CONTENT: { from_secret: kubeconfig_content }
+  create-kafka-topics:
+    image: bitnami/kafka:latest
     commands:
-      - '[ "$ACTION" = "CONFIGURE" ] || exit 0'
-      - mkdir -p ~/.kube && echo "$KUBECONFIG_CONTENT" | base64 -d > ~/.kube/config
+      - '[ "${ACTION}" = "CONFIGURE" ] || [ "${ACTION:-INSTALL}" = "INSTALL" ] || exit 0'
+      - KAFKA_BS="kafka.messaging.svc.cluster.local:9092"
       - |
-        KAFKA_POD=$(kubectl get pod -n messaging -l app.kubernetes.io/name=kafka -o jsonpath='{.items[0].metadata.name}')
-        create_topic() {
-          kubectl exec -n messaging "$KAFKA_POD" -- \
-            kafka-topics.sh --create --if-not-exists \
-            --bootstrap-server kafka.messaging.svc:9092 \
-            --topic "$1" --partitions "$2" --replication-factor "$3" || true
-        }
-        create_topic commerce.order.placed 12 3
-        create_topic commerce.payment.processed 12 3
-        create_topic identity.user.registered 6 3
-        create_topic supplychain.shipment.created 6 3
-        create_topic analytics.page.viewed 12 3
-        create_topic notification.email.requested 6 3
-        create_topic security.fraud.detected 3 3
-    depends_on: [kafka, rabbitmq, nats]
+        for topic partitions in \
+          "commerce.order.placed:12" \
+          "commerce.payment.processed:12" \
+          "commerce.cart.abandoned:6" \
+          "identity.user.registered:6" \
+          "identity.user.deleted:3" \
+          "supplychain.shipment.created:6" \
+          "analytics.page.viewed:12" \
+          "notification.email.requested:6" \
+          "security.fraud.detected:3"; do
+          TOPIC="${topic%%:*}"
+          PARTS="${topic##*:}"
+          kafka-topics.sh --bootstrap-server "$KAFKA_BS" \
+            --create --if-not-exists \
+            --topic "$TOPIC" \
+            --partitions "$PARTS" \
+            --replication-factor 3 2>/dev/null || true
+          echo "Topic ready: $TOPIC ($PARTS partitions)"
+        done
+    depends_on: [install-kafka]
+
+  smoke-kafka-connectivity:
+    image: bitnami/kafka:latest
+    commands:
+      - '[ "${ACTION}" = "CONFIGURE" ] || [ "${ACTION:-INSTALL}" = "INSTALL" ] || exit 0'
+      - KAFKA_BS="kafka.messaging.svc.cluster.local:9092"
+      - |
+        echo "=== Kafka connectivity smoke ==="
+        TOPICS=$(kafka-topics.sh --bootstrap-server "$KAFKA_BS" --list 2>/dev/null | wc -l || echo 0)
+        echo "Kafka topics visible: $TOPICS"
+        kafka-broker-api-versions.sh --bootstrap-server "$KAFKA_BS" 2>/dev/null | head -5 || \
+          echo "WARN Kafka not reachable"
+    depends_on: [create-kafka-topics]
+
+  smoke-rabbitmq-connectivity:
+    image: curlimages/curl:latest
+    commands:
+      - '[ "${ACTION}" = "CONFIGURE" ] || [ "${ACTION:-INSTALL}" = "INSTALL" ] || exit 0'
+      - RMQAPI="http://rabbitmq.messaging.svc.cluster.local:15672/api/overview"
+      - |
+        echo "=== RabbitMQ connectivity smoke ==="
+        CODE=$(curl -sf -o /dev/null -w "%{http_code}" --max-time 10 \
+          -u "admin:${RABBITMQ_PASSWORD:-admin123}" "$RMQAPI" 2>/dev/null || echo "000")
+        echo "RabbitMQ management API → $CODE"
+    depends_on: [install-rabbitmq]

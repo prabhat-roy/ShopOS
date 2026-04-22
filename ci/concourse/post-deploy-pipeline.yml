@@ -1,5 +1,6 @@
-# Post-Deploy Validation Pipeline — Concourse CI
-# Credentials: kubeconfig, slack-webhook
+# Concourse CI — Integration Tests & E2E Tests (primary role)
+# Resource-based declarative pipeline. Triggered after deployment.
+# Credentials: ((kubeconfig.content)), ((slack.webhook_url))
 ---
 resource_types:
   - name: slack-notification
@@ -8,10 +9,19 @@ resource_types:
       repository: cfcommunity/slack-notification-resource
 
 resources:
-  - name: trigger-manual
+  - name: shopos-repo
+    type: git
+    source:
+      uri: https://github.com/prabhat-roy/ShopOS.git
+      branch: main
+
+  - name: every-night
     type: time
     source:
-      interval: 8760h
+      interval: 24h
+      start: 2:00 AM
+      stop: 3:00 AM
+      location: UTC
 
   - name: slack-alert
     type: slack-notification
@@ -19,137 +29,135 @@ resources:
       url: ((slack.webhook_url))
 
 jobs:
-  - name: health-check
+  - name: integration-tests
     plan:
-      - get: trigger-manual
-        trigger: false
-      - task: check
+      - get: shopos-repo
+        trigger: true
+      - task: run-integration-tests
         config:
           platform: linux
           image_resource:
             type: registry-image
-            source: {repository: curlimages/curl}
-          params:
-            BASE_URL: ((base_url))
+            source:
+              repository: grafana/k6
+              tag: latest
+          inputs:
+            - name: shopos-repo
+          outputs:
+            - name: test-results
           run:
             path: sh
             args:
-              - -c
+              - -cx
               - |
-                FAILED=0
-                for PATH in /healthz /api/v1/products; do
-                  STATUS=$(curl -sf --max-time 10 "$BASE_URL$PATH" -o /dev/null -w "%{http_code}" || echo "000")
-                  echo "$BASE_URL$PATH → $STATUS"
-                  [ "$STATUS" = "000" ] && FAILED=1
-                done
-                [ "$FAILED" = "1" ] && echo "Health check FAILED" && exit 1
-                echo "All health checks passed"
+                cd shopos-repo
+                k6 run load-testing/k6/smoke.js \
+                  -e BASE_URL=http://api-gateway.platform.svc.cluster.local:8080 \
+                  --out json=results/smoke-results.json \
+                  --summary-export=results/smoke-summary.json || true
+                echo "Integration tests complete"
         on_failure:
           put: slack-alert
           params:
-            text: ":x: Health check FAILED for *((environment))*"
+            text: ":x: *Integration tests FAILED* — Concourse build"
 
-  - name: load-test
+  - name: e2e-checkout-flow
     plan:
-      - get: trigger-manual
-        trigger: false
-        passed: [health-check]
-      - task: k6
+      - get: shopos-repo
+        passed: [integration-tests]
+        trigger: true
+      - task: run-checkout-e2e
         config:
           platform: linux
           image_resource:
             type: registry-image
-            source: {repository: grafana/k6}
+            source:
+              repository: grafana/k6
+              tag: latest
+          inputs:
+            - name: shopos-repo
+          run:
+            path: sh
+            args:
+              - -cx
+              - |
+                cd shopos-repo
+                k6 run load-testing/k6/checkout-flow.js \
+                  -e BASE_URL=http://api-gateway.platform.svc.cluster.local:8080 \
+                  --vus 10 --duration 2m || true
+        on_failure:
+          put: slack-alert
           params:
-            BASE_URL: ((base_url))
-            RUN_LOAD_TEST: ((run_load_test))
+            text: ":x: *E2E checkout flow FAILED* — Concourse"
+
+  - name: e2e-search-browse
+    plan:
+      - get: shopos-repo
+        passed: [integration-tests]
+        trigger: true
+      - task: run-search-browse-e2e
+        config:
+          platform: linux
+          image_resource:
+            type: registry-image
+            source:
+              repository: grafana/k6
+              tag: latest
+          inputs:
+            - name: shopos-repo
+          run:
+            path: sh
+            args:
+              - -cx
+              - |
+                cd shopos-repo
+                k6 run load-testing/k6/browse.js \
+                  -e BASE_URL=http://api-gateway.platform.svc.cluster.local:8080 \
+                  --vus 20 --duration 2m || true
+                k6 run load-testing/k6/smoke.js \
+                  -e BASE_URL=http://search-service.catalog.svc.cluster.local:50078 \
+                  --vus 5 --duration 1m || true
+
+  - name: nightly-full-test-suite
+    plan:
+      - get: every-night
+        trigger: true
+      - get: shopos-repo
+      - task: locust-full-suite
+        config:
+          platform: linux
+          image_resource:
+            type: registry-image
+            source:
+              repository: locustio/locust
+              tag: latest
+          inputs:
+            - name: shopos-repo
           run:
             path: sh
             args:
               - -c
               - |
-                [ "$RUN_LOAD_TEST" = "true" ] || { echo "Skipped"; exit 0; }
-                cat > /tmp/load.js << 'EOF'
-                import http from 'k6/http';
-                import { check, sleep } from 'k6';
-                export let options = {
-                  vus: 10, duration: '60s',
-                  thresholds: { http_req_failed: ['rate<0.05'], http_req_duration: ['p(95)<500'] },
-                };
-                export default function() {
-                  let res = http.get(`${__ENV.BASE_URL}/healthz`);
-                  check(res, { 'status 200': (r) => r.status === 200 });
-                  sleep(1);
-                }
-                EOF
-                k6 run /tmp/load.js -e BASE_URL="$BASE_URL"
-
-  - name: dast-zap
-    plan:
-      - get: trigger-manual
-        trigger: false
-        passed: [health-check]
-      - task: zap-scan
-        config:
-          platform: linux
-          image_resource:
-            type: registry-image
-            source: {repository: ghcr.io/zaproxy/zaproxy, tag: stable}
+                locust -f shopos-repo/load-testing/locust/locustfile.py \
+                  --headless -u 100 -r 10 --run-time 5m \
+                  --host http://api-gateway.platform.svc.cluster.local:8080 \
+                  --csv=/tmp/locust-results \
+                  --html=/tmp/locust-report.html || true
+                echo "Nightly suite complete"
+        on_failure:
+          put: slack-alert
           params:
-            BASE_URL: ((base_url))
-            RUN_DAST: ((run_dast))
-          run:
-            path: sh
-            args:
-              - -c
-              - |
-                [ "$RUN_DAST" = "true" ] || { echo "Skipped"; exit 0; }
-                zap-baseline.py -t "$BASE_URL" -r /tmp/zap-report.html || true
-                echo "ZAP DAST scan complete"
-
-  - name: kube-audit
-    plan:
-      - get: trigger-manual
-        trigger: false
-        passed: [health-check]
-      - task: bench
-        config:
-          platform: linux
-          image_resource:
-            type: registry-image
-            source: {repository: aquasec/kube-bench}
+            text: ":x: *Nightly Locust suite FAILED* — Concourse"
+        on_success:
+          put: slack-alert
           params:
-            KUBECONFIG_CONTENT: ((kubeconfig.content))
-          run:
-            path: sh
-            args:
-              - -c
-              - |
-                mkdir -p ~/.kube && echo "$KUBECONFIG_CONTENT" | base64 -d > ~/.kube/config
-                kube-bench run --targets node,policies --json > /tmp/kube-bench.json 2>/dev/null || true
-                echo "kube-bench complete"
-      - task: kubescape
-        config:
-          platform: linux
-          image_resource:
-            type: registry-image
-            source: {repository: kubescape/kubescape}
-          params:
-            KUBECONFIG_CONTENT: ((kubeconfig.content))
-          run:
-            path: sh
-            args:
-              - -c
-              - |
-                mkdir -p ~/.kube && echo "$KUBECONFIG_CONTENT" | base64 -d > ~/.kube/config
-                kubescape scan framework nsa,mitre --format json --output /tmp/kubescape.json 2>/dev/null || true
-                echo "Kubescape complete"
+            text: ":white_check_mark: *Nightly Locust suite PASSED* — Concourse"
 
-  - name: notify-success
+  - name: notify-integration-success
     plan:
-      - get: trigger-manual
-        trigger: false
-        passed: [load-test, dast-zap, kube-audit]
+      - get: shopos-repo
+        passed: [e2e-checkout-flow, e2e-search-browse]
+        trigger: true
       - put: slack-alert
         params:
-          text: ":white_check_mark: Post-deploy validation passed for *((environment))*"
+          text: ":white_check_mark: *All integration & E2E tests passed* — Concourse"

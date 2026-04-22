@@ -1,24 +1,18 @@
+# Drone CI — Observability Stack Install
+# Role: install Prometheus, Grafana, Loki, Jaeger, Tempo, OTel Collector and friends
+#       via alpine/helm docker image — no host installs.
+# Secrets: kubeconfig_b64, slack_webhook
+# Params: ACTION=INSTALL|UNINSTALL|CONFIGURE
+
 kind: pipeline
 type: docker
 name: observability
 
 trigger:
-  event:
-    - custom
-
-# Secrets required:
-#   kubeconfig_b64
-
-# Variables (set via Drone UI / API):
-#   ACTION — INSTALL | UNINSTALL | CONFIGURE
-#   PROMETHEUS, ALERTMANAGER, GRAFANA, LOKI, JAEGER, TEMPO, ZIPKIN
-#   FLUENTD, FLUENT_BIT, LOGSTASH, KIBANA, OPENSEARCH_DASHBOARDS
-#   OTEL_COLLECTOR, THANOS, VICTORIA_METRICS
-#   SENTRY, PYRRA, SLOTH, PYROSCOPE, UPTIME_KUMA
+  event: [custom]
 
 steps:
-
-  - name: load-kubeconfig
+  - name: setup-kubeconfig
     image: alpine:3.21
     environment:
       KUBECONFIG_B64:
@@ -26,216 +20,142 @@ steps:
     commands:
       - echo "$KUBECONFIG_B64" | base64 -d > /tmp/kubeconfig
 
-  # ── Metrics ────────────────────────────────────────────────────────────────
-
-  - name: install-prometheus
+  - name: install-prometheus-stack
     image: alpine/helm:3.16.2
     environment:
       KUBECONFIG: /tmp/kubeconfig
     commands:
-      - helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
-      - helm upgrade --install prometheus prometheus-community/prometheus --namespace prometheus --create-namespace --wait --timeout 5m
-      - PROM_IP=$(kubectl get svc prometheus-server -n prometheus -o jsonpath='{.spec.clusterIP}' 2>/dev/null || echo "prometheus-prometheus.prometheus.svc.cluster.local")
-      - sed -i '/^PROMETHEUS_URL=/d' infra.env && echo "PROMETHEUS_URL=http://$PROM_IP:9090" >> infra.env
-    when:
-      branch: [main]
+      - '[ "${ACTION:-INSTALL}" = "INSTALL" ] || exit 0'
+      - helm repo add prometheus-community https://prometheus-community.github.io/helm-charts --force-update
+      - helm upgrade --install prometheus prometheus-community/prometheus \
+          --namespace prometheus --create-namespace --wait --timeout 8m || true
+      - helm upgrade --install alertmanager prometheus-community/alertmanager \
+          --namespace alertmanager --create-namespace --wait --timeout 5m || true
+    depends_on: [setup-kubeconfig]
 
-  - name: install-grafana
+  - name: install-grafana-stack
     image: alpine/helm:3.16.2
     environment:
       KUBECONFIG: /tmp/kubeconfig
     commands:
-      - helm repo add grafana https://grafana.github.io/helm-charts
-      - helm upgrade --install grafana grafana/grafana --namespace grafana --create-namespace --wait --timeout 5m
-      - GRAFANA_IP=$(kubectl get svc grafana -n grafana -o jsonpath='{.spec.clusterIP}' 2>/dev/null)
-      - sed -i '/^GRAFANA_URL=/d' infra.env && echo "GRAFANA_URL=http://$GRAFANA_IP:3000" >> infra.env
-    when:
-      branch: [main]
+      - '[ "${ACTION:-INSTALL}" = "INSTALL" ] || exit 0'
+      - helm repo add grafana https://grafana.github.io/helm-charts --force-update
+      - helm upgrade --install grafana grafana/grafana \
+          --namespace grafana --create-namespace --wait --timeout 5m || true
+      - helm upgrade --install loki grafana/loki \
+          --namespace loki --create-namespace \
+          --set loki.commonConfig.replication_factor=1 \
+          --set loki.storage.type=filesystem \
+          --wait --timeout 5m || true
+      - helm upgrade --install tempo grafana/tempo \
+          --namespace tempo --create-namespace --wait --timeout 5m || true
+      - helm upgrade --install pyroscope grafana/pyroscope \
+          --namespace pyroscope --create-namespace --wait --timeout 5m || true
+    depends_on: [setup-kubeconfig]
 
-  - name: install-loki
+  - name: install-tracing
     image: alpine/helm:3.16.2
     environment:
       KUBECONFIG: /tmp/kubeconfig
     commands:
-      - helm repo add grafana https://grafana.github.io/helm-charts
-      - helm upgrade --install loki grafana/loki --namespace loki --create-namespace \
-          --set loki.commonConfig.replication_factor=1 --set loki.storage.type=filesystem \
-          --wait --timeout 5m
-      - LOKI_IP=$(kubectl get svc loki -n loki -o jsonpath='{.spec.clusterIP}' 2>/dev/null)
-      - sed -i '/^LOKI_URL=/d' infra.env && echo "LOKI_URL=http://$LOKI_IP:3100" >> infra.env
-    when:
-      branch: [main]
+      - '[ "${ACTION:-INSTALL}" = "INSTALL" ] || exit 0'
+      - helm repo add jaegertracing https://jaegertracing.github.io/helm-charts --force-update
+      - helm upgrade --install jaeger jaegertracing/jaeger \
+          --namespace jaeger --create-namespace --wait --timeout 5m || true
+      - helm repo add openzipkin https://zipkin.io/zipkin-helm --force-update
+      - helm upgrade --install zipkin openzipkin/zipkin \
+          --namespace zipkin --create-namespace --wait --timeout 5m || true
+    depends_on: [setup-kubeconfig]
 
-  - name: install-alertmanager
+  - name: install-logging
     image: alpine/helm:3.16.2
     environment:
       KUBECONFIG: /tmp/kubeconfig
     commands:
-      - helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
-      - helm upgrade --install alertmanager prometheus-community/alertmanager --namespace alertmanager --create-namespace --wait --timeout 5m
-    when:
-      branch: [main]
-
-  # ── Tracing ────────────────────────────────────────────────────────────────
-
-  - name: install-jaeger
-    image: alpine/helm:3.16.2
-    environment:
-      KUBECONFIG: /tmp/kubeconfig
-    commands:
-      - helm repo add jaegertracing https://jaegertracing.github.io/helm-charts
-      - helm upgrade --install jaeger jaegertracing/jaeger --namespace jaeger --create-namespace --wait --timeout 5m
-      - JAEGER_IP=$(kubectl get svc jaeger-query -n jaeger -o jsonpath='{.spec.clusterIP}' 2>/dev/null)
-      - sed -i '/^JAEGER_URL=/d' infra.env && echo "JAEGER_URL=http://$JAEGER_IP:16686" >> infra.env
-    when:
-      branch: [main]
-
-  - name: install-tempo
-    image: alpine/helm:3.16.2
-    environment:
-      KUBECONFIG: /tmp/kubeconfig
-    commands:
-      - helm repo add grafana https://grafana.github.io/helm-charts
-      - helm upgrade --install tempo grafana/tempo --namespace tempo --create-namespace --wait --timeout 5m
-      - TEMPO_IP=$(kubectl get svc tempo -n tempo -o jsonpath='{.spec.clusterIP}' 2>/dev/null)
-      - sed -i '/^TEMPO_URL=/d' infra.env && echo "TEMPO_URL=http://$TEMPO_IP:3200" >> infra.env
-    when:
-      branch: [main]
-
-  - name: install-zipkin
-    image: alpine/helm:3.16.2
-    environment:
-      KUBECONFIG: /tmp/kubeconfig
-    commands:
-      - helm repo add openzipkin https://zipkin.io/zipkin-helm
-      - helm upgrade --install zipkin openzipkin/zipkin --namespace zipkin --create-namespace --wait --timeout 5m
-      - ZIPKIN_IP=$(kubectl get svc zipkin -n zipkin -o jsonpath='{.spec.clusterIP}' 2>/dev/null)
-      - sed -i '/^ZIPKIN_URL=/d' infra.env && echo "ZIPKIN_URL=http://$ZIPKIN_IP:9411" >> infra.env
-    when:
-      branch: [main]
-
-  # ── Logging ────────────────────────────────────────────────────────────────
-
-  - name: install-fluentd
-    image: alpine/helm:3.16.2
-    environment:
-      KUBECONFIG: /tmp/kubeconfig
-    commands:
-      - helm repo add bitnami https://charts.bitnami.com/bitnami
-      - helm upgrade --install fluentd bitnami/fluentd --namespace fluentd --create-namespace --wait --timeout 5m
-    when:
-      branch: [main]
-
-  - name: install-fluent-bit
-    image: alpine/helm:3.16.2
-    environment:
-      KUBECONFIG: /tmp/kubeconfig
-    commands:
-      - helm repo add fluent https://fluent.github.io/helm-charts
-      - helm upgrade --install fluent-bit fluent/fluent-bit --namespace fluent-bit --create-namespace --wait --timeout 5m
-    when:
-      branch: [main]
+      - '[ "${ACTION:-INSTALL}" = "INSTALL" ] || exit 0'
+      - helm repo add fluent https://fluent.github.io/helm-charts --force-update
+      - helm upgrade --install fluent-bit fluent/fluent-bit \
+          --namespace fluent-bit --create-namespace --wait --timeout 5m || true
+      - helm repo add bitnami https://charts.bitnami.com/bitnami --force-update
+      - helm upgrade --install fluentd bitnami/fluentd \
+          --namespace fluentd --create-namespace --wait --timeout 5m || true
+    depends_on: [setup-kubeconfig]
 
   - name: install-otel-collector
     image: alpine/helm:3.16.2
     environment:
       KUBECONFIG: /tmp/kubeconfig
     commands:
-      - helm repo add open-telemetry https://open-telemetry.github.io/opentelemetry-helm-charts
-      - helm upgrade --install otel-collector open-telemetry/opentelemetry-collector --namespace otel-collector --create-namespace \
-          --set mode=deployment --wait --timeout 5m
-    when:
-      branch: [main]
+      - '[ "${ACTION:-INSTALL}" = "INSTALL" ] || exit 0'
+      - helm repo add open-telemetry https://open-telemetry.github.io/opentelemetry-helm-charts --force-update
+      - helm upgrade --install otel-collector open-telemetry/opentelemetry-collector \
+          --namespace otel-collector --create-namespace \
+          --set mode=deployment --wait --timeout 5m || true
+    depends_on: [setup-kubeconfig]
 
-  - name: install-victoria-metrics
+  - name: install-slo-tools
     image: alpine/helm:3.16.2
     environment:
       KUBECONFIG: /tmp/kubeconfig
     commands:
-      - helm repo add vm https://victoriametrics.github.io/helm-charts
-      - helm upgrade --install victoria-metrics vm/victoria-metrics-single --namespace victoria-metrics --create-namespace --wait --timeout 5m
-      - VM_IP=$(kubectl get svc victoria-metrics-victoria-metrics-single-server -n victoria-metrics -o jsonpath='{.spec.clusterIP}' 2>/dev/null)
-      - sed -i '/^VICTORIA_METRICS_URL=/d' infra.env && echo "VICTORIA_METRICS_URL=http://$VM_IP:8428" >> infra.env
-    when:
-      branch: [main]
-
-  - name: install-pyrra
-    image: alpine/helm:3.16.2
-    environment:
-      KUBECONFIG: /tmp/kubeconfig
-    commands:
-      - helm repo add pyrra https://pyrra-dev.github.io/pyrra/helm
-      - helm upgrade --install pyrra pyrra/pyrra --namespace pyrra --create-namespace --wait --timeout 5m
-      - PYRRA_IP=$(kubectl get svc pyrra-api -n pyrra -o jsonpath='{.spec.clusterIP}' 2>/dev/null)
-      - sed -i '/^PYRRA_URL=/d' infra.env && echo "PYRRA_URL=http://$PYRRA_IP:9099" >> infra.env
-    when:
-      branch: [main]
-
-  - name: install-pyroscope
-    image: alpine/helm:3.16.2
-    environment:
-      KUBECONFIG: /tmp/kubeconfig
-    commands:
-      - helm repo add grafana https://grafana.github.io/helm-charts
-      - helm upgrade --install pyroscope grafana/pyroscope --namespace pyroscope --create-namespace --wait --timeout 5m
-      - PY_IP=$(kubectl get svc pyroscope -n pyroscope -o jsonpath='{.spec.clusterIP}' 2>/dev/null)
-      - sed -i '/^PYROSCOPE_URL=/d' infra.env && echo "PYROSCOPE_URL=http://$PY_IP:4040" >> infra.env
-    when:
-      branch: [main]
-
-  - name: install-uptime-kuma
-    image: alpine/helm:3.16.2
-    environment:
-      KUBECONFIG: /tmp/kubeconfig
-    commands:
-      - helm repo add uptime-kuma https://dirsigler.github.io/uptime-kuma-helm
-      - helm upgrade --install uptime-kuma uptime-kuma/uptime-kuma --namespace uptime-kuma --create-namespace --wait --timeout 5m
-    when:
-      branch: [main]
-
-  - name: uninstall-tools
-    image: alpine/helm:3.16.2
-    environment:
-      KUBECONFIG: /tmp/kubeconfig
-    commands:
-      - for ns_tool in "prometheus:prometheus" "grafana:grafana" "loki:loki" "alertmanager:alertmanager" "jaeger:jaeger" "tempo:tempo" "zipkin:zipkin" "fluentd:fluentd" "fluent-bit:fluent-bit" "otel-collector:otel-collector" "victoria-metrics:victoria-metrics" "pyrra:pyrra" "pyroscope:pyroscope" "uptime-kuma:uptime-kuma"; do
-          ns=${ns_tool%%:*}; tool=${ns_tool##*:}
-          helm uninstall $tool -n $ns --ignore-not-found || true
-        done
-    when:
-      branch: [main]
+      - '[ "${ACTION:-INSTALL}" = "INSTALL" ] || exit 0'
+      - helm repo add pyrra https://pyrra-dev.github.io/pyrra/helm --force-update
+      - helm upgrade --install pyrra pyrra/pyrra \
+          --namespace pyrra --create-namespace --wait --timeout 5m || true
+      - helm repo add uptime-kuma https://dirsigler.github.io/uptime-kuma-helm --force-update
+      - helm upgrade --install uptime-kuma uptime-kuma/uptime-kuma \
+          --namespace uptime-kuma --create-namespace --wait --timeout 5m || true
+    depends_on: [install-prometheus-stack]
 
   - name: configure-grafana-datasources
-    image: alpine/curl:latest
+    image: curlimages/curl:latest
     commands:
-      - GRAFANA_URL=$(grep '^GRAFANA_URL=' infra.env | cut -d= -f2 || echo "http://grafana.grafana.svc.cluster.local:3000")
-      - PROM_URL=$(grep '^PROMETHEUS_URL=' infra.env | cut -d= -f2 || echo "http://prometheus-prometheus.prometheus.svc.cluster.local:9090")
-      - LOKI_URL=$(grep '^LOKI_URL=' infra.env | cut -d= -f2 || echo "http://loki.loki.svc.cluster.local:3100")
-      - TEMPO_URL=$(grep '^TEMPO_URL=' infra.env | cut -d= -f2 || echo "")
+      - '[ "${ACTION}" = "CONFIGURE" ] || [ "${ACTION:-INSTALL}" = "INSTALL" ] || exit 0'
+      - GRAFANA_URL="http://grafana.grafana.svc.cluster.local:3000"
       - |
-        for ds_name in Prometheus Loki Tempo; do
-          case $ds_name in
-            Prometheus) URL=$PROM_URL; TYPE=prometheus ;;
-            Loki)       URL=$LOKI_URL; TYPE=loki ;;
-            Tempo)      URL=$TEMPO_URL; TYPE=tempo ;;
-          esac
-          [ -z "$URL" ] && continue
-          curl -sf -X POST $GRAFANA_URL/api/datasources \
+        for ds in \
+          "Prometheus:prometheus:http://prometheus-prometheus.prometheus.svc.cluster.local:9090" \
+          "Loki:loki:http://loki.loki.svc.cluster.local:3100" \
+          "Tempo:tempo:http://tempo.tempo.svc.cluster.local:3200" \
+          "Jaeger:jaeger:http://jaeger-query.jaeger.svc.cluster.local:16686"; do
+          NAME=$(echo "$ds" | cut -d: -f1)
+          TYPE=$(echo "$ds" | cut -d: -f2)
+          URL=$(echo "$ds" | cut -d: -f3-)
+          curl -sf -X POST "$GRAFANA_URL/api/datasources" \
             -u admin:admin \
             -H "Content-Type: application/json" \
-            -d "{\"name\":\"$ds_name\",\"type\":\"$TYPE\",\"url\":\"$URL\",\"access\":\"proxy\",\"isDefault\":$([ \"$ds_name\" = \"Prometheus\" ] && echo true || echo false)}" || true
+            -d "{\"name\":\"$NAME\",\"type\":\"$TYPE\",\"url\":\"$URL\",\"access\":\"proxy\"}" || true
+          echo "Datasource $NAME configured"
         done
-    when:
-      branch: [main]
+    depends_on: [install-grafana-stack, install-tracing]
 
-  - name: configure-slo-rules
+  - name: apply-slo-rules
     image: bitnami/kubectl:latest
     environment:
       KUBECONFIG: /tmp/kubeconfig
     commands:
+      - '[ "${ACTION}" = "CONFIGURE" ] || [ "${ACTION:-INSTALL}" = "INSTALL" ] || exit 0'
       - kubectl apply -f observability/slo/ 2>/dev/null || true
-    when:
-      branch: [main]
+    depends_on: [install-slo-tools]
+
+  - name: uninstall-observability
+    image: alpine/helm:3.16.2
+    environment:
+      KUBECONFIG: /tmp/kubeconfig
+    commands:
+      - '[ "${ACTION}" = "UNINSTALL" ] || exit 0'
+      - |
+        for ns_rel in \
+          "prometheus:prometheus" "alertmanager:alertmanager" \
+          "grafana:grafana" "loki:loki" "tempo:tempo" "pyroscope:pyroscope" \
+          "jaeger:jaeger" "zipkin:zipkin" \
+          "fluent-bit:fluent-bit" "fluentd:fluentd" \
+          "otel-collector:otel-collector" \
+          "pyrra:pyrra" "uptime-kuma:uptime-kuma"; do
+          NS="${ns_rel%%:*}"; REL="${ns_rel##*:}"
+          helm uninstall "$REL" -n "$NS" --ignore-not-found 2>/dev/null || true
+        done
+    depends_on: [setup-kubeconfig]
 
   - name: notify-slack
     image: plugins/slack
@@ -247,7 +167,7 @@ steps:
         {{#success build.status}}
         :white_check_mark: *Observability {{build.params.ACTION}} succeeded* — build {{build.number}}
         {{else}}
-        :x: *Observability {{build.params.ACTION}} failed* — build {{build.number}}
+        :x: *Observability {{build.params.ACTION}} FAILED* — build {{build.number}}
         {{/success}}
     when:
       status: [success, failure]

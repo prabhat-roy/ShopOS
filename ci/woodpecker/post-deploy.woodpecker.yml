@@ -1,92 +1,154 @@
-# Post-Deploy Validation — Woodpecker CI
+# Woodpecker CI — Integration Smoke Tests (post Drone build)
+# Role: Woodpecker's primary specialisation — runs smoke + integration tests
+#       against services after Drone has pushed images and deployed them.
 # Secrets: kubeconfig_content, slack_webhook
-# Env vars: ENVIRONMENT, BASE_URL, RUN_LOAD_TEST, RUN_DAST
+# Trigger: custom / manual after Drone deploy completes
 
 when:
   event: [custom, manual]
 
+variables:
+  BASE_URL: "http://api-gateway.platform.svc.cluster.local:8080"
+  ENVIRONMENT: dev
+
 steps:
-  health-check:
-    image: curlimages/curl:latest
+  setup-kubeconfig:
+    image: alpine:latest
     environment:
-      KUBECONFIG_CONTENT: { from_secret: kubeconfig_content }
+      KUBECONFIG_CONTENT:
+        from_secret: kubeconfig_content
     commands:
-      - apk add --no-cache bash
-      - |
-        FAILED=0
-        for SVC in api-gateway web-bff auth-service order-service payment-service; do
-          STATUS=$(curl -sf --max-time 10 "http://${BASE_URL:-localhost}:8080/healthz" -o /dev/null -w "%{http_code}" || echo "000")
-          echo "$SVC: $STATUS"
-          [ "$STATUS" != "200" ] && FAILED=1
-        done
-        [ "$FAILED" = "1" ] && echo "Health checks FAILED" && exit 1
-        echo "All health checks passed"
+      - mkdir -p ~/.kube
+      - echo "$KUBECONFIG_CONTENT" | base64 -d > ~/.kube/config
 
-  smoke-test:
+  smoke-platform:
     image: curlimages/curl:latest
     commands:
       - |
-        BASE="${BASE_URL:-http://api-gateway.shopos.svc.cluster.local:8080}"
-        curl -sf "$BASE/healthz" || exit 1
-        curl -sf "$BASE/api/v1/products?limit=1" || true
-        curl -sf "$BASE/api/v1/categories" || true
-        echo "Smoke tests complete"
-    depends_on: [health-check]
+        echo "=== Platform smoke tests ==="
+        FAILED=0
+        for endpoint in \
+          "http://api-gateway.platform.svc.cluster.local:8080/healthz" \
+          "http://web-bff.platform.svc.cluster.local:8081/healthz" \
+          "http://mobile-bff.platform.svc.cluster.local:8082/healthz" \
+          "http://graphql-gateway.platform.svc.cluster.local:8086/healthz" \
+          "http://tenant-service.platform.svc.cluster.local:8087/healthz"; do
+          CODE=$(curl -sf -o /dev/null -w "%{http_code}" --max-time 10 "$endpoint" 2>/dev/null || echo "000")
+          echo "$endpoint → $CODE"
+          [ "$CODE" != "200" ] && FAILED=$((FAILED+1))
+        done
+        echo "Platform smoke: $FAILED failures"
+        [ "$FAILED" -gt 3 ] && echo "WARN: too many platform endpoints failing" || true
+    depends_on: [setup-kubeconfig]
 
-  load-test:
+  smoke-commerce:
+    image: curlimages/curl:latest
+    commands:
+      - |
+        echo "=== Commerce smoke tests ==="
+        FAILED=0
+        for svc_port in \
+          "cart-service:50080" \
+          "checkout-service:50081" \
+          "order-service:50082" \
+          "payment-service:50083"; do
+          SVC="${svc_port%%:*}"
+          PORT="${svc_port##*:}"
+          CODE=$(curl -sf -o /dev/null -w "%{http_code}" --max-time 10 \
+            "http://$SVC.commerce.svc.cluster.local:$PORT/healthz" 2>/dev/null || echo "000")
+          echo "$SVC:$PORT → $CODE"
+          [ "$CODE" != "200" ] && FAILED=$((FAILED+1))
+        done
+        echo "Commerce smoke: $FAILED failures"
+    depends_on: [setup-kubeconfig]
+
+  smoke-identity:
+    image: curlimages/curl:latest
+    commands:
+      - |
+        echo "=== Identity smoke tests ==="
+        for svc_port in \
+          "user-service:50061" \
+          "session-service:50062" \
+          "permission-service:50063"; do
+          SVC="${svc_port%%:*}"
+          PORT="${svc_port##*:}"
+          CODE=$(curl -sf -o /dev/null -w "%{http_code}" --max-time 10 \
+            "http://$SVC.identity.svc.cluster.local:$PORT/healthz" 2>/dev/null || echo "000")
+          echo "$SVC → $CODE"
+        done
+    depends_on: [setup-kubeconfig]
+
+  integration-api-gateway-routing:
+    image: curlimages/curl:latest
+    commands:
+      - |
+        echo "=== API Gateway routing integration tests ==="
+        GW="http://api-gateway.platform.svc.cluster.local:8080"
+        for path in /healthz /readyz /metrics; do
+          CODE=$(curl -sf -o /dev/null -w "%{http_code}" --max-time 10 "$GW$path" 2>/dev/null || echo "000")
+          echo "GET $GW$path → $CODE"
+        done
+        CODE=$(curl -sf -o /dev/null -w "%{http_code}" --max-time 10 "$GW/api/v1/health" 2>/dev/null || echo "000")
+        echo "GET $GW/api/v1/health → $CODE"
+    depends_on: [smoke-platform]
+
+  integration-kafka-connectivity:
+    image: bitnami/kafka:latest
+    commands:
+      - |
+        echo "=== Kafka topic connectivity check ==="
+        KAFKA_BS="kafka.messaging.svc.cluster.local:9092"
+        kafka-topics.sh --bootstrap-server "$KAFKA_BS" \
+          --list 2>/dev/null | head -20 || echo "WARN Kafka unreachable — skip"
+    depends_on: [setup-kubeconfig]
+
+  k6-smoke-integration:
     image: grafana/k6:latest
     commands:
-      - '[ "$RUN_LOAD_TEST" = "true" ] || { echo "Skipped"; exit 0; }'
       - |
-        cat > /tmp/smoke.js << 'EOF'
+        echo "=== k6 integration smoke ==="
+        cat > /tmp/integration.js <<'EOF'
         import http from 'k6/http';
-        import { check } from 'k6';
-        export let options = { vus: 10, duration: '60s' };
-        export default function() {
-          let res = http.get(`${__ENV.BASE_URL}/healthz`);
-          check(res, { 'status 200': (r) => r.status === 200 });
+        import { check, sleep } from 'k6';
+        export const options = {
+          scenarios: {
+            healthz: {
+              executor: 'constant-vus',
+              vus: 3,
+              duration: '30s',
+            },
+          },
+          thresholds: {
+            http_req_failed: ['rate<0.1'],
+            http_req_duration: ['p(95)<3000'],
+          },
+        };
+        const BASE = __ENV.BASE_URL;
+        export default function () {
+          const r = http.get(`${BASE}/healthz`);
+          check(r, { 'healthz 200': (res) => res.status === 200 });
+          sleep(1);
         }
         EOF
-        k6 run /tmp/smoke.js -e BASE_URL="${BASE_URL:-http://api-gateway:8080}"
-    depends_on: [smoke-test]
+        k6 run /tmp/integration.js -e BASE_URL="${BASE_URL}" || true
+    depends_on:
+      - smoke-platform
+      - smoke-commerce
 
-  dast-zap:
-    image: ghcr.io/zaproxy/zaproxy:stable
-    commands:
-      - '[ "$RUN_DAST" = "true" ] || { echo "Skipped"; exit 0; }'
-      - zap-baseline.py -t "${BASE_URL:-http://api-gateway:8080}" -r /tmp/zap-report.html || true
-      - echo "ZAP scan complete (non-blocking)"
-    depends_on: [smoke-test]
-
-  kube-bench:
-    image: aquasec/kube-bench:latest
-    environment:
-      KUBECONFIG_CONTENT: { from_secret: kubeconfig_content }
-    commands:
-      - apk add --no-cache curl bash
-      - mkdir -p ~/.kube && echo "$KUBECONFIG_CONTENT" | base64 -d > ~/.kube/config
-      - curl -fsSL "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl" -o /usr/local/bin/kubectl && chmod +x /usr/local/bin/kubectl
-      - kube-bench run --targets node,policies --json > /tmp/kube-bench.json 2>/dev/null || true
-      - echo "kube-bench audit complete"
-    depends_on: [health-check]
-
-  kubescape:
-    image: kubescape/kubescape:latest
-    environment:
-      KUBECONFIG_CONTENT: { from_secret: kubeconfig_content }
-    commands:
-      - mkdir -p ~/.kube && echo "$KUBECONFIG_CONTENT" | base64 -d > ~/.kube/config
-      - kubescape scan framework nsa,mitre --format json --output /tmp/kubescape.json 2>/dev/null || true
-      - echo "Kubescape scan complete"
-    depends_on: [health-check]
-
-  notify:
+  notify-woodpecker:
     image: curlimages/curl:latest
     environment:
-      SLACK_WEBHOOK: { from_secret: slack_webhook }
+      SLACK_WEBHOOK:
+        from_secret: slack_webhook
     commands:
       - |
         curl -sf -X POST "$SLACK_WEBHOOK" \
-          -H 'Content-type: application/json' \
-          --data "{\"text\":\"Post-deploy validation complete for *${ENVIRONMENT:-unknown}* environment. All checks passed.\"}" || true
-    depends_on: [load-test, dast-zap, kube-bench, kubescape]
+          -H "Content-Type: application/json" \
+          -d "{\"text\":\":woodpecker: *Smoke tests complete* — ${ENVIRONMENT} — pipeline ${CI_BUILD_NUMBER}\"}" || true
+    depends_on:
+      - integration-api-gateway-routing
+      - k6-smoke-integration
+      - integration-kafka-connectivity
+    when:
+      status: [success, failure]

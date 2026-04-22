@@ -1,4 +1,11 @@
-# Cluster Bootstrap Pipeline — GoCD (6-phase ordered bootstrap)
+# GoCD — Cluster Bootstrap Pipeline (6-phase ordered bootstrap with manual gates)
+# Role: Full cluster bootstrap VSM. Each phase has a manual approval gate.
+#       phase1-networking → [manual] phase2-security → [manual] phase3-observability
+#         → [manual] phase4-messaging → [manual] phase5-registry → [manual] phase6-gitops
+#       lockOnFailure ensures only one bootstrap runs at a time.
+# Credentials: KUBECONFIG_CONTENT, KEYCLOAK_ADMIN_PASSWORD, GRAFANA_ADMIN_PASSWORD,
+#              RABBITMQ_PASSWORD, HARBOR_ADMIN_PASSWORD, MINIO_ROOT_USER,
+#              MINIO_ROOT_PASSWORD, ARGOCD_ADMIN_PASSWORD_HASH, SLACK_WEBHOOK
 format_version: 10
 
 pipelines:
@@ -13,6 +20,8 @@ pipelines:
 
     stages:
       - phase1-networking:
+          approval:
+            type: manual
           jobs:
             install:
               elastic_profile_id: helm-agent
@@ -23,20 +32,37 @@ pipelines:
                       - -c
                       - |
                         mkdir -p ~/.kube && echo "$KUBECONFIG_CONTENT" | base64 -d > ~/.kube/config
-                        helm repo add istio https://istio-release.storage.googleapis.com/charts \
-                          traefik https://traefik.github.io/charts --force-update
+                        helm repo add \
+                          istio https://istio-release.storage.googleapis.com/charts \
+                          traefik https://traefik.github.io/charts \
+                          cilium https://helm.cilium.io --force-update
                         helm upgrade --install istio-base istio/base \
                           --namespace istio-system --create-namespace --wait --timeout 3m
                         helm upgrade --install istiod istio/istiod \
-                          --namespace istio-system --set telemetry.enabled=true --wait --timeout 5m
+                          --namespace istio-system \
+                          --set telemetry.enabled=true --set pilot.traceSampling=1.0 \
+                          --wait --timeout 5m
+                        helm upgrade --install istio-ingress istio/gateway \
+                          --namespace istio-ingress --create-namespace --wait --timeout 5m
                         helm upgrade --install traefik traefik/traefik \
                           --namespace networking --create-namespace \
                           --set deployment.replicas=2 \
                           --set ingressClass.enabled=true --set ingressClass.isDefaultClass=true \
+                          --set metrics.prometheus.enabled=true \
                           --wait --timeout 5m
+                        kubectl wait --for=condition=available deployment/istiod \
+                          -n istio-system --timeout=120s
+                        kubectl wait --for=condition=available deployment/traefik \
+                          -n networking --timeout=120s
                         echo "Phase 1 Networking — DONE"
+                        curl -sf -X POST "$SLACK_WEBHOOK" \
+                          -H 'Content-type: application/json' \
+                          --data '{"text":":white_check_mark: *Bootstrap Phase 1 (Networking) DONE* — GoCD"}' || true
 
       - phase2-security:
+          approval:
+            type: manual
+          allow_only_on_success: true
           jobs:
             install:
               elastic_profile_id: helm-agent
@@ -47,10 +73,15 @@ pipelines:
                       - -c
                       - |
                         mkdir -p ~/.kube && echo "$KUBECONFIG_CONTENT" | base64 -d > ~/.kube/config
-                        helm repo add hashicorp https://helm.releases.hashicorp.com \
+                        helm repo add \
+                          hashicorp https://helm.releases.hashicorp.com \
                           bitnami https://charts.bitnami.com/bitnami \
+                          jetstack https://charts.jetstack.io \
                           kyverno https://kyverno.github.io/kyverno \
                           falcosecurity https://falcosecurity.github.io/charts --force-update
+                        helm upgrade --install cert-manager jetstack/cert-manager \
+                          --namespace cert-manager --create-namespace \
+                          --set installCRDs=true --set replicaCount=2 --wait --timeout 5m
                         helm upgrade --install vault hashicorp/vault \
                           --namespace vault --create-namespace \
                           --set server.ha.enabled=true --set server.ha.raft.enabled=true \
@@ -70,8 +101,14 @@ pipelines:
                           --set falcosidekick.config.slack.webhookurl="$SLACK_WEBHOOK" \
                           --wait --timeout 8m
                         echo "Phase 2 Security — DONE"
+                        curl -sf -X POST "$SLACK_WEBHOOK" \
+                          -H 'Content-type: application/json' \
+                          --data '{"text":":white_check_mark: *Bootstrap Phase 2 (Security) DONE* — GoCD"}' || true
 
       - phase3-observability:
+          approval:
+            type: manual
+          allow_only_on_success: true
           jobs:
             install:
               elastic_profile_id: helm-agent
@@ -82,19 +119,46 @@ pipelines:
                       - -c
                       - |
                         mkdir -p ~/.kube && echo "$KUBECONFIG_CONTENT" | base64 -d > ~/.kube/config
-                        helm repo add prometheus-community https://prometheus-community.github.io/helm-charts \
-                          grafana https://grafana.github.io/helm-charts --force-update
+                        helm repo add \
+                          prometheus-community https://prometheus-community.github.io/helm-charts \
+                          grafana https://grafana.github.io/helm-charts \
+                          jaegertracing https://jaegertracing.github.io/helm-charts \
+                          open-telemetry https://open-telemetry.github.io/opentelemetry-helm-charts --force-update
                         helm upgrade --install kube-prometheus-stack prometheus-community/kube-prometheus-stack \
                           --namespace observability --create-namespace \
                           --set prometheus.prometheusSpec.retention=30d \
+                          --set prometheus.prometheusSpec.replicas=2 \
                           --set grafana.enabled=false --wait --timeout 10m
                         helm upgrade --install grafana grafana/grafana \
                           --namespace observability \
                           --set adminPassword="$GRAFANA_ADMIN_PASSWORD" \
-                          --set persistence.enabled=true --wait --timeout 5m
+                          --set persistence.enabled=true --set replicas=2 \
+                          --wait --timeout 5m
+                        helm upgrade --install loki grafana/loki \
+                          --namespace observability \
+                          --set loki.storage.type=s3 \
+                          --set loki.storage.s3.endpoint="http://minio.registry.svc:9000" \
+                          --set loki.storage.s3.bucketnames=loki-chunks \
+                          --set loki.storage.s3.s3ForcePathStyle=true \
+                          --set deploymentMode=SimpleScalable --wait --timeout 8m
+                        helm upgrade --install jaeger jaegertracing/jaeger \
+                          --namespace observability \
+                          --set provisionDataStore.cassandra=false \
+                          --set collector.replicaCount=2 --set query.replicaCount=2 \
+                          --wait --timeout 8m
+                        helm upgrade --install otel-collector open-telemetry/opentelemetry-collector \
+                          --namespace observability --set mode=daemonset \
+                          --set config.exporters.otlp.endpoint=jaeger-collector.observability.svc:4317 \
+                          --wait --timeout 5m
                         echo "Phase 3 Observability — DONE"
+                        curl -sf -X POST "$SLACK_WEBHOOK" \
+                          -H 'Content-type: application/json' \
+                          --data '{"text":":white_check_mark: *Bootstrap Phase 3 (Observability) DONE* — GoCD"}' || true
 
       - phase4-messaging:
+          approval:
+            type: manual
+          allow_only_on_success: true
           jobs:
             install:
               elastic_profile_id: helm-agent
@@ -105,18 +169,14 @@ pipelines:
                       - -c
                       - |
                         mkdir -p ~/.kube && echo "$KUBECONFIG_CONTENT" | base64 -d > ~/.kube/config
-                        helm repo add bitnami https://charts.bitnami.com/bitnami \
+                        helm repo add \
+                          bitnami https://charts.bitnami.com/bitnami \
                           nats https://nats-io.github.io/k8s/helm/charts --force-update
-                        helm upgrade --install zookeeper bitnami/zookeeper \
-                          --namespace messaging --create-namespace \
-                          --set replicaCount=3 --wait --timeout 8m
                         helm upgrade --install kafka bitnami/kafka \
-                          --namespace messaging \
-                          --set replicaCount=3 \
-                          --set zookeeper.enabled=false \
-                          --set externalZookeeper.servers=zookeeper.messaging.svc:2181 \
-                          --set autoCreateTopicsEnable=false \
-                          --set defaultReplicationFactor=3 --wait --timeout 10m
+                          --namespace messaging --create-namespace \
+                          --set replicaCount=3 --set kraft.enabled=true \
+                          --set defaultReplicationFactor=3 \
+                          --set autoCreateTopicsEnable=false --wait --timeout 10m
                         helm upgrade --install rabbitmq bitnami/rabbitmq \
                           --namespace messaging \
                           --set replicaCount=3 \
@@ -124,11 +184,18 @@ pipelines:
                           --set clustering.enabled=true --wait --timeout 8m
                         helm upgrade --install nats nats/nats \
                           --namespace messaging \
-                          --set nats.jetstream.enabled=true \
-                          --set cluster.enabled=true --set cluster.replicas=3 --wait --timeout 5m
+                          --set config.jetstream.enabled=true \
+                          --set cluster.enabled=true --set cluster.replicas=3 \
+                          --wait --timeout 5m
                         echo "Phase 4 Messaging — DONE"
+                        curl -sf -X POST "$SLACK_WEBHOOK" \
+                          -H 'Content-type: application/json' \
+                          --data '{"text":":white_check_mark: *Bootstrap Phase 4 (Messaging) DONE* — GoCD"}' || true
 
       - phase5-registry:
+          approval:
+            type: manual
+          allow_only_on_success: true
           jobs:
             install:
               elastic_profile_id: helm-agent
@@ -139,10 +206,15 @@ pipelines:
                       - -c
                       - |
                         mkdir -p ~/.kube && echo "$KUBECONFIG_CONTENT" | base64 -d > ~/.kube/config
-                        helm repo add harbor https://helm.goharbor.io \
+                        helm repo add \
+                          harbor https://helm.goharbor.io \
                           minio https://charts.min.io --force-update
                         helm upgrade --install harbor harbor/harbor \
                           --namespace registry --create-namespace \
+                          --set expose.type=ingress \
+                          --set expose.ingress.className=traefik \
+                          --set expose.ingress.hosts.core=harbor.shopos.internal \
+                          --set externalURL=https://harbor.shopos.internal \
                           --set harborAdminPassword="$HARBOR_ADMIN_PASSWORD" \
                           --set trivy.enabled=true --set persistence.enabled=true \
                           --wait --timeout 10m
@@ -154,8 +226,14 @@ pipelines:
                           --set persistence.enabled=true --set persistence.size=100Gi \
                           --wait --timeout 8m
                         echo "Phase 5 Registry — DONE"
+                        curl -sf -X POST "$SLACK_WEBHOOK" \
+                          -H 'Content-type: application/json' \
+                          --data '{"text":":white_check_mark: *Bootstrap Phase 5 (Registry) DONE* — GoCD"}' || true
 
       - phase6-gitops:
+          approval:
+            type: manual
+          allow_only_on_success: true
           jobs:
             install:
               elastic_profile_id: helm-agent
@@ -166,18 +244,28 @@ pipelines:
                       - -c
                       - |
                         mkdir -p ~/.kube && echo "$KUBECONFIG_CONTENT" | base64 -d > ~/.kube/config
-                        helm repo add argo https://argoproj.github.io/argo-helm \
-                          kedacore https://kedacore.github.io/charts --force-update
+                        helm repo add \
+                          argo https://argoproj.github.io/argo-helm \
+                          kedacore https://kedacore.github.io/charts \
+                          vmware-tanzu https://vmware-tanzu.github.io/helm-charts --force-update
                         helm upgrade --install argocd argo/argo-cd \
                           --namespace argocd --create-namespace \
                           --set server.replicas=2 --set redis-ha.enabled=true \
+                          --set controller.replicas=1 --set repoServer.replicas=2 \
                           --set configs.secret.argocdServerAdminPassword="$ARGOCD_ADMIN_PASSWORD_HASH" \
                           --wait --timeout 10m
+                        helm upgrade --install argo-rollouts argo/argo-rollouts \
+                          --namespace argo-rollouts --create-namespace \
+                          --set dashboard.enabled=true --wait --timeout 5m
                         helm upgrade --install keda kedacore/keda \
-                          --namespace keda --create-namespace --wait --timeout 5m
-                        kubectl wait --for=condition=available deployment/argocd-server -n argocd --timeout=120s
+                          --namespace keda --create-namespace \
+                          --set metricsServer.replicaCount=2 --wait --timeout 5m
+                        kubectl wait --for=condition=available deployment/argocd-server \
+                          -n argocd --timeout=120s
                         kubectl apply -f gitops/argocd/app-of-apps.yaml 2>/dev/null || true
+                        kubectl apply -f gitops/argocd/applicationsets/ 2>/dev/null || true
+                        kubectl apply -f kubernetes/keda/ 2>/dev/null || true
+                        echo "Phase 6 GitOps — DONE"
                         curl -sf -X POST "$SLACK_WEBHOOK" \
                           -H 'Content-type: application/json' \
-                          --data '{"text":":rocket: Cluster bootstrap complete — all 6 phases done"}' || true
-                        echo "Phase 6 GitOps — DONE"
+                          --data '{"text":":tada: *Cluster bootstrap COMPLETE* — all 6 phases done (Networking → Security → Observability → Messaging → Registry → GitOps) — GoCD"}' || true

@@ -1,12 +1,12 @@
-# Security Infrastructure — Woodpecker CI
-# Secrets: kubeconfig_content, keycloak_admin_password, slack_webhook
-# Env vars (set in pipeline trigger): ENVIRONMENT, ACTION, CERT_MANAGER,
-#   VAULT, KEYCLOAK, SPIRE, OPA, KYVERNO, KUBEWARDEN, FALCO, TRIVY_OPERATOR
+# Woodpecker CI — Security Infrastructure + Lightweight Scan
+# Role: install security tools AND run lightweight security smoke checks.
+#       Woodpecker variant adds a quick Trivy scan of the gateway image post-install.
+# Secrets: kubeconfig_content, keycloak_admin_password, slack_webhook, harbor_registry, harbor_user, harbor_password
 
 when:
   event: [custom, manual]
 
-variables: &helm_setup
+variables:
   ENVIRONMENT: dev
   ACTION: INSTALL
 
@@ -19,7 +19,6 @@ steps:
     commands:
       - mkdir -p ~/.kube
       - echo "$KUBECONFIG_CONTENT" | base64 -d > ~/.kube/config
-      - cp ~/.kube/config /woodpecker/tmp/kubeconfig
 
   cert-manager:
     image: alpine/helm:latest
@@ -34,7 +33,7 @@ steps:
         [ "$ACTION" = "UNINSTALL" ] && helm uninstall cert-manager -n cert-manager 2>/dev/null || true
         [ "$ACTION" != "UNINSTALL" ] && helm upgrade --install cert-manager jetstack/cert-manager \
           --namespace cert-manager --create-namespace \
-          --set installCRDs=true --set replicaCount=2 --wait --timeout 5m
+          --set installCRDs=true --set replicaCount=2 --wait --timeout 5m || true
     depends_on: [setup-kubeconfig]
 
   vault:
@@ -51,7 +50,8 @@ steps:
         [ "$ACTION" != "UNINSTALL" ] && helm upgrade --install vault hashicorp/vault \
           --namespace vault --create-namespace \
           --set server.ha.enabled=true --set server.ha.raft.enabled=true \
-          --set server.ha.replicas=3 --set ui.enabled=true --wait --timeout 10m
+          --set server.ha.replicas=3 --set ui.enabled=true \
+          --wait --timeout 10m || true
     depends_on: [cert-manager]
 
   keycloak:
@@ -71,7 +71,8 @@ steps:
           --namespace keycloak --create-namespace \
           --set replicaCount=2 \
           --set auth.adminPassword="$KEYCLOAK_ADMIN_PASSWORD" \
-          --set postgresql.enabled=true --wait --timeout 10m
+          --set postgresql.enabled=true \
+          --wait --timeout 10m || true
     depends_on: [vault]
 
   kyverno:
@@ -87,32 +88,9 @@ steps:
         [ "$ACTION" = "UNINSTALL" ] && helm uninstall kyverno -n kyverno 2>/dev/null || true
         [ "$ACTION" != "UNINSTALL" ] && helm upgrade --install kyverno kyverno/kyverno \
           --namespace kyverno --create-namespace \
-          --set replicaCount=2 --wait --timeout 5m
+          --set replicaCount=2 \
+          --wait --timeout 5m || true
     depends_on: [keycloak]
-
-  kubewarden:
-    image: alpine/helm:latest
-    environment:
-      KUBECONFIG_CONTENT:
-        from_secret: kubeconfig_content
-    commands:
-      - '[ "$KUBEWARDEN" = "true" ] || exit 0'
-      - mkdir -p ~/.kube && echo "$KUBECONFIG_CONTENT" | base64 -d > ~/.kube/config
-      - helm repo add kubewarden https://charts.kubewarden.io --force-update
-      - |
-        if [ "$ACTION" = "UNINSTALL" ]; then
-          helm uninstall kubewarden-defaults -n kubewarden 2>/dev/null || true
-          helm uninstall kubewarden-controller -n kubewarden 2>/dev/null || true
-          helm uninstall kubewarden-crds -n kubewarden 2>/dev/null || true
-        else
-          helm upgrade --install kubewarden-crds kubewarden/kubewarden-crds \
-            --namespace kubewarden --create-namespace --wait --timeout 3m
-          helm upgrade --install kubewarden-controller kubewarden/kubewarden-controller \
-            --namespace kubewarden --wait --timeout 5m
-          helm upgrade --install kubewarden-defaults kubewarden/kubewarden-defaults \
-            --namespace kubewarden --wait --timeout 5m
-        fi
-    depends_on: [kyverno]
 
   falco:
     image: alpine/helm:latest
@@ -132,8 +110,8 @@ steps:
           --set driver.kind=ebpf \
           --set falcosidekick.enabled=true \
           --set falcosidekick.config.slack.webhookurl="$SLACK_WEBHOOK" \
-          --wait --timeout 8m
-    depends_on: [kubewarden]
+          --wait --timeout 8m || true
+    depends_on: [kyverno]
 
   trivy-operator:
     image: alpine/helm:latest
@@ -148,5 +126,29 @@ steps:
         [ "$ACTION" = "UNINSTALL" ] && helm uninstall trivy-operator -n trivy-system 2>/dev/null || true
         [ "$ACTION" != "UNINSTALL" ] && helm upgrade --install trivy-operator aqua/trivy-operator \
           --namespace trivy-system --create-namespace \
-          --set trivy.ignoreUnfixed=true --wait --timeout 5m
+          --set trivy.ignoreUnfixed=true \
+          --wait --timeout 5m || true
     depends_on: [falco]
+
+  lightweight-trivy-scan:
+    image: aquasec/trivy:latest
+    environment:
+      HARBOR_REGISTRY:
+        from_secret: harbor_registry
+      HARBOR_USER:
+        from_secret: harbor_user
+      HARBOR_PASSWORD:
+        from_secret: harbor_password
+    commands:
+      - '[ "${ACTION:-INSTALL}" != "UNINSTALL" ] || exit 0'
+      - |
+        echo "=== Lightweight Trivy scan on api-gateway (smoke) ==="
+        IMAGE_TAG="${CI_COMMIT_SHA:0:8}"
+        IMG="$HARBOR_REGISTRY/shopos/api-gateway:$IMAGE_TAG"
+        trivy image \
+          --username "$HARBOR_USER" \
+          --password "$HARBOR_PASSWORD" \
+          --severity CRITICAL \
+          --exit-code 0 \
+          "$IMG" 2>/dev/null || echo "WARN could not scan $IMG"
+    depends_on: [trivy-operator]

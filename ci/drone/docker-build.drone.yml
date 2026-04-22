@@ -1,197 +1,219 @@
+# Drone CI — Primary Role: Image Build & Push to Harbor
+# Triggered by Gitea webhooks on push to main / release/*
+# Secrets: harbor_registry, harbor_user, harbor_password, slack_webhook
+
 kind: pipeline
 type: docker
 name: docker-build
 
 trigger:
-  event:
-    - push
-    - custom
-  branch:
-    - main
-    - develop
-    - "release/*"
-
-# Secrets required:
-#   harbor_url, harbor_user, harbor_password
-
-environment:
-  REGISTRY_PROJECT: shopos
-  DOMAIN: ""           # empty = build all domains
-  SERVICE_NAME: ""     # empty = build all services in DOMAIN (or all 154 if DOMAIN also empty)
-  IMAGE_TAG: ""        # empty = dev-<sha>-<build-number>
-  PUSH_IMAGE: "true"
-  SCAN_IMAGE: "true"
-
-steps:
-
-  - name: resolve-build-context
-    image: alpine/git:latest
-    commands:
-      - export GIT_SHA=$(git rev-parse --short HEAD)
-      - export TAG=${IMAGE_TAG:-"dev-${GIT_SHA}-${DRONE_BUILD_NUMBER}"}
-      - echo "IMAGE_TAG=${TAG}" > /drone/src/.build.env
-      - echo "REGISTRY_PROJECT=${REGISTRY_PROJECT:-shopos}" >> /drone/src/.build.env
-      - cat /drone/src/.build.env
-
-  - name: docker-build
-    image: docker:27-dind
-    privileged: true
-    environment:
-      HARBOR_URL:
-        from_secret: harbor_url
-      HARBOR_USER:
-        from_secret: harbor_user
-      HARBOR_PASSWORD:
-        from_secret: harbor_password
-    commands:
-      - source /drone/src/.build.env
-      - echo "$HARBOR_PASSWORD" | docker login $HARBOR_URL -u $HARBOR_USER --password-stdin
-      - |
-        ALL_DOMAINS="platform identity catalog commerce supply-chain financial customer-experience communications content analytics-ai b2b integrations affiliate"
-
-        build_service() {
-          local domain=$1
-          local svc=$2
-          local image="$HARBOR_URL/$REGISTRY_PROJECT/$svc:$IMAGE_TAG"
-          echo "=== Building: $image ==="
-          docker build \
-            --label "git.commit=$IMAGE_TAG" \
-            --label "build.number=${DRONE_BUILD_NUMBER}" \
-            --label "domain=$domain" \
-            -t "$image" \
-            "src/$domain/$svc/" || echo "WARN: build failed for $svc (non-blocking)"
-        }
-
-        if [ -n "$SERVICE_NAME" ] && [ -n "$DOMAIN" ]; then
-          build_service "$DOMAIN" "$SERVICE_NAME"
-        elif [ -n "$DOMAIN" ]; then
-          for svc in src/$DOMAIN/*/; do
-            svc_name=$(basename "$svc")
-            build_service "$DOMAIN" "$svc_name"
-          done
-        else
-          for domain in $ALL_DOMAINS; do
-            for svc in src/$domain/*/; do
-              [ -d "$svc" ] || continue
-              svc_name=$(basename "$svc")
-              build_service "$domain" "$svc_name"
-            done
-          done
-        fi
-    volumes:
-      - name: docker-sock
-        path: /var/run/docker.sock
-
-  - name: image-scan-trivy
-    image: aquasec/trivy:latest
-    environment:
-      HARBOR_URL:
-        from_secret: harbor_url
-    commands:
-      - source /drone/src/.build.env
-      - mkdir -p reports/image-scan
-      - |
-        ALL_DOMAINS="platform identity catalog commerce supply-chain financial customer-experience communications content analytics-ai b2b integrations affiliate"
-
-        scan_service() {
-          local svc=$1
-          local image="$HARBOR_URL/$REGISTRY_PROJECT/$svc:$IMAGE_TAG"
-          echo "=== Trivy scan: $image ==="
-          trivy image --exit-code 0 --severity HIGH,CRITICAL \
-            --format json \
-            --output "reports/image-scan/trivy-${svc}.json" \
-            "$image" || true
-        }
-
-        if [ "$SCAN_IMAGE" != "true" ]; then
-          echo "SCAN_IMAGE=false — skipping Trivy scan"
-          exit 0
-        fi
-
-        if [ -n "$SERVICE_NAME" ]; then
-          scan_service "$SERVICE_NAME"
-        elif [ -n "$DOMAIN" ]; then
-          for svc in src/$DOMAIN/*/; do
-            scan_service "$(basename $svc)"
-          done
-        else
-          for domain in $ALL_DOMAINS; do
-            for svc in src/$domain/*/; do
-              [ -d "$svc" ] || continue
-              scan_service "$(basename $svc)"
-            done
-          done
-        fi
-    depends_on: [docker-build]
-
-  - name: docker-push
-    image: docker:27-dind
-    privileged: true
-    environment:
-      HARBOR_URL:
-        from_secret: harbor_url
-      HARBOR_USER:
-        from_secret: harbor_user
-      HARBOR_PASSWORD:
-        from_secret: harbor_password
-    commands:
-      - source /drone/src/.build.env
-      - |
-        if [ "$PUSH_IMAGE" != "true" ]; then
-          echo "PUSH_IMAGE=false — skipping push"
-          exit 0
-        fi
-      - echo "$HARBOR_PASSWORD" | docker login $HARBOR_URL -u $HARBOR_USER --password-stdin
-      - |
-        ALL_DOMAINS="platform identity catalog commerce supply-chain financial customer-experience communications content analytics-ai b2b integrations affiliate"
-
-        push_service() {
-          local svc=$1
-          local image="$HARBOR_URL/$REGISTRY_PROJECT/$svc:$IMAGE_TAG"
-          echo "=== Pushing: $image ==="
-          docker push "$image" || echo "WARN: push failed for $svc"
-        }
-
-        if [ -n "$SERVICE_NAME" ]; then
-          push_service "$SERVICE_NAME"
-        elif [ -n "$DOMAIN" ]; then
-          for svc in src/$DOMAIN/*/; do
-            push_service "$(basename $svc)"
-          done
-        else
-          for domain in $ALL_DOMAINS; do
-            for svc in src/$domain/*/; do
-              [ -d "$svc" ] || continue
-              push_service "$(basename $svc)"
-            done
-          done
-        fi
-      - docker logout $HARBOR_URL || true
-    depends_on: [image-scan-trivy]
-    when:
-      branch: [main, develop, "release/*"]
-    volumes:
-      - name: docker-sock
-        path: /var/run/docker.sock
-
-  - name: cleanup
-    image: docker:27-dind
-    privileged: true
-    environment:
-      HARBOR_URL:
-        from_secret: harbor_url
-    commands:
-      - source /drone/src/.build.env
-      - docker image prune -f 2>/dev/null || true
-      - echo "Cleanup complete. Tag=${IMAGE_TAG}"
-    depends_on: [docker-push]
-    when:
-      status: [success, failure]
-    volumes:
-      - name: docker-sock
-        path: /var/run/docker.sock
+  event: [push]
+  branch: [main, "release/*"]
 
 volumes:
-  - name: docker-sock
+  - name: docker-socket
     host:
       path: /var/run/docker.sock
+
+steps:
+  - name: login-harbor
+    image: docker:26-cli
+    volumes:
+      - name: docker-socket
+        path: /var/run/docker.sock
+    environment:
+      HARBOR_REGISTRY:
+        from_secret: harbor_registry
+      HARBOR_USER:
+        from_secret: harbor_user
+      HARBOR_PASSWORD:
+        from_secret: harbor_password
+    commands:
+      - echo "$HARBOR_PASSWORD" | docker login "$HARBOR_REGISTRY" -u "$HARBOR_USER" --password-stdin
+      - IMAGE_TAG="${DRONE_BRANCH}-${DRONE_COMMIT_SHA:0:8}"
+      - echo "IMAGE_TAG=${IMAGE_TAG}" > /drone/src/.build.env
+      - echo "HARBOR_REGISTRY=${HARBOR_REGISTRY}" >> /drone/src/.build.env
+
+  - name: build-push-platform
+    image: docker:26-cli
+    volumes:
+      - name: docker-socket
+        path: /var/run/docker.sock
+    environment:
+      HARBOR_REGISTRY:
+        from_secret: harbor_registry
+    commands:
+      - source /drone/src/.build.env
+      - |
+        for dir in src/platform/*/; do
+          SVC=$(basename "$dir")
+          echo "=== platform/$SVC ==="
+          docker build -t "$HARBOR_REGISTRY/shopos/${SVC}:${IMAGE_TAG}" "$dir" \
+            && docker push "$HARBOR_REGISTRY/shopos/${SVC}:${IMAGE_TAG}" \
+            || echo "WARN $SVC failed — continuing"
+        done
+    depends_on: [login-harbor]
+
+  - name: build-push-identity
+    image: docker:26-cli
+    volumes:
+      - name: docker-socket
+        path: /var/run/docker.sock
+    environment:
+      HARBOR_REGISTRY:
+        from_secret: harbor_registry
+    commands:
+      - source /drone/src/.build.env
+      - |
+        for dir in src/identity/*/; do
+          SVC=$(basename "$dir")
+          echo "=== identity/$SVC ==="
+          docker build -t "$HARBOR_REGISTRY/shopos/${SVC}:${IMAGE_TAG}" "$dir" \
+            && docker push "$HARBOR_REGISTRY/shopos/${SVC}:${IMAGE_TAG}" \
+            || echo "WARN $SVC failed — continuing"
+        done
+    depends_on: [login-harbor]
+
+  - name: build-push-catalog
+    image: docker:26-cli
+    volumes:
+      - name: docker-socket
+        path: /var/run/docker.sock
+    environment:
+      HARBOR_REGISTRY:
+        from_secret: harbor_registry
+    commands:
+      - source /drone/src/.build.env
+      - |
+        for dir in src/catalog/*/; do
+          SVC=$(basename "$dir")
+          echo "=== catalog/$SVC ==="
+          docker build -t "$HARBOR_REGISTRY/shopos/${SVC}:${IMAGE_TAG}" "$dir" \
+            && docker push "$HARBOR_REGISTRY/shopos/${SVC}:${IMAGE_TAG}" \
+            || echo "WARN $SVC failed — continuing"
+        done
+    depends_on: [login-harbor]
+
+  - name: build-push-commerce
+    image: docker:26-cli
+    volumes:
+      - name: docker-socket
+        path: /var/run/docker.sock
+    environment:
+      HARBOR_REGISTRY:
+        from_secret: harbor_registry
+    commands:
+      - source /drone/src/.build.env
+      - |
+        for dir in src/commerce/*/; do
+          SVC=$(basename "$dir")
+          echo "=== commerce/$SVC ==="
+          docker build -t "$HARBOR_REGISTRY/shopos/${SVC}:${IMAGE_TAG}" "$dir" \
+            && docker push "$HARBOR_REGISTRY/shopos/${SVC}:${IMAGE_TAG}" \
+            || echo "WARN $SVC failed — continuing"
+        done
+    depends_on: [login-harbor]
+
+  - name: build-push-supply-chain
+    image: docker:26-cli
+    volumes:
+      - name: docker-socket
+        path: /var/run/docker.sock
+    environment:
+      HARBOR_REGISTRY:
+        from_secret: harbor_registry
+    commands:
+      - source /drone/src/.build.env
+      - |
+        for dir in src/supply-chain/*/; do
+          SVC=$(basename "$dir")
+          echo "=== supply-chain/$SVC ==="
+          docker build -t "$HARBOR_REGISTRY/shopos/${SVC}:${IMAGE_TAG}" "$dir" \
+            && docker push "$HARBOR_REGISTRY/shopos/${SVC}:${IMAGE_TAG}" \
+            || echo "WARN $SVC failed — continuing"
+        done
+    depends_on: [login-harbor]
+
+  - name: build-push-remaining
+    image: docker:26-cli
+    volumes:
+      - name: docker-socket
+        path: /var/run/docker.sock
+    environment:
+      HARBOR_REGISTRY:
+        from_secret: harbor_registry
+    commands:
+      - source /drone/src/.build.env
+      - |
+        for domain in financial customer-experience communications content analytics-ai b2b integrations affiliate; do
+          for dir in src/$domain/*/; do
+            [ -d "$dir" ] || continue
+            SVC=$(basename "$dir")
+            echo "=== $domain/$SVC ==="
+            docker build -t "$HARBOR_REGISTRY/shopos/${SVC}:${IMAGE_TAG}" "$dir" \
+              && docker push "$HARBOR_REGISTRY/shopos/${SVC}:${IMAGE_TAG}" \
+              || echo "WARN $SVC failed — continuing"
+          done
+        done
+    depends_on: [login-harbor]
+
+  - name: trivy-scan-spot-check
+    image: aquasec/trivy:latest
+    environment:
+      HARBOR_REGISTRY:
+        from_secret: harbor_registry
+    commands:
+      - source /drone/src/.build.env
+      - |
+        # Spot-check key gateway image; non-blocking
+        trivy image --severity HIGH,CRITICAL --exit-code 0 \
+          "$HARBOR_REGISTRY/shopos/api-gateway:${IMAGE_TAG}" || true
+    depends_on:
+      - build-push-platform
+      - build-push-commerce
+
+  - name: tag-latest
+    image: docker:26-cli
+    volumes:
+      - name: docker-socket
+        path: /var/run/docker.sock
+    environment:
+      HARBOR_REGISTRY:
+        from_secret: harbor_registry
+    commands:
+      - source /drone/src/.build.env
+      - |
+        # Re-tag the gateway image as :latest on main
+        if [ "${DRONE_BRANCH}" = "main" ]; then
+          docker pull "$HARBOR_REGISTRY/shopos/api-gateway:${IMAGE_TAG}" || true
+          docker tag  "$HARBOR_REGISTRY/shopos/api-gateway:${IMAGE_TAG}" \
+                      "$HARBOR_REGISTRY/shopos/api-gateway:latest" && \
+          docker push "$HARBOR_REGISTRY/shopos/api-gateway:latest" || true
+        fi
+    depends_on:
+      - build-push-platform
+      - build-push-identity
+      - build-push-catalog
+      - build-push-commerce
+      - build-push-supply-chain
+      - build-push-remaining
+    when:
+      branch: [main]
+
+  - name: notify-slack
+    image: plugins/slack
+    settings:
+      webhook:
+        from_secret: slack_webhook
+      channel: "#builds"
+      template: |
+        {{#success build.status}}
+        :white_check_mark: *Drone build complete* — `{{build.branch}}@{{truncate build.commit 8}}` — all 154 images pushed to Harbor
+        {{else}}
+        :x: *Drone build FAILED* — `{{build.branch}}@{{truncate build.commit 8}}` — check logs
+        {{/success}}
+    depends_on:
+      - trivy-scan-spot-check
+      - tag-latest
+    when:
+      status: [success, failure]

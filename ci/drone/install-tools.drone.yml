@@ -1,246 +1,109 @@
+# Drone CI — Install Tools on Drone Runner
+# Role: verify that the required docker images (used as tool runners) are pullable
+# and pre-cache them on the Drone runner node.
+# Triggered manually (custom event) — run once after a new runner is provisioned.
+# Secrets: harbor_registry, harbor_user, harbor_password
+
 kind: pipeline
 type: docker
 name: install-tools
 
 trigger:
-  event:
-    - custom
+  event: [custom]
 
-# Installs CLI tools on the Drone agent/runner host.
-# Variables (set via Drone UI / API):
-#   KUBECTL, HELM, TERRAFORM, ANSIBLE, K9S, SKAFFOLD, TILT
-#   ARGOCD_CLI, FLUX_CLI, KUSTOMIZE, KUBESEAL, CMCTL
-#   TRIVY_CLI, GRYPE_CLI, SYFT_CLI, COSIGN, NOTATION, SKOPEO
-#   K6, VEGETA, GATLING_CLI, LOCUST_CLI
-#   AWS_CLI, GCLOUD_CLI, AZURE_CLI
-#   DOCKER_COMPOSE, STERN, KUBECTX, HELMFILE
+volumes:
+  - name: docker-socket
+    host:
+      path: /var/run/docker.sock
 
 steps:
-
-  - name: install-kubectl
-    image: alpine:3.21
+  - name: pull-build-images
+    image: docker:26-cli
+    volumes:
+      - name: docker-socket
+        path: /var/run/docker.sock
     commands:
-      - apk add --no-cache curl
-      - KUBECTL_VER=$(curl -sf https://dl.k8s.io/release/stable.txt)
-      - curl -sfLO "https://dl.k8s.io/release/$KUBECTL_VER/bin/linux/amd64/kubectl"
-      - chmod +x kubectl && mv kubectl /usr/local/bin/
-      - kubectl version --client
-    when:
-      branch: [main]
-
-  - name: install-helm
-    image: alpine:3.21
-    commands:
-      - apk add --no-cache curl
-      - curl -sfL https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | sh
-      - helm version
-    when:
-      branch: [main]
-
-  - name: install-terraform
-    image: alpine:3.21
-    commands:
-      - apk add --no-cache curl unzip
-      - TF_VER=$(curl -sf https://checkpoint-api.hashicorp.com/v1/check/terraform | grep -o '"current_version":"[^"]*"' | cut -d'"' -f4)
-      - curl -sfLo /tmp/terraform.zip "https://releases.hashicorp.com/terraform/${TF_VER}/terraform_${TF_VER}_linux_amd64.zip"
-      - unzip -q /tmp/terraform.zip -d /usr/local/bin/
-      - terraform version
-    when:
-      branch: [main]
-
-  - name: install-k9s
-    image: alpine:3.21
-    commands:
-      - apk add --no-cache curl tar
-      - K9S_VER=$(curl -sf https://api.github.com/repos/derailed/k9s/releases/latest | grep '"tag_name"' | cut -d'"' -f4)
-      - curl -sfL "https://github.com/derailed/k9s/releases/download/$K9S_VER/k9s_Linux_amd64.tar.gz" | tar xz -C /usr/local/bin k9s
-      - k9s version
-    when:
-      branch: [main]
-
-  - name: install-skaffold
-    image: alpine:3.21
-    commands:
-      - apk add --no-cache curl
-      - curl -sfLo /usr/local/bin/skaffold https://storage.googleapis.com/skaffold/releases/latest/skaffold-linux-amd64
-      - chmod +x /usr/local/bin/skaffold
-      - skaffold version
-    when:
-      branch: [main]
-
-  - name: install-argocd-cli
-    image: alpine:3.21
-    commands:
-      - apk add --no-cache curl
-      - ARGOCD_VER=$(curl -sf https://api.github.com/repos/argoproj/argo-cd/releases/latest | grep '"tag_name"' | cut -d'"' -f4)
-      - curl -sfLo /usr/local/bin/argocd "https://github.com/argoproj/argo-cd/releases/download/$ARGOCD_VER/argocd-linux-amd64"
-      - chmod +x /usr/local/bin/argocd
-      - argocd version --client
-    when:
-      branch: [main]
-
-  - name: install-flux-cli
-    image: alpine:3.21
-    commands:
-      - apk add --no-cache curl
-      - curl -sfL https://fluxcd.io/install.sh | sh
-      - flux version
-    when:
-      branch: [main]
-
-  - name: install-kustomize
-    image: alpine:3.21
-    commands:
-      - apk add --no-cache curl tar
-      - curl -sfL "https://raw.githubusercontent.com/kubernetes-sigs/kustomize/master/hack/install_kustomize.sh" | bash
-      - mv kustomize /usr/local/bin/
-      - kustomize version
-    when:
-      branch: [main]
-
-  - name: install-kubeseal
-    image: alpine:3.21
-    commands:
-      - apk add --no-cache curl tar
-      - SEAL_VER=$(curl -sf https://api.github.com/repos/bitnami-labs/sealed-secrets/releases/latest | grep '"tag_name"' | cut -d'"' -f4 | tr -d v)
-      - curl -sfLo /tmp/kubeseal.tar.gz "https://github.com/bitnami-labs/sealed-secrets/releases/download/v$SEAL_VER/kubeseal-$SEAL_VER-linux-amd64.tar.gz"
-      - tar xzf /tmp/kubeseal.tar.gz -C /usr/local/bin kubeseal
-      - kubeseal --version
-    when:
-      branch: [main]
-
-  - name: install-trivy-cli
-    image: alpine:3.21
-    commands:
-      - apk add --no-cache curl tar
-      - TRIVY_VER=$(curl -sf https://api.github.com/repos/aquasecurity/trivy/releases/latest | grep '"tag_name"' | cut -d'"' -f4 | tr -d v)
-      - curl -sfL "https://github.com/aquasecurity/trivy/releases/download/v$TRIVY_VER/trivy_${TRIVY_VER}_Linux-64bit.tar.gz" | tar xz -C /usr/local/bin trivy
-      - trivy --version
-    when:
-      branch: [main]
-
-  - name: install-grype
-    image: alpine:3.21
-    commands:
-      - apk add --no-cache curl
-      - curl -sfL https://raw.githubusercontent.com/anchore/grype/main/install.sh | sh -s -- -b /usr/local/bin
-      - grype version
-    when:
-      branch: [main]
-
-  - name: install-syft
-    image: alpine:3.21
-    commands:
-      - apk add --no-cache curl
-      - curl -sfL https://raw.githubusercontent.com/anchore/syft/main/install.sh | sh -s -- -b /usr/local/bin
-      - syft version
-    when:
-      branch: [main]
-
-  - name: install-cosign
-    image: alpine:3.21
-    commands:
-      - apk add --no-cache curl
-      - COSIGN_VER=$(curl -sf https://api.github.com/repos/sigstore/cosign/releases/latest | grep '"tag_name"' | cut -d'"' -f4)
-      - curl -sfLo /usr/local/bin/cosign "https://github.com/sigstore/cosign/releases/download/$COSIGN_VER/cosign-linux-amd64"
-      - chmod +x /usr/local/bin/cosign
-      - cosign version
-    when:
-      branch: [main]
-
-  - name: install-notation
-    image: alpine:3.21
-    commands:
-      - apk add --no-cache curl tar
-      - NOTATION_VER=$(curl -sf https://api.github.com/repos/notaryproject/notation/releases/latest | grep '"tag_name"' | cut -d'"' -f4 | tr -d v)
-      - curl -sfLo /tmp/notation.tar.gz "https://github.com/notaryproject/notation/releases/download/v$NOTATION_VER/notation_${NOTATION_VER}_linux_amd64.tar.gz"
-      - tar xzf /tmp/notation.tar.gz -C /usr/local/bin notation
-      - notation version
-    when:
-      branch: [main]
-
-  - name: install-skopeo
-    image: alpine:3.21
-    commands:
-      - apk add --no-cache skopeo || \
-        (apk add --no-cache curl && \
-         SKOPEO_VER=$(curl -sf https://api.github.com/repos/lework/skopeo-binary/releases/latest | grep '"tag_name"' | cut -d'"' -f4) && \
-         curl -sfLo /usr/local/bin/skopeo "https://github.com/lework/skopeo-binary/releases/download/$SKOPEO_VER/skopeo-linux-amd64" && \
-         chmod +x /usr/local/bin/skopeo)
-      - skopeo --version
-    when:
-      branch: [main]
-
-  - name: install-k6
-    image: alpine:3.21
-    commands:
-      - apk add --no-cache curl tar
-      - K6_VER=$(curl -sf https://api.github.com/repos/grafana/k6/releases/latest | grep '"tag_name"' | cut -d'"' -f4 | tr -d v)
-      - curl -sfLo /tmp/k6.tar.gz "https://github.com/grafana/k6/releases/download/v$K6_VER/k6-v${K6_VER}-linux-amd64.tar.gz"
-      - tar xzf /tmp/k6.tar.gz -C /usr/local/bin --strip-components=1 "k6-v${K6_VER}-linux-amd64/k6"
-      - k6 version
-    when:
-      branch: [main]
-
-  - name: install-aws-cli
-    image: alpine:3.21
-    commands:
-      - apk add --no-cache curl unzip python3
-      - curl -sfLo /tmp/awscli.zip "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip"
-      - unzip -q /tmp/awscli.zip -d /tmp/aws-install
-      - /tmp/aws-install/aws/install
-      - aws --version
-      - rm -rf /tmp/aws-install /tmp/awscli.zip
-    when:
-      branch: [main]
-
-  - name: install-gcloud
-    image: alpine:3.21
-    commands:
-      - apk add --no-cache curl python3 bash
-      - curl -sfL https://sdk.cloud.google.com | bash -s -- --disable-prompts --install-dir=/usr/local
-      - /usr/local/google-cloud-sdk/bin/gcloud version
-    when:
-      branch: [main]
-
-  - name: install-azure-cli
-    image: python:3.13-slim
-    commands:
-      - pip install azure-cli -q
-      - az version
-    when:
-      branch: [main]
-
-  - name: install-kubectx-kubens
-    image: alpine:3.21
-    commands:
-      - apk add --no-cache curl tar
-      - KUBECTX_VER=$(curl -sf https://api.github.com/repos/ahmetb/kubectx/releases/latest | grep '"tag_name"' | cut -d'"' -f4)
-      - curl -sfLo /usr/local/bin/kubectx "https://github.com/ahmetb/kubectx/releases/download/$KUBECTX_VER/kubectx_${KUBECTX_VER}_linux_x86_64.tar.gz" | tar xz -C /usr/local/bin kubectx || true
-      - curl -sfLo /usr/local/bin/kubens  "https://github.com/ahmetb/kubectx/releases/download/$KUBECTX_VER/kubens_${KUBECTX_VER}_linux_x86_64.tar.gz"  | tar xz -C /usr/local/bin kubens  || true
-    when:
-      branch: [main]
-
-  - name: install-stern
-    image: alpine:3.21
-    commands:
-      - apk add --no-cache curl tar
-      - STERN_VER=$(curl -sf https://api.github.com/repos/stern/stern/releases/latest | grep '"tag_name"' | cut -d'"' -f4 | tr -d v)
-      - curl -sfLo /tmp/stern.tar.gz "https://github.com/stern/stern/releases/download/v$STERN_VER/stern_${STERN_VER}_linux_amd64.tar.gz"
-      - tar xzf /tmp/stern.tar.gz -C /usr/local/bin stern
-      - stern --version
-    when:
-      branch: [main]
-
-  - name: verify-all
-    image: alpine:3.21
-    commands:
-      - echo "=== Installed tool versions ==="
-      - for tool in kubectl helm terraform k9s skaffold argocd flux kustomize kubeseal trivy grype syft cosign notation k6 aws az; do
-          command -v $tool && $tool version 2>/dev/null | head -1 || echo "$tool: not found"
+      - |
+        for img in \
+          docker:26-cli \
+          alpine/helm:3.16.0 \
+          alpine:3.21 \
+          bitnami/kubectl:latest \
+          curlimages/curl:latest \
+          aquasec/trivy:latest \
+          grafana/k6:latest \
+          hashicorp/terraform:1.9 \
+          plugins/slack; do
+          echo "=== Pulling: $img ==="
+          docker pull "$img" || echo "WARN pull failed for $img"
         done
-    when:
-      branch: [main]
+
+  - name: pull-scanner-images
+    image: docker:26-cli
+    volumes:
+      - name: docker-socket
+        path: /var/run/docker.sock
+    commands:
+      - |
+        for img in \
+          anchore/syft:latest \
+          gcr.io/projectsigstore/cosign:latest \
+          semgrep/semgrep:latest \
+          zricethezav/gitleaks:latest \
+          bridgecrew/checkov:latest; do
+          echo "=== Pulling: $img ==="
+          docker pull "$img" || echo "WARN pull failed for $img"
+        done
+    depends_on: [pull-build-images]
+
+  - name: pull-language-runtime-images
+    image: docker:26-cli
+    volumes:
+      - name: docker-socket
+        path: /var/run/docker.sock
+    commands:
+      - |
+        for img in \
+          golang:1.24-alpine \
+          maven:3.9-eclipse-temurin-21 \
+          gradle:8.10-jdk21 \
+          python:3.13-slim \
+          node:22-alpine \
+          rust:1.82-alpine \
+          mcr.microsoft.com/dotnet/sdk:8.0; do
+          echo "=== Pulling: $img ==="
+          docker pull "$img" || echo "WARN pull failed for $img"
+        done
+    depends_on: [pull-build-images]
+
+  - name: login-and-pull-harbor-base
+    image: docker:26-cli
+    volumes:
+      - name: docker-socket
+        path: /var/run/docker.sock
+    environment:
+      HARBOR_REGISTRY:
+        from_secret: harbor_registry
+      HARBOR_USER:
+        from_secret: harbor_user
+      HARBOR_PASSWORD:
+        from_secret: harbor_password
+    commands:
+      - echo "$HARBOR_PASSWORD" | docker login "$HARBOR_REGISTRY" -u "$HARBOR_USER" --password-stdin
+      - echo "Harbor login verified — runner is authenticated"
+      - docker logout "$HARBOR_REGISTRY" || true
+    depends_on: [pull-scanner-images, pull-language-runtime-images]
+
+  - name: verify-docker-daemon
+    image: docker:26-cli
+    volumes:
+      - name: docker-socket
+        path: /var/run/docker.sock
+    commands:
+      - docker info
+      - docker images --format "table {{.Repository}}\t{{.Tag}}\t{{.Size}}" | head -30
+      - echo "Runner tool cache populated successfully"
+    depends_on: [login-and-pull-harbor-base]
 
   - name: notify-slack
     image: plugins/slack
@@ -250,9 +113,10 @@ steps:
       channel: "#infrastructure"
       template: |
         {{#success build.status}}
-        :white_check_mark: *Tool installation succeeded* — build {{build.number}}
+        :white_check_mark: *Drone runner tool images cached* — build {{build.number}}
         {{else}}
-        :x: *Tool installation failed* — build {{build.number}}
+        :x: *Drone runner cache FAILED* — build {{build.number}}
         {{/success}}
+    depends_on: [verify-docker-daemon]
     when:
       status: [success, failure]

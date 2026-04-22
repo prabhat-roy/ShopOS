@@ -1,184 +1,118 @@
+# Drone CI — Messaging Infrastructure Install
+# Role: install Kafka, RabbitMQ, NATS and related tools via Helm docker image.
+# No host installs — all tooling runs in containers.
+# Secrets: kubeconfig_b64, slack_webhook
+# Params (via Drone API): ACTION=INSTALL|UNINSTALL|CONFIGURE
+
 kind: pipeline
 type: docker
 name: messaging
 
 trigger:
-  event:
-    - custom
-
-# Secrets required:
-#   kubeconfig_b64
-
-# Variables (set via Drone UI / API):
-#   ACTION — INSTALL | UNINSTALL | CONFIGURE
-#   ZOOKEEPER, KAFKA, SCHEMA_REGISTRY, KAFKA_CONNECT, KSQLDB, STRIMZI
-#   RABBITMQ, NATS, REDPANDA, PULSAR
-#   DEBEZIUM, FLINK, SPARK, KAFKA_UI, CONDUKTOR
+  event: [custom]
 
 steps:
-
-  - name: load-kubeconfig
+  - name: setup-kubeconfig
     image: alpine:3.21
     environment:
       KUBECONFIG_B64:
         from_secret: kubeconfig_b64
     commands:
       - echo "$KUBECONFIG_B64" | base64 -d > /tmp/kubeconfig
+      - echo "Kubeconfig written"
 
-  # ── Kafka Ecosystem ────────────────────────────────────────────────────────
-
-  - name: install-zookeeper
+  - name: install-kafka-zookeeper
     image: alpine/helm:3.16.2
     environment:
       KUBECONFIG: /tmp/kubeconfig
     commands:
-      - helm repo add bitnami https://charts.bitnami.com/bitnami
-      - helm upgrade --install zookeeper bitnami/zookeeper --namespace zookeeper --create-namespace --wait --timeout 5m
-    when:
-      branch: [main]
-
-  - name: install-kafka
-    image: alpine/helm:3.16.2
-    environment:
-      KUBECONFIG: /tmp/kubeconfig
-    commands:
-      - helm repo add bitnami https://charts.bitnami.com/bitnami
-      - helm upgrade --install kafka bitnami/kafka --namespace kafka --create-namespace \
+      - '[ "${ACTION:-INSTALL}" = "INSTALL" ] || exit 0'
+      - helm repo add bitnami https://charts.bitnami.com/bitnami --force-update
+      - helm upgrade --install zookeeper bitnami/zookeeper \
+          --namespace messaging --create-namespace --wait --timeout 5m || true
+      - helm upgrade --install kafka bitnami/kafka \
+          --namespace messaging --create-namespace \
           --set kraft.enabled=true \
-          --wait --timeout 10m
-      - KAFKA_IP=$(kubectl get svc kafka -n kafka -o jsonpath='{.spec.clusterIP}' 2>/dev/null)
-      - sed -i '/^KAFKA_BOOTSTRAP_SERVERS=/d' infra.env && echo "KAFKA_BOOTSTRAP_SERVERS=$KAFKA_IP:9092" >> infra.env
-    when:
-      branch: [main]
+          --wait --timeout 10m || true
+    depends_on: [setup-kubeconfig]
 
   - name: install-schema-registry
     image: alpine/helm:3.16.2
     environment:
       KUBECONFIG: /tmp/kubeconfig
     commands:
-      - helm repo add bitnami https://charts.bitnami.com/bitnami
-      - helm upgrade --install schema-registry bitnami/schema-registry --namespace schema-registry --create-namespace \
-          --set kafka.bootstrapServers=$(grep '^KAFKA_BOOTSTRAP_SERVERS=' infra.env | cut -d= -f2 || echo "kafka.kafka.svc.cluster.local:9092") \
-          --wait --timeout 5m
-      - SR_IP=$(kubectl get svc schema-registry -n schema-registry -o jsonpath='{.spec.clusterIP}' 2>/dev/null)
-      - sed -i '/^SCHEMA_REGISTRY_URL=/d' infra.env && echo "SCHEMA_REGISTRY_URL=http://$SR_IP:8081" >> infra.env
-    when:
-      branch: [main]
-
-  - name: install-kafka-connect
-    image: alpine/helm:3.16.2
-    environment:
-      KUBECONFIG: /tmp/kubeconfig
-    commands:
-      - helm repo add bitnami https://charts.bitnami.com/bitnami
-      - helm upgrade --install kafka-connect bitnami/kafka --namespace kafka-connect --create-namespace --wait --timeout 5m
-    when:
-      branch: [main]
-
-  - name: install-strimzi
-    image: alpine/helm:3.16.2
-    environment:
-      KUBECONFIG: /tmp/kubeconfig
-    commands:
-      - helm repo add strimzi https://strimzi.io/charts
-      - helm upgrade --install strimzi-kafka-operator strimzi/strimzi-kafka-operator --namespace strimzi --create-namespace --wait --timeout 5m
-    when:
-      branch: [main]
-
-  # ── Message Brokers ────────────────────────────────────────────────────────
+      - '[ "${ACTION:-INSTALL}" = "INSTALL" ] || exit 0'
+      - helm repo add bitnami https://charts.bitnami.com/bitnami --force-update
+      - helm upgrade --install schema-registry bitnami/schema-registry \
+          --namespace messaging --create-namespace \
+          --set kafka.bootstrapServers=kafka.messaging.svc.cluster.local:9092 \
+          --wait --timeout 5m || true
+    depends_on: [install-kafka-zookeeper]
 
   - name: install-rabbitmq
     image: alpine/helm:3.16.2
     environment:
       KUBECONFIG: /tmp/kubeconfig
     commands:
-      - helm repo add bitnami https://charts.bitnami.com/bitnami
-      - helm upgrade --install rabbitmq bitnami/rabbitmq --namespace rabbitmq --create-namespace \
+      - '[ "${ACTION:-INSTALL}" = "INSTALL" ] || exit 0'
+      - helm repo add bitnami https://charts.bitnami.com/bitnami --force-update
+      - helm upgrade --install rabbitmq bitnami/rabbitmq \
+          --namespace messaging --create-namespace \
           --set auth.username=admin --set auth.password=admin123 \
-          --wait --timeout 5m
-      - RMQIP=$(kubectl get svc rabbitmq -n rabbitmq -o jsonpath='{.spec.clusterIP}' 2>/dev/null)
-      - sed -i '/^RABBITMQ_URL=/d' infra.env && echo "RABBITMQ_URL=amqp://admin:admin123@$RMQIP:5672" >> infra.env
-    when:
-      branch: [main]
+          --wait --timeout 5m || true
+    depends_on: [setup-kubeconfig]
 
   - name: install-nats
     image: alpine/helm:3.16.2
     environment:
       KUBECONFIG: /tmp/kubeconfig
     commands:
-      - helm repo add nats https://nats-io.github.io/k8s/helm/charts
-      - helm upgrade --install nats nats/nats --namespace nats --create-namespace \
+      - '[ "${ACTION:-INSTALL}" = "INSTALL" ] || exit 0'
+      - helm repo add nats https://nats-io.github.io/k8s/helm/charts --force-update
+      - helm upgrade --install nats nats/nats \
+          --namespace messaging --create-namespace \
           --set config.jetstream.enabled=true \
-          --wait --timeout 5m
-      - NATS_IP=$(kubectl get svc nats -n nats -o jsonpath='{.spec.clusterIP}' 2>/dev/null)
-      - sed -i '/^NATS_URL=/d' infra.env && echo "NATS_URL=nats://$NATS_IP:4222" >> infra.env
-    when:
-      branch: [main]
+          --wait --timeout 5m || true
+    depends_on: [setup-kubeconfig]
 
-  - name: install-redpanda
+  - name: install-strimzi-debezium-flink
     image: alpine/helm:3.16.2
     environment:
       KUBECONFIG: /tmp/kubeconfig
     commands:
-      - helm repo add redpanda https://charts.redpanda.com
-      - helm upgrade --install redpanda redpanda/redpanda --namespace redpanda --create-namespace --wait --timeout 10m
-    when:
-      branch: [main]
-
-  # ── Stream Processing ──────────────────────────────────────────────────────
-
-  - name: install-debezium
-    image: alpine/helm:3.16.2
-    environment:
-      KUBECONFIG: /tmp/kubeconfig
-    commands:
-      - helm repo add debezium https://charts.debezium.io
-      - helm upgrade --install debezium debezium/debezium-operator --namespace debezium --create-namespace --wait --timeout 5m
-    when:
-      branch: [main]
-
-  - name: install-flink
-    image: alpine/helm:3.16.2
-    environment:
-      KUBECONFIG: /tmp/kubeconfig
-    commands:
-      - helm repo add flink-operator-repo https://downloads.apache.org/flink/flink-kubernetes-operator-1.9.0/
-      - helm upgrade --install flink-kubernetes-operator flink-operator-repo/flink-kubernetes-operator --namespace flink --create-namespace --wait --timeout 5m
-    when:
-      branch: [main]
+      - '[ "${ACTION:-INSTALL}" = "INSTALL" ] || exit 0'
+      - helm repo add strimzi https://strimzi.io/charts --force-update
+      - helm upgrade --install strimzi-kafka-operator strimzi/strimzi-kafka-operator \
+          --namespace strimzi --create-namespace --wait --timeout 5m || true
+      - helm repo add debezium https://charts.debezium.io --force-update
+      - helm upgrade --install debezium debezium/debezium-operator \
+          --namespace debezium --create-namespace --wait --timeout 5m || true
+      - helm repo add flink-operator-repo https://downloads.apache.org/flink/flink-kubernetes-operator-1.9.0/ --force-update
+      - helm upgrade --install flink-kubernetes-operator flink-operator-repo/flink-kubernetes-operator \
+          --namespace flink --create-namespace --wait --timeout 5m || true
+    depends_on: [install-schema-registry]
 
   - name: install-kafka-ui
     image: alpine/helm:3.16.2
     environment:
       KUBECONFIG: /tmp/kubeconfig
     commands:
-      - helm repo add kafka-ui https://provectus.github.io/kafka-ui-charts
-      - helm upgrade --install kafka-ui kafka-ui/kafka-ui --namespace kafka-ui --create-namespace \
+      - '[ "${ACTION:-INSTALL}" = "INSTALL" ] || exit 0'
+      - helm repo add kafka-ui https://provectus.github.io/kafka-ui-charts --force-update
+      - helm upgrade --install kafka-ui kafka-ui/kafka-ui \
+          --namespace messaging --create-namespace \
           --set yamlApplicationConfig.kafka.clusters[0].name=shopos \
-          --set yamlApplicationConfig.kafka.clusters[0].bootstrapServers=$(grep '^KAFKA_BOOTSTRAP_SERVERS=' infra.env | cut -d= -f2 || echo "kafka.kafka.svc.cluster.local:9092") \
-          --wait --timeout 5m
-    when:
-      branch: [main]
-
-  - name: uninstall-tools
-    image: alpine/helm:3.16.2
-    environment:
-      KUBECONFIG: /tmp/kubeconfig
-    commands:
-      - for ns_tool in "zookeeper:zookeeper" "kafka:kafka" "schema-registry:schema-registry" "kafka-connect:kafka-connect" "strimzi:strimzi-kafka-operator" "rabbitmq:rabbitmq" "nats:nats" "redpanda:redpanda" "debezium:debezium" "flink:flink-kubernetes-operator" "kafka-ui:kafka-ui"; do
-          ns=${ns_tool%%:*}; tool=${ns_tool##*:}
-          helm uninstall $tool -n $ns --ignore-not-found || true
-        done
-    when:
-      branch: [main]
+          --set yamlApplicationConfig.kafka.clusters[0].bootstrapServers=kafka.messaging.svc.cluster.local:9092 \
+          --wait --timeout 5m || true
+    depends_on: [install-schema-registry]
 
   - name: configure-kafka-topics
     image: bitnami/kafka:latest
     environment:
-      KUBECONFIG_B64:
-        from_secret: kubeconfig_b64
+      KUBECONFIG: /tmp/kubeconfig
     commands:
-      - KAFKA_BS=$(grep '^KAFKA_BOOTSTRAP_SERVERS=' infra.env | cut -d= -f2 || echo "kafka.kafka.svc.cluster.local:9092")
+      - '[ "${ACTION}" = "CONFIGURE" ] || [ "${ACTION:-INSTALL}" = "INSTALL" ] || exit 0'
+      - KAFKA_BS="kafka.messaging.svc.cluster.local:9092"
       - |
         for topic in \
           identity.user.registered identity.user.deleted \
@@ -189,27 +123,25 @@ steps:
           notification.email.requested notification.sms.requested notification.push.requested \
           analytics.page.viewed analytics.product.clicked analytics.search.performed \
           security.fraud.detected security.login.failed; do
-          kafka-topics.sh --bootstrap-server $KAFKA_BS \
-            --create --if-not-exists --topic $topic \
+          kafka-topics.sh --bootstrap-server "$KAFKA_BS" \
+            --create --if-not-exists --topic "$topic" \
             --partitions 3 --replication-factor 1 2>/dev/null || true
-          echo "Topic: $topic"
+          echo "Topic ready: $topic"
         done
-    when:
-      branch: [main]
+    depends_on: [install-kafka-zookeeper]
 
-  - name: configure-rabbitmq-exchanges
-    image: alpine/curl:latest
+  - name: uninstall-messaging
+    image: alpine/helm:3.16.2
+    environment:
+      KUBECONFIG: /tmp/kubeconfig
     commands:
-      - RMQIP=$(kubectl get svc rabbitmq -n rabbitmq -o jsonpath='{.spec.clusterIP}' 2>/dev/null || echo "rabbitmq.rabbitmq.svc.cluster.local")
+      - '[ "${ACTION}" = "UNINSTALL" ] || exit 0'
       - |
-        for exchange in shopos.orders shopos.notifications shopos.analytics; do
-          curl -sf -X PUT http://admin:admin123@$RMQIP:15672/api/exchanges/%2F/$exchange \
-            -H "Content-Type: application/json" \
-            -d '{"type":"topic","durable":true}' || true
-          echo "Exchange: $exchange"
+        for release in kafka-ui strimzi-kafka-operator debezium flink-kubernetes-operator \
+                       schema-registry kafka zookeeper rabbitmq nats; do
+          helm uninstall "$release" --ignore-not-found 2>/dev/null || true
         done
-    when:
-      branch: [main]
+    depends_on: [setup-kubeconfig]
 
   - name: notify-slack
     image: plugins/slack
@@ -221,7 +153,7 @@ steps:
         {{#success build.status}}
         :white_check_mark: *Messaging {{build.params.ACTION}} succeeded* — build {{build.number}}
         {{else}}
-        :x: *Messaging {{build.params.ACTION}} failed* — build {{build.number}}
+        :x: *Messaging {{build.params.ACTION}} FAILED* — build {{build.number}}
         {{/success}}
     when:
       status: [success, failure]

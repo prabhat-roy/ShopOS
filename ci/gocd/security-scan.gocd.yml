@@ -1,0 +1,169 @@
+# GoCD — Security Scan Pipeline
+# Role: Nightly Trivy + Grype + kube-bench scans as a standalone security audit pipeline.
+#       Not in delivery VSM — runs in shopos-security group on a schedule or manually.
+# Credentials: KUBECONFIG_CONTENT, HARBOR_REGISTRY, HARBOR_USERNAME, HARBOR_PASSWORD,
+#              SLACK_WEBHOOK
+format_version: 10
+
+pipelines:
+  shopos-security-scan:
+    group: shopos-security
+    label_template: "scan-${COUNT}"
+    lock_behavior: unlockWhenFinished
+    materials:
+      git:
+        git: https://github.com/prabhat-roy/ShopOS.git
+        branch: main
+
+    environment_variables:
+      IMAGE_TAG: latest
+
+    stages:
+      - trivy-critical-scan:
+          approval:
+            type: success
+          jobs:
+            scan-platform-identity:
+              elastic_profile_id: security-tools
+              tasks:
+                - exec:
+                    command: /bin/sh
+                    arguments:
+                      - -c
+                      - |
+                        TAG="${IMAGE_TAG:-latest}"
+                        mkdir -p reports/trivy
+                        echo "=== Trivy: platform + identity domain ==="
+                        CRITS=0
+                        for SVC in api-gateway web-bff mobile-bff auth-service user-service \
+                                   session-service permission-service; do
+                          IMG="$HARBOR_REGISTRY/shopos/$SVC:$TAG"
+                          RESULT=$(trivy image \
+                            --username "$HARBOR_USERNAME" --password "$HARBOR_PASSWORD" \
+                            --severity CRITICAL --exit-code 0 --format json \
+                            "$IMG" 2>/dev/null || echo '{}')
+                          echo "$RESULT" > "reports/trivy/$SVC.json"
+                          COUNT=$(echo "$RESULT" | grep -c '"Severity":"CRITICAL"' 2>/dev/null || echo "0")
+                          echo "$SVC: $COUNT CRITICAL CVEs"
+                          CRITS=$((CRITS + COUNT))
+                        done
+                        echo "Platform+Identity CRITICAL CVEs: $CRITS"
+              artifacts:
+                - build:
+                    source: reports/trivy/
+                    destination: trivy/platform-identity/
+            scan-commerce-financial:
+              elastic_profile_id: security-tools
+              tasks:
+                - exec:
+                    command: /bin/sh
+                    arguments:
+                      - -c
+                      - |
+                        TAG="${IMAGE_TAG:-latest}"
+                        mkdir -p reports/trivy
+                        echo "=== Trivy: commerce + financial domain ==="
+                        CRITS=0
+                        for SVC in cart-service checkout-service order-service payment-service \
+                                   fraud-detection-service invoice-service payout-service; do
+                          IMG="$HARBOR_REGISTRY/shopos/$SVC:$TAG"
+                          RESULT=$(trivy image \
+                            --username "$HARBOR_USERNAME" --password "$HARBOR_PASSWORD" \
+                            --severity CRITICAL --exit-code 0 --format json \
+                            "$IMG" 2>/dev/null || echo '{}')
+                          echo "$RESULT" > "reports/trivy/$SVC.json"
+                          COUNT=$(echo "$RESULT" | grep -c '"Severity":"CRITICAL"' 2>/dev/null || echo "0")
+                          echo "$SVC: $COUNT CRITICAL CVEs"
+                          CRITS=$((CRITS + COUNT))
+                        done
+                        echo "Commerce+Financial CRITICAL CVEs: $CRITS"
+              artifacts:
+                - build:
+                    source: reports/trivy/
+                    destination: trivy/commerce-financial/
+
+      - grype-scan:
+          approval:
+            type: success
+          jobs:
+            grype-critical-services:
+              elastic_profile_id: security-tools
+              tasks:
+                - exec:
+                    command: /bin/sh
+                    arguments:
+                      - -c
+                      - |
+                        TAG="${IMAGE_TAG:-latest}"
+                        mkdir -p reports/grype
+                        echo "=== Grype: critical path services ==="
+                        for SVC in api-gateway auth-service payment-service order-service fraud-detection-service; do
+                          IMG="$HARBOR_REGISTRY/shopos/$SVC:$TAG"
+                          grype "$IMG" --only-fixed -o table 2>/dev/null \
+                            | tee "reports/grype/$SVC.txt" | head -20 || true
+                          echo "---"
+                        done
+              artifacts:
+                - build:
+                    source: reports/grype/
+                    destination: grype/
+
+      - kube-bench-audit:
+          approval:
+            type: success
+          jobs:
+            cis-benchmark:
+              elastic_profile_id: security-tools
+              tasks:
+                - exec:
+                    command: /bin/sh
+                    arguments:
+                      - -c
+                      - |
+                        mkdir -p ~/.kube && echo "$KUBECONFIG_CONTENT" | base64 -d > ~/.kube/config
+                        mkdir -p reports/audit
+                        kube-bench run --targets node,policies \
+                          --json > reports/audit/kube-bench.json 2>/dev/null || true
+                        FAILS=$(grep -c '"status":"FAIL"' reports/audit/kube-bench.json 2>/dev/null || echo "0")
+                        echo "kube-bench FAIL count: $FAILS"
+              artifacts:
+                - build:
+                    source: reports/audit/
+                    destination: audit/
+
+      - summarise-and-notify:
+          approval:
+            type: success
+          jobs:
+            summarise:
+              elastic_profile_id: security-tools
+              tasks:
+                - fetch:
+                    pipeline: shopos-security-scan
+                    stage: trivy-critical-scan
+                    job: scan-platform-identity
+                    source: trivy/platform-identity/
+                    destination: all-trivy/
+                - fetch:
+                    pipeline: shopos-security-scan
+                    stage: trivy-critical-scan
+                    job: scan-commerce-financial
+                    source: trivy/commerce-financial/
+                    destination: all-trivy/
+                - exec:
+                    command: /bin/sh
+                    arguments:
+                      - -c
+                      - |
+                        TOTAL_CRITS=$(grep -rh '"Severity":"CRITICAL"' all-trivy/ 2>/dev/null | wc -l || echo "0")
+                        echo "=== Security Scan Summary ==="
+                        echo "Total CRITICAL CVEs across scanned images: $TOTAL_CRITS"
+                        if [ "$TOTAL_CRITS" -gt 0 ]; then
+                          curl -sf -X POST "$SLACK_WEBHOOK" \
+                            -H 'Content-type: application/json' \
+                            --data "{\"text\":\":rotating_light: *Security scan: $TOTAL_CRITS CRITICAL CVEs found* — GoCD nightly — review trivy reports\"}" || true
+                        else
+                          curl -sf -X POST "$SLACK_WEBHOOK" \
+                            -H 'Content-type: application/json' \
+                            --data '{"text":":white_check_mark: *Security scan clean* — 0 CRITICAL CVEs — GoCD nightly"}' || true
+                        fi

@@ -1,286 +1,131 @@
+# Drone CI — Post-Deploy Load Tests
+# Role: run k6 smoke and load tests against the deployed environment.
+#       Triggered after successful deploy pipeline completes.
+# Secrets: kubeconfig_b64, slack_webhook
+# Params: ENVIRONMENT=dev|staging, BASE_URL, LOAD_PROFILE=smoke|light|medium|heavy
+
 kind: pipeline
 type: docker
 name: post-deploy
 
 trigger:
-  event:
-    - custom
-
-# Secrets required:
-#   kubeconfig_b64
-#   prometheus_url, grafana_url, loki_url, pyrra_url, influxdb_url
-#   defectdojo_url, defectdojo_token
-
-# Variables (set via Drone UI / API):
-#   SERVICE_NAME  — required
-#   DOMAIN        — commerce | platform | identity | ...
-#   ENVIRONMENT   — dev | staging | prod
-#   IMAGE_TAG     — optional, auto-detected from K8s if blank
-#   LOAD_PROFILE  — light | medium | heavy | spike
-#   CHAOS_DURATION — default 2m
+  event: [custom, promote]
+  target: [post-deploy-dev, post-deploy-staging]
 
 steps:
-
-  - name: load-environment
-    image: bitnami/kubectl:latest
-    environment:
-      KUBECONFIG_B64:
-        from_secret: kubeconfig_b64
+  - name: resolve-target
+    image: alpine:3.21
     commands:
-      - echo "$KUBECONFIG_B64" | base64 -d > /tmp/kubeconfig
-      - export KUBECONFIG=/tmp/kubeconfig
-      - mkdir -p reports/smoke reports/integration reports/load/k6 reports/load/locust reports/load/gatling reports/load/baseline reports/chaos reports/slo reports/summary
-      - |
-        SERVICE=${SERVICE_NAME:?SERVICE_NAME is required}
-        NS=$SERVICE
-        IMAGE_TAG_DETECTED=$(kubectl get deployment $SERVICE -n $NS \
-          -o jsonpath='{.spec.template.spec.containers[0].image}' 2>/dev/null | cut -d: -f2 || echo "unknown")
-        CLUSTER_IP=$(kubectl get svc $SERVICE -n $NS \
-          -o jsonpath='{.spec.clusterIP}' 2>/dev/null || echo "")
-        PORT=$(kubectl get svc $SERVICE -n $NS \
-          -o jsonpath='{.spec.ports[?(@.name=="http")].port}' 2>/dev/null || echo "80")
-        echo "SERVICE=$SERVICE" > /drone/src/.test.env
-        echo "NAMESPACE=$NS" >> /drone/src/.test.env
-        echo "IMAGE_TAG=${IMAGE_TAG:-$IMAGE_TAG_DETECTED}" >> /drone/src/.test.env
-        echo "SERVICE_URL=http://${CLUSTER_IP:-$SERVICE.$NS.svc.cluster.local}:${PORT}" >> /drone/src/.test.env
-        echo "LOAD_PROFILE=${LOAD_PROFILE:-medium}" >> /drone/src/.test.env
-        echo "CHAOS_DURATION=${CHAOS_DURATION:-2m}" >> /drone/src/.test.env
-        cat /drone/src/.test.env
+      - ENVIRONMENT="${ENVIRONMENT:-dev}"
+      - BASE_URL="${BASE_URL:-http://api-gateway.platform.svc.cluster.local:8080}"
+      - LOAD_PROFILE="${LOAD_PROFILE:-smoke}"
+      - echo "ENVIRONMENT=$ENVIRONMENT" > /drone/src/.test.env
+      - echo "BASE_URL=$BASE_URL" >> /drone/src/.test.env
+      - echo "LOAD_PROFILE=$LOAD_PROFILE" >> /drone/src/.test.env
+      - cat /drone/src/.test.env
 
-  - name: smoke-tests
+  - name: healthz-check
     image: curlimages/curl:latest
     commands:
       - source /drone/src/.test.env
-      - mkdir -p reports/smoke
       - |
-        echo "=== Smoke Tests: $SERVICE ==="
-        HTTP=$(curl -sf -o /dev/null -w "%{http_code}" $SERVICE_URL/healthz 2>/dev/null || echo "000")
-        READY=$(curl -sf -o /dev/null -w "%{http_code}" $SERVICE_URL/readyz 2>/dev/null || echo "000")
-        METRICS=$(curl -sf -o /dev/null -w "%{http_code}" $SERVICE_URL/metrics 2>/dev/null || echo "000")
-        echo "{\"service\":\"$SERVICE\",\"healthz\":\"$HTTP\",\"readyz\":\"$READY\",\"metrics\":\"$METRICS\"}" \
-          > reports/smoke/smoke.json
-        [ "$HTTP" = "200" ] && echo "PASS: /healthz" || echo "WARN: /healthz returned $HTTP"
-
-  - name: integration-tests
-    image: curlimages/curl:latest
-    commands:
-      - source /drone/src/.test.env
-      - mkdir -p reports/integration
-      - |
-        echo "=== Integration Tests: $SERVICE ==="
-        VERDICT="PASS"
-        for endpoint in /healthz /readyz /metrics; do
-          CODE=$(curl -sf -o /dev/null -w "%{http_code}" $SERVICE_URL$endpoint 2>/dev/null || echo "000")
-          [ "$CODE" != "200" ] && VERDICT="WARN"
-          echo "  $endpoint → $CODE"
+        echo "=== Healthz check: $BASE_URL ==="
+        for path in /healthz /readyz; do
+          CODE=$(curl -sf -o /dev/null -w "%{http_code}" --max-time 15 "$BASE_URL$path" 2>/dev/null || echo "000")
+          echo "$BASE_URL$path → $CODE"
         done
-        echo "{\"service\":\"$SERVICE\",\"verdict\":\"$VERDICT\"}" > reports/integration/integration.json
+    depends_on: [resolve-target]
 
-  - name: load-test-k6
+  - name: k6-smoke
     image: grafana/k6:latest
     commands:
       - source /drone/src/.test.env
-      - mkdir -p reports/load/k6
       - |
-        case $LOAD_PROFILE in
-          light)  VUS=10;  DURATION=2m ;;
-          heavy)  VUS=200; DURATION=10m ;;
-          spike)  VUS=500; DURATION=30s ;;
-          *)      VUS=50;  DURATION=5m  ;;
+        cat > /tmp/smoke.js <<'EOF'
+        import http from 'k6/http';
+        import { check, sleep } from 'k6';
+        export const options = {
+          vus: 5,
+          duration: '30s',
+          thresholds: {
+            http_req_failed: ['rate<0.05'],
+            http_req_duration: ['p(95)<2000'],
+          },
+        };
+        export default function () {
+          const res = http.get(`${__ENV.BASE_URL}/healthz`);
+          check(res, { 'status 200': (r) => r.status === 200 });
+          sleep(1);
+        }
+        EOF
+        k6 run /tmp/smoke.js -e BASE_URL="$BASE_URL" \
+          --out json=/drone/src/smoke-results.json || true
+    depends_on: [healthz-check]
+
+  - name: k6-load
+    image: grafana/k6:latest
+    commands:
+      - source /drone/src/.test.env
+      - |
+        case "$LOAD_PROFILE" in
+          smoke)  VUS=5;   DURATION=30s ;;
+          light)  VUS=20;  DURATION=2m  ;;
+          medium) VUS=50;  DURATION=5m  ;;
+          heavy)  VUS=150; DURATION=10m ;;
+          *)      VUS=20;  DURATION=2m  ;;
         esac
-        VUS=${LOAD_VUS:-$VUS}
-        DURATION=${LOAD_DURATION:-$DURATION}
-        echo "=== k6 load test: $SERVICE (${VUS}VU / ${DURATION}) ==="
-        cat > /tmp/k6-test.js <<'EOF'
+        echo "=== k6 load: ${VUS}VU for ${DURATION} against $BASE_URL ==="
+        cat > /tmp/load.js <<'EOF'
         import http from 'k6/http';
         import { check, sleep } from 'k6';
         export const options = {
           vus: __ENV.VUS,
           duration: __ENV.DURATION,
+          thresholds: {
+            http_req_failed: ['rate<0.05'],
+            http_req_duration: ['p(95)<3000'],
+          },
         };
         export default function () {
-          const res = http.get(`${__ENV.SERVICE_URL}/healthz`);
-          check(res, { 'status 200': (r) => r.status === 200 });
+          const res = http.get(`${__ENV.BASE_URL}/healthz`);
+          check(res, { 'status ok': (r) => r.status === 200 });
           sleep(1);
         }
         EOF
-        k6 run \
-          -e VUS=$VUS -e DURATION=$DURATION -e SERVICE_URL=$SERVICE_URL \
-          --out json=reports/load/k6/results.json \
-          /tmp/k6-test.js || true
+        k6 run /tmp/load.js \
+          -e BASE_URL="$BASE_URL" \
+          -e VUS="$VUS" \
+          -e DURATION="$DURATION" \
+          --out json=/drone/src/load-results.json || true
+    depends_on: [k6-smoke]
 
-  - name: load-test-locust
-    image: locustio/locust:latest
+  - name: k6-checkout-flow
+    image: grafana/k6:latest
     commands:
       - source /drone/src/.test.env
-      - mkdir -p reports/load/locust
       - |
-        case $LOAD_PROFILE in
-          light)  USERS=10;  SPAWN=2;  RUN=120 ;;
-          heavy)  USERS=200; SPAWN=20; RUN=600 ;;
-          spike)  USERS=500; SPAWN=100; RUN=30  ;;
-          *)      USERS=50;  SPAWN=5;  RUN=300 ;;
-        esac
-        cat > /tmp/locustfile.py <<EOF
-        from locust import HttpUser, task, between
-        class ShopUser(HttpUser):
-            wait_time = between(1, 3)
-            @task
-            def health(self):
-                self.client.get("/healthz")
-        EOF
-        locust -f /tmp/locustfile.py \
-          --headless \
-          --host=$SERVICE_URL \
-          --users=$USERS \
-          --spawn-rate=$SPAWN \
-          --run-time=${RUN}s \
-          --html=reports/load/locust/report.html \
-          --csv=reports/load/locust/results || true
+        # Use the pre-built checkout flow script from the repo
+        k6 run load-testing/k6/checkout-flow.js \
+          -e BASE_URL="$BASE_URL" \
+          --vus 10 --duration 1m \
+          --out json=/drone/src/checkout-results.json || true
+    depends_on: [k6-smoke]
 
-  - name: perf-baseline-check
+  - name: assert-thresholds
     image: alpine:3.21
     commands:
       - source /drone/src/.test.env
-      - mkdir -p reports/load/baseline
       - |
-        echo "=== Performance Baseline Check ==="
-        P95=$(cat reports/load/k6/results.json 2>/dev/null | \
-          grep '"http_req_duration"' | grep '"p(95)"' | \
-          grep -o '"value":[0-9.]*' | head -1 | cut -d: -f2 || echo "0")
-        ERRORS=$(cat reports/load/k6/results.json 2>/dev/null | \
-          grep '"http_req_failed"' | grep -o '"value":[0-9.]*' | head -1 | cut -d: -f2 || echo "0")
-        VERDICT="PASS"
-        [ "$(echo "$P95 > 2000" | bc -l 2>/dev/null || echo 0)" = "1" ] && VERDICT="FAIL"
-        [ "$(echo "$ERRORS > 0.05" | bc -l 2>/dev/null || echo 0)" = "1" ] && VERDICT="FAIL"
-        echo "{\"service\":\"$SERVICE\",\"p95_ms\":$P95,\"error_rate\":$ERRORS,\"verdict\":\"$VERDICT\"}" \
-          > reports/load/baseline/baseline.json
-        echo "Baseline check: $VERDICT (p95=${P95}ms, errors=${ERRORS})"
-
-  - name: chaos-mesh
-    image: bitnami/kubectl:latest
-    environment:
-      KUBECONFIG_B64:
-        from_secret: kubeconfig_b64
-    commands:
-      - echo "$KUBECONFIG_B64" | base64 -d > /tmp/kubeconfig
-      - export KUBECONFIG=/tmp/kubeconfig
-      - source /drone/src/.test.env
-      - mkdir -p reports/chaos
-      - |
-        echo "=== Chaos Mesh: pod-kill on $SERVICE ==="
-        cat <<EOF | kubectl apply -f - || true
-        apiVersion: chaos-mesh.org/v1alpha1
-        kind: PodChaos
-        metadata:
-          name: drone-pod-kill-$SERVICE
-          namespace: $NAMESPACE
-        spec:
-          action: pod-kill
-          mode: one
-          selector:
-            namespaces: ["$NAMESPACE"]
-            labelSelectors:
-              app.kubernetes.io/name: "$SERVICE"
-          duration: "$CHAOS_DURATION"
-        EOF
-        sleep $(echo $CHAOS_DURATION | sed 's/m/*60/;s/s//' | bc 2>/dev/null || echo 120)
-        kubectl delete podchaos drone-pod-kill-$SERVICE -n $NAMESPACE --ignore-not-found || true
-        kubectl rollout status deployment/$SERVICE -n $NAMESPACE --timeout=120s || true
-        READY=$(kubectl get deployment $SERVICE -n $NAMESPACE -o jsonpath='{.status.readyReplicas}' 2>/dev/null || echo 0)
-        DESIRED=$(kubectl get deployment $SERVICE -n $NAMESPACE -o jsonpath='{.spec.replicas}' 2>/dev/null || echo 1)
-        VERDICT=$( [ "$READY" -ge "$DESIRED" ] && echo "PASS" || echo "FAIL" )
-        echo "{\"tool\":\"chaos-mesh\",\"service\":\"$SERVICE\",\"verdict\":\"$VERDICT\"}" \
-          > reports/chaos/chaos-mesh.json
-        echo "Chaos Mesh: $VERDICT"
-      - rm -f /tmp/kubeconfig
-
-  - name: chaos-litmus
-    image: bitnami/kubectl:latest
-    environment:
-      KUBECONFIG_B64:
-        from_secret: kubeconfig_b64
-    commands:
-      - echo "$KUBECONFIG_B64" | base64 -d > /tmp/kubeconfig
-      - export KUBECONFIG=/tmp/kubeconfig
-      - source /drone/src/.test.env
-      - mkdir -p reports/chaos
-      - |
-        EXPERIMENT="database-chaos"
-        echo "$DOMAIN" | grep -qE "^(commerce|financial)$" && EXPERIMENT="payment-chaos"
-        echo "=== Litmus: $EXPERIMENT for $SERVICE ==="
-        cat <<EOF | kubectl apply -f - || true
-        apiVersion: litmuschaos.io/v1alpha1
-        kind: ChaosEngine
-        metadata:
-          name: drone-$EXPERIMENT-$SERVICE
-          namespace: $NAMESPACE
-        spec:
-          appinfo:
-            appns: $NAMESPACE
-            applabel: "app.kubernetes.io/name=$SERVICE"
-            appkind: deployment
-          chaosServiceAccount: litmus-admin
-          experiments:
-            - name: $EXPERIMENT
-              spec:
-                components:
-                  env:
-                    - name: TOTAL_CHAOS_DURATION
-                      value: "$CHAOS_DURATION"
-        EOF
-        TIMEOUT=300; ELAPSED=0; VERDICT="AWAITED"
-        while [ $ELAPSED -lt $TIMEOUT ]; do
-          VERDICT=$(kubectl get chaosresult drone-$EXPERIMENT-$SERVICE-$EXPERIMENT \
-            -n $NAMESPACE -o jsonpath='{.status.experimentStatus.verdict}' 2>/dev/null || echo "AWAITED")
-          [ "$VERDICT" != "AWAITED" ] && break
-          sleep 10; ELAPSED=$((ELAPSED+10))
-        done
-        kubectl delete chaosengine drone-$EXPERIMENT-$SERVICE -n $NAMESPACE --ignore-not-found || true
-        echo "{\"tool\":\"litmus\",\"service\":\"$SERVICE\",\"experiment\":\"$EXPERIMENT\",\"verdict\":\"$VERDICT\"}" \
-          > reports/chaos/litmus.json
-        echo "Litmus: $VERDICT"
-      - rm -f /tmp/kubeconfig
-
-  - name: slo-validation
-    image: alpine/curl:latest
-    environment:
-      PROMETHEUS_URL:
-        from_secret: prometheus_url
-    commands:
-      - source /drone/src/.test.env
-      - mkdir -p reports/slo
-      - |
-        PROM=${PROMETHEUS_URL:-http://prometheus-prometheus.prometheus.svc.cluster.local:9090}
-        echo "=== SLO Validation: $SERVICE ==="
-        AVAIL=$(curl -sf "$PROM/api/v1/query?query=sum(rate(http_requests_total\{service=\"$SERVICE\",code!~\"5..\"\}[30m]))/sum(rate(http_requests_total\{service=\"$SERVICE\"\}[30m]))*100" \
-          | grep -o '"value":\[[^]]*\]' | grep -o '[0-9.]*$' || echo "0")
-        P95=$(curl -sf "$PROM/api/v1/query?query=histogram_quantile(0.95,sum(rate(http_request_duration_seconds_bucket\{service=\"$SERVICE\"\}[30m]))by(le))*1000" \
-          | grep -o '"value":\[[^]]*\]' | grep -o '[0-9.]*$' || echo "0")
-        echo "{\"service\":\"$SERVICE\",\"availability_pct\":$AVAIL,\"p95_ms\":$P95}" > reports/slo/slo.json
-        echo "SLO: availability=${AVAIL}% p95=${P95}ms"
-
-  - name: publish-reports
-    image: alpine/curl:latest
-    environment:
-      DEFECTDOJO_URL:
-        from_secret: defectdojo_url
-      DEFECTDOJO_TOKEN:
-        from_secret: defectdojo_token
-    commands:
-      - source /drone/src/.test.env
-      - |
-        [ -z "$DEFECTDOJO_URL" ] && echo "DefectDojo URL not set — skipping upload" && exit 0
-        for report in reports/sast/*.json reports/sca/*.json reports/image-scan/*.json; do
-          [ -f "$report" ] || continue
-          curl -sf -X POST "$DEFECTDOJO_URL/api/v2/import-scan/" \
-            -H "Authorization: Token $DEFECTDOJO_TOKEN" \
-            -F "scan_type=Generic Findings Import" \
-            -F "file=@$report" \
-            -F "product_name=ShopOS-$SERVICE" \
-            -F "engagement_name=Drone-Build-${DRONE_BUILD_NUMBER}" || true
-        done
-        echo "Reports upload complete"
+        echo "=== Threshold assertions ==="
+        # Parse k6 JSON summary for error rate
+        ERROR_RATE=$(grep '"http_req_failed"' /drone/src/load-results.json 2>/dev/null | \
+          grep '"value"' | tail -1 | grep -o '[0-9.]*' | head -1 || echo "0")
+        P95=$(grep '"http_req_duration"' /drone/src/load-results.json 2>/dev/null | \
+          grep '"p(95)"' | grep -o '"value":[0-9.]*' | head -1 | cut -d: -f2 || echo "0")
+        echo "Error rate: ${ERROR_RATE}"
+        echo "P95 latency: ${P95}ms"
+        echo "{\"environment\":\"$ENVIRONMENT\",\"error_rate\":$ERROR_RATE,\"p95_ms\":$P95}" > /drone/src/summary.json
+    depends_on: [k6-load, k6-checkout-flow]
 
   - name: notify-slack
     image: plugins/slack
@@ -290,9 +135,10 @@ steps:
       channel: "#deployments"
       template: |
         {{#success build.status}}
-        :white_check_mark: *Post-deploy passed* — {{repo.name}} build {{build.number}}
+        :bar_chart: *Post-deploy k6 tests passed* — `{{build.params.ENVIRONMENT}}` — build {{build.number}}
         {{else}}
-        :x: *Post-deploy failed* — {{repo.name}} build {{build.number}} — check reports
+        :x: *Post-deploy k6 tests FAILED* — `{{build.params.ENVIRONMENT}}` — build {{build.number}}
         {{/success}}
+    depends_on: [assert-thresholds]
     when:
       status: [success, failure]

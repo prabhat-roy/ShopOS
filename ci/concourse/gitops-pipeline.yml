@@ -1,160 +1,171 @@
-# GitOps Tools Pipeline — Concourse CI
-# Credentials: kubeconfig, argocd-credentials, minio-credentials
+# Concourse CI — GitOps Health Check Pipeline (resource-based)
+# Role: Periodically verify ArgoCD, Argo Rollouts, and KEDA health.
+#       Nightly sync-status check across all ArgoCD applications.
+#       App-of-apps bootstrap is manual-trigger only.
+# Credentials: ((kubeconfig.content)), ((argocd.password)), ((slack.webhook_url))
 ---
+resource_types:
+  - name: slack-notification
+    type: docker-image
+    source:
+      repository: cfcommunity/slack-notification-resource
+
 resources:
-  - name: source-code
+  - name: shopos-repo
     type: git
     source:
-      uri: ((git.uri))
-      branch: ((git.branch))
-      private_key: ((git.private_key))
+      uri: https://github.com/prabhat-roy/ShopOS.git
+      branch: main
+
+  - name: gitops-check
+    type: time
+    source:
+      interval: 15m
+
+  - name: nightly-sync-check
+    type: time
+    source:
+      interval: 24h
+      start: 5:00 AM
+      stop: 6:00 AM
+      location: UTC
 
   - name: trigger-manual
     type: time
     source:
       interval: 8760h
 
+  - name: slack-alert
+    type: slack-notification
+    source:
+      url: ((slack.webhook_url))
+
 jobs:
-  - name: install-argocd
+  - name: check-argocd-health
     plan:
-      - get: trigger-manual
-        trigger: false
-      - task: helm-install
+      - get: gitops-check
+        trigger: true
+      - task: argocd-api-health
         config:
           platform: linux
           image_resource:
             type: registry-image
-            source: {repository: alpine/helm}
+            source:
+              repository: curlimages/curl
+              tag: latest
           params:
-            KUBECONFIG_CONTENT: ((kubeconfig.content))
-            ARGOCD_ADMIN_PASSWORD_HASH: ((argocd.admin_password_hash))
-            ACTION: ((action))
+            ARGOCD_PASSWORD: ((argocd.password))
           run:
             path: sh
             args:
               - -c
               - |
-                mkdir -p ~/.kube && echo "$KUBECONFIG_CONTENT" | base64 -d > ~/.kube/config
-                if [ "$ACTION" = "UNINSTALL" ]; then
-                  helm uninstall argocd -n argocd 2>/dev/null || true; exit 0
-                fi
-                helm repo add argo https://argoproj.github.io/argo-helm --force-update
-                helm upgrade --install argocd argo/argo-cd \
-                  --namespace argocd --create-namespace \
-                  --set server.replicas=2 --set redis-ha.enabled=true \
-                  --set controller.replicas=1 --set repoServer.replicas=2 \
-                  --set configs.secret.argocdServerAdminPassword="$ARGOCD_ADMIN_PASSWORD_HASH" \
-                  --wait --timeout 10m
+                ARGOCD_URL="http://argocd-server.argocd.svc:80"
+                CODE=$(curl -sf -o /dev/null -w "%{http_code}" --max-time 10 "$ARGOCD_URL/healthz" || echo "000")
+                echo "ArgoCD /healthz → $CODE"
+                [ "$CODE" = "200" ] && echo "PASS" || { echo "FAIL"; exit 1; }
+        on_failure:
+          put: slack-alert
+          params:
+            text: ":warning: *ArgoCD server unhealthy* — /healthz failed (Concourse health check)"
 
-  - name: install-argo-rollouts
+  - name: check-keda-ready
     plan:
-      - get: trigger-manual
-        trigger: false
-        passed: [install-argocd]
-      - task: helm-install
+      - get: gitops-check
+        trigger: true
+      - task: keda-metrics-server
         config:
           platform: linux
           image_resource:
             type: registry-image
-            source: {repository: alpine/helm}
+            source:
+              repository: bitnami/kubectl
+              tag: latest
           params:
             KUBECONFIG_CONTENT: ((kubeconfig.content))
-            ACTION: ((action))
           run:
             path: sh
             args:
               - -c
               - |
-                mkdir -p ~/.kube && echo "$KUBECONFIG_CONTENT" | base64 -d > ~/.kube/config
-                if [ "$ACTION" = "UNINSTALL" ]; then
-                  helm uninstall argo-rollouts -n argo-rollouts 2>/dev/null || true; exit 0
-                fi
-                helm repo add argo https://argoproj.github.io/argo-helm --force-update
-                helm upgrade --install argo-rollouts argo/argo-rollouts \
-                  --namespace argo-rollouts --create-namespace \
-                  --set dashboard.enabled=true --wait --timeout 5m
+                mkdir -p ~/.kube
+                echo "$KUBECONFIG_CONTENT" | base64 -d > ~/.kube/config
+                READY=$(kubectl get deployment keda-operator -n keda \
+                  -o jsonpath='{.status.readyReplicas}' 2>/dev/null || echo "0")
+                echo "KEDA operator ready replicas: $READY"
+                [ "${READY:-0}" -gt 0 ] && echo "PASS" || echo "WARN KEDA operator not ready"
 
-  - name: install-keda
+  - name: nightly-argocd-sync-report
     plan:
-      - get: source-code
-      - get: trigger-manual
-        trigger: false
-        passed: [install-argocd]
-      - task: helm-install
+      - get: nightly-sync-check
+        trigger: true
+      - task: argocd-app-sync-status
         config:
           platform: linux
           image_resource:
             type: registry-image
-            source: {repository: alpine/helm}
-          inputs:
-            - name: source-code
+            source:
+              repository: argoproj/argocd
+              tag: latest
           params:
-            KUBECONFIG_CONTENT: ((kubeconfig.content))
-            ACTION: ((action))
+            ARGOCD_SERVER: argocd-server.argocd.svc
+            ARGOCD_AUTH_TOKEN: ((argocd.auth_token))
           run:
             path: sh
             args:
               - -c
               - |
-                mkdir -p ~/.kube && echo "$KUBECONFIG_CONTENT" | base64 -d > ~/.kube/config
-                if [ "$ACTION" = "UNINSTALL" ]; then
-                  helm uninstall keda -n keda 2>/dev/null || true; exit 0
+                echo "=== Nightly ArgoCD Sync Status Report ==="
+                export ARGOCD_SERVER ARGOCD_AUTH_TOKEN
+                APPS=$(argocd app list --grpc-web -o name 2>/dev/null || echo "")
+                if [ -z "$APPS" ]; then
+                  echo "WARN no apps found or ArgoCD unreachable"
+                  exit 0
                 fi
-                helm repo add kedacore https://kedacore.github.io/charts --force-update
-                helm upgrade --install keda kedacore/keda \
-                  --namespace keda --create-namespace \
-                  --set metricsServer.replicaCount=2 --wait --timeout 5m
-                kubectl apply -f source-code/kubernetes/keda/ 2>/dev/null || true
-
-  - name: install-velero
-    plan:
-      - get: trigger-manual
-        trigger: false
-        passed: [install-argocd]
-      - task: helm-install
-        config:
-          platform: linux
-          image_resource:
-            type: registry-image
-            source: {repository: alpine/helm}
+                OUT_OF_SYNC=0
+                DEGRADED=0
+                for APP in $APPS; do
+                  SYNC=$(argocd app get "$APP" --grpc-web -o json 2>/dev/null | \
+                    grep -o '"syncStatus":"[^"]*"' | head -1 | cut -d'"' -f4 || echo "Unknown")
+                  HEALTH=$(argocd app get "$APP" --grpc-web -o json 2>/dev/null | \
+                    grep -o '"healthStatus":"[^"]*"' | head -1 | cut -d'"' -f4 || echo "Unknown")
+                  if [ "$SYNC" != "Synced" ]; then
+                    echo "OUT-OF-SYNC  $APP (sync=$SYNC, health=$HEALTH)"
+                    OUT_OF_SYNC=$((OUT_OF_SYNC + 1))
+                  elif [ "$HEALTH" != "Healthy" ]; then
+                    echo "DEGRADED     $APP (health=$HEALTH)"
+                    DEGRADED=$((DEGRADED + 1))
+                  else
+                    echo "OK           $APP"
+                  fi
+                done
+                echo ""
+                echo "Summary: $OUT_OF_SYNC out-of-sync, $DEGRADED degraded"
+                [ "$OUT_OF_SYNC" -eq 0 ] && [ "$DEGRADED" -eq 0 ] || exit 1
+        on_failure:
+          put: slack-alert
           params:
-            KUBECONFIG_CONTENT: ((kubeconfig.content))
-            MINIO_ACCESS_KEY: ((minio.access_key))
-            MINIO_SECRET_KEY: ((minio.secret_key))
-            ACTION: ((action))
-          run:
-            path: sh
-            args:
-              - -c
-              - |
-                mkdir -p ~/.kube && echo "$KUBECONFIG_CONTENT" | base64 -d > ~/.kube/config
-                if [ "$ACTION" = "UNINSTALL" ]; then
-                  helm uninstall velero -n velero 2>/dev/null || true; exit 0
-                fi
-                helm repo add vmware-tanzu https://vmware-tanzu.github.io/helm-charts --force-update
-                helm upgrade --install velero vmware-tanzu/velero \
-                  --namespace velero --create-namespace \
-                  --set configuration.backupStorageLocation[0].provider=aws \
-                  --set configuration.backupStorageLocation[0].bucket=velero-backups \
-                  --set "configuration.backupStorageLocation[0].config.s3Url=http://minio.registry.svc:9000" \
-                  --set configuration.backupStorageLocation[0].config.s3ForcePathStyle=true \
-                  --set "credentials.secretContents.cloud=[default]\naws_access_key_id=$MINIO_ACCESS_KEY\naws_secret_access_key=$MINIO_SECRET_KEY" \
-                  --wait --timeout 5m
+            text: ":warning: *ArgoCD sync report: apps out-of-sync or degraded* — check ArgoCD dashboard (Concourse nightly)"
+        on_success:
+          put: slack-alert
+          params:
+            text: ":white_check_mark: *ArgoCD nightly sync report: all apps Synced+Healthy* (Concourse)"
 
   - name: argocd-bootstrap
     plan:
-      - get: source-code
+      - get: shopos-repo
       - get: trigger-manual
         trigger: false
-        passed: [install-argocd, install-keda, install-velero]
-      - task: bootstrap
+      - task: apply-app-of-apps
         config:
           platform: linux
           image_resource:
             type: registry-image
-            source: {repository: bitnami/kubectl}
+            source:
+              repository: bitnami/kubectl
+              tag: latest
           inputs:
-            - name: source-code
+            - name: shopos-repo
           params:
             KUBECONFIG_CONTENT: ((kubeconfig.content))
           run:
@@ -162,7 +173,19 @@ jobs:
             args:
               - -c
               - |
-                mkdir -p ~/.kube && echo "$KUBECONFIG_CONTENT" | base64 -d > ~/.kube/config
-                kubectl wait --for=condition=available deployment/argocd-server -n argocd --timeout=120s
-                kubectl apply -f source-code/gitops/argocd/app-of-apps.yaml
-                kubectl apply -f source-code/gitops/argocd/applicationsets/ 2>/dev/null || true
+                mkdir -p ~/.kube
+                echo "$KUBECONFIG_CONTENT" | base64 -d > ~/.kube/config
+                echo "=== ArgoCD Bootstrap ==="
+                kubectl wait --for=condition=available deployment/argocd-server \
+                  -n argocd --timeout=120s
+                kubectl apply -f shopos-repo/gitops/argocd/app-of-apps.yaml
+                kubectl apply -f shopos-repo/gitops/argocd/applicationsets/ 2>/dev/null || true
+                echo "App-of-apps applied"
+        on_failure:
+          put: slack-alert
+          params:
+            text: ":x: *ArgoCD bootstrap FAILED* — app-of-apps not applied (Concourse)"
+        on_success:
+          put: slack-alert
+          params:
+            text: ":rocket: *ArgoCD bootstrap complete* — app-of-apps syncing (Concourse)"
