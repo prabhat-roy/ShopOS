@@ -50,10 +50,11 @@ pipeline {
             when { allOf { expression { params.ACTION == 'INSTALL' }; expression { params.CLICKHOUSE } } }
             steps {
                 sh """
-                    helm repo add clickhouse https://charts.clickhouse.com || true
+                    helm repo add bitnami https://charts.bitnami.com/bitnami || true
                     helm repo update
-                    helm upgrade --install clickhouse clickhouse/clickhouse \
+                    helm upgrade --install clickhouse bitnami/clickhouse \
                         --namespace databases \
+                        --set shards=1 \
                         --set replicaCount=1 \
                         --set persistence.size=20Gi \
                         --set resources.requests.memory=1Gi \
