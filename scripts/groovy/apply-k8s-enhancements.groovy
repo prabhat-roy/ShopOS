@@ -12,13 +12,19 @@ def call(String namespace) {
         returnStdout: true
     ).trim()
 
-    def deployList     = deploys     ? deploys.split()     as List : []
-    def statefulList   = statefulsets ? statefulsets.split() as List : []
-    def allWorkloads   = deployList + statefulList
+    def deployList   = deploys      ? deploys.split()      as List : []
+    def statefulList = statefulsets ? statefulsets.split() as List : []
+    def allWorkloads = deployList + statefulList
 
     if (allWorkloads.isEmpty()) {
         echo "  No deployments or statefulsets found in ${namespace} — skipping"
         return
+    }
+
+    // Deduplicate Helm-style names: kafka-kafka → kafka, zookeeper-zookeeper → zookeeper
+    def shortName = { String w ->
+        def m = w =~ /^(.+)-\1$/
+        m ? m[0][1] : w
     }
 
     def kedaInstalled = sh(
@@ -28,12 +34,13 @@ def call(String namespace) {
 
     // ── HPA / KEDA ScaledObject for Deployments ───────────────────────────────
     for (d in deployList) {
+        def rname = shortName(d)
         if (kedaInstalled) {
-            writeFile file: "/tmp/keda-so-${d}.yaml", text: """\
+            writeFile file: "/tmp/keda-so-${rname}.yaml", text: """\
 apiVersion: keda.sh/v1alpha1
 kind: ScaledObject
 metadata:
-  name: ${d}-scaledobject
+  name: ${rname}-scaledobject
   namespace: ${namespace}
 spec:
   scaleTargetRef:
@@ -52,14 +59,14 @@ spec:
     metadata:
       value: "80"
 """
-            sh "kubectl apply -f /tmp/keda-so-${d}.yaml && rm -f /tmp/keda-so-${d}.yaml"
-            echo "  KEDA ScaledObject → ${d}"
+            sh "kubectl apply -f /tmp/keda-so-${rname}.yaml && rm -f /tmp/keda-so-${rname}.yaml"
+            echo "  KEDA ScaledObject → ${rname} (targets ${d})"
         } else {
-            writeFile file: "/tmp/hpa-${d}.yaml", text: """\
+            writeFile file: "/tmp/hpa-${rname}.yaml", text: """\
 apiVersion: autoscaling/v2
 kind: HorizontalPodAutoscaler
 metadata:
-  name: ${d}-hpa
+  name: ${rname}-hpa
   namespace: ${namespace}
 spec:
   scaleTargetRef:
@@ -82,19 +89,20 @@ spec:
         type: Utilization
         averageUtilization: 80
 """
-            sh "kubectl apply -f /tmp/hpa-${d}.yaml && rm -f /tmp/hpa-${d}.yaml"
-            echo "  HPA → ${d}"
+            sh "kubectl apply -f /tmp/hpa-${rname}.yaml && rm -f /tmp/hpa-${rname}.yaml"
+            echo "  HPA → ${rname} (targets ${d})"
         }
     }
 
     // ── KEDA ScaledObject for StatefulSets (if KEDA available) ───────────────
     for (ss in statefulList) {
+        def rname = shortName(ss)
         if (kedaInstalled) {
-            writeFile file: "/tmp/keda-so-${ss}.yaml", text: """\
+            writeFile file: "/tmp/keda-so-${rname}.yaml", text: """\
 apiVersion: keda.sh/v1alpha1
 kind: ScaledObject
 metadata:
-  name: ${ss}-scaledobject
+  name: ${rname}-scaledobject
   namespace: ${namespace}
 spec:
   scaleTargetRef:
@@ -109,36 +117,25 @@ spec:
     metadata:
       value: "70"
 """
-            sh "kubectl apply -f /tmp/keda-so-${ss}.yaml && rm -f /tmp/keda-so-${ss}.yaml"
-            echo "  KEDA ScaledObject (StatefulSet) → ${ss}"
+            sh "kubectl apply -f /tmp/keda-so-${rname}.yaml && rm -f /tmp/keda-so-${rname}.yaml"
+            echo "  KEDA ScaledObject (StatefulSet) → ${rname} (targets ${ss})"
         }
     }
 
     // ── PodDisruptionBudget for all workloads ─────────────────────────────────
     for (w in allWorkloads) {
-        def kind = deployList.contains(w) ? 'Deployment' : 'StatefulSet'
-        def matchLabels = sh(
-            script: """kubectl get ${kind.toLowerCase()} ${w} -n ${namespace} \
-                -o go-template='{{range \$k,\$v := .spec.selector.matchLabels}}      {{\$k}}: {{\$v}}{{"\\n"}}{{end}}' \
-                2>/dev/null || true""",
-            returnStdout: true
-        ).trim()
-        if (!matchLabels) matchLabels = "      app: ${w}"
-
-        writeFile file: "/tmp/pdb-${w}.yaml", text: """\
-apiVersion: policy/v1
-kind: PodDisruptionBudget
-metadata:
-  name: ${w}-pdb
-  namespace: ${namespace}
-spec:
-  minAvailable: 1
-  selector:
-    matchLabels:
-${matchLabels}
-"""
-        sh "kubectl apply -f /tmp/pdb-${w}.yaml && rm -f /tmp/pdb-${w}.yaml"
-        echo "  PDB → ${w}"
+        def rname = shortName(w)
+        def kind = deployList.contains(w) ? 'deployment' : 'statefulset'
+        sh """
+            SELECTOR=\$(kubectl get ${kind} ${w} -n ${namespace} \
+                -o go-template='{{range \$k,\$v := .spec.selector.matchLabels}}{{\$k}}={{\$v}},{{end}}' \
+                2>/dev/null | sed 's/,\$//')
+            SELECTOR=\${SELECTOR:-app=${w}}
+            kubectl create pdb ${rname}-pdb -n ${namespace} \
+                --selector="\${SELECTOR}" --min-available=1 \
+                --dry-run=client -o yaml | kubectl apply -f -
+        """
+        echo "  PDB → ${rname} (targets ${w})"
     }
 
     // ── Vertical Pod Autoscaler (if VPA CRD is available) ────────────────────
@@ -149,11 +146,12 @@ ${matchLabels}
 
     if (vpaInstalled) {
         for (d in deployList) {
-            writeFile file: "/tmp/vpa-${d}.yaml", text: """\
+            def rname = shortName(d)
+            writeFile file: "/tmp/vpa-${rname}.yaml", text: """\
 apiVersion: autoscaling.k8s.io/v1
 kind: VerticalPodAutoscaler
 metadata:
-  name: ${d}-vpa
+  name: ${rname}-vpa
   namespace: ${namespace}
 spec:
   targetRef:
@@ -172,8 +170,8 @@ spec:
         cpu: 4
         memory: 4Gi
 """
-            sh "kubectl apply -f /tmp/vpa-${d}.yaml && rm -f /tmp/vpa-${d}.yaml"
-            echo "  VPA → ${d}"
+            sh "kubectl apply -f /tmp/vpa-${rname}.yaml && rm -f /tmp/vpa-${rname}.yaml"
+            echo "  VPA → ${rname} (targets ${d})"
         }
     }
 
