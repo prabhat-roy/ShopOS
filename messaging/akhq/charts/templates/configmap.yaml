@@ -1,0 +1,18 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "app.fullname" . }}-config
+  labels:
+    {{- include "app.labels" . | nindent 4 }}
+data:
+  application.yml: |
+    akhq:
+      connections:
+        shopos-kafka:
+          properties:
+            bootstrap.servers: "kafka.kafka.svc.cluster.local:9092"
+          schema-registry:
+            url: "http://schema-registry.schema-registry.svc.cluster.local:8081"
+          connect:
+            - name: "kafka-connect"
+              url: "http://kafka-connect.kafka-connect.svc.cluster.local:8083"

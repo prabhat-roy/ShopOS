@@ -43,8 +43,11 @@ spec:
               value: {{ $value | quote }}
             {{- end }}
           {{- end }}
-          {{- if .Values.persistence.enabled }}
           volumeMounts:
+            - name: config
+              mountPath: /app/application.yml
+              subPath: application.yml
+          {{- if .Values.persistence.enabled }}
             - name: data
               mountPath: {{ .Values.persistence.mountPath }}
           {{- end }}
@@ -62,8 +65,11 @@ spec:
             initialDelaySeconds: 30
             periodSeconds: 10
             failureThreshold: 3
-      {{- if .Values.persistence.enabled }}
       volumes:
+        - name: config
+          configMap:
+            name: {{ include "app.fullname" . }}-config
+      {{- if .Values.persistence.enabled }}
         - name: data
           persistentVolumeClaim:
             claimName: {{ include "app.fullname" . }}-pvc
