@@ -49,103 +49,111 @@ pipeline {
         stage('ClickHouse') {
             when { allOf { expression { params.ACTION == 'INSTALL' }; expression { params.CLICKHOUSE } } }
             steps {
-                sh """
-                    helm repo add pascaliske https://charts.pascaliske.dev || true
-                    helm repo update
-                    helm uninstall clickhouse -n databases --ignore-not-found || true
-                    kubectl delete pvc -l app.kubernetes.io/instance=clickhouse -n databases --ignore-not-found || true
-                    helm upgrade --install clickhouse pascaliske/clickhouse \
-                        --namespace databases \
-                        --set image.tag=24.8-alpine \
-                        --set persistentVolumeClaim.size=20Gi \
-                        --set resources.requests.memory=1Gi \
-                        --set resources.requests.cpu=500m \
-                        --wait --timeout=8m
-                    echo "Applying ClickHouse schemas..."
-                    kubectl apply -f databases/clickhouse/ -n databases 2>/dev/null || true
-                    echo "ClickHouse installed"
-                """
+                catchError(buildResult: 'UNSTABLE', stageResult: 'FAILURE') {
+                    sh """
+                        helm repo add pascaliske https://charts.pascaliske.dev || true
+                        helm repo update
+                        helm uninstall clickhouse -n databases --ignore-not-found || true
+                        kubectl delete pvc -l app.kubernetes.io/instance=clickhouse -n databases --ignore-not-found || true
+                        helm upgrade --install clickhouse pascaliske/clickhouse \
+                            --namespace databases \
+                            --set image.tag=24.8-alpine \
+                            --set persistentVolumeClaim.size=20Gi \
+                            --set resources.requests.memory=1Gi \
+                            --set resources.requests.cpu=500m \
+                            --wait --timeout=8m
+                        echo "Applying ClickHouse schemas..."
+                        kubectl apply -f databases/clickhouse/ -n databases 2>/dev/null || true
+                        echo "ClickHouse installed"
+                    """
+                }
             }
         }
 
         stage('Weaviate') {
             when { allOf { expression { params.ACTION == 'INSTALL' }; expression { params.WEAVIATE } } }
             steps {
-                sh """
-                    helm repo add weaviate https://weaviate.github.io/weaviate-helm || true
-                    helm repo update
-                    helm upgrade --install weaviate weaviate/weaviate \
-                        --namespace databases \
-                        --set persistence.size=10Gi \
-                        --set resources.requests.memory=512Mi \
-                        --set resources.requests.cpu=250m \
-                        --wait --timeout=8m
-                    echo "Applying Weaviate schemas..."
-                    kubectl apply -f databases/weaviate/ -n databases 2>/dev/null || true
-                    echo "Weaviate installed"
-                """
+                catchError(buildResult: 'UNSTABLE', stageResult: 'FAILURE') {
+                    sh """
+                        helm repo add weaviate https://weaviate.github.io/weaviate-helm || true
+                        helm repo update
+                        helm upgrade --install weaviate weaviate/weaviate \
+                            --namespace databases \
+                            --set initContainers.sysctlInitContainer.enabled=false \
+                            --set persistence.size=10Gi \
+                            --set resources.requests.memory=512Mi \
+                            --set resources.requests.cpu=250m \
+                            --wait --timeout=8m
+                        echo "Applying Weaviate schemas..."
+                        kubectl apply -f databases/weaviate/ -n databases 2>/dev/null || true
+                        echo "Weaviate installed"
+                    """
+                }
             }
         }
 
         stage('Neo4j') {
             when { allOf { expression { params.ACTION == 'INSTALL' }; expression { params.NEO4J } } }
             steps {
-                sh """
-                    helm repo add neo4j https://helm.neo4j.com/neo4j || true
-                    helm repo update
-                    helm upgrade --install neo4j neo4j/neo4j \
-                        --namespace databases \
-                        --set volumes.data.mode=defaultStorageClass \
-                        --set neo4j.password=shopos-neo4j-password \
-                        --wait --timeout=8m
-                    echo "Applying Neo4j graph schemas..."
-                    kubectl apply -f databases/neo4j/ -n databases 2>/dev/null || true
-                    echo "Neo4j installed"
-                """
+                catchError(buildResult: 'UNSTABLE', stageResult: 'FAILURE') {
+                    sh """
+                        helm repo add neo4j https://helm.neo4j.com/neo4j || true
+                        helm repo update
+                        helm upgrade --install neo4j neo4j/neo4j \
+                            --namespace databases \
+                            --set volumes.data.mode=defaultStorageClass \
+                            --set neo4j.password=shopos-neo4j-password \
+                            --wait --timeout=8m
+                        echo "Applying Neo4j graph schemas..."
+                        kubectl apply -f databases/neo4j/ -n databases 2>/dev/null || true
+                        echo "Neo4j installed"
+                    """
+                }
             }
         }
 
         stage('ScyllaDB') {
             when { allOf { expression { params.ACTION == 'INSTALL' }; expression { params.SCYLLADB } } }
             steps {
-                sh """
-                    helm repo add scylla https://scylla-operator-charts.storage.googleapis.com/stable || true
-                    helm repo update
-                    # Install ScyllaDB operator first
-                    helm upgrade --install scylla-operator scylla/scylla-operator \
-                        --namespace scylla-operator --create-namespace \
-                        --wait --timeout=5m
-                    # Install ScyllaDB cluster
-                    helm upgrade --install scylla scylla/scylla \
-                        --namespace databases \
-                        --set scylla.agentVersion=3.2 \
-                        --set scylla.developerMode=true \
-                        --wait --timeout=10m
-                    echo "Applying ScyllaDB keyspace schemas..."
-                    kubectl apply -f databases/scylladb/ -n databases 2>/dev/null || true
-                    echo "ScyllaDB installed"
-                """
+                catchError(buildResult: 'UNSTABLE', stageResult: 'FAILURE') {
+                    sh """
+                        helm repo add scylla https://scylla-operator-charts.storage.googleapis.com/stable || true
+                        helm repo update
+                        helm upgrade --install scylla-operator scylla/scylla-operator \
+                            --namespace scylla-operator --create-namespace \
+                            --wait --timeout=5m
+                        helm upgrade --install scylla scylla/scylla \
+                            --namespace databases \
+                            --set developerMode=true \
+                            --wait --timeout=10m
+                        echo "Applying ScyllaDB keyspace schemas..."
+                        kubectl apply -f databases/scylladb/ -n databases 2>/dev/null || true
+                        echo "ScyllaDB installed"
+                    """
+                }
             }
         }
 
         stage('Temporal') {
             when { allOf { expression { params.ACTION == 'INSTALL' }; expression { params.TEMPORAL } } }
             steps {
-                sh """
-                    helm repo add temporal https://go.temporal.io/helm-charts || true
-                    helm repo update
-                    kubectl create namespace temporal-system --dry-run=client -o yaml | kubectl apply -f -
-                    helm upgrade --install temporal temporal/temporal \
-                        --namespace temporal-system \
-                        --set server.replicaCount=1 \
-                        --set cassandra.config.cluster_size=1 \
-                        --set elasticsearch.enabled=false \
-                        --set grafana.enabled=false \
-                        --set prometheus.enabled=false \
-                        --wait --timeout=10m
-                    kubectl apply -f workflow/temporal/ -n temporal-system 2>/dev/null || true
-                    echo "Temporal installed"
-                """
+                catchError(buildResult: 'UNSTABLE', stageResult: 'FAILURE') {
+                    sh """
+                        helm repo add temporal https://go.temporal.io/helm-charts || true
+                        helm repo update
+                        kubectl create namespace temporal-system --dry-run=client -o yaml | kubectl apply -f -
+                        helm upgrade --install temporal temporal/temporal \
+                            --namespace temporal-system \
+                            --set server.replicaCount=1 \
+                            --set cassandra.config.cluster_size=1 \
+                            --set elasticsearch.enabled=false \
+                            --set grafana.enabled=false \
+                            --set prometheus.enabled=false \
+                            --wait --timeout=10m
+                        kubectl apply -f workflow/temporal/ -n temporal-system 2>/dev/null || true
+                        echo "Temporal installed"
+                    """
+                }
             }
         }
 
