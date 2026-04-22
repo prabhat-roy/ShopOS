@@ -8,7 +8,7 @@ def call() {
             --set env.MEMPHIS_METADATA_DB_HOST=127.0.0.1 \
             --set env.MEMPHIS_METADATA_DB_PORT=5005 \
             --set persistence.enabled=false \
-            --wait --timeout 5m
+            --wait --timeout 10m
     """
     sh "sed -i '/^MEMPHIS_/d' infra.env || true"
     sh "echo 'MEMPHIS_URL=memphis.memphis.svc.cluster.local:6666' >> infra.env"
