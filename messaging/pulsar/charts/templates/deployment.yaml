@@ -32,6 +32,7 @@ spec:
         - name: {{ .Chart.Name }}
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
+          command: ["bin/pulsar", "standalone"]
           ports:
             - name: http
               containerPort: {{ .Values.service.targetPort }}
