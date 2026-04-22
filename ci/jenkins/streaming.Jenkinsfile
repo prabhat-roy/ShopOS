@@ -12,8 +12,11 @@ pipeline {
         choice(
             name: 'ACTION',
             choices: ['INSTALL', 'UNINSTALL'],
-            description: 'INSTALL — deploy Flink operator + Debezium connectors. UNINSTALL — remove all.'
+            description: 'INSTALL — deploy selected streaming tools. UNINSTALL — remove selected.'
         )
+        booleanParam(name: 'FLINK',             defaultValue: true, description: 'Apache Flink — real-time stream processing operator + jobs')
+        booleanParam(name: 'DEBEZIUM_POSTGRES', defaultValue: true, description: 'Debezium Postgres CDC — change data capture from PostgreSQL')
+        booleanParam(name: 'DEBEZIUM_MONGODB',  defaultValue: true, description: 'Debezium MongoDB CDC — change data capture from MongoDB')
     }
 
     stages {
@@ -41,7 +44,7 @@ pipeline {
         // ── INSTALL ──────────────────────────────────────────────────────────
 
         stage('Flink Operator') {
-            when { expression { params.ACTION == 'INSTALL' } }
+            when { expression { params.ACTION == 'INSTALL' && params.FLINK } }
             steps {
                 sh """
                     kubectl create namespace flink-system --dry-run=client -o yaml | kubectl apply -f -
@@ -57,7 +60,7 @@ pipeline {
         }
 
         stage('Flink Jobs') {
-            when { expression { params.ACTION == 'INSTALL' } }
+            when { expression { params.ACTION == 'INSTALL' && params.FLINK } }
             steps {
                 sh """
                     kubectl create namespace streaming --dry-run=client -o yaml | kubectl apply -f -
@@ -70,7 +73,7 @@ pipeline {
         }
 
         stage('Debezium — Postgres CDC') {
-            when { expression { params.ACTION == 'INSTALL' } }
+            when { expression { params.ACTION == 'INSTALL' && params.DEBEZIUM_POSTGRES } }
             steps {
                 sh """
                     # Wait for Kafka Connect to be available
@@ -90,7 +93,7 @@ pipeline {
         }
 
         stage('Debezium — MongoDB CDC') {
-            when { expression { params.ACTION == 'INSTALL' } }
+            when { expression { params.ACTION == 'INSTALL' && params.DEBEZIUM_MONGODB } }
             steps {
                 sh """
                     KAFKA_CONNECT_URL=\$(kubectl get svc kafka-connect -n shopos-infra -o jsonpath='{.spec.clusterIP}' 2>/dev/null || echo 'kafka-connect.shopos-infra.svc.cluster.local')
@@ -109,7 +112,7 @@ pipeline {
         }
 
         stage('Verify Streaming') {
-            when { expression { params.ACTION == 'INSTALL' } }
+            when { expression { params.ACTION == 'INSTALL' && params.DEBEZIUM_MONGODB } }
             steps {
                 sh """
                     echo "=== Flink deployments ==="
@@ -124,7 +127,7 @@ pipeline {
         // ── UNINSTALL ────────────────────────────────────────────────────────
 
         stage('Uninstall Flink Jobs') {
-            when { expression { params.ACTION == 'UNINSTALL' } }
+            when { expression { params.ACTION == 'UNINSTALL' && params.FLINK } }
             steps {
                 sh """
                     kubectl delete -f streaming/flink/order-analytics-job.yaml -n streaming --ignore-not-found
@@ -135,7 +138,7 @@ pipeline {
         }
 
         stage('Uninstall Debezium Connectors') {
-            when { expression { params.ACTION == 'UNINSTALL' } }
+            when { expression { params.ACTION == 'UNINSTALL' && params.DEBEZIUM_POSTGRES } }
             steps {
                 sh """
                     KAFKA_CONNECT_URL=\$(kubectl get svc kafka-connect -n shopos-infra -o jsonpath='{.spec.clusterIP}' 2>/dev/null || echo 'kafka-connect.shopos-infra.svc.cluster.local')
@@ -147,7 +150,7 @@ pipeline {
         }
 
         stage('Uninstall Flink Operator') {
-            when { expression { params.ACTION == 'UNINSTALL' } }
+            when { expression { params.ACTION == 'UNINSTALL' && params.FLINK } }
             steps {
                 sh "helm uninstall flink-operator -n flink-system --ignore-not-found || true"
             }

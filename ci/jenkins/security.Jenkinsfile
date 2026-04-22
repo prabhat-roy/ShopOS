@@ -12,8 +12,53 @@ pipeline {
         choice(
             name: 'ACTION',
             choices: ['INSTALL', 'UNINSTALL'],
-            description: 'INSTALL — deploy, configure and apply K8s enhancements for all security tools + pull CLI images. UNINSTALL — remove all.'
+            description: 'INSTALL — deploy selected security tools. UNINSTALL — remove selected.'
         )
+        // ── Identity & Access ─────────────────────────────────────────────────
+        booleanParam(name: 'KEYCLOAK',         defaultValue: true,  description: 'Keycloak — IAM, SSO, OIDC provider')
+        booleanParam(name: 'DEX',              defaultValue: true,  description: 'Dex — OIDC federation connector')
+        booleanParam(name: 'AUTHENTIK',        defaultValue: true,  description: 'Authentik — identity provider alternative')
+        booleanParam(name: 'ZITADEL',          defaultValue: true,  description: 'ZITADEL — cloud-native IAM')
+        booleanParam(name: 'AUTHELIA',         defaultValue: true,  description: 'Authelia — SSO and 2FA portal')
+        booleanParam(name: 'SPIRE',            defaultValue: true,  description: 'SPIFFE/SPIRE — workload identity attestation')
+        booleanParam(name: 'POMERIUM',         defaultValue: true,  description: 'Pomerium — identity-aware access proxy')
+        // ── Secrets management ────────────────────────────────────────────────
+        booleanParam(name: 'VAULT',            defaultValue: true,  description: 'HashiCorp Vault — secrets management and PKI')
+        booleanParam(name: 'INFISICAL',        defaultValue: true,  description: 'Infisical — open-source secrets manager')
+        // ── Policy engines ────────────────────────────────────────────────────
+        booleanParam(name: 'OPA_GATEKEEPER',   defaultValue: true,  description: 'OPA Gatekeeper — policy-as-code admission control')
+        booleanParam(name: 'KYVERNO',          defaultValue: true,  description: 'Kyverno — Kubernetes-native policy engine')
+        booleanParam(name: 'KUBEWARDEN',       defaultValue: true,  description: 'Kubewarden — Wasm-based policy engine')
+        booleanParam(name: 'OPENFGA',          defaultValue: true,  description: 'OpenFGA — relationship-based authorization')
+        // ── Runtime security ─────────────────────────────────────────────────
+        booleanParam(name: 'FALCO',            defaultValue: true,  description: 'Falco — runtime threat detection')
+        booleanParam(name: 'TETRAGON',         defaultValue: true,  description: 'Tetragon — eBPF-based security enforcement')
+        booleanParam(name: 'TRACEE',           defaultValue: true,  description: 'Tracee — eBPF runtime security and forensics')
+        booleanParam(name: 'KUBEARMOR',        defaultValue: true,  description: 'KubeArmor — container-aware runtime security')
+        // ── WAF & TLS ─────────────────────────────────────────────────────────
+        booleanParam(name: 'CORAZA_WAF',       defaultValue: true,  description: 'Coraza WAF — OWASP ModSecurity-compatible WAF')
+        booleanParam(name: 'CERT_MANAGER',     defaultValue: true,  description: 'cert-manager — TLS certificate automation')
+        // ── SAST / DAST / scanning ────────────────────────────────────────────
+        booleanParam(name: 'SONARQUBE',        defaultValue: true,  description: 'SonarQube — static code analysis and quality gates')
+        booleanParam(name: 'TRIVY_OPERATOR',   defaultValue: true,  description: 'Trivy Operator — continuous container vulnerability scanning')
+        booleanParam(name: 'CLAIR',            defaultValue: true,  description: 'Clair — container image vulnerability analysis')
+        booleanParam(name: 'OPENVAS',          defaultValue: true,  description: 'OpenVAS — network vulnerability scanner')
+        booleanParam(name: 'ANCHORE',          defaultValue: true,  description: 'Anchore — container image policy compliance')
+        booleanParam(name: 'OWASP_ZAP',        defaultValue: true,  description: 'OWASP ZAP — DAST web application scanner')
+        booleanParam(name: 'NUCLEI',           defaultValue: true,  description: 'Nuclei — CVE template-based scanner')
+        booleanParam(name: 'KUBESCAPE',        defaultValue: true,  description: 'Kubescape — K8s security posture and compliance scanning')
+        booleanParam(name: 'POLARIS',          defaultValue: true,  description: 'Polaris — Kubernetes workload best-practice validation')
+        // ── Supply chain security ─────────────────────────────────────────────
+        booleanParam(name: 'REKOR',            defaultValue: true,  description: 'Rekor — Sigstore transparency log')
+        booleanParam(name: 'FULCIO',           defaultValue: true,  description: 'Fulcio — Sigstore certificate authority')
+        booleanParam(name: 'NOTARY',           defaultValue: true,  description: 'Notary — container image signing and verification')
+        // ── Network security ─────────────────────────────────────────────────
+        booleanParam(name: 'SURICATA',         defaultValue: true,  description: 'Suricata — network IDS/IPS')
+        booleanParam(name: 'ZEEK',             defaultValue: true,  description: 'Zeek — network traffic analysis')
+        booleanParam(name: 'WAZUH',            defaultValue: true,  description: 'Wazuh — SIEM and XDR platform')
+        // ── Vulnerability management ──────────────────────────────────────────
+        booleanParam(name: 'DEPENDENCY_TRACK', defaultValue: true,  description: 'Dependency Track — SCA and SBOM analysis')
+        booleanParam(name: 'DEFECTDOJO',       defaultValue: true,  description: 'DefectDojo — vulnerability management and deduplication')
     }
 
     stages {
@@ -43,7 +88,7 @@ pipeline {
         // ── Identity & Access ─────────────────────────────────────────────────
 
         stage('Keycloak') {
-            when { expression { params.ACTION == 'INSTALL' } }
+            when { expression { params.ACTION == 'INSTALL' && params.KEYCLOAK } }
             steps {
                 script {
                     def s = load 'scripts/groovy/security-install-keycloak.groovy'; s()
@@ -54,7 +99,7 @@ pipeline {
         }
 
         stage('Dex') {
-            when { expression { params.ACTION == 'INSTALL' } }
+            when { expression { params.ACTION == 'INSTALL' && params.DEX } }
             steps {
                 script {
                     def s = load 'scripts/groovy/security-install-dex.groovy'; s()
@@ -64,7 +109,7 @@ pipeline {
         }
 
         stage('Authentik') {
-            when { expression { params.ACTION == 'INSTALL' } }
+            when { expression { params.ACTION == 'INSTALL' && params.AUTHENTIK } }
             steps {
                 script {
                     def s = load 'scripts/groovy/security-install-authentik.groovy'; s()
@@ -75,7 +120,7 @@ pipeline {
         }
 
         stage('ZITADEL') {
-            when { expression { params.ACTION == 'INSTALL' } }
+            when { expression { params.ACTION == 'INSTALL' && params.ZITADEL } }
             steps {
                 script {
                     def s = load 'scripts/groovy/security-install-zitadel.groovy'; s()
@@ -86,7 +131,7 @@ pipeline {
         }
 
         stage('Authelia') {
-            when { expression { params.ACTION == 'INSTALL' } }
+            when { expression { params.ACTION == 'INSTALL' && params.AUTHELIA } }
             steps {
                 script {
                     def s = load 'scripts/groovy/security-install-authelia.groovy'; s()
@@ -97,7 +142,7 @@ pipeline {
         }
 
         stage('SPIRE') {
-            when { expression { params.ACTION == 'INSTALL' } }
+            when { expression { params.ACTION == 'INSTALL' && params.SPIRE } }
             steps {
                 script {
                     def s = load 'scripts/groovy/security-install-spire.groovy'; s()
@@ -107,7 +152,7 @@ pipeline {
         }
 
         stage('Pomerium') {
-            when { expression { params.ACTION == 'INSTALL' } }
+            when { expression { params.ACTION == 'INSTALL' && params.POMERIUM } }
             steps {
                 script {
                     def s = load 'scripts/groovy/security-install-pomerium.groovy'; s()
@@ -120,7 +165,7 @@ pipeline {
         // ── Secrets Management ────────────────────────────────────────────────
 
         stage('Vault') {
-            when { expression { params.ACTION == 'INSTALL' } }
+            when { expression { params.ACTION == 'INSTALL' && params.VAULT } }
             steps {
                 script {
                     def s = load 'scripts/groovy/security-install-vault.groovy'; s()
@@ -131,7 +176,7 @@ pipeline {
         }
 
         stage('Infisical') {
-            when { expression { params.ACTION == 'INSTALL' } }
+            when { expression { params.ACTION == 'INSTALL' && params.INFISICAL } }
             steps {
                 script {
                     def s = load 'scripts/groovy/security-install-infisical.groovy'; s()
@@ -144,7 +189,7 @@ pipeline {
         // ── Policy Engines ────────────────────────────────────────────────────
 
         stage('OPA Gatekeeper') {
-            when { expression { params.ACTION == 'INSTALL' } }
+            when { expression { params.ACTION == 'INSTALL' && params.OPA_GATEKEEPER } }
             steps {
                 script {
                     def s = load 'scripts/groovy/security-install-opa.groovy'; s()
@@ -154,7 +199,7 @@ pipeline {
         }
 
         stage('Kyverno') {
-            when { expression { params.ACTION == 'INSTALL' } }
+            when { expression { params.ACTION == 'INSTALL' && params.KYVERNO } }
             steps {
                 script {
                     def s = load 'scripts/groovy/security-install-kyverno.groovy'; s()
@@ -164,7 +209,7 @@ pipeline {
         }
 
         stage('Kubewarden') {
-            when { expression { params.ACTION == 'INSTALL' } }
+            when { expression { params.ACTION == 'INSTALL' && params.KUBEWARDEN } }
             steps {
                 script {
                     def s = load 'scripts/groovy/security-install-kubewarden.groovy'; s()
@@ -174,7 +219,7 @@ pipeline {
         }
 
         stage('OpenFGA') {
-            when { expression { params.ACTION == 'INSTALL' } }
+            when { expression { params.ACTION == 'INSTALL' && params.OPENFGA } }
             steps {
                 script {
                     def s = load 'scripts/groovy/security-install-openfga.groovy'; s()
@@ -186,7 +231,7 @@ pipeline {
         // ── Runtime Security ──────────────────────────────────────────────────
 
         stage('Falco') {
-            when { expression { params.ACTION == 'INSTALL' } }
+            when { expression { params.ACTION == 'INSTALL' && params.FALCO } }
             steps {
                 script {
                     def s = load 'scripts/groovy/security-install-falco.groovy'; s()
@@ -196,7 +241,7 @@ pipeline {
         }
 
         stage('Tetragon') {
-            when { expression { params.ACTION == 'INSTALL' } }
+            when { expression { params.ACTION == 'INSTALL' && params.TETRAGON } }
             steps {
                 script {
                     def s = load 'scripts/groovy/security-install-tetragon.groovy'; s()
@@ -206,7 +251,7 @@ pipeline {
         }
 
         stage('Tracee') {
-            when { expression { params.ACTION == 'INSTALL' } }
+            when { expression { params.ACTION == 'INSTALL' && params.TRACEE } }
             steps {
                 script {
                     def s = load 'scripts/groovy/security-install-tracee.groovy'; s()
@@ -216,7 +261,7 @@ pipeline {
         }
 
         stage('KubeArmor') {
-            when { expression { params.ACTION == 'INSTALL' } }
+            when { expression { params.ACTION == 'INSTALL' && params.KUBEARMOR } }
             steps {
                 script {
                     def s = load 'scripts/groovy/security-install-kubearmor.groovy'; s()
@@ -228,7 +273,7 @@ pipeline {
         // ── WAF & Certificates ────────────────────────────────────────────────
 
         stage('Coraza WAF') {
-            when { expression { params.ACTION == 'INSTALL' } }
+            when { expression { params.ACTION == 'INSTALL' && params.CORAZA_WAF } }
             steps {
                 script {
                     def s = load 'scripts/groovy/security-install-coraza-waf.groovy'; s()
@@ -238,7 +283,7 @@ pipeline {
         }
 
         stage('cert-manager') {
-            when { expression { params.ACTION == 'INSTALL' } }
+            when { expression { params.ACTION == 'INSTALL' && params.CERT_MANAGER } }
             steps {
                 script {
                     def s = load 'scripts/groovy/security-install-cert-manager.groovy'; s()
@@ -250,7 +295,7 @@ pipeline {
         // ── SAST Server ───────────────────────────────────────────────────────
 
         stage('SonarQube') {
-            when { expression { params.ACTION == 'INSTALL' } }
+            when { expression { params.ACTION == 'INSTALL' && params.SONARQUBE } }
             steps {
                 script {
                     def s = load 'scripts/groovy/security-install-sonarqube.groovy'; s()
@@ -263,7 +308,7 @@ pipeline {
         // ── Vulnerability Scanning ────────────────────────────────────────────
 
         stage('Trivy Operator') {
-            when { expression { params.ACTION == 'INSTALL' } }
+            when { expression { params.ACTION == 'INSTALL' && params.TRIVY_OPERATOR } }
             steps {
                 script {
                     def s = load 'scripts/groovy/security-install-trivy-operator.groovy'; s()
@@ -273,7 +318,7 @@ pipeline {
         }
 
         stage('Clair') {
-            when { expression { params.ACTION == 'INSTALL' } }
+            when { expression { params.ACTION == 'INSTALL' && params.CLAIR } }
             steps {
                 script {
                     def s = load 'scripts/groovy/security-install-clair.groovy'; s()
@@ -283,7 +328,7 @@ pipeline {
         }
 
         stage('OpenVAS') {
-            when { expression { params.ACTION == 'INSTALL' } }
+            when { expression { params.ACTION == 'INSTALL' && params.OPENVAS } }
             steps {
                 script {
                     def s = load 'scripts/groovy/security-install-openvas.groovy'; s()
@@ -294,7 +339,7 @@ pipeline {
         }
 
         stage('Anchore') {
-            when { expression { params.ACTION == 'INSTALL' } }
+            when { expression { params.ACTION == 'INSTALL' && params.ANCHORE } }
             steps {
                 script {
                     def s = load 'scripts/groovy/security-install-anchore.groovy'; s()
@@ -307,7 +352,7 @@ pipeline {
         // ── DAST ──────────────────────────────────────────────────────────────
 
         stage('OWASP ZAP') {
-            when { expression { params.ACTION == 'INSTALL' } }
+            when { expression { params.ACTION == 'INSTALL' && params.OWASP_ZAP } }
             steps {
                 script {
                     def s = load 'scripts/groovy/security-install-zap.groovy'; s()
@@ -318,7 +363,7 @@ pipeline {
         }
 
         stage('Nuclei') {
-            when { expression { params.ACTION == 'INSTALL' } }
+            when { expression { params.ACTION == 'INSTALL' && params.NUCLEI } }
             steps {
                 script {
                     def s = load 'scripts/groovy/security-install-nuclei.groovy'; s()
@@ -331,7 +376,7 @@ pipeline {
         // ── K8s Compliance ────────────────────────────────────────────────────
 
         stage('Kubescape') {
-            when { expression { params.ACTION == 'INSTALL' } }
+            when { expression { params.ACTION == 'INSTALL' && params.KUBESCAPE } }
             steps {
                 script {
                     def s = load 'scripts/groovy/security-install-kubescape.groovy'; s()
@@ -341,7 +386,7 @@ pipeline {
         }
 
         stage('Polaris') {
-            when { expression { params.ACTION == 'INSTALL' } }
+            when { expression { params.ACTION == 'INSTALL' && params.POLARIS } }
             steps {
                 script {
                     def s = load 'scripts/groovy/security-install-polaris.groovy'; s()
@@ -353,7 +398,7 @@ pipeline {
         // ── Supply Chain ──────────────────────────────────────────────────────
 
         stage('Rekor') {
-            when { expression { params.ACTION == 'INSTALL' } }
+            when { expression { params.ACTION == 'INSTALL' && params.REKOR } }
             steps {
                 script {
                     def s = load 'scripts/groovy/security-install-rekor.groovy'; s()
@@ -363,7 +408,7 @@ pipeline {
         }
 
         stage('Fulcio') {
-            when { expression { params.ACTION == 'INSTALL' } }
+            when { expression { params.ACTION == 'INSTALL' && params.FULCIO } }
             steps {
                 script {
                     def s = load 'scripts/groovy/security-install-fulcio.groovy'; s()
@@ -373,7 +418,7 @@ pipeline {
         }
 
         stage('Notary') {
-            when { expression { params.ACTION == 'INSTALL' } }
+            when { expression { params.ACTION == 'INSTALL' && params.NOTARY } }
             steps {
                 script {
                     def s = load 'scripts/groovy/security-install-notary.groovy'; s()
@@ -385,7 +430,7 @@ pipeline {
         // ── Network Security ──────────────────────────────────────────────────
 
         stage('Suricata') {
-            when { expression { params.ACTION == 'INSTALL' } }
+            when { expression { params.ACTION == 'INSTALL' && params.SURICATA } }
             steps {
                 script {
                     def s = load 'scripts/groovy/security-install-suricata.groovy'; s()
@@ -395,7 +440,7 @@ pipeline {
         }
 
         stage('Zeek') {
-            when { expression { params.ACTION == 'INSTALL' } }
+            when { expression { params.ACTION == 'INSTALL' && params.ZEEK } }
             steps {
                 script {
                     def s = load 'scripts/groovy/security-install-zeek.groovy'; s()
@@ -407,7 +452,7 @@ pipeline {
         // ── SIEM / XDR ────────────────────────────────────────────────────────
 
         stage('Wazuh') {
-            when { expression { params.ACTION == 'INSTALL' } }
+            when { expression { params.ACTION == 'INSTALL' && params.WAZUH } }
             steps {
                 script {
                     def s = load 'scripts/groovy/security-install-wazuh.groovy'; s()
@@ -420,7 +465,7 @@ pipeline {
         // ── Vulnerability Management ──────────────────────────────────────────
 
         stage('Dependency Track') {
-            when { expression { params.ACTION == 'INSTALL' } }
+            when { expression { params.ACTION == 'INSTALL' && params.DEPENDENCY_TRACK } }
             steps {
                 script {
                     def s = load 'scripts/groovy/security-install-dependency-track.groovy'; s()
@@ -431,7 +476,7 @@ pipeline {
         }
 
         stage('DefectDojo') {
-            when { expression { params.ACTION == 'INSTALL' } }
+            when { expression { params.ACTION == 'INSTALL' && params.DEFECTDOJO } }
             steps {
                 script {
                     def s = load 'scripts/groovy/security-install-defectdojo.groovy'; s()
@@ -444,7 +489,7 @@ pipeline {
         // ── CLI Tool Images (no K8s enhancements — not deployed to cluster) ───
 
         stage('Pull SAST CLI Images') {
-            when { expression { params.ACTION == 'INSTALL' } }
+            when { expression { params.ACTION == 'INSTALL' && params.DEFECTDOJO } }
             steps {
                 sh 'docker pull python:3.13-slim'
                 sh 'docker pull node:22-alpine'
@@ -458,7 +503,7 @@ pipeline {
         }
 
         stage('Pull Dependency Scanner Images') {
-            when { expression { params.ACTION == 'INSTALL' } }
+            when { expression { params.ACTION == 'INSTALL' && params.DEFECTDOJO } }
             steps {
                 sh 'docker pull owasp/dependency-check:latest'
                 sh 'docker pull aquasec/trivy:latest'
@@ -472,7 +517,7 @@ pipeline {
         }
 
         stage('Pull Secret Scanner Images') {
-            when { expression { params.ACTION == 'INSTALL' } }
+            when { expression { params.ACTION == 'INSTALL' && params.DEFECTDOJO } }
             steps {
                 sh 'docker pull gcr.io/projectsigstore/cosign:latest'
                 sh 'docker pull gitguardian/ggshield:latest'
@@ -482,7 +527,7 @@ pipeline {
         }
 
         stage('Pull IaC Scanner Images') {
-            when { expression { params.ACTION == 'INSTALL' } }
+            when { expression { params.ACTION == 'INSTALL' && params.DEFECTDOJO } }
             steps {
                 sh 'docker pull checkmarx/kics:latest'
                 sh 'docker pull tenable/terrascan:latest'
@@ -492,7 +537,7 @@ pipeline {
         }
 
         stage('Pull K8s Security CLI Images') {
-            when { expression { params.ACTION == 'INSTALL' } }
+            when { expression { params.ACTION == 'INSTALL' && params.DEFECTDOJO } }
             steps {
                 sh 'docker pull aquasec/kube-bench:latest'
                 sh 'docker pull aquasec/kube-hunter:latest'
@@ -505,7 +550,7 @@ pipeline {
         // ── UNINSTALL (reverse order) ─────────────────────────────────────────
 
         stage('Uninstall DefectDojo') {
-            when { expression { params.ACTION == 'UNINSTALL' } }
+            when { expression { params.ACTION == 'UNINSTALL' && params.DEFECTDOJO } }
             steps {
                 sh '''
                     helm uninstall defectdojo -n defectdojo --ignore-not-found || true
@@ -515,7 +560,7 @@ pipeline {
         }
 
         stage('Uninstall Dependency Track') {
-            when { expression { params.ACTION == 'UNINSTALL' } }
+            when { expression { params.ACTION == 'UNINSTALL' && params.DEPENDENCY_TRACK } }
             steps {
                 sh '''
                     helm uninstall dependency-track -n dependency-track --ignore-not-found || true
@@ -525,7 +570,7 @@ pipeline {
         }
 
         stage('Uninstall Wazuh') {
-            when { expression { params.ACTION == 'UNINSTALL' } }
+            when { expression { params.ACTION == 'UNINSTALL' && params.WAZUH } }
             steps {
                 sh '''
                     helm uninstall wazuh -n wazuh --ignore-not-found || true
@@ -535,7 +580,7 @@ pipeline {
         }
 
         stage('Uninstall Zeek') {
-            when { expression { params.ACTION == 'UNINSTALL' } }
+            when { expression { params.ACTION == 'UNINSTALL' && params.ZEEK } }
             steps {
                 sh '''
                     helm uninstall zeek -n zeek --ignore-not-found || true
@@ -545,7 +590,7 @@ pipeline {
         }
 
         stage('Uninstall Suricata') {
-            when { expression { params.ACTION == 'UNINSTALL' } }
+            when { expression { params.ACTION == 'UNINSTALL' && params.SURICATA } }
             steps {
                 sh '''
                     helm uninstall suricata -n suricata --ignore-not-found || true
@@ -555,7 +600,7 @@ pipeline {
         }
 
         stage('Uninstall Notary') {
-            when { expression { params.ACTION == 'UNINSTALL' } }
+            when { expression { params.ACTION == 'UNINSTALL' && params.NOTARY } }
             steps {
                 sh '''
                     helm uninstall notary -n notary --ignore-not-found || true
@@ -565,7 +610,7 @@ pipeline {
         }
 
         stage('Uninstall Fulcio') {
-            when { expression { params.ACTION == 'UNINSTALL' } }
+            when { expression { params.ACTION == 'UNINSTALL' && params.FULCIO } }
             steps {
                 sh '''
                     helm uninstall fulcio -n fulcio --ignore-not-found || true
@@ -575,7 +620,7 @@ pipeline {
         }
 
         stage('Uninstall Rekor') {
-            when { expression { params.ACTION == 'UNINSTALL' } }
+            when { expression { params.ACTION == 'UNINSTALL' && params.REKOR } }
             steps {
                 sh '''
                     helm uninstall rekor -n rekor --ignore-not-found || true
@@ -585,7 +630,7 @@ pipeline {
         }
 
         stage('Uninstall Polaris') {
-            when { expression { params.ACTION == 'UNINSTALL' } }
+            when { expression { params.ACTION == 'UNINSTALL' && params.POLARIS } }
             steps {
                 sh '''
                     helm uninstall polaris -n polaris --ignore-not-found || true
@@ -595,7 +640,7 @@ pipeline {
         }
 
         stage('Uninstall Kubescape') {
-            when { expression { params.ACTION == 'UNINSTALL' } }
+            when { expression { params.ACTION == 'UNINSTALL' && params.KUBESCAPE } }
             steps {
                 sh '''
                     helm uninstall kubescape -n kubescape --ignore-not-found || true
@@ -605,7 +650,7 @@ pipeline {
         }
 
         stage('Uninstall Nuclei') {
-            when { expression { params.ACTION == 'UNINSTALL' } }
+            when { expression { params.ACTION == 'UNINSTALL' && params.NUCLEI } }
             steps {
                 sh '''
                     helm uninstall nuclei -n nuclei --ignore-not-found || true
@@ -615,7 +660,7 @@ pipeline {
         }
 
         stage('Uninstall OWASP ZAP') {
-            when { expression { params.ACTION == 'UNINSTALL' } }
+            when { expression { params.ACTION == 'UNINSTALL' && params.OWASP_ZAP } }
             steps {
                 sh '''
                     helm uninstall zap -n zap --ignore-not-found || true
@@ -625,7 +670,7 @@ pipeline {
         }
 
         stage('Uninstall Anchore') {
-            when { expression { params.ACTION == 'UNINSTALL' } }
+            when { expression { params.ACTION == 'UNINSTALL' && params.ANCHORE } }
             steps {
                 sh '''
                     helm uninstall anchore -n anchore --ignore-not-found || true
@@ -635,7 +680,7 @@ pipeline {
         }
 
         stage('Uninstall OpenVAS') {
-            when { expression { params.ACTION == 'UNINSTALL' } }
+            when { expression { params.ACTION == 'UNINSTALL' && params.OPENVAS } }
             steps {
                 sh '''
                     helm uninstall openvas -n openvas --ignore-not-found || true
@@ -645,7 +690,7 @@ pipeline {
         }
 
         stage('Uninstall Clair') {
-            when { expression { params.ACTION == 'UNINSTALL' } }
+            when { expression { params.ACTION == 'UNINSTALL' && params.CLAIR } }
             steps {
                 sh '''
                     helm uninstall clair -n clair --ignore-not-found || true
@@ -655,7 +700,7 @@ pipeline {
         }
 
         stage('Uninstall Trivy Operator') {
-            when { expression { params.ACTION == 'UNINSTALL' } }
+            when { expression { params.ACTION == 'UNINSTALL' && params.TRIVY_OPERATOR } }
             steps {
                 sh '''
                     helm uninstall trivy-operator -n trivy-system --ignore-not-found || true
@@ -665,7 +710,7 @@ pipeline {
         }
 
         stage('Uninstall SonarQube') {
-            when { expression { params.ACTION == 'UNINSTALL' } }
+            when { expression { params.ACTION == 'UNINSTALL' && params.SONARQUBE } }
             steps {
                 sh '''
                     helm uninstall sonarqube -n sonarqube --ignore-not-found || true
@@ -676,7 +721,7 @@ pipeline {
         }
 
         stage('Uninstall cert-manager') {
-            when { expression { params.ACTION == 'UNINSTALL' } }
+            when { expression { params.ACTION == 'UNINSTALL' && params.CERT_MANAGER } }
             steps {
                 sh '''
                     helm uninstall cert-manager -n cert-manager --ignore-not-found || true
@@ -686,7 +731,7 @@ pipeline {
         }
 
         stage('Uninstall Coraza WAF') {
-            when { expression { params.ACTION == 'UNINSTALL' } }
+            when { expression { params.ACTION == 'UNINSTALL' && params.CORAZA_WAF } }
             steps {
                 sh '''
                     helm uninstall coraza-waf -n coraza-waf --ignore-not-found || true
@@ -696,7 +741,7 @@ pipeline {
         }
 
         stage('Uninstall KubeArmor') {
-            when { expression { params.ACTION == 'UNINSTALL' } }
+            when { expression { params.ACTION == 'UNINSTALL' && params.KUBEARMOR } }
             steps {
                 sh '''
                     helm uninstall kubearmor -n kubearmor --ignore-not-found || true
@@ -706,7 +751,7 @@ pipeline {
         }
 
         stage('Uninstall Tracee') {
-            when { expression { params.ACTION == 'UNINSTALL' } }
+            when { expression { params.ACTION == 'UNINSTALL' && params.TRACEE } }
             steps {
                 sh '''
                     helm uninstall tracee -n tracee --ignore-not-found || true
@@ -716,7 +761,7 @@ pipeline {
         }
 
         stage('Uninstall Tetragon') {
-            when { expression { params.ACTION == 'UNINSTALL' } }
+            when { expression { params.ACTION == 'UNINSTALL' && params.TETRAGON } }
             steps {
                 sh '''
                     helm uninstall tetragon -n tetragon --ignore-not-found || true
@@ -726,7 +771,7 @@ pipeline {
         }
 
         stage('Uninstall Falco') {
-            when { expression { params.ACTION == 'UNINSTALL' } }
+            when { expression { params.ACTION == 'UNINSTALL' && params.FALCO } }
             steps {
                 sh '''
                     helm uninstall falco -n falco --ignore-not-found || true
@@ -736,7 +781,7 @@ pipeline {
         }
 
         stage('Uninstall OpenFGA') {
-            when { expression { params.ACTION == 'UNINSTALL' } }
+            when { expression { params.ACTION == 'UNINSTALL' && params.OPENFGA } }
             steps {
                 sh '''
                     helm uninstall openfga -n openfga --ignore-not-found || true
@@ -746,7 +791,7 @@ pipeline {
         }
 
         stage('Uninstall Kubewarden') {
-            when { expression { params.ACTION == 'UNINSTALL' } }
+            when { expression { params.ACTION == 'UNINSTALL' && params.KUBEWARDEN } }
             steps {
                 sh '''
                     helm uninstall kubewarden -n kubewarden --ignore-not-found || true
@@ -756,7 +801,7 @@ pipeline {
         }
 
         stage('Uninstall Kyverno') {
-            when { expression { params.ACTION == 'UNINSTALL' } }
+            when { expression { params.ACTION == 'UNINSTALL' && params.KYVERNO } }
             steps {
                 sh '''
                     helm uninstall kyverno -n kyverno --ignore-not-found || true
@@ -766,7 +811,7 @@ pipeline {
         }
 
         stage('Uninstall OPA Gatekeeper') {
-            when { expression { params.ACTION == 'UNINSTALL' } }
+            when { expression { params.ACTION == 'UNINSTALL' && params.OPA_GATEKEEPER } }
             steps {
                 sh '''
                     helm uninstall opa -n gatekeeper-system --ignore-not-found || true
@@ -776,7 +821,7 @@ pipeline {
         }
 
         stage('Uninstall Infisical') {
-            when { expression { params.ACTION == 'UNINSTALL' } }
+            when { expression { params.ACTION == 'UNINSTALL' && params.INFISICAL } }
             steps {
                 sh '''
                     helm uninstall infisical -n infisical --ignore-not-found || true
@@ -786,7 +831,7 @@ pipeline {
         }
 
         stage('Uninstall Vault') {
-            when { expression { params.ACTION == 'UNINSTALL' } }
+            when { expression { params.ACTION == 'UNINSTALL' && params.VAULT } }
             steps {
                 sh '''
                     helm uninstall vault -n vault --ignore-not-found || true
@@ -797,7 +842,7 @@ pipeline {
         }
 
         stage('Uninstall Pomerium') {
-            when { expression { params.ACTION == 'UNINSTALL' } }
+            when { expression { params.ACTION == 'UNINSTALL' && params.POMERIUM } }
             steps {
                 sh '''
                     helm uninstall pomerium -n pomerium --ignore-not-found || true
@@ -807,7 +852,7 @@ pipeline {
         }
 
         stage('Uninstall SPIRE') {
-            when { expression { params.ACTION == 'UNINSTALL' } }
+            when { expression { params.ACTION == 'UNINSTALL' && params.SPIRE } }
             steps {
                 sh '''
                     helm uninstall spire -n spire --ignore-not-found || true
@@ -817,7 +862,7 @@ pipeline {
         }
 
         stage('Uninstall Authelia') {
-            when { expression { params.ACTION == 'UNINSTALL' } }
+            when { expression { params.ACTION == 'UNINSTALL' && params.AUTHELIA } }
             steps {
                 sh '''
                     helm uninstall authelia -n authelia --ignore-not-found || true
@@ -827,7 +872,7 @@ pipeline {
         }
 
         stage('Uninstall ZITADEL') {
-            when { expression { params.ACTION == 'UNINSTALL' } }
+            when { expression { params.ACTION == 'UNINSTALL' && params.ZITADEL } }
             steps {
                 sh '''
                     helm uninstall zitadel -n zitadel --ignore-not-found || true
@@ -837,7 +882,7 @@ pipeline {
         }
 
         stage('Uninstall Authentik') {
-            when { expression { params.ACTION == 'UNINSTALL' } }
+            when { expression { params.ACTION == 'UNINSTALL' && params.AUTHENTIK } }
             steps {
                 sh '''
                     helm uninstall authentik -n authentik --ignore-not-found || true
@@ -847,7 +892,7 @@ pipeline {
         }
 
         stage('Uninstall Dex') {
-            when { expression { params.ACTION == 'UNINSTALL' } }
+            when { expression { params.ACTION == 'UNINSTALL' && params.DEX } }
             steps {
                 sh '''
                     helm uninstall dex -n dex --ignore-not-found || true
@@ -857,7 +902,7 @@ pipeline {
         }
 
         stage('Uninstall Keycloak') {
-            when { expression { params.ACTION == 'UNINSTALL' } }
+            when { expression { params.ACTION == 'UNINSTALL' && params.KEYCLOAK } }
             steps {
                 sh '''
                     helm uninstall keycloak -n keycloak --ignore-not-found || true
@@ -868,7 +913,7 @@ pipeline {
         }
 
         stage('Remove CLI Tool Images') {
-            when { expression { params.ACTION == 'UNINSTALL' } }
+            when { expression { params.ACTION == 'UNINSTALL' && params.KEYCLOAK } }
             steps {
                 sh 'docker rmi python:3.13-slim node:22-alpine golangci/golangci-lint:latest koalaman/shellcheck:stable presidentbeef/brakeman:latest semgrep/semgrep:latest stoplight/spectral:latest snyk/snyk:latest || true'
                 sh 'docker rmi owasp/dependency-check:latest aquasec/trivy:latest anchore/grype:latest anchore/syft:latest docker/scout-cli:latest fossas/fossa-cli:latest vuls/vuls:latest openscap/openscap:latest || true'

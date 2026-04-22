@@ -12,8 +12,45 @@ pipeline {
         choice(
             name: 'ACTION',
             choices: ['INSTALL', 'UNINSTALL'],
-            description: 'INSTALL — deploy, configure and apply K8s enhancements for all observability tools. UNINSTALL — remove all.'
+            description: 'INSTALL — deploy selected observability tools. UNINSTALL — remove selected.'
         )
+        // ── Metrics ───────────────────────────────────────────────────────────
+        booleanParam(name: 'PROMETHEUS',           defaultValue: true,  description: 'Prometheus — metrics collection and alerting')
+        booleanParam(name: 'ALERTMANAGER',         defaultValue: true,  description: 'Alertmanager — alert routing and grouping')
+        booleanParam(name: 'THANOS',               defaultValue: true,  description: 'Thanos — long-term Prometheus storage and global query')
+        booleanParam(name: 'VICTORIA_METRICS',     defaultValue: true,  description: 'VictoriaMetrics — high-performance metrics storage alternative')
+        booleanParam(name: 'PUSHGATEWAY',          defaultValue: true,  description: 'Pushgateway — metrics push endpoint for batch jobs')
+        booleanParam(name: 'BLACKBOX_EXPORTER',    defaultValue: true,  description: 'Blackbox Exporter — endpoint probing (HTTP, TCP, ICMP)')
+        booleanParam(name: 'KUBE_STATE_METRICS',   defaultValue: true,  description: 'Kube State Metrics — K8s object state metrics')
+        booleanParam(name: 'NODE_EXPORTER',        defaultValue: true,  description: 'Node Exporter — host-level hardware and OS metrics')
+        // ── Logs ──────────────────────────────────────────────────────────────
+        booleanParam(name: 'ELASTICSEARCH',        defaultValue: true,  description: 'Elasticsearch — full-text search and log analytics')
+        booleanParam(name: 'OPENSEARCH',           defaultValue: true,  description: 'OpenSearch — log analytics alternative')
+        booleanParam(name: 'LOKI',                 defaultValue: true,  description: 'Grafana Loki — log aggregation system')
+        booleanParam(name: 'FLUENTD',              defaultValue: true,  description: 'Fluentd — log collection and routing')
+        booleanParam(name: 'FLUENT_BIT',           defaultValue: true,  description: 'Fluent Bit — lightweight log shipper')
+        booleanParam(name: 'LOGSTASH',             defaultValue: true,  description: 'Logstash — log processing pipeline')
+        // ── Tracing ───────────────────────────────────────────────────────────
+        booleanParam(name: 'JAEGER',               defaultValue: true,  description: 'Jaeger — distributed tracing')
+        booleanParam(name: 'TEMPO',                defaultValue: true,  description: 'Grafana Tempo — distributed tracing backend')
+        booleanParam(name: 'ZIPKIN',               defaultValue: true,  description: 'Zipkin — lightweight distributed tracing')
+        // ── Dashboards ────────────────────────────────────────────────────────
+        booleanParam(name: 'GRAFANA',              defaultValue: true,  description: 'Grafana — dashboards and visualization')
+        booleanParam(name: 'KIBANA',               defaultValue: true,  description: 'Kibana — Elasticsearch dashboards')
+        booleanParam(name: 'OPENSEARCH_DASHBOARDS',defaultValue: true,  description: 'OpenSearch Dashboards — OpenSearch visualization')
+        // ── OTel & Errors ─────────────────────────────────────────────────────
+        booleanParam(name: 'OTEL_COLLECTOR',       defaultValue: true,  description: 'OTel Collector — OpenTelemetry pipeline')
+        booleanParam(name: 'SENTRY',               defaultValue: true,  description: 'Sentry OSS — error tracking and performance monitoring')
+        booleanParam(name: 'GLITCHTIP',            defaultValue: true,  description: 'GlitchTip — Sentry-compatible error tracking alternative')
+        // ── SLO & Uptime ──────────────────────────────────────────────────────
+        booleanParam(name: 'PYRRA',                defaultValue: true,  description: 'Pyrra — SLO management and error budget tracking')
+        booleanParam(name: 'SLOTH',                defaultValue: true,  description: 'Sloth — SLO definition and Prometheus rule generation')
+        booleanParam(name: 'UPTIME_KUMA',          defaultValue: true,  description: 'Uptime Kuma — real-time uptime monitoring and status pages')
+        // ── Profiling & Cost ──────────────────────────────────────────────────
+        booleanParam(name: 'PYROSCOPE',            defaultValue: true,  description: 'Grafana Pyroscope — continuous profiling')
+        booleanParam(name: 'ROBUSTA',              defaultValue: true,  description: 'Robusta — Kubernetes alerting and runbook automation')
+        booleanParam(name: 'OPENCOST',             defaultValue: true,  description: 'OpenCost — Kubernetes cost monitoring')
+        booleanParam(name: 'GOLDILOCKS',           defaultValue: true,  description: 'Goldilocks — resource request/limit recommendations')
     }
 
     stages {
@@ -43,7 +80,7 @@ pipeline {
         // ── INSTALL + CONFIGURE + K8s ENHANCEMENTS ───────────────────────────
 
         stage('Prometheus') {
-            when { expression { params.ACTION == 'INSTALL' } }
+            when { expression { params.ACTION == 'INSTALL' && params.PROMETHEUS } }
             steps {
                 script {
                     def s = load 'scripts/groovy/observability-install-prometheus.groovy'; s()
@@ -54,7 +91,7 @@ pipeline {
         }
 
         stage('Alertmanager') {
-            when { expression { params.ACTION == 'INSTALL' } }
+            when { expression { params.ACTION == 'INSTALL' && params.ALERTMANAGER } }
             steps {
                 script {
                     def s = load 'scripts/groovy/observability-install-alertmanager.groovy'; s()
@@ -65,7 +102,7 @@ pipeline {
         }
 
         stage('Thanos') {
-            when { expression { params.ACTION == 'INSTALL' } }
+            when { expression { params.ACTION == 'INSTALL' && params.THANOS } }
             steps {
                 script {
                     def s = load 'scripts/groovy/observability-install-thanos.groovy'; s()
@@ -76,7 +113,7 @@ pipeline {
         }
 
         stage('Victoria Metrics') {
-            when { expression { params.ACTION == 'INSTALL' } }
+            when { expression { params.ACTION == 'INSTALL' && params.VICTORIA_METRICS } }
             steps {
                 script {
                     def s = load 'scripts/groovy/observability-install-victoria-metrics.groovy'; s()
@@ -87,7 +124,7 @@ pipeline {
         }
 
         stage('Pushgateway') {
-            when { expression { params.ACTION == 'INSTALL' } }
+            when { expression { params.ACTION == 'INSTALL' && params.PUSHGATEWAY } }
             steps {
                 script {
                     def s = load 'scripts/groovy/observability-install-pushgateway.groovy'; s()
@@ -97,7 +134,7 @@ pipeline {
         }
 
         stage('Blackbox Exporter') {
-            when { expression { params.ACTION == 'INSTALL' } }
+            when { expression { params.ACTION == 'INSTALL' && params.BLACKBOX_EXPORTER } }
             steps {
                 script {
                     def s = load 'scripts/groovy/observability-install-blackbox-exporter.groovy'; s()
@@ -107,7 +144,7 @@ pipeline {
         }
 
         stage('Kube State Metrics') {
-            when { expression { params.ACTION == 'INSTALL' } }
+            when { expression { params.ACTION == 'INSTALL' && params.KUBE_STATE_METRICS } }
             steps {
                 script {
                     def s = load 'scripts/groovy/observability-install-kube-state-metrics.groovy'; s()
@@ -117,7 +154,7 @@ pipeline {
         }
 
         stage('Node Exporter') {
-            when { expression { params.ACTION == 'INSTALL' } }
+            when { expression { params.ACTION == 'INSTALL' && params.NODE_EXPORTER } }
             steps {
                 script {
                     def s = load 'scripts/groovy/observability-install-node-exporter.groovy'; s()
@@ -127,7 +164,7 @@ pipeline {
         }
 
         stage('Elasticsearch') {
-            when { expression { params.ACTION == 'INSTALL' } }
+            when { expression { params.ACTION == 'INSTALL' && params.ELASTICSEARCH } }
             steps {
                 script {
                     def s = load 'scripts/groovy/observability-install-elasticsearch.groovy'; s()
@@ -138,7 +175,7 @@ pipeline {
         }
 
         stage('OpenSearch') {
-            when { expression { params.ACTION == 'INSTALL' } }
+            when { expression { params.ACTION == 'INSTALL' && params.OPENSEARCH } }
             steps {
                 script {
                     def s = load 'scripts/groovy/observability-install-opensearch.groovy'; s()
@@ -149,7 +186,7 @@ pipeline {
         }
 
         stage('Loki') {
-            when { expression { params.ACTION == 'INSTALL' } }
+            when { expression { params.ACTION == 'INSTALL' && params.LOKI } }
             steps {
                 script {
                     def s = load 'scripts/groovy/observability-install-loki.groovy'; s()
@@ -160,7 +197,7 @@ pipeline {
         }
 
         stage('Fluentd') {
-            when { expression { params.ACTION == 'INSTALL' } }
+            when { expression { params.ACTION == 'INSTALL' && params.FLUENTD } }
             steps {
                 script {
                     def s = load 'scripts/groovy/observability-install-fluentd.groovy'; s()
@@ -171,7 +208,7 @@ pipeline {
         }
 
         stage('Fluent Bit') {
-            when { expression { params.ACTION == 'INSTALL' } }
+            when { expression { params.ACTION == 'INSTALL' && params.FLUENT_BIT } }
             steps {
                 script {
                     def s = load 'scripts/groovy/observability-install-fluent-bit.groovy'; s()
@@ -182,7 +219,7 @@ pipeline {
         }
 
         stage('Logstash') {
-            when { expression { params.ACTION == 'INSTALL' } }
+            when { expression { params.ACTION == 'INSTALL' && params.LOGSTASH } }
             steps {
                 script {
                     def s = load 'scripts/groovy/observability-install-logstash.groovy'; s()
@@ -193,7 +230,7 @@ pipeline {
         }
 
         stage('Jaeger') {
-            when { expression { params.ACTION == 'INSTALL' } }
+            when { expression { params.ACTION == 'INSTALL' && params.JAEGER } }
             steps {
                 script {
                     def s = load 'scripts/groovy/observability-install-jaeger.groovy'; s()
@@ -204,7 +241,7 @@ pipeline {
         }
 
         stage('Tempo') {
-            when { expression { params.ACTION == 'INSTALL' } }
+            when { expression { params.ACTION == 'INSTALL' && params.TEMPO } }
             steps {
                 script {
                     def s = load 'scripts/groovy/observability-install-tempo.groovy'; s()
@@ -215,7 +252,7 @@ pipeline {
         }
 
         stage('Zipkin') {
-            when { expression { params.ACTION == 'INSTALL' } }
+            when { expression { params.ACTION == 'INSTALL' && params.ZIPKIN } }
             steps {
                 script {
                     def s = load 'scripts/groovy/observability-install-zipkin.groovy'; s()
@@ -226,7 +263,7 @@ pipeline {
         }
 
         stage('Grafana') {
-            when { expression { params.ACTION == 'INSTALL' } }
+            when { expression { params.ACTION == 'INSTALL' && params.GRAFANA } }
             steps {
                 script {
                     def s = load 'scripts/groovy/observability-install-grafana.groovy'; s()
@@ -237,7 +274,7 @@ pipeline {
         }
 
         stage('Kibana') {
-            when { expression { params.ACTION == 'INSTALL' } }
+            when { expression { params.ACTION == 'INSTALL' && params.KIBANA } }
             steps {
                 script {
                     def s = load 'scripts/groovy/observability-install-kibana.groovy'; s()
@@ -248,7 +285,7 @@ pipeline {
         }
 
         stage('OpenSearch Dashboards') {
-            when { expression { params.ACTION == 'INSTALL' } }
+            when { expression { params.ACTION == 'INSTALL' && params.OPENSEARCH_DASHBOARDS } }
             steps {
                 script {
                     def s = load 'scripts/groovy/observability-install-opensearch-dashboards.groovy'; s()
@@ -259,7 +296,7 @@ pipeline {
         }
 
         stage('OTel Collector') {
-            when { expression { params.ACTION == 'INSTALL' } }
+            when { expression { params.ACTION == 'INSTALL' && params.OTEL_COLLECTOR } }
             steps {
                 script {
                     def s = load 'scripts/groovy/observability-install-otel-collector.groovy'; s()
@@ -270,7 +307,7 @@ pipeline {
         }
 
         stage('Sentry') {
-            when { expression { params.ACTION == 'INSTALL' } }
+            when { expression { params.ACTION == 'INSTALL' && params.SENTRY } }
             steps {
                 script {
                     def s = load 'scripts/groovy/observability-install-sentry.groovy'; s()
@@ -281,7 +318,7 @@ pipeline {
         }
 
         stage('GlitchTip') {
-            when { expression { params.ACTION == 'INSTALL' } }
+            when { expression { params.ACTION == 'INSTALL' && params.GLITCHTIP } }
             steps {
                 script {
                     def s = load 'scripts/groovy/observability-install-glitchtip.groovy'; s()
@@ -292,7 +329,7 @@ pipeline {
         }
 
         stage('Pyrra') {
-            when { expression { params.ACTION == 'INSTALL' } }
+            when { expression { params.ACTION == 'INSTALL' && params.PYRRA } }
             steps {
                 script {
                     def s = load 'scripts/groovy/observability-install-pyrra.groovy'; s()
@@ -303,7 +340,7 @@ pipeline {
         }
 
         stage('Sloth') {
-            when { expression { params.ACTION == 'INSTALL' } }
+            when { expression { params.ACTION == 'INSTALL' && params.SLOTH } }
             steps {
                 script {
                     def s = load 'scripts/groovy/observability-install-sloth.groovy'; s()
@@ -314,7 +351,7 @@ pipeline {
         }
 
         stage('Uptime Kuma') {
-            when { expression { params.ACTION == 'INSTALL' } }
+            when { expression { params.ACTION == 'INSTALL' && params.UPTIME_KUMA } }
             steps {
                 script {
                     def s = load 'scripts/groovy/observability-install-uptime-kuma.groovy'; s()
@@ -325,7 +362,7 @@ pipeline {
         }
 
         stage('Pyroscope') {
-            when { expression { params.ACTION == 'INSTALL' } }
+            when { expression { params.ACTION == 'INSTALL' && params.PYROSCOPE } }
             steps {
                 script {
                     def s = load 'scripts/groovy/observability-install-pyroscope.groovy'; s()
@@ -336,7 +373,7 @@ pipeline {
         }
 
         stage('Robusta') {
-            when { expression { params.ACTION == 'INSTALL' } }
+            when { expression { params.ACTION == 'INSTALL' && params.ROBUSTA } }
             steps {
                 script {
                     def s = load 'scripts/groovy/observability-install-robusta.groovy'; s()
@@ -347,7 +384,7 @@ pipeline {
         }
 
         stage('OpenCost') {
-            when { expression { params.ACTION == 'INSTALL' } }
+            when { expression { params.ACTION == 'INSTALL' && params.OPENCOST } }
             steps {
                 script {
                     def s = load 'scripts/groovy/observability-install-opencost.groovy'; s()
@@ -358,7 +395,7 @@ pipeline {
         }
 
         stage('Goldilocks') {
-            when { expression { params.ACTION == 'INSTALL' } }
+            when { expression { params.ACTION == 'INSTALL' && params.GOLDILOCKS } }
             steps {
                 script {
                     def s = load 'scripts/groovy/observability-install-goldilocks.groovy'; s()
@@ -371,7 +408,7 @@ pipeline {
         // ── UNINSTALL (reverse order) ─────────────────────────────────────────
 
         stage('Uninstall Goldilocks') {
-            when { expression { params.ACTION == 'UNINSTALL' } }
+            when { expression { params.ACTION == 'UNINSTALL' && params.GOLDILOCKS } }
             steps {
                 sh '''
                     helm uninstall goldilocks -n monitoring --ignore-not-found || true
@@ -380,7 +417,7 @@ pipeline {
         }
 
         stage('Uninstall OpenCost') {
-            when { expression { params.ACTION == 'UNINSTALL' } }
+            when { expression { params.ACTION == 'UNINSTALL' && params.OPENCOST } }
             steps {
                 sh '''
                     helm uninstall opencost -n monitoring --ignore-not-found || true
@@ -389,7 +426,7 @@ pipeline {
         }
 
         stage('Uninstall Robusta') {
-            when { expression { params.ACTION == 'UNINSTALL' } }
+            when { expression { params.ACTION == 'UNINSTALL' && params.ROBUSTA } }
             steps {
                 sh '''
                     helm uninstall robusta -n monitoring --ignore-not-found || true
@@ -399,7 +436,7 @@ pipeline {
         }
 
         stage('Uninstall Pyroscope') {
-            when { expression { params.ACTION == 'UNINSTALL' } }
+            when { expression { params.ACTION == 'UNINSTALL' && params.PYROSCOPE } }
             steps {
                 sh '''
                     helm uninstall pyroscope -n pyroscope --ignore-not-found || true
@@ -409,7 +446,7 @@ pipeline {
         }
 
         stage('Uninstall Uptime Kuma') {
-            when { expression { params.ACTION == 'UNINSTALL' } }
+            when { expression { params.ACTION == 'UNINSTALL' && params.UPTIME_KUMA } }
             steps {
                 sh '''
                     helm uninstall uptime-kuma -n uptime-kuma --ignore-not-found || true
@@ -419,7 +456,7 @@ pipeline {
         }
 
         stage('Uninstall Sloth') {
-            when { expression { params.ACTION == 'UNINSTALL' } }
+            when { expression { params.ACTION == 'UNINSTALL' && params.SLOTH } }
             steps {
                 sh '''
                     helm uninstall sloth -n sloth --ignore-not-found || true
@@ -429,7 +466,7 @@ pipeline {
         }
 
         stage('Uninstall Pyrra') {
-            when { expression { params.ACTION == 'UNINSTALL' } }
+            when { expression { params.ACTION == 'UNINSTALL' && params.PYRRA } }
             steps {
                 sh '''
                     helm uninstall pyrra -n pyrra --ignore-not-found || true
@@ -439,7 +476,7 @@ pipeline {
         }
 
         stage('Uninstall GlitchTip') {
-            when { expression { params.ACTION == 'UNINSTALL' } }
+            when { expression { params.ACTION == 'UNINSTALL' && params.GLITCHTIP } }
             steps {
                 sh '''
                     helm uninstall glitchtip -n glitchtip --ignore-not-found || true
@@ -449,7 +486,7 @@ pipeline {
         }
 
         stage('Uninstall Sentry') {
-            when { expression { params.ACTION == 'UNINSTALL' } }
+            when { expression { params.ACTION == 'UNINSTALL' && params.SENTRY } }
             steps {
                 sh '''
                     helm uninstall sentry -n sentry --ignore-not-found || true
@@ -459,7 +496,7 @@ pipeline {
         }
 
         stage('Uninstall OTel Collector') {
-            when { expression { params.ACTION == 'UNINSTALL' } }
+            when { expression { params.ACTION == 'UNINSTALL' && params.OTEL_COLLECTOR } }
             steps {
                 sh '''
                     helm uninstall otel-collector -n otel-collector --ignore-not-found || true
@@ -469,7 +506,7 @@ pipeline {
         }
 
         stage('Uninstall OpenSearch Dashboards') {
-            when { expression { params.ACTION == 'UNINSTALL' } }
+            when { expression { params.ACTION == 'UNINSTALL' && params.OPENSEARCH_DASHBOARDS } }
             steps {
                 sh '''
                     helm uninstall opensearch-dashboards -n opensearch-dashboards --ignore-not-found || true
@@ -479,7 +516,7 @@ pipeline {
         }
 
         stage('Uninstall Kibana') {
-            when { expression { params.ACTION == 'UNINSTALL' } }
+            when { expression { params.ACTION == 'UNINSTALL' && params.KIBANA } }
             steps {
                 sh '''
                     helm uninstall kibana -n kibana --ignore-not-found || true
@@ -489,7 +526,7 @@ pipeline {
         }
 
         stage('Uninstall Grafana') {
-            when { expression { params.ACTION == 'UNINSTALL' } }
+            when { expression { params.ACTION == 'UNINSTALL' && params.GRAFANA } }
             steps {
                 sh '''
                     helm uninstall grafana -n grafana --ignore-not-found || true
@@ -500,7 +537,7 @@ pipeline {
         }
 
         stage('Uninstall Zipkin') {
-            when { expression { params.ACTION == 'UNINSTALL' } }
+            when { expression { params.ACTION == 'UNINSTALL' && params.ZIPKIN } }
             steps {
                 sh '''
                     helm uninstall zipkin -n zipkin --ignore-not-found || true
@@ -510,7 +547,7 @@ pipeline {
         }
 
         stage('Uninstall Tempo') {
-            when { expression { params.ACTION == 'UNINSTALL' } }
+            when { expression { params.ACTION == 'UNINSTALL' && params.TEMPO } }
             steps {
                 sh '''
                     helm uninstall tempo -n tempo --ignore-not-found || true
@@ -520,7 +557,7 @@ pipeline {
         }
 
         stage('Uninstall Jaeger') {
-            when { expression { params.ACTION == 'UNINSTALL' } }
+            when { expression { params.ACTION == 'UNINSTALL' && params.JAEGER } }
             steps {
                 sh '''
                     helm uninstall jaeger -n jaeger --ignore-not-found || true
@@ -530,7 +567,7 @@ pipeline {
         }
 
         stage('Uninstall Logstash') {
-            when { expression { params.ACTION == 'UNINSTALL' } }
+            when { expression { params.ACTION == 'UNINSTALL' && params.LOGSTASH } }
             steps {
                 sh '''
                     helm uninstall logstash -n logstash --ignore-not-found || true
@@ -540,7 +577,7 @@ pipeline {
         }
 
         stage('Uninstall Fluent Bit') {
-            when { expression { params.ACTION == 'UNINSTALL' } }
+            when { expression { params.ACTION == 'UNINSTALL' && params.FLUENT_BIT } }
             steps {
                 sh '''
                     helm uninstall fluent-bit -n fluent-bit --ignore-not-found || true
@@ -550,7 +587,7 @@ pipeline {
         }
 
         stage('Uninstall Fluentd') {
-            when { expression { params.ACTION == 'UNINSTALL' } }
+            when { expression { params.ACTION == 'UNINSTALL' && params.FLUENTD } }
             steps {
                 sh '''
                     helm uninstall fluentd -n fluentd --ignore-not-found || true
@@ -560,7 +597,7 @@ pipeline {
         }
 
         stage('Uninstall Loki') {
-            when { expression { params.ACTION == 'UNINSTALL' } }
+            when { expression { params.ACTION == 'UNINSTALL' && params.LOKI } }
             steps {
                 sh '''
                     helm uninstall loki -n loki --ignore-not-found || true
@@ -571,7 +608,7 @@ pipeline {
         }
 
         stage('Uninstall OpenSearch') {
-            when { expression { params.ACTION == 'UNINSTALL' } }
+            when { expression { params.ACTION == 'UNINSTALL' && params.OPENSEARCH } }
             steps {
                 sh '''
                     helm uninstall opensearch -n opensearch --ignore-not-found || true
@@ -582,7 +619,7 @@ pipeline {
         }
 
         stage('Uninstall Elasticsearch') {
-            when { expression { params.ACTION == 'UNINSTALL' } }
+            when { expression { params.ACTION == 'UNINSTALL' && params.ELASTICSEARCH } }
             steps {
                 sh '''
                     helm uninstall elasticsearch -n elasticsearch --ignore-not-found || true
@@ -593,7 +630,7 @@ pipeline {
         }
 
         stage('Uninstall Node Exporter') {
-            when { expression { params.ACTION == 'UNINSTALL' } }
+            when { expression { params.ACTION == 'UNINSTALL' && params.NODE_EXPORTER } }
             steps {
                 sh '''
                     helm uninstall node-exporter -n node-exporter --ignore-not-found || true
@@ -603,7 +640,7 @@ pipeline {
         }
 
         stage('Uninstall Kube State Metrics') {
-            when { expression { params.ACTION == 'UNINSTALL' } }
+            when { expression { params.ACTION == 'UNINSTALL' && params.KUBE_STATE_METRICS } }
             steps {
                 sh '''
                     helm uninstall kube-state-metrics -n kube-state-metrics --ignore-not-found || true
@@ -613,7 +650,7 @@ pipeline {
         }
 
         stage('Uninstall Blackbox Exporter') {
-            when { expression { params.ACTION == 'UNINSTALL' } }
+            when { expression { params.ACTION == 'UNINSTALL' && params.BLACKBOX_EXPORTER } }
             steps {
                 sh '''
                     helm uninstall blackbox-exporter -n blackbox-exporter --ignore-not-found || true
@@ -623,7 +660,7 @@ pipeline {
         }
 
         stage('Uninstall Pushgateway') {
-            when { expression { params.ACTION == 'UNINSTALL' } }
+            when { expression { params.ACTION == 'UNINSTALL' && params.PUSHGATEWAY } }
             steps {
                 sh '''
                     helm uninstall pushgateway -n pushgateway --ignore-not-found || true
@@ -633,7 +670,7 @@ pipeline {
         }
 
         stage('Uninstall Victoria Metrics') {
-            when { expression { params.ACTION == 'UNINSTALL' } }
+            when { expression { params.ACTION == 'UNINSTALL' && params.VICTORIA_METRICS } }
             steps {
                 sh '''
                     helm uninstall victoria-metrics -n victoria-metrics --ignore-not-found || true
@@ -644,7 +681,7 @@ pipeline {
         }
 
         stage('Uninstall Thanos') {
-            when { expression { params.ACTION == 'UNINSTALL' } }
+            when { expression { params.ACTION == 'UNINSTALL' && params.THANOS } }
             steps {
                 sh '''
                     helm uninstall thanos -n thanos --ignore-not-found || true
@@ -655,7 +692,7 @@ pipeline {
         }
 
         stage('Uninstall Alertmanager') {
-            when { expression { params.ACTION == 'UNINSTALL' } }
+            when { expression { params.ACTION == 'UNINSTALL' && params.ALERTMANAGER } }
             steps {
                 sh '''
                     helm uninstall alertmanager -n alertmanager --ignore-not-found || true
@@ -666,7 +703,7 @@ pipeline {
         }
 
         stage('Uninstall Prometheus') {
-            when { expression { params.ACTION == 'UNINSTALL' } }
+            when { expression { params.ACTION == 'UNINSTALL' && params.PROMETHEUS } }
             steps {
                 sh '''
                     helm uninstall prometheus -n prometheus --ignore-not-found || true

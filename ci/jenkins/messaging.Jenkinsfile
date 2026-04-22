@@ -12,8 +12,22 @@ pipeline {
         choice(
             name: 'ACTION',
             choices: ['INSTALL', 'UNINSTALL'],
-            description: 'INSTALL — deploy, configure and apply K8s enhancements for all messaging tools. UNINSTALL — remove all.'
+            description: 'INSTALL — deploy selected messaging tools. UNINSTALL — remove selected.'
         )
+        booleanParam(name: 'ZOOKEEPER',       defaultValue: true,  description: 'ZooKeeper — Kafka coordination service')
+        booleanParam(name: 'KAFKA',           defaultValue: true,  description: 'Kafka — primary event streaming platform')
+        booleanParam(name: 'SCHEMA_REGISTRY', defaultValue: true,  description: 'Schema Registry — Avro/Protobuf schema enforcement')
+        booleanParam(name: 'KAFKA_CONNECT',   defaultValue: true,  description: 'Kafka Connect — connector framework for source/sink integrations')
+        booleanParam(name: 'KSQLDB',          defaultValue: true,  description: 'ksqlDB — streaming SQL engine on top of Kafka')
+        booleanParam(name: 'STRIMZI',         defaultValue: true,  description: 'Strimzi — Kafka on Kubernetes operator')
+        booleanParam(name: 'RABBITMQ',        defaultValue: true,  description: 'RabbitMQ — AMQP task queues and delayed messages')
+        booleanParam(name: 'NATS',            defaultValue: true,  description: 'NATS JetStream — low-latency real-time pub/sub')
+        booleanParam(name: 'PULSAR',          defaultValue: true,  description: 'Apache Pulsar — multi-tenant messaging and streaming')
+        booleanParam(name: 'ACTIVEMQ',        defaultValue: true,  description: 'ActiveMQ Artemis — enterprise message broker')
+        booleanParam(name: 'REDPANDA',        defaultValue: true,  description: 'Redpanda — Kafka-compatible high-performance broker')
+        booleanParam(name: 'MEMPHIS',         defaultValue: true,  description: 'Memphis — developer-friendly message broker')
+        booleanParam(name: 'KAFKA_UI',        defaultValue: true,  description: 'Kafka UI — web UI for Kafka cluster management')
+        booleanParam(name: 'AKHQ',            defaultValue: true,  description: 'AKHQ — Kafka HQ web interface')
     }
 
     stages {
@@ -43,7 +57,7 @@ pipeline {
         // ── INSTALL + CONFIGURE + K8s ENHANCEMENTS ───────────────────────────
 
         stage('Zookeeper') {
-            when { expression { params.ACTION == 'INSTALL' } }
+            when { expression { params.ACTION == 'INSTALL' && params.ZOOKEEPER } }
             steps {
                 script {
                     def s = load 'scripts/groovy/messaging-install-zookeeper.groovy'; s()
@@ -53,7 +67,7 @@ pipeline {
         }
 
         stage('Kafka') {
-            when { expression { params.ACTION == 'INSTALL' } }
+            when { expression { params.ACTION == 'INSTALL' && params.KAFKA } }
             steps {
                 script {
                     def s = load 'scripts/groovy/messaging-install-kafka.groovy'; s()
@@ -64,7 +78,7 @@ pipeline {
         }
 
         stage('Schema Registry') {
-            when { expression { params.ACTION == 'INSTALL' } }
+            when { expression { params.ACTION == 'INSTALL' && params.SCHEMA_REGISTRY } }
             steps {
                 script {
                     def s = load 'scripts/groovy/messaging-install-schema-registry.groovy'; s()
@@ -75,7 +89,7 @@ pipeline {
         }
 
         stage('Kafka Connect') {
-            when { expression { params.ACTION == 'INSTALL' } }
+            when { expression { params.ACTION == 'INSTALL' && params.KAFKA_CONNECT } }
             steps {
                 script {
                     def s = load 'scripts/groovy/messaging-install-kafka-connect.groovy'; s()
@@ -86,7 +100,7 @@ pipeline {
         }
 
         stage('ksqlDB') {
-            when { expression { params.ACTION == 'INSTALL' } }
+            when { expression { params.ACTION == 'INSTALL' && params.KSQLDB } }
             steps {
                 script {
                     def s = load 'scripts/groovy/messaging-install-ksqldb.groovy'; s()
@@ -96,7 +110,7 @@ pipeline {
         }
 
         stage('Strimzi') {
-            when { expression { params.ACTION == 'INSTALL' } }
+            when { expression { params.ACTION == 'INSTALL' && params.STRIMZI } }
             steps {
                 script {
                     def s = load 'scripts/groovy/messaging-install-strimzi.groovy'; s()
@@ -106,7 +120,7 @@ pipeline {
         }
 
         stage('RabbitMQ') {
-            when { expression { params.ACTION == 'INSTALL' } }
+            when { expression { params.ACTION == 'INSTALL' && params.RABBITMQ } }
             steps {
                 script {
                     def s = load 'scripts/groovy/messaging-install-rabbitmq.groovy'; s()
@@ -117,7 +131,7 @@ pipeline {
         }
 
         stage('NATS') {
-            when { expression { params.ACTION == 'INSTALL' } }
+            when { expression { params.ACTION == 'INSTALL' && params.NATS } }
             steps {
                 script {
                     def s = load 'scripts/groovy/messaging-install-nats.groovy'; s()
@@ -128,7 +142,7 @@ pipeline {
         }
 
         stage('Pulsar') {
-            when { expression { params.ACTION == 'INSTALL' } }
+            when { expression { params.ACTION == 'INSTALL' && params.PULSAR } }
             steps {
                 script {
                     def s = load 'scripts/groovy/messaging-install-pulsar.groovy'; s()
@@ -138,7 +152,7 @@ pipeline {
         }
 
         stage('ActiveMQ Artemis') {
-            when { expression { params.ACTION == 'INSTALL' } }
+            when { expression { params.ACTION == 'INSTALL' && params.ACTIVEMQ } }
             steps {
                 script {
                     def s = load 'scripts/groovy/messaging-install-activemq-artemis.groovy'; s()
@@ -148,7 +162,7 @@ pipeline {
         }
 
         stage('Redpanda') {
-            when { expression { params.ACTION == 'INSTALL' } }
+            when { expression { params.ACTION == 'INSTALL' && params.REDPANDA } }
             steps {
                 script {
                     def s = load 'scripts/groovy/messaging-install-redpanda.groovy'; s()
@@ -159,7 +173,7 @@ pipeline {
         }
 
         stage('Memphis') {
-            when { expression { params.ACTION == 'INSTALL' } }
+            when { expression { params.ACTION == 'INSTALL' && params.MEMPHIS } }
             steps {
                 script {
                     catchError(buildResult: 'SUCCESS', stageResult: 'UNSTABLE') {
@@ -172,7 +186,7 @@ pipeline {
         }
 
         stage('Kafka UI') {
-            when { expression { params.ACTION == 'INSTALL' } }
+            when { expression { params.ACTION == 'INSTALL' && params.KAFKA_UI } }
             steps {
                 script {
                     def s = load 'scripts/groovy/messaging-install-kafka-ui.groovy'; s()
@@ -182,7 +196,7 @@ pipeline {
         }
 
         stage('AKHQ') {
-            when { expression { params.ACTION == 'INSTALL' } }
+            when { expression { params.ACTION == 'INSTALL' && params.AKHQ } }
             steps {
                 script {
                     def s = load 'scripts/groovy/messaging-install-akhq.groovy'; s()
@@ -194,7 +208,7 @@ pipeline {
         // ── UNINSTALL (reverse order) ─────────────────────────────────────────
 
         stage('Uninstall AKHQ') {
-            when { expression { params.ACTION == 'UNINSTALL' } }
+            when { expression { params.ACTION == 'UNINSTALL' && params.AKHQ } }
             steps {
                 sh '''
                     helm uninstall akhq -n akhq --ignore-not-found || true
@@ -204,7 +218,7 @@ pipeline {
         }
 
         stage('Uninstall Kafka UI') {
-            when { expression { params.ACTION == 'UNINSTALL' } }
+            when { expression { params.ACTION == 'UNINSTALL' && params.KAFKA_UI } }
             steps {
                 sh '''
                     helm uninstall kafka-ui -n kafka-ui --ignore-not-found || true
@@ -214,7 +228,7 @@ pipeline {
         }
 
         stage('Uninstall Memphis') {
-            when { expression { params.ACTION == 'UNINSTALL' } }
+            when { expression { params.ACTION == 'UNINSTALL' && params.MEMPHIS } }
             steps {
                 sh '''
                     helm uninstall memphis -n memphis --ignore-not-found || true
@@ -225,7 +239,7 @@ pipeline {
         }
 
         stage('Uninstall Redpanda') {
-            when { expression { params.ACTION == 'UNINSTALL' } }
+            when { expression { params.ACTION == 'UNINSTALL' && params.REDPANDA } }
             steps {
                 sh '''
                     helm uninstall redpanda -n redpanda --ignore-not-found || true
@@ -236,7 +250,7 @@ pipeline {
         }
 
         stage('Uninstall ActiveMQ Artemis') {
-            when { expression { params.ACTION == 'UNINSTALL' } }
+            when { expression { params.ACTION == 'UNINSTALL' && params.ACTIVEMQ } }
             steps {
                 sh '''
                     helm uninstall activemq-artemis -n activemq-artemis --ignore-not-found || true
@@ -247,7 +261,7 @@ pipeline {
         }
 
         stage('Uninstall Pulsar') {
-            when { expression { params.ACTION == 'UNINSTALL' } }
+            when { expression { params.ACTION == 'UNINSTALL' && params.PULSAR } }
             steps {
                 sh '''
                     helm uninstall pulsar -n pulsar --ignore-not-found || true
@@ -258,7 +272,7 @@ pipeline {
         }
 
         stage('Uninstall NATS') {
-            when { expression { params.ACTION == 'UNINSTALL' } }
+            when { expression { params.ACTION == 'UNINSTALL' && params.NATS } }
             steps {
                 sh '''
                     helm uninstall nats -n nats --ignore-not-found || true
@@ -269,7 +283,7 @@ pipeline {
         }
 
         stage('Uninstall RabbitMQ') {
-            when { expression { params.ACTION == 'UNINSTALL' } }
+            when { expression { params.ACTION == 'UNINSTALL' && params.RABBITMQ } }
             steps {
                 sh '''
                     helm uninstall rabbitmq -n rabbitmq --ignore-not-found || true
@@ -280,7 +294,7 @@ pipeline {
         }
 
         stage('Uninstall Strimzi') {
-            when { expression { params.ACTION == 'UNINSTALL' } }
+            when { expression { params.ACTION == 'UNINSTALL' && params.STRIMZI } }
             steps {
                 sh '''
                     helm uninstall strimzi -n strimzi --ignore-not-found || true
@@ -290,7 +304,7 @@ pipeline {
         }
 
         stage('Uninstall ksqlDB') {
-            when { expression { params.ACTION == 'UNINSTALL' } }
+            when { expression { params.ACTION == 'UNINSTALL' && params.KSQLDB } }
             steps {
                 sh '''
                     helm uninstall ksqldb -n ksqldb --ignore-not-found || true
@@ -300,7 +314,7 @@ pipeline {
         }
 
         stage('Uninstall Kafka Connect') {
-            when { expression { params.ACTION == 'UNINSTALL' } }
+            when { expression { params.ACTION == 'UNINSTALL' && params.KAFKA_CONNECT } }
             steps {
                 sh '''
                     helm uninstall kafka-connect -n kafka-connect --ignore-not-found || true
@@ -310,7 +324,7 @@ pipeline {
         }
 
         stage('Uninstall Schema Registry') {
-            when { expression { params.ACTION == 'UNINSTALL' } }
+            when { expression { params.ACTION == 'UNINSTALL' && params.SCHEMA_REGISTRY } }
             steps {
                 sh '''
                     helm uninstall schema-registry -n schema-registry --ignore-not-found || true
@@ -320,7 +334,7 @@ pipeline {
         }
 
         stage('Uninstall Kafka') {
-            when { expression { params.ACTION == 'UNINSTALL' } }
+            when { expression { params.ACTION == 'UNINSTALL' && params.KAFKA } }
             steps {
                 sh '''
                     helm uninstall kafka -n kafka --ignore-not-found || true
@@ -331,7 +345,7 @@ pipeline {
         }
 
         stage('Uninstall Zookeeper') {
-            when { expression { params.ACTION == 'UNINSTALL' } }
+            when { expression { params.ACTION == 'UNINSTALL' && params.ZOOKEEPER } }
             steps {
                 sh '''
                     helm uninstall zookeeper -n zookeeper --ignore-not-found || true

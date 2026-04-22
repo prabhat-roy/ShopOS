@@ -12,8 +12,26 @@ pipeline {
         choice(
             name: 'ACTION',
             choices: ['INSTALL', 'UNINSTALL'],
-            description: 'INSTALL — deploy, configure and apply K8s enhancements for all networking tools. UNINSTALL — remove all.'
+            description: 'INSTALL — deploy selected networking tools. UNINSTALL — remove selected.'
         )
+        // ── CNI plugins ───────────────────────────────────────────────────────
+        booleanParam(name: 'CILIUM',          defaultValue: true,  description: 'Cilium — eBPF-based CNI with NetworkPolicy and observability')
+        booleanParam(name: 'CALICO',          defaultValue: true,  description: 'Calico — BGP-based CNI with NetworkPolicy')
+        booleanParam(name: 'FLANNEL',         defaultValue: false, description: 'Flannel — simple overlay CNI (disable when Cilium/Calico active)')
+        booleanParam(name: 'WEAVE_NET',       defaultValue: false, description: 'Weave Net — mesh overlay CNI')
+        booleanParam(name: 'ANTREA',          defaultValue: false, description: 'Antrea — OVS-based CNI')
+        // ── Ingress controllers ───────────────────────────────────────────────
+        booleanParam(name: 'NGINX_INGRESS',   defaultValue: true,  description: 'Nginx Ingress — standard ingress controller')
+        booleanParam(name: 'TRAEFIK',         defaultValue: true,  description: 'Traefik — edge router with automatic service discovery')
+        booleanParam(name: 'HAPROXY_INGRESS', defaultValue: true,  description: 'HAProxy Ingress — high-performance load balancer')
+        booleanParam(name: 'CONTOUR',         defaultValue: true,  description: 'Contour — Envoy-based ingress for Kubernetes')
+        booleanParam(name: 'KONG',            defaultValue: true,  description: 'Kong — API gateway and ingress controller')
+        // ── Service mesh ──────────────────────────────────────────────────────
+        booleanParam(name: 'ISTIO',           defaultValue: true,  description: 'Istio — full service mesh with mTLS, traffic management, observability')
+        booleanParam(name: 'LINKERD',         defaultValue: true,  description: 'Linkerd — lightweight Rust-based service mesh')
+        // ── Service discovery & DNS ───────────────────────────────────────────
+        booleanParam(name: 'CONSUL',          defaultValue: true,  description: 'Consul — service discovery, health checking, K/V config')
+        booleanParam(name: 'EXTERNAL_DNS',    defaultValue: true,  description: 'External DNS — sync Kubernetes services to external DNS providers')
     }
 
     stages {
@@ -43,7 +61,7 @@ pipeline {
         // ── INSTALL + CONFIGURE + K8s ENHANCEMENTS ───────────────────────────
 
         stage('Cilium') {
-            when { expression { params.ACTION == 'INSTALL' } }
+            when { expression { params.ACTION == 'INSTALL' && params.CILIUM } }
             steps {
                 script {
                     def s = load 'scripts/groovy/networking-install-cilium.groovy'; s()
@@ -53,7 +71,7 @@ pipeline {
         }
 
         stage('Calico') {
-            when { expression { params.ACTION == 'INSTALL' } }
+            when { expression { params.ACTION == 'INSTALL' && params.CALICO } }
             steps {
                 script {
                     def s = load 'scripts/groovy/networking-install-calico.groovy'; s()
@@ -63,7 +81,7 @@ pipeline {
         }
 
         stage('Flannel') {
-            when { expression { params.ACTION == 'INSTALL' } }
+            when { expression { params.ACTION == 'INSTALL' && params.FLANNEL } }
             steps {
                 script {
                     def s = load 'scripts/groovy/networking-install-flannel.groovy'; s()
@@ -73,7 +91,7 @@ pipeline {
         }
 
         stage('Weave Net') {
-            when { expression { params.ACTION == 'INSTALL' } }
+            when { expression { params.ACTION == 'INSTALL' && params.WEAVE_NET } }
             steps {
                 script {
                     def s = load 'scripts/groovy/networking-install-weave-net.groovy'; s()
@@ -83,7 +101,7 @@ pipeline {
         }
 
         stage('Antrea') {
-            when { expression { params.ACTION == 'INSTALL' } }
+            when { expression { params.ACTION == 'INSTALL' && params.ANTREA } }
             steps {
                 script {
                     def s = load 'scripts/groovy/networking-install-antrea.groovy'; s()
@@ -93,7 +111,7 @@ pipeline {
         }
 
         stage('Nginx Ingress') {
-            when { expression { params.ACTION == 'INSTALL' } }
+            when { expression { params.ACTION == 'INSTALL' && params.NGINX_INGRESS } }
             steps {
                 script {
                     def s = load 'scripts/groovy/networking-install-nginx-ingress.groovy'; s()
@@ -104,7 +122,7 @@ pipeline {
         }
 
         stage('Traefik') {
-            when { expression { params.ACTION == 'INSTALL' } }
+            when { expression { params.ACTION == 'INSTALL' && params.TRAEFIK } }
             steps {
                 script {
                     def s = load 'scripts/groovy/networking-install-traefik.groovy'; s()
@@ -115,7 +133,7 @@ pipeline {
         }
 
         stage('HAProxy Ingress') {
-            when { expression { params.ACTION == 'INSTALL' } }
+            when { expression { params.ACTION == 'INSTALL' && params.HAPROXY_INGRESS } }
             steps {
                 script {
                     def s = load 'scripts/groovy/networking-install-haproxy-ingress.groovy'; s()
@@ -125,7 +143,7 @@ pipeline {
         }
 
         stage('Contour') {
-            when { expression { params.ACTION == 'INSTALL' } }
+            when { expression { params.ACTION == 'INSTALL' && params.CONTOUR } }
             steps {
                 script {
                     def s = load 'scripts/groovy/networking-install-contour.groovy'; s()
@@ -135,7 +153,7 @@ pipeline {
         }
 
         stage('Kong') {
-            when { expression { params.ACTION == 'INSTALL' } }
+            when { expression { params.ACTION == 'INSTALL' && params.KONG } }
             steps {
                 script {
                     def s = load 'scripts/groovy/networking-install-kong.groovy'; s()
@@ -146,7 +164,7 @@ pipeline {
         }
 
         stage('Istio') {
-            when { expression { params.ACTION == 'INSTALL' } }
+            when { expression { params.ACTION == 'INSTALL' && params.ISTIO } }
             steps {
                 script {
                     def s = load 'scripts/groovy/networking-install-istio.groovy'; s()
@@ -157,7 +175,7 @@ pipeline {
         }
 
         stage('Linkerd') {
-            when { expression { params.ACTION == 'INSTALL' } }
+            when { expression { params.ACTION == 'INSTALL' && params.LINKERD } }
             steps {
                 script {
                     def s = load 'scripts/groovy/networking-install-linkerd.groovy'; s()
@@ -168,7 +186,7 @@ pipeline {
         }
 
         stage('Consul') {
-            when { expression { params.ACTION == 'INSTALL' } }
+            when { expression { params.ACTION == 'INSTALL' && params.CONSUL } }
             steps {
                 script {
                     def s = load 'scripts/groovy/networking-install-consul.groovy'; s()
@@ -179,7 +197,7 @@ pipeline {
         }
 
         stage('External DNS') {
-            when { expression { params.ACTION == 'INSTALL' } }
+            when { expression { params.ACTION == 'INSTALL' && params.EXTERNAL_DNS } }
             steps {
                 script {
                     def s = load 'scripts/groovy/networking-install-external-dns.groovy'; s()
@@ -192,7 +210,7 @@ pipeline {
         // ── UNINSTALL (reverse order) ─────────────────────────────────────────
 
         stage('Uninstall External DNS') {
-            when { expression { params.ACTION == 'UNINSTALL' } }
+            when { expression { params.ACTION == 'UNINSTALL' && params.EXTERNAL_DNS } }
             steps {
                 sh '''
                     helm uninstall external-dns -n external-dns --ignore-not-found || true
@@ -202,7 +220,7 @@ pipeline {
         }
 
         stage('Uninstall Consul') {
-            when { expression { params.ACTION == 'UNINSTALL' } }
+            when { expression { params.ACTION == 'UNINSTALL' && params.CONSUL } }
             steps {
                 sh '''
                     helm uninstall consul -n consul --ignore-not-found || true
@@ -213,7 +231,7 @@ pipeline {
         }
 
         stage('Uninstall Linkerd') {
-            when { expression { params.ACTION == 'UNINSTALL' } }
+            when { expression { params.ACTION == 'UNINSTALL' && params.LINKERD } }
             steps {
                 sh '''
                     helm uninstall linkerd -n linkerd --ignore-not-found || true
@@ -223,7 +241,7 @@ pipeline {
         }
 
         stage('Uninstall Istio') {
-            when { expression { params.ACTION == 'UNINSTALL' } }
+            when { expression { params.ACTION == 'UNINSTALL' && params.ISTIO } }
             steps {
                 sh '''
                     helm uninstall istio -n istio-system --ignore-not-found || true
@@ -233,7 +251,7 @@ pipeline {
         }
 
         stage('Uninstall Kong') {
-            when { expression { params.ACTION == 'UNINSTALL' } }
+            when { expression { params.ACTION == 'UNINSTALL' && params.KONG } }
             steps {
                 sh '''
                     helm uninstall kong -n kong --ignore-not-found || true
@@ -243,7 +261,7 @@ pipeline {
         }
 
         stage('Uninstall Contour') {
-            when { expression { params.ACTION == 'UNINSTALL' } }
+            when { expression { params.ACTION == 'UNINSTALL' && params.CONTOUR } }
             steps {
                 sh '''
                     helm uninstall contour -n projectcontour --ignore-not-found || true
@@ -253,7 +271,7 @@ pipeline {
         }
 
         stage('Uninstall HAProxy Ingress') {
-            when { expression { params.ACTION == 'UNINSTALL' } }
+            when { expression { params.ACTION == 'UNINSTALL' && params.HAPROXY_INGRESS } }
             steps {
                 sh '''
                     helm uninstall haproxy-ingress -n haproxy-ingress --ignore-not-found || true
@@ -263,7 +281,7 @@ pipeline {
         }
 
         stage('Uninstall Traefik') {
-            when { expression { params.ACTION == 'UNINSTALL' } }
+            when { expression { params.ACTION == 'UNINSTALL' && params.TRAEFIK } }
             steps {
                 sh '''
                     helm uninstall traefik -n traefik --ignore-not-found || true
@@ -273,7 +291,7 @@ pipeline {
         }
 
         stage('Uninstall Nginx Ingress') {
-            when { expression { params.ACTION == 'UNINSTALL' } }
+            when { expression { params.ACTION == 'UNINSTALL' && params.NGINX_INGRESS } }
             steps {
                 sh '''
                     helm uninstall nginx-ingress -n nginx-ingress --ignore-not-found || true
@@ -283,7 +301,7 @@ pipeline {
         }
 
         stage('Uninstall Antrea') {
-            when { expression { params.ACTION == 'UNINSTALL' } }
+            when { expression { params.ACTION == 'UNINSTALL' && params.ANTREA } }
             steps {
                 sh '''
                     helm uninstall antrea -n antrea --ignore-not-found || true
@@ -293,7 +311,7 @@ pipeline {
         }
 
         stage('Uninstall Weave Net') {
-            when { expression { params.ACTION == 'UNINSTALL' } }
+            when { expression { params.ACTION == 'UNINSTALL' && params.WEAVE_NET } }
             steps {
                 sh '''
                     helm uninstall weave-net -n weave-net --ignore-not-found || true
@@ -303,7 +321,7 @@ pipeline {
         }
 
         stage('Uninstall Flannel') {
-            when { expression { params.ACTION == 'UNINSTALL' } }
+            when { expression { params.ACTION == 'UNINSTALL' && params.FLANNEL } }
             steps {
                 sh '''
                     helm uninstall flannel -n kube-flannel --ignore-not-found || true
@@ -313,7 +331,7 @@ pipeline {
         }
 
         stage('Uninstall Calico') {
-            when { expression { params.ACTION == 'UNINSTALL' } }
+            when { expression { params.ACTION == 'UNINSTALL' && params.CALICO } }
             steps {
                 sh '''
                     helm uninstall calico -n calico-system --ignore-not-found || true
@@ -323,7 +341,7 @@ pipeline {
         }
 
         stage('Uninstall Cilium') {
-            when { expression { params.ACTION == 'UNINSTALL' } }
+            when { expression { params.ACTION == 'UNINSTALL' && params.CILIUM } }
             steps {
                 sh '''
                     helm uninstall cilium -n cilium --ignore-not-found || true
