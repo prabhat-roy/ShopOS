@@ -1,12 +1,6 @@
-import { BrowserRouter, Route, Routes } from 'react-router-dom'
-import Home from './pages/Home'
+import { RouterProvider } from 'react-router-dom'
+import { router } from './router'
 
 export default function App() {
-  return (
-    <BrowserRouter>
-      <Routes>
-        <Route path="/" element={<Home />} />
-      </Routes>
-    </BrowserRouter>
-  )
+  return <RouterProvider router={router} />
 }

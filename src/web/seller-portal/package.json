@@ -2,14 +2,11 @@
   "name": "seller-portal",
   "version": "1.0.0",
   "private": true,
-  "scripts": {
-    "dev": "vite",
-    "build": "vue-tsc && vite build",
-    "preview": "vite preview"
-  },
+  "scripts": { "dev": "vite", "build": "vue-tsc && vite build", "preview": "vite preview" },
   "dependencies": {
     "vue": "3.4.31",
-    "vue-router": "4.3.3"
+    "vue-router": "4.3.3",
+    "pinia": "2.1.7"
   },
   "devDependencies": {
     "@vitejs/plugin-vue": "5.0.5",
