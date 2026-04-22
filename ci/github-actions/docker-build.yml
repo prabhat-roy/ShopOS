@@ -1,0 +1,179 @@
+name: Docker Build
+
+# NOTE: This file lives in ci/github-actions/ (NOT .github/workflows/) — auto-trigger disabled.
+# To use, copy or symlink to .github/workflows/docker-build.yml
+
+on:
+  workflow_dispatch:
+    inputs:
+      service_name:
+        description: 'Single service to build (e.g. order-service). Empty = all in domain or all 154.'
+        required: false
+        default: ''
+      domain:
+        description: 'Domain filter. Empty = build all 13 domains (154 services).'
+        required: false
+        default: ''
+        type: choice
+        options:
+          - ''
+          - platform
+          - identity
+          - catalog
+          - commerce
+          - supply-chain
+          - financial
+          - customer-experience
+          - communications
+          - content
+          - analytics-ai
+          - b2b
+          - integrations
+          - affiliate
+      image_tag:
+        description: 'Docker image tag. Defaults to dev-<sha>-<run_number> if blank.'
+        required: false
+        default: ''
+      registry_project:
+        description: 'Harbor project / namespace'
+        required: false
+        default: 'shopos'
+      push_image:
+        description: 'Push images to Harbor registry'
+        type: boolean
+        default: true
+      scan_image:
+        description: 'Run Trivy scan after each build (HIGH,CRITICAL)'
+        type: boolean
+        default: true
+
+env:
+  IMAGE_TAG: ${{ inputs.image_tag != '' && inputs.image_tag || format('dev-{0}-{1}', github.sha, github.run_number) }}
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  # ── Resolve Services ──────────────────────────────────────────────────────
+  resolve:
+    name: Resolve Build Targets
+    runs-on: ubuntu-latest
+    outputs:
+      service_matrix: ${{ steps.resolve.outputs.matrix }}
+      image_tag: ${{ env.IMAGE_TAG }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Resolve service list
+        id: resolve
+        run: |
+          ALL_DOMAINS="platform identity catalog commerce supply-chain financial customer-experience communications content analytics-ai b2b integrations affiliate"
+          PAIRS="[]"
+
+          if [ -n "${{ inputs.service_name }}" ] && [ -n "${{ inputs.domain }}" ]; then
+            PAIRS="[{\"domain\":\"${{ inputs.domain }}\",\"svc\":\"${{ inputs.service_name }}\"}]"
+          elif [ -n "${{ inputs.domain }}" ]; then
+            PAIRS="["
+            for svc_path in src/${{ inputs.domain }}/*/; do
+              [ -d "$svc_path" ] || continue
+              svc=$(basename "$svc_path")
+              PAIRS="${PAIRS}{\"domain\":\"${{ inputs.domain }}\",\"svc\":\"${svc}\"},"
+            done
+            PAIRS="${PAIRS%,}]"
+          else
+            PAIRS="["
+            for d in $ALL_DOMAINS; do
+              for svc_path in src/$d/*/; do
+                [ -d "$svc_path" ] || continue
+                svc=$(basename "$svc_path")
+                PAIRS="${PAIRS}{\"domain\":\"${d}\",\"svc\":\"${svc}\"},"
+              done
+            done
+            PAIRS="${PAIRS%,}]"
+          fi
+
+          echo "matrix=${PAIRS}" >> "$GITHUB_OUTPUT"
+          echo "Resolved $(echo $PAIRS | python3 -c 'import sys,json; print(len(json.load(sys.stdin)))') services"
+
+  # ── Docker Build ─────────────────────────────────────────────────────────
+  docker-build:
+    name: Build ${{ matrix.target.domain }}/${{ matrix.target.svc }}
+    runs-on: ubuntu-latest
+    needs: [resolve]
+    strategy:
+      matrix:
+        target: ${{ fromJson(needs.resolve.outputs.service_matrix) }}
+      max-parallel: 20
+      fail-fast: false
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to Harbor registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ secrets.HARBOR_URL }}
+          username: ${{ secrets.HARBOR_USER }}
+          password: ${{ secrets.HARBOR_PASSWORD }}
+
+      - name: Build Docker image
+        run: |
+          IMAGE="${{ secrets.HARBOR_URL }}/${{ inputs.registry_project }}/${{ matrix.target.svc }}:${{ env.IMAGE_TAG }}"
+          echo "=== Building: $IMAGE ==="
+          docker build \
+            --label "git.commit=${{ github.sha }}" \
+            --label "build.number=${{ github.run_number }}" \
+            --label "domain=${{ matrix.target.domain }}" \
+            --cache-from "type=registry,ref=${{ secrets.HARBOR_URL }}/${{ inputs.registry_project }}/${{ matrix.target.svc }}:cache" \
+            --cache-to "type=registry,ref=${{ secrets.HARBOR_URL }}/${{ inputs.registry_project }}/${{ matrix.target.svc }}:cache,mode=max" \
+            -t "$IMAGE" \
+            "src/${{ matrix.target.domain }}/${{ matrix.target.svc }}/"
+
+      - name: Trivy image scan
+        if: ${{ inputs.scan_image }}
+        run: |
+          IMAGE="${{ secrets.HARBOR_URL }}/${{ inputs.registry_project }}/${{ matrix.target.svc }}:${{ env.IMAGE_TAG }}"
+          echo "=== Trivy: $IMAGE ==="
+          docker run --rm \
+            -v /var/run/docker.sock:/var/run/docker.sock \
+            aquasec/trivy:latest image \
+            --exit-code 0 \
+            --severity HIGH,CRITICAL \
+            --format json \
+            --output "/tmp/trivy-${{ matrix.target.svc }}.json" \
+            "$IMAGE" || true
+        continue-on-error: true
+
+      - name: Upload Trivy scan results
+        if: ${{ inputs.scan_image }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: trivy-${{ matrix.target.svc }}-${{ env.IMAGE_TAG }}
+          path: /tmp/trivy-${{ matrix.target.svc }}.json
+          retention-days: 7
+          if-no-files-found: ignore
+
+      - name: Push image to Harbor
+        if: ${{ inputs.push_image }}
+        run: |
+          IMAGE="${{ secrets.HARBOR_URL }}/${{ inputs.registry_project }}/${{ matrix.target.svc }}:${{ env.IMAGE_TAG }}"
+          echo "=== Pushing: $IMAGE ==="
+          docker push "$IMAGE"
+
+  # ── Summary ──────────────────────────────────────────────────────────────
+  summary:
+    name: Build Summary
+    runs-on: ubuntu-latest
+    needs: [docker-build]
+    if: always()
+    steps:
+      - name: Report status
+        run: |
+          echo "Docker-Build pipeline complete."
+          echo "Tag      : ${{ env.IMAGE_TAG }}"
+          echo "Registry : ${{ secrets.HARBOR_URL }}/${{ inputs.registry_project }}"
+          echo "Push     : ${{ inputs.push_image }}"
+          echo "Scan     : ${{ inputs.scan_image }}"

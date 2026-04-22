@@ -1,0 +1,14 @@
+---
+- name: Bootstrap Kubernetes nodes
+  hosts: k8s_nodes
+  become: true
+  roles:
+    - common
+    - k8s-node
+
+- name: Configure Jenkins server
+  hosts: jenkins
+  become: true
+  roles:
+    - common
+    - jenkins

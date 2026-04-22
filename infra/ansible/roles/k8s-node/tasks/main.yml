@@ -1,0 +1,74 @@
+---
+- name: Install containerd
+  block:
+    - name: Add Docker GPG key
+      apt_key:
+        url: https://download.docker.com/linux/ubuntu/gpg
+        state: present
+
+    - name: Add Docker repository
+      apt_repository:
+        repo: "deb [arch=amd64] https://download.docker.com/linux/ubuntu {{ ansible_distribution_release }} stable"
+        state: present
+
+    - name: Install containerd
+      apt:
+        name: containerd.io
+        state: present
+        update_cache: true
+
+    - name: Configure containerd
+      shell: |
+        containerd config default > /etc/containerd/config.toml
+        sed -i 's/SystemdCgroup = false/SystemdCgroup = true/' /etc/containerd/config.toml
+      changed_when: true
+
+    - name: Enable and start containerd
+      systemd:
+        name: containerd
+        enabled: true
+        state: started
+
+- name: Install kubelet, kubeadm, kubectl
+  block:
+    - name: Create keyrings directory
+      file:
+        path: /etc/apt/keyrings
+        state: directory
+        mode: '0755'
+
+    - name: Add Kubernetes GPG key
+      apt_key:
+        url: https://pkgs.k8s.io/core:/stable:/v1.31/deb/Release.key
+        keyring: /etc/apt/keyrings/kubernetes-apt-keyring.gpg
+        state: present
+
+    - name: Add Kubernetes repository
+      apt_repository:
+        repo: "deb [signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.gpg] https://pkgs.k8s.io/core:/stable:/v1.31/deb/ /"
+        state: present
+        filename: kubernetes
+
+    - name: Install Kubernetes components
+      apt:
+        name:
+          - "kubelet=1.31.*"
+          - "kubeadm=1.31.*"
+          - "kubectl=1.31.*"
+        state: present
+        update_cache: true
+
+    - name: Hold Kubernetes packages
+      dpkg_selections:
+        name: "{{ item }}"
+        selection: hold
+      loop:
+        - kubelet
+        - kubeadm
+        - kubectl
+
+    - name: Enable kubelet
+      systemd:
+        name: kubelet
+        enabled: true
+        state: started

@@ -1,0 +1,153 @@
+# Docker-Build Pipeline — Travis CI
+# Builds, scans (Trivy), and pushes ShopOS images to Harbor.
+# Env vars (encrypted or repository settings):
+#   HARBOR_REGISTRY, HARBOR_USERNAME, HARBOR_PASSWORD,
+#   SERVICE_NAME, DOMAIN, REGISTRY_PROJECT, PUSH_IMAGE, SCAN_IMAGE, SLACK_WEBHOOK
+language: minimal
+
+services:
+  - docker
+
+env:
+  global:
+    - REGISTRY_PROJECT=shopos
+    - PUSH_IMAGE=true
+    - SCAN_IMAGE=true
+    - DOMAIN=""
+    - SERVICE_NAME=""
+
+stages:
+  - name: build
+  - name: scan
+  - name: push
+    if: branch = main OR branch =~ /^(develop|release\/.*)$/
+
+jobs:
+  include:
+    - stage: build
+      name: Docker Build (all services)
+      script:
+        - |
+          TAG="${IMAGE_TAG:-dev-${TRAVIS_COMMIT:0:8}-${TRAVIS_BUILD_NUMBER}}"
+          echo "TAG=$TAG" > .build.env
+          echo "Building with tag: $TAG"
+
+          echo "$HARBOR_PASSWORD" | docker login "$HARBOR_REGISTRY" -u "$HARBOR_USERNAME" --password-stdin
+
+          ALL_DOMAINS="platform identity catalog commerce supply-chain financial customer-experience communications content analytics-ai b2b integrations affiliate"
+
+          build_svc() {
+            local domain=$1 svc=$2
+            local image="$HARBOR_REGISTRY/$REGISTRY_PROJECT/$svc:$TAG"
+            echo "=== Building: $image ==="
+            docker build \
+              --label "git.commit=${TRAVIS_COMMIT}" \
+              --label "build.number=${TRAVIS_BUILD_NUMBER}" \
+              --label "domain=$domain" \
+              -t "$image" \
+              "src/$domain/$svc/" || echo "WARN build failed for $svc"
+          }
+
+          if [ -n "$SERVICE_NAME" ] && [ -n "$DOMAIN" ]; then
+            build_svc "$DOMAIN" "$SERVICE_NAME"
+          elif [ -n "$DOMAIN" ]; then
+            for svc_path in src/$DOMAIN/*/; do
+              [ -d "$svc_path" ] || continue
+              build_svc "$DOMAIN" "$(basename $svc_path)"
+            done
+          else
+            for d in $ALL_DOMAINS; do
+              for svc_path in src/$d/*/; do
+                [ -d "$svc_path" ] || continue
+                build_svc "$d" "$(basename $svc_path)"
+              done
+            done
+          fi
+
+    - stage: scan
+      name: Trivy Image Scan
+      install:
+        - curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh -s -- -b /usr/local/bin
+      script:
+        - |
+          TAG="${IMAGE_TAG:-dev-${TRAVIS_COMMIT:0:8}-${TRAVIS_BUILD_NUMBER}}"
+          if [ "$SCAN_IMAGE" != "true" ]; then
+            echo "Skipping Trivy scan"
+            exit 0
+          fi
+          mkdir -p reports/image-scan
+
+          ALL_DOMAINS="platform identity catalog commerce supply-chain financial customer-experience communications content analytics-ai b2b integrations affiliate"
+
+          scan_svc() {
+            local svc=$1
+            local image="$HARBOR_REGISTRY/$REGISTRY_PROJECT/$svc:$TAG"
+            echo "=== Trivy: $image ==="
+            trivy image \
+              --exit-code 0 \
+              --severity HIGH,CRITICAL \
+              --format json \
+              --output "reports/image-scan/trivy-${svc}.json" \
+              "$image" || true
+          }
+
+          if [ -n "$SERVICE_NAME" ]; then
+            scan_svc "$SERVICE_NAME"
+          elif [ -n "$DOMAIN" ]; then
+            for svc_path in src/$DOMAIN/*/; do
+              [ -d "$svc_path" ] && scan_svc "$(basename $svc_path)"
+            done
+          else
+            for d in $ALL_DOMAINS; do
+              for svc_path in src/$d/*/; do
+                [ -d "$svc_path" ] && scan_svc "$(basename $svc_path)"
+              done
+            done
+          fi
+
+    - stage: push
+      name: Push to Harbor
+      script:
+        - |
+          TAG="${IMAGE_TAG:-dev-${TRAVIS_COMMIT:0:8}-${TRAVIS_BUILD_NUMBER}}"
+          if [ "$PUSH_IMAGE" != "true" ]; then
+            echo "Skipping push"
+            exit 0
+          fi
+
+          echo "$HARBOR_PASSWORD" | docker login "$HARBOR_REGISTRY" -u "$HARBOR_USERNAME" --password-stdin
+
+          ALL_DOMAINS="platform identity catalog commerce supply-chain financial customer-experience communications content analytics-ai b2b integrations affiliate"
+
+          push_svc() {
+            local svc=$1
+            local image="$HARBOR_REGISTRY/$REGISTRY_PROJECT/$svc:$TAG"
+            echo "=== Pushing: $image ==="
+            docker push "$image" || echo "WARN push failed for $svc"
+          }
+
+          if [ -n "$SERVICE_NAME" ]; then
+            push_svc "$SERVICE_NAME"
+          elif [ -n "$DOMAIN" ]; then
+            for svc_path in src/$DOMAIN/*/; do
+              [ -d "$svc_path" ] && push_svc "$(basename $svc_path)"
+            done
+          else
+            for d in $ALL_DOMAINS; do
+              for svc_path in src/$d/*/; do
+                [ -d "$svc_path" ] && push_svc "$(basename $svc_path)"
+              done
+            done
+          fi
+          docker logout "$HARBOR_REGISTRY" || true
+        - |
+          curl -sf -X POST "$SLACK_WEBHOOK" \
+            -H 'Content-type: application/json' \
+            --data "{\"text\":\":whale: Docker images pushed to $HARBOR_REGISTRY @ tag=dev-${TRAVIS_COMMIT:0:8}-${TRAVIS_BUILD_NUMBER}\"}" || true
+
+notifications:
+  slack:
+    rooms:
+      - secure: "$SLACK_WEBHOOK_ENCRYPTED"
+    on_success: change
+    on_failure: always

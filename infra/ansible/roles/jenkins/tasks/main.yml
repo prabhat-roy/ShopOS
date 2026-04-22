@@ -1,0 +1,89 @@
+---
+- name: Install Java 21
+  apt:
+    name: openjdk-21-jdk
+    state: present
+    update_cache: true
+
+- name: Add Jenkins GPG key
+  apt_key:
+    url: https://pkg.jenkins.io/debian-stable/jenkins.io-2023.key
+    state: present
+
+- name: Add Jenkins repository
+  apt_repository:
+    repo: deb https://pkg.jenkins.io/debian-stable binary/
+    state: present
+    filename: jenkins
+
+- name: Install Jenkins
+  apt:
+    name: jenkins
+    state: present
+    update_cache: true
+
+- name: Enable and start Jenkins
+  systemd:
+    name: jenkins
+    enabled: true
+    state: started
+
+- name: Install Docker
+  block:
+    - name: Add Docker GPG key
+      apt_key:
+        url: https://download.docker.com/linux/ubuntu/gpg
+        state: present
+
+    - name: Add Docker repository
+      apt_repository:
+        repo: "deb [arch=amd64] https://download.docker.com/linux/ubuntu {{ ansible_distribution_release }} stable"
+        state: present
+
+    - name: Install Docker CE
+      apt:
+        name:
+          - docker-ce
+          - docker-ce-cli
+          - containerd.io
+        state: present
+        update_cache: true
+
+    - name: Add jenkins user to docker group
+      user:
+        name: jenkins
+        groups: docker
+        append: true
+      notify: restart jenkins
+
+- name: Install kubectl
+  get_url:
+    url: https://dl.k8s.io/release/v1.31.0/bin/linux/amd64/kubectl
+    dest: /usr/local/bin/kubectl
+    mode: '0755'
+
+- name: Install Helm
+  shell: |
+    curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
+  args:
+    creates: /usr/local/bin/helm
+
+- name: Install Trivy
+  shell: |
+    curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh -s -- -b /usr/local/bin
+  args:
+    creates: /usr/local/bin/trivy
+
+- name: Install Cosign
+  get_url:
+    url: https://github.com/sigstore/cosign/releases/download/v2.4.0/cosign-linux-amd64
+    dest: /usr/local/bin/cosign
+    mode: '0755'
+
+- name: Configure Jenkins home directory permissions
+  file:
+    path: "{{ jenkins_home }}"
+    owner: jenkins
+    group: jenkins
+    state: directory
+    mode: '0755'
