@@ -1,113 +1,117 @@
-name: Install Agent Tools
+name: Verify GitHub Actions Toolchain
+
+# GitHub Actions role: verify that all language runtimes and GitHub-specific
+# CLI tools (gh CLI, act for local testing) are available on runners.
+# Unlike other CI platforms, GitHub Actions provides most tools natively via
+# setup-* actions rather than manual installation.
 
 on:
   workflow_dispatch:
+  schedule:
+    - cron: '0 6 * * 1'   # weekly Monday 06:00 UTC
 
 jobs:
-  install-tools:
-    name: Install CI Agent Tools
+  verify-runtimes:
+    name: Verify language runtimes
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install kubectl
-        uses: azure/setup-kubectl@v4
+      - name: Set up Go 1.23
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.23'
 
-      - name: Install Helm
-        uses: azure/setup-helm@v4
+      - name: Set up Java 21 (Temurin)
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+
+      - name: Set up Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Set up .NET 8
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0'
+
+      - name: Set up Rust (stable)
+        uses: actions-rust-lang/setup-rust-toolchain@v1
+
+      - name: Print runtime versions
+        run: |
+          echo "=== Runtime Versions ==="
+          go version
+          java -version 2>&1 | head -1
+          node --version
+          npm --version
+          python3 --version
+          pip --version
+          dotnet --version
+          rustc --version
+          cargo --version
+
+  verify-github-tools:
+    name: Verify GitHub-specific tools
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: gh CLI (pre-installed on GitHub-hosted runners)
+        run: |
+          gh --version
+          echo "gh CLI: OK"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Install act (local GitHub Actions runner)
+        run: |
+          curl -s https://raw.githubusercontent.com/nektos/act/master/install.sh | sudo bash -s -- -b /usr/local/bin
+          act --version
+          echo "act: OK"
+
+      - name: Install Cosign (Sigstore)
+        uses: sigstore/cosign-installer@v3
+
+      - name: Install Buf (Protobuf toolchain)
+        run: |
+          BUF_VERSION=1.35.1
+          curl -fsSL "https://github.com/bufbuild/buf/releases/download/v${BUF_VERSION}/buf-Linux-x86_64" \
+            -o /usr/local/bin/buf && chmod +x /usr/local/bin/buf
+          buf --version
+
+      - name: Install Helm + kubectl
+        run: |
+          curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
+          helm version --short
+          # kubectl is pre-installed on ubuntu-latest
+          kubectl version --client --short 2>/dev/null || kubectl version --client
 
       - name: Install Terraform
         uses: hashicorp/setup-terraform@v3
         with:
           terraform_version: '1.9.0'
 
-      - name: Install Go
-        uses: actions/setup-go@v5
-        with:
-          go-version: '1.23'
-
-      - name: Install Java 21
-        uses: actions/setup-java@v4
-        with:
-          java-version: '21'
-          distribution: temurin
-
-      - name: Install Node.js 22
-        uses: actions/setup-node@v4
-        with:
-          node-version: '22'
-
-      - name: Install Python 3.13
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.13'
-
-      - name: Install .NET 8
-        uses: actions/setup-dotnet@v4
-        with:
-          dotnet-version: '8.0'
-
-      - name: Install Rust
-        uses: actions-rust-lang/setup-rust-toolchain@v1
-
-      - name: Install Cosign
-        uses: sigstore/cosign-installer@v3
-
-      - name: Install additional CLI tools
+      - name: Install k6 (load testing)
         run: |
-          # Buf (Protobuf toolchain)
-          BUF_VERSION=1.35.1
-          curl -fsSL "https://github.com/bufbuild/buf/releases/download/v${BUF_VERSION}/buf-Linux-x86_64" -o /usr/local/bin/buf
-          chmod +x /usr/local/bin/buf
-
-          # Kustomize
-          curl -fsSL "https://raw.githubusercontent.com/kubernetes-sigs/kustomize/master/hack/install_kustomize.sh" | bash
-          mv kustomize /usr/local/bin/
-
-          # Trivy
-          curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh -s -- -b /usr/local/bin
-
-          # Grype
-          curl -sSfL https://raw.githubusercontent.com/anchore/grype/main/install.sh | sh -s -- -b /usr/local/bin
-
-          # Syft
-          curl -sSfL https://raw.githubusercontent.com/anchore/syft/main/install.sh | sh -s -- -b /usr/local/bin
-
-          # Gitleaks
-          GITLEAKS_VER=8.21.0
-          curl -fsSL "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VER}/gitleaks_${GITLEAKS_VER}_linux_x64.tar.gz" | tar -xz -C /usr/local/bin gitleaks
-
-          # Semgrep
-          pip install semgrep --quiet
-
-          # Checkov
-          pip install checkov --quiet
-
-          # Ansible
-          pip install ansible ansible-lint --quiet
-
-          # k6
-          sudo apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv-keys C5AD17C747E3415A3642D57D77C6C491D6AC1D69
+          sudo apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 \
+            --recv-keys C5AD17C747E3415A3642D57D77C6C491D6AC1D69 2>/dev/null || true
           echo "deb https://dl.k6.io/deb stable main" | sudo tee /etc/apt/sources.list.d/k6.list
           sudo apt-get update -qq && sudo apt-get install k6 -y -qq
-
-          echo "=== Tool versions ==="
-          kubectl version --client --short 2>/dev/null || kubectl version --client
-          helm version --short
-          terraform version
-          go version
-          java -version 2>&1 | head -1
-          node --version
-          python3 --version
-          dotnet --version
-          rustc --version
-          cosign version
-          buf --version
-          trivy --version | head -1
-          grype version | head -1
-          syft --version
-          gitleaks version
-          semgrep --version
-          checkov --version
-          ansible --version | head -1
           k6 version
+
+      - name: Print GitHub Actions context
+        run: |
+          echo "=== GitHub Actions Environment ==="
+          echo "Runner: ${{ runner.os }} / ${{ runner.arch }}"
+          echo "GitHub SHA: ${{ github.sha }}"
+          echo "Event: ${{ github.event_name }}"
+          echo "All tools verified successfully."

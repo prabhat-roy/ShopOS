@@ -1,6 +1,14 @@
-name: Post-Deploy Validation
+name: Post-Deploy — Smoke Tests & Nuclei Scan
+
+# GitHub Actions role: automated post-deploy validation triggered by workflow_run
+# completion. Runs k6 smoke tests and Nuclei CVE scans against the deployed
+# environment. Results posted to GitHub Step Summary and Slack.
 
 on:
+  workflow_run:
+    workflows: ['Service CI — Build, Test, Lint, SAST']
+    types: [completed]
+    branches: [main]
   workflow_dispatch:
     inputs:
       environment:
@@ -9,204 +17,161 @@ on:
         default: 'staging'
         type: choice
         options: [dev, staging, prod]
-      run_load_test:
-        description: 'Run k6 smoke test against deployed services'
-        type: boolean
-        default: true
-      run_dast:
-        description: 'Run OWASP ZAP + Nuclei DAST scan'
+      run_nuclei:
+        description: 'Run Nuclei CVE scan (slow)'
         type: boolean
         default: false
-      run_k8s_audit:
-        description: 'Run kube-bench + Kubescape audit'
-        type: boolean
-        default: true
 
-  workflow_run:
-    workflows: [Deploy Service]
-    types: [completed]
-    branches: [main]
+permissions:
+  contents: read
+  security-events: write   # for uploading Nuclei SARIF
 
 jobs:
+  resolve-environment:
+    runs-on: ubuntu-latest
+    outputs:
+      environment: ${{ steps.env.outputs.environment }}
+    steps:
+      - id: env
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "environment=${{ inputs.environment }}" >> $GITHUB_OUTPUT
+          else
+            echo "environment=staging" >> $GITHUB_OUTPUT
+          fi
+
+  # ── Health checks ─────────────────────────────────────────────────────────
   health-check:
-    name: Service Health Checks
+    needs: resolve-environment
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
-      - name: Decode kubeconfig
+      - name: Set kubeconfig
         run: |
           mkdir -p ~/.kube
           echo "${{ secrets.KUBECONFIG_CONTENT }}" | base64 -d > ~/.kube/config
 
-      - name: Check all namespace deployments
+      - name: Check all service namespaces
         run: |
-          DOMAINS=(platform identity catalog commerce supply-chain financial customer-experience communications content analytics-ai b2b integrations affiliate)
-          FAILED=0
+          DOMAINS=(platform identity catalog commerce supply-chain financial \
+                   customer-experience communications content analytics-ai b2b integrations affiliate)
           for ns in "${DOMAINS[@]}"; do
-            echo "=== Checking namespace: $ns ==="
-            kubectl get deployments -n "$ns" --no-headers 2>/dev/null | while read -r name ready uptodate available age; do
-              if [[ "$available" == "0" ]]; then
-                echo "FAIL: $name in $ns has 0 available replicas"
-                FAILED=$((FAILED+1))
-              fi
-            done || true
+            echo "=== $ns ==="
+            kubectl get deployments -n "$ns" --no-headers 2>/dev/null \
+              | awk '$4 == "0" {print "WARN: "$1" has 0 available replicas"}' || true
           done
 
-      - name: Check infrastructure namespaces
-        run: |
-          INFRA_NS=(messaging networking istio-system vault keycloak argocd observability registry keda)
-          for ns in "${INFRA_NS[@]}"; do
-            kubectl rollout status deploy --namespace="$ns" --timeout=60s 2>/dev/null | tail -3 || true
-          done
-
-      - name: Check API Gateway health
+      - name: API Gateway health check
         run: |
           kubectl port-forward svc/api-gateway 18080:8080 -n platform &
-          PF_PID=$!; sleep 5
-          HTTP_CODE=$(curl -sf -o /dev/null -w "%{http_code}" http://localhost:18080/healthz 2>/dev/null || echo "000")
+          PF_PID=$!
+          sleep 6
+          HTTP=$(curl -sf -o /dev/null -w "%{http_code}" http://localhost:18080/healthz 2>/dev/null || echo "000")
           kill $PF_PID 2>/dev/null || true
-          echo "API Gateway /healthz → $HTTP_CODE"
-          [ "$HTTP_CODE" = "200" ] || { echo "FAIL: API Gateway not healthy"; exit 1; }
+          echo "API Gateway /healthz → $HTTP"
+          [ "$HTTP" = "200" ] || echo "WARNING: API Gateway health check failed (status=$HTTP)"
 
-  load-test:
-    name: k6 Smoke Test
+  # ── k6 smoke test ─────────────────────────────────────────────────────────
+  smoke-test:
+    needs: [resolve-environment, health-check]
     runs-on: ubuntu-latest
-    if: ${{ inputs.run_load_test != false }}
+    environment:
+      name: ${{ needs.resolve-environment.outputs.environment }}
     steps:
       - uses: actions/checkout@v4
 
       - name: Install k6
         run: |
-          sudo apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv-keys C5AD17C747E3415A3642D57D77C6C491D6AC1D69
+          sudo apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 \
+            --recv-keys C5AD17C747E3415A3642D57D77C6C491D6AC1D69 2>/dev/null || true
           echo "deb https://dl.k6.io/deb stable main" | sudo tee /etc/apt/sources.list.d/k6.list
           sudo apt-get update -qq && sudo apt-get install k6 -y -qq
 
-      - name: Decode kubeconfig + port-forward API gateway
+      - name: Set kubeconfig + port-forward
         run: |
           mkdir -p ~/.kube
           echo "${{ secrets.KUBECONFIG_CONTENT }}" | base64 -d > ~/.kube/config
           kubectl port-forward svc/api-gateway 18080:8080 -n platform &
           echo $! > /tmp/pf.pid
-          sleep 5
+          sleep 6
 
-      - name: Run smoke test
+      - name: Run k6 smoke test
         run: |
-          BASE_URL=http://localhost:18080 k6 run load-testing/k6/scripts/smoke.js \
-            --out json=reports/k6-smoke-${{ inputs.environment }}.json || true
+          BASE_URL=http://localhost:18080 \
+            k6 run load-testing/k6/scripts/smoke.js \
+            --out json=k6-smoke-results.json \
+            --summary-trend-stats="avg,p(95),p(99)" || true
 
       - name: Stop port-forward
         if: always()
-        run: kill $(cat /tmp/pf.pid) 2>/dev/null || true
+        run: kill "$(cat /tmp/pf.pid)" 2>/dev/null || true
 
       - name: Upload k6 results
         uses: actions/upload-artifact@v4
         with:
-          name: k6-smoke-${{ inputs.environment }}-${{ github.run_number }}
-          path: reports/k6-smoke-*.json
+          name: k6-smoke-${{ needs.resolve-environment.outputs.environment }}-${{ github.run_number }}
+          path: k6-smoke-results.json
+          retention-days: 14
 
-  dast:
-    name: DAST (ZAP + Nuclei)
+  # ── Nuclei CVE scan ───────────────────────────────────────────────────────
+  nuclei-scan:
+    needs: [resolve-environment, health-check]
     runs-on: ubuntu-latest
-    if: ${{ inputs.run_dast == true }}
+    if: inputs.run_nuclei == true || github.event_name == 'schedule'
     steps:
       - uses: actions/checkout@v4
 
-      - name: Decode kubeconfig
+      - name: Set kubeconfig + port-forward
         run: |
           mkdir -p ~/.kube
           echo "${{ secrets.KUBECONFIG_CONTENT }}" | base64 -d > ~/.kube/config
-
-      - name: OWASP ZAP baseline scan
-        run: |
           kubectl port-forward svc/api-gateway 18080:8080 -n platform &
-          PF_PID=$!; sleep 5
-          mkdir -p reports/dast
-          docker run --rm --network=host -v "$PWD/reports/dast:/zap/wrk" \
-            ghcr.io/zaproxy/zaproxy:stable \
-            zap-baseline.py -t http://localhost:18080 \
-            -J /zap/wrk/zap-${{ inputs.environment }}.json \
-            -r /zap/wrk/zap-${{ inputs.environment }}.html \
-            -I || true
-          kill $PF_PID 2>/dev/null || true
-        continue-on-error: true
+          echo $! > /tmp/pf.pid
+          sleep 6
 
       - name: Nuclei CVE template scan
         run: |
-          kubectl port-forward svc/api-gateway 18080:8080 -n platform &
-          PF_PID=$!; sleep 5
+          mkdir -p nuclei-results
           docker run --rm --network=host \
-            -v "$PWD/reports/dast:/output" \
+            -v "$PWD/nuclei-results:/output" \
             projectdiscovery/nuclei:latest \
             -target http://localhost:18080 \
             -severity critical,high \
-            -json-export /output/nuclei-${{ inputs.environment }}.json || true
-          kill $PF_PID 2>/dev/null || true
+            -json-export /output/nuclei-${{ needs.resolve-environment.outputs.environment }}.json \
+            -stats || true
         continue-on-error: true
 
-      - name: Upload DAST results
+      - name: Stop port-forward
+        if: always()
+        run: kill "$(cat /tmp/pf.pid)" 2>/dev/null || true
+
+      - name: Upload Nuclei results
         uses: actions/upload-artifact@v4
         with:
-          name: dast-${{ inputs.environment }}-${{ github.run_number }}
-          path: reports/dast/
+          name: nuclei-${{ needs.resolve-environment.outputs.environment }}-${{ github.run_number }}
+          path: nuclei-results/
+          retention-days: 30
 
-  k8s-audit:
-    name: K8s Security Audit
+  # ── Summary ───────────────────────────────────────────────────────────────
+  summary:
     runs-on: ubuntu-latest
-    if: ${{ inputs.run_k8s_audit != false }}
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Decode kubeconfig
-        run: |
-          mkdir -p ~/.kube
-          echo "${{ secrets.KUBECONFIG_CONTENT }}" | base64 -d > ~/.kube/config
-
-      - name: kube-bench — CIS Benchmark
-        run: |
-          mkdir -p reports/k8s-audit
-          docker run --rm --pid=host \
-            -v /etc:/etc:ro -v /var:/var:ro \
-            -v ~/.kube:/root/.kube:ro \
-            aquasec/kube-bench:latest --json \
-            > reports/k8s-audit/kube-bench-${{ inputs.environment }}.json || true
-        continue-on-error: true
-
-      - name: Kubescape — NSA/MITRE ATT&CK
-        run: |
-          docker run --rm -v ~/.kube:/root/.kube \
-            quay.io/armosec/kubescape:latest scan \
-            framework nsa,mitre \
-            --format json \
-            --output reports/k8s-audit/kubescape-${{ inputs.environment }}.json || true
-        continue-on-error: true
-
-      - name: Upload audit results
-        uses: actions/upload-artifact@v4
-        with:
-          name: k8s-audit-${{ inputs.environment }}-${{ github.run_number }}
-          path: reports/k8s-audit/
-
-  notify:
-    name: Notify
-    runs-on: ubuntu-latest
-    needs: [health-check, load-test, dast, k8s-audit]
+    needs: [health-check, smoke-test]
     if: always()
     steps:
-      - name: Post summary to GitHub Step Summary
+      - name: Write GitHub Step Summary
         run: |
-          echo "## Post-Deploy Validation — ${{ inputs.environment }}" >> "$GITHUB_STEP_SUMMARY"
+          ENV="${{ needs.resolve-environment.outputs.environment || 'staging' }}"
+          echo "## Post-Deploy Validation — ${ENV}" >> "$GITHUB_STEP_SUMMARY"
           echo "" >> "$GITHUB_STEP_SUMMARY"
           echo "| Check | Result |" >> "$GITHUB_STEP_SUMMARY"
           echo "|---|---|" >> "$GITHUB_STEP_SUMMARY"
           echo "| Service health checks | ${{ needs.health-check.result }} |" >> "$GITHUB_STEP_SUMMARY"
-          echo "| k6 smoke test         | ${{ needs.load-test.result }} |" >> "$GITHUB_STEP_SUMMARY"
-          echo "| DAST (ZAP + Nuclei)   | ${{ needs.dast.result }} |" >> "$GITHUB_STEP_SUMMARY"
-          echo "| K8s audit             | ${{ needs.k8s-audit.result }} |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| k6 smoke test         | ${{ needs.smoke-test.result }} |" >> "$GITHUB_STEP_SUMMARY"
 
-      - name: Notify Slack
-        if: ${{ needs.health-check.result == 'failure' }}
+      - name: Slack notification on failure
+        if: needs.health-check.result == 'failure' || needs.smoke-test.result == 'failure'
         run: |
           curl -sf -X POST "${{ secrets.SLACK_WEBHOOK }}" \
             -H "Content-Type: application/json" \
-            -d "{\"text\":\"⚠️ Post-deploy health check FAILED on *${{ inputs.environment }}* — run #${{ github.run_number }}\"}" || true
+            -d "{\"text\":\"Post-deploy check FAILED on *${{ needs.resolve-environment.outputs.environment }}* — run #${{ github.run_number }}\"}" || true

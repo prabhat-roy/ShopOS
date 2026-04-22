@@ -1,6 +1,9 @@
-# Registry Tools — GitLab CI
-# Variables: ENVIRONMENT, ACTION (INSTALL|UPGRADE|UNINSTALL|CONFIGURE)
-#   HARBOR, NEXUS, GITEA, MINIO
+# GitLab CI — Registry Tools with GitLab Environments
+#
+# GitLab CI role: deploy Harbor and MinIO to named GitLab environments.
+# Uses GitLab's environment: keyword for deployment tracking and stop actions.
+# Falls back to GitLab's own container registry ($CI_REGISTRY) when Harbor
+# is being installed for the first time.
 
 variables:
   ENVIRONMENT: dev
@@ -20,14 +23,19 @@ stages:
   - configure
 
 default:
-  image: alpine/helm:latest
+  image: alpine/helm:3.16.1
   before_script:
     - apk add --no-cache curl bash
-    - curl -fsSL "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl" -o /usr/local/bin/kubectl && chmod +x /usr/local/bin/kubectl
+    - curl -fsSL "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl" \
+        -o /usr/local/bin/kubectl && chmod +x /usr/local/bin/kubectl
     - mkdir -p ~/.kube && echo "$KUBECONFIG_CONTENT" | base64 -d > ~/.kube/config
 
 harbor:
   stage: install
+  environment:
+    name: $ENVIRONMENT/registry/harbor
+    url: https://harbor.$ENVIRONMENT.shopos.internal
+    on_stop: stop-harbor
   script:
     - '[ "$HARBOR" = "true" ] && [ "$ACTION" != "CONFIGURE" ] || exit 0'
     - helm repo add harbor https://helm.goharbor.io --force-update
@@ -39,36 +47,64 @@ harbor:
           --namespace registry --create-namespace \
           --set expose.type=ingress \
           --set expose.ingress.className=traefik \
-          --set expose.ingress.hosts.core=harbor.shopos.internal \
-          --set externalURL=https://harbor.shopos.internal \
+          --set "expose.ingress.hosts.core=harbor.$ENVIRONMENT.shopos.internal" \
+          --set "externalURL=https://harbor.$ENVIRONMENT.shopos.internal" \
           --set harborAdminPassword="$HARBOR_ADMIN_PASSWORD" \
           --set trivy.enabled=true \
           --set notary.enabled=true \
           --set persistence.enabled=true \
-          --wait --timeout 10m
+          --set persistence.persistentVolumeClaim.registry.size=100Gi \
+          --wait --timeout 15m
       fi
+
+stop-harbor:
+  stage: install
+  environment:
+    name: $ENVIRONMENT/registry/harbor
+    action: stop
+  script:
+    - helm uninstall harbor -n registry --ignore-not-found || true
+  when: manual
 
 minio:
   stage: install
+  environment:
+    name: $ENVIRONMENT/registry/minio
+    url: https://minio.$ENVIRONMENT.shopos.internal
+    on_stop: stop-minio
   script:
     - '[ "$MINIO" = "true" ] && [ "$ACTION" != "CONFIGURE" ] || exit 0'
     - helm repo add minio https://charts.min.io --force-update
     - |
       if [ "$ACTION" = "UNINSTALL" ]; then
-        helm uninstall minio -n registry 2>/dev/null || true
+        helm uninstall minio -n minio 2>/dev/null || true
       else
+        REPLICAS=1; [ "$ENVIRONMENT" = "prod" ] && REPLICAS=4
         helm upgrade --install minio minio/minio \
-          --namespace registry --create-namespace \
+          --namespace minio --create-namespace \
           --set rootUser="$MINIO_ROOT_USER" \
           --set rootPassword="$MINIO_ROOT_PASSWORD" \
-          --set replicas=4 \
+          --set replicas=$REPLICAS \
           --set persistence.enabled=true \
-          --set persistence.size=100Gi \
-          --wait --timeout 8m
+          --set persistence.size=200Gi \
+          --set metrics.serviceMonitor.enabled=true \
+          --wait --timeout 10m
       fi
+
+stop-minio:
+  stage: install
+  environment:
+    name: $ENVIRONMENT/registry/minio
+    action: stop
+  script:
+    - helm uninstall minio -n minio --ignore-not-found || true
+  when: manual
 
 gitea:
   stage: install
+  environment:
+    name: $ENVIRONMENT/registry/gitea
+    url: https://gitea.$ENVIRONMENT.shopos.internal
   script:
     - '[ "$GITEA" = "true" ] && [ "$ACTION" != "CONFIGURE" ] || exit 0'
     - helm repo add gitea-charts https://dl.gitea.io/charts --force-update
@@ -88,6 +124,9 @@ gitea:
 
 nexus:
   stage: install
+  environment:
+    name: $ENVIRONMENT/registry/nexus
+    url: https://nexus.$ENVIRONMENT.shopos.internal
   script:
     - '[ "$NEXUS" = "true" ] && [ "$ACTION" != "CONFIGURE" ] || exit 0'
     - helm repo add sonatype https://sonatype.github.io/helm3-charts --force-update
@@ -105,35 +144,43 @@ nexus:
 configure-minio:
   stage: configure
   image: minio/mc:latest
+  before_script:
+    - apk add --no-cache curl
+    - curl -fsSL "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl" \
+        -o /usr/local/bin/kubectl && chmod +x /usr/local/bin/kubectl
+    - mkdir -p ~/.kube && echo "$KUBECONFIG_CONTENT" | base64 -d > ~/.kube/config
   script:
     - '[ "$ACTION" = "CONFIGURE" ] || exit 0'
-    - apk add --no-cache curl
-    - curl -fsSL "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl" -o /usr/local/bin/kubectl && chmod +x /usr/local/bin/kubectl
-    - mkdir -p ~/.kube && echo "$KUBECONFIG_CONTENT" | base64 -d > ~/.kube/config
-    - kubectl port-forward svc/minio 9000:9000 -n registry &
-    - sleep 5
+    - kubectl port-forward svc/minio 9000:9000 -n minio &
+    - sleep 6
     - mc alias set shopos http://localhost:9000 "$MINIO_ROOT_USER" "$MINIO_ROOT_PASSWORD"
     - |
-      for BUCKET in harbor-registry velero-backups loki-chunks tempo-traces thanos mlflow artifacts backups media-assets; do
+      for BUCKET in harbor-registry velero-backups loki-chunks tempo-traces \
+                    thanos mlflow artifacts backups media-assets; do
         mc mb --ignore-existing "shopos/$BUCKET" || true
-        echo "Created: $BUCKET"
+        echo "Bucket created: $BUCKET"
       done
   needs: [harbor, minio]
 
 configure-harbor:
   stage: configure
   image: curlimages/curl:latest
+  before_script:
+    - apk add --no-cache curl
+    - curl -fsSL "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl" \
+        -o /usr/local/bin/kubectl && chmod +x /usr/local/bin/kubectl
+    - mkdir -p ~/.kube && echo "$KUBECONFIG_CONTENT" | base64 -d > ~/.kube/config
   script:
     - '[ "$ACTION" = "CONFIGURE" ] || exit 0'
-    - apk add --no-cache curl
-    - curl -fsSL "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl" -o /usr/local/bin/kubectl && chmod +x /usr/local/bin/kubectl
-    - mkdir -p ~/.kube && echo "$KUBECONFIG_CONTENT" | base64 -d > ~/.kube/config
     - kubectl port-forward svc/harbor-core 18080:80 -n registry &
-    - sleep 5
+    - sleep 8
     - |
-      for PROJECT in platform identity catalog commerce supply-chain financial customer-experience communications content analytics-ai b2b integrations affiliate; do
-        curl -sf -u "admin:$HARBOR_ADMIN_PASSWORD" -X POST "http://localhost:18080/api/v2.0/projects" \
+      for PROJECT in platform identity catalog commerce supply-chain financial \
+                     customer-experience communications content analytics-ai b2b integrations affiliate; do
+        curl -sf -u "admin:$HARBOR_ADMIN_PASSWORD" \
+          -X POST "http://localhost:18080/api/v2.0/projects" \
           -H "Content-Type: application/json" \
           -d "{\"project_name\":\"$PROJECT\",\"public\":false,\"metadata\":{\"auto_scan\":\"true\",\"prevent_vul\":\"true\",\"severity\":\"high\"}}" || true
+        echo "Harbor project created: $PROJECT"
       done
   needs: [harbor, minio]

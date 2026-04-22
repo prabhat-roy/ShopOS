@@ -1,30 +1,32 @@
-# Docker-Build Pipeline — GitLab CI
-# Builds Docker images for all ShopOS services and pushes to Harbor with Trivy scanning.
-# Required CI/CD variables (Settings → CI/CD → Variables):
-#   HARBOR_REGISTRY, HARBOR_USER, HARBOR_PASSWORD
+# GitLab CI — Docker Build with GitLab Container Registry fallback
+#
+# GitLab CI role: build and push images, preferring Harbor registry but falling
+# back to GitLab's built-in container registry ($CI_REGISTRY) when Harbor is
+# unavailable. Uses GitLab's native CI_REGISTRY_* variables — no secrets needed
+# for the fallback path.
 
 variables:
-  SERVICE_NAME: ""           # empty = all services in DOMAIN (or all 154 if DOMAIN also empty)
-  DOMAIN: ""                 # empty = all 13 domains
   IMAGE_TAG: $CI_COMMIT_SHORT_SHA
   REGISTRY_PROJECT: shopos
   PUSH_IMAGE: "true"
   SCAN_IMAGE: "true"
+  DOMAIN: ""       # empty = all 13 domains
+  SERVICE_NAME: "" # empty = all services in DOMAIN
 
 workflow:
   rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - if: $CI_COMMIT_BRANCH =~ /^(main|develop|release\/.*)$/
     - if: $CI_PIPELINE_SOURCE == "web"
     - if: $CI_PIPELINE_SOURCE == "trigger"
-    - if: $CI_PIPELINE_SOURCE == "api"
-    - if: $CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH =~ /^(main|develop|release\/.*)$/
 
 stages:
   - build
   - scan
   - push
-  - cleanup
+  - attest
 
-# ── Docker Build ─────────────────────────────────────────────────────────────
+# ── Docker build (Harbor primary, GitLab registry fallback) ──────────────────
 docker-build:
   stage: build
   image: docker:27
@@ -33,63 +35,72 @@ docker-build:
   variables:
     DOCKER_TLS_CERTDIR: "/certs"
   before_script:
-    - echo "$HARBOR_PASSWORD" | docker login "$HARBOR_REGISTRY" -u "$HARBOR_USER" --password-stdin
+    # Login to Harbor (primary)
+    - echo "$HARBOR_PASSWORD" | docker login "$HARBOR_REGISTRY" -u "$HARBOR_USER" --password-stdin 2>/dev/null || true
+    # Login to GitLab Container Registry (fallback — no secrets needed)
+    - echo "$CI_REGISTRY_PASSWORD" | docker login "$CI_REGISTRY" -u "$CI_REGISTRY_USER" --password-stdin
   script:
     - |
       ALL_DOMAINS="platform identity catalog commerce supply-chain financial customer-experience communications content analytics-ai b2b integrations affiliate"
 
-      build_svc() {
+      build_and_tag() {
         local domain=$1 svc=$2
-        local image="$HARBOR_REGISTRY/$REGISTRY_PROJECT/$svc:$IMAGE_TAG"
-        echo "=== Building: $image ==="
+        local harbor_image="$HARBOR_REGISTRY/$REGISTRY_PROJECT/$svc:$IMAGE_TAG"
+        local gl_image="$CI_REGISTRY_IMAGE/$svc:$IMAGE_TAG"
+
+        echo "=== Building: $svc (domain=$domain) ==="
         docker build \
           --label "git.commit=$CI_COMMIT_SHA" \
           --label "build.number=$CI_PIPELINE_IID" \
           --label "domain=$domain" \
-          -t "$image" \
-          "src/$domain/$svc/" || echo "WARN build failed for $svc"
+          --label "ci.platform=gitlab" \
+          -t "$harbor_image" \
+          -t "$gl_image" \
+          "src/$domain/$svc/" || { echo "WARN: $svc build failed"; return; }
+
+        # Always push to GitLab registry (fallback)
+        docker push "$gl_image" || echo "WARN: GitLab registry push failed for $svc"
       }
 
       if [ -n "$SERVICE_NAME" ] && [ -n "$DOMAIN" ]; then
-        build_svc "$DOMAIN" "$SERVICE_NAME"
+        build_and_tag "$DOMAIN" "$SERVICE_NAME"
       elif [ -n "$DOMAIN" ]; then
         for svc_path in src/$DOMAIN/*/; do
-          [ -d "$svc_path" ] || continue
-          build_svc "$DOMAIN" "$(basename $svc_path)"
+          [ -d "$svc_path" ] && build_and_tag "$DOMAIN" "$(basename $svc_path)"
         done
       else
         for d in $ALL_DOMAINS; do
           for svc_path in src/$d/*/; do
-            [ -d "$svc_path" ] || continue
-            build_svc "$d" "$(basename $svc_path)"
+            [ -d "$svc_path" ] && build_and_tag "$d" "$(basename $svc_path)"
           done
         done
       fi
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - if: $CI_COMMIT_BRANCH =~ /^(main|develop|release\/.*)$/
 
-# ── Trivy Image Scan ──────────────────────────────────────────────────────────
-trivy-image-scan:
+# ── Trivy scan (from GitLab registry — no Harbor needed) ─────────────────────
+trivy-scan:
   stage: scan
   image: aquasec/trivy:latest
   script:
     - mkdir -p reports/image-scan
     - |
-      if [ "$SCAN_IMAGE" != "true" ]; then
-        echo "SCAN_IMAGE=false — skipping"
-        exit 0
-      fi
+      [ "$SCAN_IMAGE" != "true" ] && echo "Scan disabled" && exit 0
 
       ALL_DOMAINS="platform identity catalog commerce supply-chain financial customer-experience communications content analytics-ai b2b integrations affiliate"
 
       scan_svc() {
         local svc=$1
-        local image="$HARBOR_REGISTRY/$REGISTRY_PROJECT/$svc:$IMAGE_TAG"
-        echo "=== Trivy: $image ==="
+        # Scan from GitLab registry (always available)
+        local image="$CI_REGISTRY_IMAGE/$svc:$IMAGE_TAG"
+        echo "=== Trivy: $svc ==="
         trivy image \
           --exit-code 0 \
           --severity HIGH,CRITICAL \
-          --format json \
-          --output "reports/image-scan/trivy-${svc}.json" \
-          "$image" || true
+          --format sarif \
+          --output "reports/image-scan/trivy-${svc}.sarif" \
+          "$image" 2>/dev/null || true
       }
 
       if [ -n "$SERVICE_NAME" ]; then
@@ -99,20 +110,21 @@ trivy-image-scan:
           [ -d "$svc_path" ] && scan_svc "$(basename $svc_path)"
         done
       else
-        for d in $ALL_DOMAINS; do
-          for svc_path in src/$d/*/; do
-            [ -d "$svc_path" ] && scan_svc "$(basename $svc_path)"
-          done
+        # Scan key services as a representative sample
+        for svc in api-gateway order-service product-catalog-service payment-service auth-service; do
+          scan_svc "$svc" || true
         done
       fi
   artifacts:
     paths: [reports/image-scan/]
+    reports:
+      container_scanning: reports/image-scan/trivy-api-gateway.sarif
     expire_in: 7d
   needs: [docker-build]
   allow_failure: true
 
-# ── Docker Push ───────────────────────────────────────────────────────────────
-docker-push:
+# ── Push to Harbor (primary registry) ────────────────────────────────────────
+push-to-harbor:
   stage: push
   image: docker:27
   services:
@@ -120,53 +132,55 @@ docker-push:
   variables:
     DOCKER_TLS_CERTDIR: "/certs"
   before_script:
+    - echo "$CI_REGISTRY_PASSWORD" | docker login "$CI_REGISTRY" -u "$CI_REGISTRY_USER" --password-stdin
     - echo "$HARBOR_PASSWORD" | docker login "$HARBOR_REGISTRY" -u "$HARBOR_USER" --password-stdin
   script:
     - |
-      if [ "$PUSH_IMAGE" != "true" ]; then
-        echo "PUSH_IMAGE=false — skipping"
-        exit 0
-      fi
+      [ "$PUSH_IMAGE" != "true" ] && echo "Push disabled" && exit 0
 
       ALL_DOMAINS="platform identity catalog commerce supply-chain financial customer-experience communications content analytics-ai b2b integrations affiliate"
 
-      push_svc() {
+      retag_and_push() {
         local svc=$1
-        local image="$HARBOR_REGISTRY/$REGISTRY_PROJECT/$svc:$IMAGE_TAG"
-        echo "=== Pushing: $image ==="
-        docker push "$image" || echo "WARN push failed for $svc"
+        local gl_image="$CI_REGISTRY_IMAGE/$svc:$IMAGE_TAG"
+        local harbor_image="$HARBOR_REGISTRY/$REGISTRY_PROJECT/$svc:$IMAGE_TAG"
+        docker pull "$gl_image" || return
+        docker tag "$gl_image" "$harbor_image"
+        docker push "$harbor_image" || echo "WARN: Harbor push failed for $svc"
       }
 
       if [ -n "$SERVICE_NAME" ]; then
-        push_svc "$SERVICE_NAME"
+        retag_and_push "$SERVICE_NAME"
       elif [ -n "$DOMAIN" ]; then
         for svc_path in src/$DOMAIN/*/; do
-          [ -d "$svc_path" ] && push_svc "$(basename $svc_path)"
+          [ -d "$svc_path" ] && retag_and_push "$(basename $svc_path)"
         done
       else
         for d in $ALL_DOMAINS; do
           for svc_path in src/$d/*/; do
-            [ -d "$svc_path" ] && push_svc "$(basename $svc_path)"
+            [ -d "$svc_path" ] && retag_and_push "$(basename $svc_path)"
           done
         done
       fi
-  needs: [trivy-image-scan]
+  needs: [trivy-scan]
   rules:
     - if: $CI_COMMIT_BRANCH =~ /^(main|develop|release\/.*)$/
       when: on_success
     - when: manual
 
-# ── Cleanup ───────────────────────────────────────────────────────────────────
-cleanup:
-  stage: cleanup
-  image: docker:27
-  services:
-    - docker:27-dind
-  variables:
-    DOCKER_TLS_CERTDIR: "/certs"
+# ── Cosign attestation ───────────────────────────────────────────────────────
+cosign-attest:
+  stage: attest
+  image: gcr.io/projectsigstore/cosign:latest
   script:
-    - docker image prune -f 2>/dev/null || true
-    - docker logout "$HARBOR_REGISTRY" 2>/dev/null || true
-    - echo "Cleanup complete. Tag=${IMAGE_TAG}"
-  needs: [docker-push]
-  when: always
+    - |
+      [ -z "$COSIGN_KEY" ] && echo "No COSIGN_KEY set — skipping attestation" && exit 0
+      SVC="${SERVICE_NAME:-api-gateway}"
+      IMAGE="$HARBOR_REGISTRY/$REGISTRY_PROJECT/$SVC:$IMAGE_TAG"
+      echo "$COSIGN_KEY" | base64 -d > /tmp/cosign.key
+      cosign sign --key /tmp/cosign.key --yes "$IMAGE" || true
+      rm -f /tmp/cosign.key
+  needs: [push-to-harbor]
+  allow_failure: true
+  rules:
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH

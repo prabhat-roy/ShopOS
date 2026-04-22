@@ -1,29 +1,59 @@
-name: Registry Tools
+name: Registry — Environment Deploy
+
+# GitHub Actions role: deploy Harbor, Nexus, MinIO to named environments.
+# Uses GitHub environment protection rules for staging/prod gates.
 
 on:
+  push:
+    branches: [develop, main]
+    paths:
+      - 'registry/**'
+      - 'helm/charts/harbor/**'
+      - 'helm/charts/minio/**'
+  push:
+    tags: ['v*']
   workflow_dispatch:
     inputs:
+      environment:
+        description: 'Target environment'
+        required: true
+        default: 'dev'
+        type: choice
+        options: [dev, staging, prod]
       action:
-        description: 'INSTALL, UNINSTALL, or CONFIGURE registry tools'
         required: true
         default: 'INSTALL'
         type: choice
-        options: [INSTALL, UNINSTALL, CONFIGURE]
-      harbor:     { description: 'Harbor — enterprise container registry + RBAC + scanning', type: boolean, default: false }
-      nexus:      { description: 'Nexus Repository — Maven, npm, PyPI, Go, Docker artifacts', type: boolean, default: false }
-      gitea:      { description: 'Gitea — self-hosted Git server for GitOps',                type: boolean, default: false }
-      chartmuseum: { description: 'ChartMuseum — Helm chart repository',                    type: boolean, default: false }
-      zot:        { description: 'Zot — OCI-native container registry',                      type: boolean, default: false }
-      minio:      { description: 'MinIO — S3-compatible object storage',                     type: boolean, default: false }
+        options: [INSTALL, CONFIGURE, UNINSTALL]
 
 jobs:
-  registry-tools:
-    name: ${{ inputs.action }} Registry Tools
+  resolve-environment:
     runs-on: ubuntu-latest
+    outputs:
+      environment: ${{ steps.env.outputs.environment }}
+    steps:
+      - id: env
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "environment=${{ inputs.environment }}" >> $GITHUB_OUTPUT
+          elif [[ "${{ github.ref }}" == refs/tags/v* ]]; then
+            echo "environment=prod" >> $GITHUB_OUTPUT
+          elif [ "${{ github.ref_name }}" = "main" ]; then
+            echo "environment=staging" >> $GITHUB_OUTPUT
+          else
+            echo "environment=dev" >> $GITHUB_OUTPUT
+          fi
+
+  deploy-registry:
+    needs: resolve-environment
+    runs-on: ubuntu-latest
+    environment:
+      name: ${{ needs.resolve-environment.outputs.environment }}
+      url: https://harbor.${{ needs.resolve-environment.outputs.environment }}.shopos.internal
     steps:
       - uses: actions/checkout@v4
 
-      - name: Decode kubeconfig
+      - name: Set kubeconfig
         run: |
           mkdir -p ~/.kube
           echo "${{ secrets.KUBECONFIG_CONTENT }}" | base64 -d > ~/.kube/config
@@ -33,95 +63,66 @@ jobs:
 
       - name: Add Helm repos
         run: |
-          helm repo add harbor       https://helm.goharbor.io
-          helm repo add sonatype     https://sonatype.github.io/helm3-charts/
-          helm repo add gitea        https://dl.gitea.com/charts/
-          helm repo add chartmuseum  https://chartmuseum.github.io/charts
-          helm repo add project-zot  https://zotregistry.dev/helm-charts/
-          helm repo add minio        https://charts.min.io/
+          helm repo add harbor    https://helm.goharbor.io
+          helm repo add sonatype  https://sonatype.github.io/helm3-charts/
+          helm repo add minio     https://charts.min.io/
           helm repo update
 
-      - name: Install — Harbor (enterprise registry)
-        if: ${{ inputs.action == 'INSTALL' && inputs.harbor == true }}
+      - name: Deploy registry stack
         run: |
+          ENV="${{ needs.resolve-environment.outputs.environment }}"
+          ACTION="${{ inputs.action || 'INSTALL' }}"
+
+          if [ "$ACTION" = "UNINSTALL" ]; then
+            helm uninstall harbor -n registry --ignore-not-found || true
+            helm uninstall minio  -n minio    --ignore-not-found || true
+            helm uninstall nexus  -n registry --ignore-not-found || true
+            exit 0
+          fi
+
+          if [ "$ACTION" = "CONFIGURE" ]; then
+            # Configure Harbor projects for each domain
+            kubectl port-forward svc/harbor-core 18080:80 -n registry &
+            sleep 8
+            for PROJECT in platform identity catalog commerce supply-chain financial \
+                           customer-experience communications content analytics-ai b2b integrations affiliate; do
+              curl -sf -u "admin:${{ secrets.HARBOR_ADMIN_PASSWORD }}" \
+                -X POST "http://localhost:18080/api/v2.0/projects" \
+                -H "Content-Type: application/json" \
+                -d "{\"project_name\":\"${PROJECT}\",\"public\":false,\"metadata\":{\"auto_scan\":\"true\"}}" || true
+            done
+            exit 0
+          fi
+
+          MINIO_REPLICAS=1
+          [ "$ENV" = "prod" ] && MINIO_REPLICAS=4
+
+          # Harbor container registry
           helm upgrade --install harbor harbor/harbor \
             --namespace registry --create-namespace \
             --set harborAdminPassword="${{ secrets.HARBOR_ADMIN_PASSWORD }}" \
             --set expose.type=ingress \
-            --set expose.ingress.hosts.core="${{ secrets.HARBOR_HOSTNAME }}" \
-            --set externalURL="https://${{ secrets.HARBOR_HOSTNAME }}" \
-            --set persistence.persistentVolumeClaim.registry.size=100Gi \
-            --set persistence.persistentVolumeClaim.chartmuseum.size=20Gi \
+            --set "expose.ingress.hosts.core=harbor.${ENV}.shopos.internal" \
+            --set "externalURL=https://harbor.${ENV}.shopos.internal" \
             --set trivy.enabled=true \
-            --set notary.enabled=true \
-            --set database.type=internal \
+            --set persistence.persistentVolumeClaim.registry.size=100Gi \
             --wait --timeout 15m
 
-      - name: Install — Nexus Repository
-        if: ${{ inputs.action == 'INSTALL' && inputs.nexus == true }}
-        run: |
-          helm upgrade --install nexus sonatype/nexus-repository-manager \
-            --namespace registry --create-namespace \
-            --set nexus.resources.requests.memory=4Gi \
-            --set persistence.storageSize=100Gi \
-            --set nexus.adminPassword="${{ secrets.NEXUS_ADMIN_PASSWORD }}" \
-            --wait --timeout 15m
-
-      - name: Install — Gitea
-        if: ${{ inputs.action == 'INSTALL' && inputs.gitea == true }}
-        run: |
-          helm upgrade --install gitea gitea/gitea \
-            --namespace registry --create-namespace \
-            --set gitea.admin.username=shopos-admin \
-            --set gitea.admin.password="${{ secrets.GITEA_ADMIN_PASSWORD }}" \
-            --set gitea.admin.email="admin@shopos.local" \
-            --set persistence.size=20Gi \
-            --set postgresql.enabled=true \
-            --wait --timeout 10m
-
-      - name: Install — MinIO (S3-compatible object storage)
-        if: ${{ inputs.action == 'INSTALL' && inputs.minio == true }}
-        run: |
+          # MinIO object storage
           helm upgrade --install minio minio/minio \
             --namespace minio --create-namespace \
             --set rootUser="${{ secrets.MINIO_ROOT_USER }}" \
             --set rootPassword="${{ secrets.MINIO_ROOT_PASSWORD }}" \
-            --set replicas=4 \
+            --set replicas=$MINIO_REPLICAS \
             --set persistence.size=200Gi \
-            --set metrics.serviceMonitor.enabled=true \
-            --wait --timeout 15m
+            --wait --timeout 10m
 
-      - name: Configure — Create MinIO buckets
-        if: ${{ inputs.action == 'CONFIGURE' && inputs.minio == true }}
+      - name: Create MinIO buckets
         run: |
-          MINIO_POD=$(kubectl get pod -n minio -l app=minio -o name | head -1)
-          for BUCKET in velero-backups loki-chunks thanos-metrics tempo-traces harbor-data media-assets; do
+          MINIO_POD=$(kubectl get pod -n minio -l app=minio -o name 2>/dev/null | head -1)
+          if [ -z "$MINIO_POD" ]; then echo "MinIO pod not ready yet"; exit 0; fi
+          for BUCKET in velero-backups loki-chunks thanos-metrics tempo-traces harbor-data media-assets mlflow artifacts; do
             kubectl exec -n minio "$MINIO_POD" -- \
-              mc mb "local/$BUCKET" --ignore-existing || true
+              mc mb "local/$BUCKET" --ignore-existing 2>/dev/null || true
           done
-
-      - name: Configure — Harbor: create project + enable Trivy scanning
-        if: ${{ inputs.action == 'CONFIGURE' && inputs.harbor == true }}
-        run: |
-          HARBOR_URL="https://${{ secrets.HARBOR_HOSTNAME }}"
-          AUTH="admin:${{ secrets.HARBOR_ADMIN_PASSWORD }}"
-          # Create shopos project
-          curl -sf -u "$AUTH" -X POST "$HARBOR_URL/api/v2.0/projects" \
-            -H "Content-Type: application/json" \
-            -d '{"project_name":"shopos","public":false,"metadata":{"auto_scan":"true","reuse_sys_cve_allowlist":"true"}}' || true
-          # Enable content trust
-          curl -sf -u "$AUTH" -X PUT "$HARBOR_URL/api/v2.0/projects/shopos" \
-            -H "Content-Type: application/json" \
-            -d '{"metadata":{"enable_content_trust":"true"}}' || true
-
-      # ── UNINSTALL ──────────────────────────────────────────────────────
-      - name: Uninstall tools
-        if: ${{ inputs.action == 'UNINSTALL' }}
-        run: |
-          ${{ inputs.harbor      && 'helm uninstall harbor      -n registry --ignore-not-found || true' || '' }}
-          ${{ inputs.nexus       && 'helm uninstall nexus        -n registry --ignore-not-found || true' || '' }}
-          ${{ inputs.gitea       && 'helm uninstall gitea        -n registry --ignore-not-found || true' || '' }}
-          ${{ inputs.chartmuseum && 'helm uninstall chartmuseum  -n registry --ignore-not-found || true' || '' }}
-          ${{ inputs.zot         && 'helm uninstall zot          -n registry --ignore-not-found || true' || '' }}
-          ${{ inputs.minio       && 'helm uninstall minio        -n minio    --ignore-not-found || true' || '' }}
-          echo "Uninstall complete."
+          echo "MinIO buckets created."

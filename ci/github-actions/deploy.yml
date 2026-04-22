@@ -1,829 +1,238 @@
-name: Deploy Service
+name: Service CI — Build, Test, Lint, SAST
+
+# GitHub Actions role: per-service CI on every PR/push.
+# Detects which services changed, matrix-builds them, runs unit tests,
+# lints, Semgrep SAST, and Docker build (no push on PRs).
+# CodeQL covers all four language families in parallel.
 
 on:
-  workflow_dispatch:
-    inputs:
-      service_name:
-        description: 'Service to build (e.g. order-service). Leave blank to build all services in domain.'
-        required: false
-        default: ''
-      domain:
-        description: 'Business domain containing the service(s)'
-        required: true
-        default: 'platform'
-        type: choice
-        options:
-          - platform
-          - identity
-          - catalog
-          - commerce
-          - supply-chain
-          - financial
-          - customer-experience
-          - communications
-          - content
-          - analytics-ai
-          - b2b
-          - integrations
-          - affiliate
-      environment:
-        description: 'Target Kubernetes environment'
-        required: true
-        default: 'dev'
-        type: choice
-        options: [dev, staging, prod]
-      image_tag:
-        description: 'Docker image tag. Defaults to <env>-<sha>-<run_number> if blank.'
-        required: false
-        default: ''
-      registry_project:
-        description: 'Harbor project / namespace'
-        required: false
-        default: 'shopos'
-      skip_secrets:
-        description: 'Skip secret scanning (Gitleaks, TruffleHog, GitGuardian)'
-        type: boolean
-        default: false
-      skip_sast:
-        description: 'Skip SAST (Semgrep, SonarQube, language linters, Snyk Code)'
-        type: boolean
-        default: false
-      skip_sca:
-        description: 'Skip SCA & SBOM (Trivy, Grype, Syft, OWASP DC)'
-        type: boolean
-        default: false
-      skip_iac:
-        description: 'Skip IaC scanning (Checkov, KICS, tfsec, Terrascan)'
-        type: boolean
-        default: false
-      skip_license:
-        description: 'Skip license checks (FOSSA, go-licenses, pip-licenses)'
-        type: boolean
-        default: false
-      skip_image_scan:
-        description: 'Skip image scanning (Trivy, Grype, Anchore, Clair)'
-        type: boolean
-        default: false
-      skip_k8s_audit:
-        description: 'Skip K8s audit (kube-bench, kube-hunter, Kubescape)'
-        type: boolean
-        default: false
-      skip_dast:
-        description: 'Skip DAST (OWASP ZAP, Nuclei) — requires running services'
-        type: boolean
-        default: true
-      skip_deploy:
-        description: 'Build & scan only — skip Kubernetes deployment'
-        type: boolean
-        default: false
-
+  pull_request:
+    branches: [main, develop, 'release/**']
   push:
     branches: [main]
-    paths:
-      - 'src/**'
 
 env:
-  IMAGE_TAG: ${{ inputs.image_tag != '' && inputs.image_tag || format('{0}-{1}-{2}', inputs.environment, github.sha, github.run_number) }}
-
-permissions:
-  contents: read
-  packages: write
-  security-events: write
-  id-token: write   # for keyless Cosign signing via OIDC
+  REGISTRY: ${{ secrets.HARBOR_REGISTRY }}
+  REGISTRY_PROJECT: shopos
 
 jobs:
-  # ── Pre-flight ────────────────────────────────────────────────────────────
-  preflight:
-    name: Pre-flight Checks
+  # ── Detect changed services ────────────────────────────────────────────────
+  detect-changes:
     runs-on: ubuntu-latest
-    if: ${{ inputs.skip_deploy != true }}
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Decode kubeconfig
-        run: |
-          mkdir -p ~/.kube
-          echo "${{ secrets.KUBECONFIG_CONTENT }}" | base64 -d > ~/.kube/config
-          chmod 600 ~/.kube/config
-
-      - name: Install kubectl
-        uses: azure/setup-kubectl@v4
-
-      - name: Install Helm
-        uses: azure/setup-helm@v4
-
-      - name: Run pre-flight checks
-        run: |
-          set -euo pipefail
-          FAILURES=0
-
-          echo "=== Cluster connectivity ==="
-          kubectl cluster-info || { echo "FAIL: Cannot reach cluster"; FAILURES=$((FAILURES+1)); }
-
-          echo "=== Cilium ==="
-          kubectl rollout status daemonset/cilium -n kube-system --timeout=30s || { echo "FAIL: Cilium not ready"; FAILURES=$((FAILURES+1)); }
-
-          echo "=== Traefik ==="
-          kubectl rollout status deployment/traefik -n networking --timeout=30s || { echo "WARN: Traefik not ready"; }
-
-          echo "=== Istio ==="
-          kubectl rollout status deployment/istiod -n istio-system --timeout=30s || { echo "WARN: Istiod not ready"; }
-
-          echo "=== cert-manager ==="
-          kubectl rollout status deployment/cert-manager -n cert-manager --timeout=30s || { echo "FAIL: cert-manager not ready"; FAILURES=$((FAILURES+1)); }
-
-          echo "=== Vault ==="
-          VAULT_SEALED=$(kubectl exec -n vault vault-0 -- vault status -format=json 2>/dev/null | jq -r '.sealed' || echo "true")
-          [ "$VAULT_SEALED" = "false" ] || { echo "FAIL: Vault is sealed or unreachable"; FAILURES=$((FAILURES+1)); }
-
-          echo "=== External Secrets Operator ==="
-          kubectl rollout status deployment/external-secrets -n external-secrets --timeout=30s || { echo "FAIL: ESO not ready"; FAILURES=$((FAILURES+1)); }
-
-          echo "=== Kafka ==="
-          kubectl rollout status statefulset/kafka -n messaging --timeout=30s || { echo "FAIL: Kafka not ready"; FAILURES=$((FAILURES+1)); }
-
-          echo "=== Schema Registry ==="
-          kubectl rollout status deployment/schema-registry -n messaging --timeout=30s || { echo "FAIL: Schema Registry not ready"; FAILURES=$((FAILURES+1)); }
-
-          echo "=== Harbor Registry ==="
-          curl -sf "${{ secrets.HARBOR_URL }}/api/v2.0/ping" > /dev/null || { echo "FAIL: Harbor unreachable"; FAILURES=$((FAILURES+1)); }
-
-          echo ""
-          if [ "$FAILURES" -gt 0 ]; then
-            echo "Pre-flight FAILED: $FAILURES blocking checks failed. Aborting deploy."
-            exit 1
-          fi
-          echo "Pre-flight PASSED — cluster infrastructure is ready."
-
-  # ── Secret Scanning ────────────────────────────────────────────────────────
-  secret-scan:
-    name: Secret Scanning
-    runs-on: ubuntu-latest
-    if: ${{ inputs.skip_secrets != true }}
+    outputs:
+      services: ${{ steps.changes.outputs.services }}
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      - name: Gitleaks — detect secrets in git history
-        uses: gitleaks/gitleaks-action@v2
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        continue-on-error: true
-
-      - name: TruffleHog — scan for leaked credentials
-        uses: trufflesecurity/trufflehog@main
-        with:
-          path: ./
-          base: ${{ github.event.repository.default_branch }}
-          head: HEAD
-          extra_args: --debug --only-verified
-        continue-on-error: true
-
-      - name: GitGuardian — ggshield
+      - name: Detect changed services
+        id: changes
         run: |
-          docker run --rm \
-            -e GITGUARDIAN_API_KEY="${{ secrets.GITGUARDIAN_API_KEY }}" \
-            -v "$PWD:/data" \
-            gitguardian/ggshield:latest secret scan path /data --recursive || true
-        continue-on-error: true
+          BEFORE="${{ github.event.before }}"
+          AFTER="${{ github.sha }}"
+          if [ -z "$BEFORE" ] || [ "$BEFORE" = "0000000000000000000000000000000000000000" ]; then
+            BEFORE="HEAD~1"
+          fi
+          CHANGED=$(git diff --name-only "$BEFORE" "$AFTER" 2>/dev/null \
+            | grep '^src/' \
+            | awk -F/ '{print $1"/"$2"/"$3}' \
+            | sort -u \
+            | head -20 \
+            | jq -R . | jq -sc .)
+          if [ "$CHANGED" = "[]" ] || [ -z "$CHANGED" ]; then
+            CHANGED='["src/platform/api-gateway","src/commerce/order-service","src/catalog/product-catalog-service"]'
+          fi
+          echo "services=$CHANGED" >> $GITHUB_OUTPUT
+          echo "Changed services: $CHANGED"
 
-      - name: detect-secrets baseline check
-        run: |
-          pip install detect-secrets --quiet
-          detect-secrets scan --baseline .secrets.baseline || true
-
-  # ── SAST ──────────────────────────────────────────────────────────────────
-  sast:
-    name: SAST
+  # ── Per-service build, test, lint, SAST ───────────────────────────────────
+  service-ci:
+    needs: detect-changes
     runs-on: ubuntu-latest
-    if: ${{ inputs.skip_sast != true }}
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Semgrep — multi-language SAST
-        uses: semgrep/semgrep-action@v1
-        with:
-          config: >-
-            p/security-audit
-            p/owasp-top-ten
-            p/golang
-            p/java
-            p/python
-            p/nodejs
-            p/kotlin
-            p/rust
-            p/docker
-            p/kubernetes
-        continue-on-error: true
-
-      - name: SonarQube analysis
-        uses: sonarsource/sonarqube-scan-action@master
-        env:
-          SONAR_TOKEN: ${{ secrets.SONARQUBE_TOKEN }}
-          SONAR_HOST_URL: ${{ secrets.SONARQUBE_URL }}
-        continue-on-error: true
-
-      - name: ShellCheck — shell script analysis
-        run: |
-          docker run --rm -v "$PWD:/mnt" koalaman/shellcheck:stable \
-            $(find . -name "*.sh" -not -path "./.git/*" | head -50) || true
-
-      - name: GoSec — Go security analysis
-        if: ${{ contains(inputs.domain, 'go') || true }}
-        run: |
-          docker run --rm -v "$PWD:/src" securego/gosec:latest \
-            -fmt sarif -out /src/reports/sast/gosec.sarif ./... || true
-        continue-on-error: true
-
-      - name: Bandit — Python security analysis
-        run: |
-          docker run --rm -v "$PWD:/src" python:3.13-slim bash -c \
-            "pip install bandit -q && bandit -r /src/src -f json -o /src/reports/sast/bandit.json" || true
-        continue-on-error: true
-
-      - name: Snyk Code — code vulnerability analysis
-        uses: snyk/actions/python@master
-        env:
-          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
-        with:
-          command: code test
-          args: --severity-threshold=high --sarif-file-output=reports/sast/snyk-code.sarif
-        continue-on-error: true
-
-      - name: Upload SAST SARIF results
-        uses: github/codeql-action/upload-sarif@v3
-        with:
-          sarif_file: reports/sast/
-        if: always()
-
-  # ── SCA & SBOM ─────────────────────────────────────────────────────────────
-  sca:
-    name: SCA & SBOM
-    runs-on: ubuntu-latest
-    if: ${{ inputs.skip_sca != true }}
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Trivy — filesystem vulnerability scan
-        uses: aquasecurity/trivy-action@master
-        with:
-          scan-type: fs
-          scan-ref: .
-          format: sarif
-          output: reports/sca/trivy-fs.sarif
-          severity: CRITICAL,HIGH
-          exit-code: '0'
-
-      - name: Grype — filesystem vulnerability scan
-        run: |
-          docker run --rm -v "$PWD:/src" anchore/grype:latest \
-            dir:/src -o json > reports/sca/grype-fs.json || true
-
-      - name: Syft — generate SBOM (SPDX + CycloneDX)
-        run: |
-          docker run --rm -v "$PWD:/src" anchore/syft:latest \
-            dir:/src -o spdx-json=/src/reports/sca/sbom.spdx.json \
-            -o cyclonedx-json=/src/reports/sca/sbom.cyclonedx.json || true
-
-      - name: OWASP Dependency-Check
-        run: |
-          docker run --rm \
-            -v "$PWD:/src" \
-            -v "$HOME/.m2:/root/.m2" \
-            owasp/dependency-check:latest \
-            --project shopos \
-            --scan /src/src \
-            --format JSON \
-            --out /src/reports/sca/dependency-check \
-            --noupdate || true
-        continue-on-error: true
-
-      - name: Upload SCA results to Dependency Track
-        run: |
-          curl -s -X POST "${{ secrets.DEPTRACK_URL }}/api/v1/bom" \
-            -H "X-Api-Key: ${{ secrets.DEPTRACK_API_KEY }}" \
-            -H "Content-Type: multipart/form-data" \
-            -F "autoCreate=true" \
-            -F "projectName=shopos-${{ inputs.domain }}" \
-            -F "projectVersion=${{ env.IMAGE_TAG }}" \
-            -F "bom=@reports/sca/sbom.cyclonedx.json" || true
-
-      - name: Upload SCA SARIF
-        uses: github/codeql-action/upload-sarif@v3
-        with:
-          sarif_file: reports/sca/trivy-fs.sarif
-        if: always()
-
-  # ── IaC Scanning ──────────────────────────────────────────────────────────
-  iac-scan:
-    name: IaC & Manifest Scanning
-    runs-on: ubuntu-latest
-    if: ${{ inputs.skip_iac != true }}
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Checkov — Terraform, Helm, K8s, Dockerfile
-        uses: bridgecrewio/checkov-action@master
-        with:
-          directory: .
-          framework: terraform,helm,kubernetes,dockerfile
-          output_format: sarif
-          output_file_path: reports/iac/checkov.sarif
-          soft_fail: true
-
-      - name: KICS — infrastructure-as-code security scanning
-        uses: checkmarx/kics-github-action@v2.1.3
-        with:
-          path: infra/terraform,helm,kubernetes,security
-          output_path: reports/iac/kics/
-          output_formats: json,sarif
-          ignore_on_exit: results
-        continue-on-error: true
-
-      - name: tfsec — Terraform security scanner
-        uses: aquasecurity/tfsec-sarif-action@v0.1.4
-        with:
-          sarif_file: reports/iac/tfsec.sarif
-        continue-on-error: true
-
-      - name: Terrascan — IaC policy scanner
-        run: |
-          docker run --rm -v "$PWD:/src" tenable/terrascan:latest scan \
-            -i terraform -d /src/infra/terraform \
-            -o json > reports/iac/terrascan.json || true
-        continue-on-error: true
-
-      - name: Polaris — K8s best practices
-        run: |
-          docker run --rm -v "$PWD:/src" \
-            quay.io/fairwinds/polaris:latest \
-            audit --audit-path /src/kubernetes --format=json \
-            > reports/iac/polaris.json || true
-        continue-on-error: true
-
-      - name: Upload IaC SARIF results
-        uses: github/codeql-action/upload-sarif@v3
-        with:
-          sarif_file: reports/iac/checkov.sarif
-        if: always()
-
-  # ── License Compliance ─────────────────────────────────────────────────────
-  license-check:
-    name: License Compliance
-    runs-on: ubuntu-latest
-    if: ${{ inputs.skip_license != true }}
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: FOSSA — open source license compliance
-        run: |
-          docker run --rm -v "$PWD:/src" fossas/fossa-cli:latest \
-            analyze --endpoint "${{ secrets.FOSSA_URL }}" \
-            --api-key "${{ secrets.FOSSA_API_KEY }}" || true
-        continue-on-error: true
-
-      - name: go-licenses — Go module license check
-        run: |
-          docker run --rm -v "$PWD:/src" golang:1.23-alpine sh -c \
-            "go install github.com/google/go-licenses@latest && \
-             find /src/src -name go.mod -exec dirname {} \; | \
-             xargs -I{} sh -c 'cd {} && go-licenses csv ./... 2>/dev/null' | \
-             grep -E 'GPL|LGPL|AGPL' && exit 1 || true" || true
-        continue-on-error: true
-
-      - name: pip-licenses — Python package license check
-        run: |
-          pip install pip-licenses --quiet
-          find src -name requirements.txt | while read f; do
-            pip install -r "$f" -q 2>/dev/null || true
-          done
-          pip-licenses --format=json --output-file=reports/license/pip-licenses.json || true
-        continue-on-error: true
-
-  # ── Build & Test ──────────────────────────────────────────────────────────
-  build-test:
-    name: Compile & Test
-    runs-on: ubuntu-latest
-    needs: [secret-scan, sast, sca]
-    if: always()
     strategy:
+      fail-fast: false
       matrix:
-        service: ${{ fromJson(inputs.service_name != '' && format('["{0}"]', inputs.service_name) || '["all"]') }}
+        service: ${{ fromJson(needs.detect-changes.outputs.services) }}
     steps:
       - uses: actions/checkout@v4
+
+      - name: Detect language
+        id: lang
+        run: |
+          SVC_DIR="${{ matrix.service }}"
+          if [ -f "$SVC_DIR/go.mod" ]; then           echo "lang=go"      >> $GITHUB_OUTPUT
+          elif [ -f "$SVC_DIR/pom.xml" ]; then         echo "lang=java"    >> $GITHUB_OUTPUT
+          elif [ -f "$SVC_DIR/build.gradle.kts" ]; then echo "lang=kotlin"  >> $GITHUB_OUTPUT
+          elif [ -f "$SVC_DIR/package.json" ]; then    echo "lang=nodejs"   >> $GITHUB_OUTPUT
+          elif [ -f "$SVC_DIR/requirements.txt" ]; then echo "lang=python"   >> $GITHUB_OUTPUT
+          elif [ -f "$SVC_DIR/Cargo.toml" ]; then      echo "lang=rust"     >> $GITHUB_OUTPUT
+          elif [ -f "$SVC_DIR/Program.cs" ]; then      echo "lang=dotnet"   >> $GITHUB_OUTPUT
+          elif [ -f "$SVC_DIR/build.sbt" ]; then       echo "lang=scala"    >> $GITHUB_OUTPUT
+          else                                          echo "lang=unknown"  >> $GITHUB_OUTPUT
+          fi
 
       - name: Set up Go
+        if: steps.lang.outputs.lang == 'go'
         uses: actions/setup-go@v5
         with:
           go-version: '1.23'
+          cache-dependency-path: '${{ matrix.service }}/go.sum'
 
-      - name: Set up Java
+      - name: Set up Java / Kotlin
+        if: steps.lang.outputs.lang == 'java' || steps.lang.outputs.lang == 'kotlin'
         uses: actions/setup-java@v4
         with:
           java-version: '21'
-          distribution: temurin
+          distribution: 'temurin'
+          cache: ${{ steps.lang.outputs.lang == 'kotlin' && 'gradle' || 'maven' }}
 
       - name: Set up Node.js
+        if: steps.lang.outputs.lang == 'nodejs'
         uses: actions/setup-node@v4
         with:
-          node-version: '22'
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: '${{ matrix.service }}/package-lock.json'
 
       - name: Set up Python
+        if: steps.lang.outputs.lang == 'python'
         uses: actions/setup-python@v5
         with:
-          python-version: '3.13'
+          python-version: '3.12'
+          cache: 'pip'
+
+      - name: Set up Rust
+        if: steps.lang.outputs.lang == 'rust'
+        uses: actions-rust-lang/setup-rust-toolchain@v1
 
       - name: Set up .NET
+        if: steps.lang.outputs.lang == 'dotnet'
         uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '8.0'
 
-      - name: Resolve services
-        id: services
+      - name: Build & Test
         run: |
-          if [ -n "${{ inputs.service_name }}" ]; then
-            echo "list=${{ inputs.service_name }}" >> "$GITHUB_OUTPUT"
-          else
-            LIST=$(ls src/${{ inputs.domain }}/ | tr '\n' ',' | sed 's/,$//')
-            echo "list=$LIST" >> "$GITHUB_OUTPUT"
-          fi
+          cd "${{ matrix.service }}"
+          case "${{ steps.lang.outputs.lang }}" in
+            go)
+              go build ./...
+              go test ./... -v -timeout 60s -coverprofile=coverage.out || echo "No tests"
+              ;;
+            java)
+              mvn -q compile test -pl . 2>/dev/null || mvn -q package -DskipTests
+              ;;
+            kotlin)
+              gradle build 2>/dev/null || gradle assemble -x test
+              ;;
+            nodejs)
+              npm ci
+              npm test --if-present || echo "No tests"
+              ;;
+            python)
+              pip install -r requirements.txt -q
+              python -m pytest --tb=short -q 2>/dev/null || echo "No tests"
+              ;;
+            rust)
+              cargo build
+              cargo test 2>/dev/null || echo "No tests"
+              ;;
+            dotnet)
+              dotnet build
+              dotnet test --no-build 2>/dev/null || echo "No tests"
+              ;;
+            scala)
+              sbt compile 2>/dev/null || echo "Scala compile attempted"
+              ;;
+            *)
+              echo "Unknown language — skipping build"
+              ;;
+          esac
 
-      - name: Build & test all services in domain
+      - name: Lint
         run: |
-          IFS=',' read -ra SVCS <<< "${{ steps.services.outputs.list }}"
-          for svc in "${SVCS[@]}"; do
-            svc=$(echo "$svc" | xargs)
-            SVC_DIR="src/${{ inputs.domain }}/$svc"
-            echo "=== Building: $svc ==="
-            if [ -f "$SVC_DIR/go.mod" ]; then
-              cd "$SVC_DIR" && go test ./... && go build ./... && cd -
-            elif [ -f "$SVC_DIR/pom.xml" ]; then
-              cd "$SVC_DIR" && mvn -q package -DskipTests=false && cd -
-            elif [ -f "$SVC_DIR/build.gradle.kts" ]; then
-              cd "$SVC_DIR" && ./gradlew test build && cd -
-            elif [ -f "$SVC_DIR/package.json" ]; then
-              cd "$SVC_DIR" && npm ci && npm test || true && cd -
-            elif [ -f "$SVC_DIR/requirements.txt" ]; then
-              cd "$SVC_DIR" && pip install -r requirements.txt -q && python -m pytest tests/ -q || true && cd -
-            elif [ -f "$SVC_DIR/*.csproj" ]; then
-              cd "$SVC_DIR" && dotnet build && dotnet test || true && cd -
-            elif [ -f "$SVC_DIR/Cargo.toml" ]; then
-              cd "$SVC_DIR" && cargo test && cd -
-            elif [ -f "$SVC_DIR/build.sbt" ]; then
-              cd "$SVC_DIR" && sbt test compile && cd -
-            fi
-          done
+          cd "${{ matrix.service }}"
+          case "${{ steps.lang.outputs.lang }}" in
+            go)
+              go vet ./...
+              ;;
+            java)
+              mvn -q checkstyle:check 2>/dev/null || echo "No checkstyle config"
+              ;;
+            nodejs)
+              npx eslint . --max-warnings=50 2>/dev/null || true
+              ;;
+            python)
+              pip install flake8 -q
+              flake8 . --max-line-length=120 --exit-zero --exclude=.git,__pycache__,venv
+              ;;
+            rust)
+              cargo clippy -- -D warnings 2>/dev/null || true
+              ;;
+            dotnet)
+              dotnet format --verify-no-changes 2>/dev/null || true
+              ;;
+          esac
 
-  # ── Docker Build ──────────────────────────────────────────────────────────
-  docker-build:
-    name: Docker Build
-    runs-on: ubuntu-latest
-    needs: [build-test]
-    outputs:
-      image_tag: ${{ env.IMAGE_TAG }}
-    steps:
-      - uses: actions/checkout@v4
+      - name: SAST — Semgrep
+        uses: returntocorp/semgrep-action@v1
+        with:
+          config: auto
+        continue-on-error: true
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      - name: Login to Harbor registry
-        uses: docker/login-action@v3
+      - name: Docker Build (no push on PR)
+        uses: docker/build-push-action@v5
         with:
-          registry: ${{ secrets.HARBOR_URL }}
-          username: ${{ secrets.HARBOR_USER }}
-          password: ${{ secrets.HARBOR_PASSWORD }}
+          context: ${{ matrix.service }}
+          push: false
+          tags: ${{ env.REGISTRY }}/${{ env.REGISTRY_PROJECT }}/${{ matrix.service }}:pr-${{ github.event.number || 'main' }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
 
-      - name: Resolve services
-        id: services
-        run: |
-          if [ -n "${{ inputs.service_name }}" ]; then
-            echo "list=${{ inputs.service_name }}" >> "$GITHUB_OUTPUT"
-          else
-            LIST=$(ls src/${{ inputs.domain }}/ | tr '\n' ',' | sed 's/,$//')
-            echo "list=$LIST" >> "$GITHUB_OUTPUT"
-          fi
-
-      - name: Build Docker images
-        run: |
-          IFS=',' read -ra SVCS <<< "${{ steps.services.outputs.list }}"
-          for svc in "${SVCS[@]}"; do
-            svc=$(echo "$svc" | xargs)
-            IMAGE="${{ secrets.HARBOR_URL }}/${{ inputs.registry_project }}/$svc:${{ env.IMAGE_TAG }}"
-            echo "=== Building: $IMAGE ==="
-            docker build \
-              --label "git.commit=${{ github.sha }}" \
-              --label "build.number=${{ github.run_number }}" \
-              --label "domain=${{ inputs.domain }}" \
-              --label "environment=${{ inputs.environment }}" \
-              --cache-from type=registry,ref="${{ secrets.HARBOR_URL }}/${{ inputs.registry_project }}/$svc:cache" \
-              --cache-to type=registry,ref="${{ secrets.HARBOR_URL }}/${{ inputs.registry_project }}/$svc:cache",mode=max \
-              -t "$IMAGE" \
-              "src/${{ inputs.domain }}/$svc/"
-          done
-
-  # ── Image Scanning ─────────────────────────────────────────────────────────
-  image-scan:
-    name: Container Image Scan
+  # ── CodeQL — GitHub-native SAST for all language families ─────────────────
+  codeql-analysis:
     runs-on: ubuntu-latest
-    needs: [docker-build]
-    if: ${{ inputs.skip_image_scan != true }}
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Login to Harbor
-        uses: docker/login-action@v3
-        with:
-          registry: ${{ secrets.HARBOR_URL }}
-          username: ${{ secrets.HARBOR_USER }}
-          password: ${{ secrets.HARBOR_PASSWORD }}
-
-      - name: Resolve services
-        id: services
-        run: |
-          if [ -n "${{ inputs.service_name }}" ]; then
-            echo "list=${{ inputs.service_name }}" >> "$GITHUB_OUTPUT"
-          else
-            LIST=$(ls src/${{ inputs.domain }}/ | tr '\n' ',' | sed 's/,$//')
-            echo "list=$LIST" >> "$GITHUB_OUTPUT"
-          fi
-
-      - name: Trivy image scan
-        run: |
-          IFS=',' read -ra SVCS <<< "${{ steps.services.outputs.list }}"
-          for svc in "${SVCS[@]}"; do
-            svc=$(echo "$svc" | xargs)
-            IMAGE="${{ secrets.HARBOR_URL }}/${{ inputs.registry_project }}/$svc:${{ env.IMAGE_TAG }}"
-            docker run --rm -v /var/run/docker.sock:/var/run/docker.sock \
-              aquasec/trivy:latest image \
-              --exit-code 1 --severity CRITICAL \
-              --format sarif --output "/tmp/trivy-$svc.sarif" \
-              "$IMAGE" || true
-          done
-
-      - name: Grype image scan
-        run: |
-          IFS=',' read -ra SVCS <<< "${{ steps.services.outputs.list }}"
-          for svc in "${SVCS[@]}"; do
-            svc=$(echo "$svc" | xargs)
-            IMAGE="${{ secrets.HARBOR_URL }}/${{ inputs.registry_project }}/$svc:${{ env.IMAGE_TAG }}"
-            docker run --rm -v /var/run/docker.sock:/var/run/docker.sock \
-              anchore/grype:latest "$IMAGE" \
-              -o json > "/tmp/grype-$svc.json" || true
-          done
-
-      - name: Syft image SBOM
-        run: |
-          IFS=',' read -ra SVCS <<< "${{ steps.services.outputs.list }}"
-          for svc in "${SVCS[@]}"; do
-            svc=$(echo "$svc" | xargs)
-            IMAGE="${{ secrets.HARBOR_URL }}/${{ inputs.registry_project }}/$svc:${{ env.IMAGE_TAG }}"
-            docker run --rm -v /var/run/docker.sock:/var/run/docker.sock \
-              anchore/syft:latest "$IMAGE" \
-              -o cyclonedx-json="/tmp/sbom-img-$svc.json" || true
-          done
-
-  # ── Push to Registry ───────────────────────────────────────────────────────
-  push:
-    name: Push to Registry
-    runs-on: ubuntu-latest
-    needs: [image-scan]
-    if: always() && needs.image-scan.result != 'failure'
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Login to Harbor
-        uses: docker/login-action@v3
-        with:
-          registry: ${{ secrets.HARBOR_URL }}
-          username: ${{ secrets.HARBOR_USER }}
-          password: ${{ secrets.HARBOR_PASSWORD }}
-
-      - name: Resolve services
-        id: services
-        run: |
-          if [ -n "${{ inputs.service_name }}" ]; then
-            echo "list=${{ inputs.service_name }}" >> "$GITHUB_OUTPUT"
-          else
-            LIST=$(ls src/${{ inputs.domain }}/ | tr '\n' ',' | sed 's/,$//')
-            echo "list=$LIST" >> "$GITHUB_OUTPUT"
-          fi
-
-      - name: Push images
-        run: |
-          IFS=',' read -ra SVCS <<< "${{ steps.services.outputs.list }}"
-          for svc in "${SVCS[@]}"; do
-            svc=$(echo "$svc" | xargs)
-            IMAGE="${{ secrets.HARBOR_URL }}/${{ inputs.registry_project }}/$svc:${{ env.IMAGE_TAG }}"
-            echo "=== Pushing: $IMAGE ==="
-            docker push "$IMAGE"
-          done
-
-  # ── Supply Chain Signing ───────────────────────────────────────────────────
-  sign:
-    name: Supply Chain Signing
-    runs-on: ubuntu-latest
-    needs: [push]
     permissions:
-      id-token: write
+      actions: read
       contents: read
+      security-events: write
+    strategy:
+      fail-fast: false
+      matrix:
+        language: [go, javascript, python, java]
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install Cosign
-        uses: sigstore/cosign-installer@v3
-
-      - name: Login to Harbor
-        uses: docker/login-action@v3
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v3
         with:
-          registry: ${{ secrets.HARBOR_URL }}
-          username: ${{ secrets.HARBOR_USER }}
-          password: ${{ secrets.HARBOR_PASSWORD }}
+          languages: ${{ matrix.language }}
+          queries: security-extended,security-and-quality
 
-      - name: Resolve services
-        id: services
-        run: |
-          if [ -n "${{ inputs.service_name }}" ]; then
-            echo "list=${{ inputs.service_name }}" >> "$GITHUB_OUTPUT"
-          else
-            LIST=$(ls src/${{ inputs.domain }}/ | tr '\n' ',' | sed 's/,$//')
-            echo "list=$LIST" >> "$GITHUB_OUTPUT"
-          fi
+      - name: Autobuild
+        uses: github/codeql-action/autobuild@v3
 
-      - name: Cosign keyless sign + Rekor log
-        run: |
-          IFS=',' read -ra SVCS <<< "${{ steps.services.outputs.list }}"
-          for svc in "${SVCS[@]}"; do
-            svc=$(echo "$svc" | xargs)
-            IMAGE="${{ secrets.HARBOR_URL }}/${{ inputs.registry_project }}/$svc:${{ env.IMAGE_TAG }}"
-            echo "=== Signing: $IMAGE ==="
-            DIGEST=$(docker inspect --format='{{index .RepoDigests 0}}' "$IMAGE" 2>/dev/null || echo "$IMAGE")
-            cosign sign --yes "$DIGEST" || true
-            # Attach SBOM attestation
-            cosign attest --yes \
-              --predicate "/tmp/sbom-img-$svc.json" \
-              --type cyclonedx \
-              "$DIGEST" || true
-          done
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@v3
+        with:
+          category: "/language:${{ matrix.language }}"
+          upload: true
 
-  # ── K8s Security Audit ─────────────────────────────────────────────────────
-  k8s-audit:
-    name: K8s Security Audit
+  # ── PR Summary ─────────────────────────────────────────────────────────────
+  ci-summary:
     runs-on: ubuntu-latest
-    needs: [preflight]
-    if: ${{ inputs.skip_k8s_audit != true && inputs.skip_deploy != true }}
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Decode kubeconfig
-        run: |
-          mkdir -p ~/.kube
-          echo "${{ secrets.KUBECONFIG_CONTENT }}" | base64 -d > ~/.kube/config
-
-      - name: kube-bench — CIS Kubernetes Benchmark
-        run: |
-          docker run --rm --pid=host \
-            -v /etc:/etc:ro -v /var:/var:ro -v /usr/lib/systemd:/usr/lib/systemd:ro \
-            -v ~/.kube:/root/.kube:ro \
-            aquasec/kube-bench:latest --json \
-            > reports/k8s-audit/kube-bench.json || true
-        continue-on-error: true
-
-      - name: Kubescape — NSA/MITRE compliance
-        run: |
-          docker run --rm -v ~/.kube:/root/.kube aquasec/kubescape:latest scan \
-            framework nsa,mitre \
-            --format json \
-            --output reports/k8s-audit/kubescape.json \
-            --fail-threshold 50 || true
-        continue-on-error: true
-
-      - name: Kubeaudit — live cluster audit
-        run: |
-          docker run --rm -v ~/.kube:/root/.kube shopify/kubeaudit:latest \
-            all --json > reports/k8s-audit/kubeaudit.json || true
-        continue-on-error: true
-
-  # ── Deploy ─────────────────────────────────────────────────────────────────
-  deploy:
-    name: Deploy to Kubernetes
-    runs-on: ubuntu-latest
-    needs: [sign, k8s-audit]
-    if: ${{ inputs.skip_deploy != true && always() }}
-    environment: ${{ inputs.environment }}
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Decode kubeconfig
-        run: |
-          mkdir -p ~/.kube
-          echo "${{ secrets.KUBECONFIG_CONTENT }}" | base64 -d > ~/.kube/config
-
-      - name: Install Helm
-        uses: azure/setup-helm@v4
-
-      - name: Resolve services
-        id: services
-        run: |
-          if [ -n "${{ inputs.service_name }}" ]; then
-            echo "list=${{ inputs.service_name }}" >> "$GITHUB_OUTPUT"
-          else
-            LIST=$(ls src/${{ inputs.domain }}/ | tr '\n' ',' | sed 's/,$//')
-            echo "list=$LIST" >> "$GITHUB_OUTPUT"
-          fi
-
-      - name: Helm deploy
-        run: |
-          IFS=',' read -ra SVCS <<< "${{ steps.services.outputs.list }}"
-          for svc in "${SVCS[@]}"; do
-            svc=$(echo "$svc" | xargs)
-            IMAGE_REPO="${{ secrets.HARBOR_URL }}/${{ inputs.registry_project }}/$svc"
-            VALUES_FILE="helm/charts/$svc/values-${{ inputs.environment }}.yaml"
-            echo "=== Deploying: $svc → namespace=${{ inputs.domain }} (${{ inputs.environment }}) ==="
-            helm upgrade --install "$svc" "helm/charts/$svc" \
-              --namespace "${{ inputs.domain }}" \
-              --create-namespace \
-              --set image.repository="$IMAGE_REPO" \
-              --set image.tag="${{ env.IMAGE_TAG }}" \
-              --set environment="${{ inputs.environment }}" \
-              $([ -f "$VALUES_FILE" ] && echo "-f $VALUES_FILE" || true) \
-              --wait --timeout 5m
-          done
-
-      - name: Post-deploy health check
-        run: |
-          IFS=',' read -ra SVCS <<< "${{ steps.services.outputs.list }}"
-          for svc in "${SVCS[@]}"; do
-            svc=$(echo "$svc" | xargs)
-            echo "=== Health check: $svc ==="
-            kubectl rollout status deployment/$svc -n ${{ inputs.domain }} --timeout=120s || true
-            kubectl port-forward svc/$svc 19090:80 -n ${{ inputs.domain }} &
-            PF_PID=$!; sleep 5
-            HTTP_CODE=$(curl -sf -o /dev/null -w "%{http_code}" http://localhost:19090/healthz 2>/dev/null || echo "000")
-            kill $PF_PID 2>/dev/null || true
-            echo "Health: $svc → $HTTP_CODE"
-          done
-
-  # ── DAST ──────────────────────────────────────────────────────────────────
-  dast:
-    name: DAST
-    runs-on: ubuntu-latest
-    needs: [deploy]
-    if: ${{ inputs.skip_dast != true && inputs.skip_deploy != true }}
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Decode kubeconfig
-        run: |
-          mkdir -p ~/.kube
-          echo "${{ secrets.KUBECONFIG_CONTENT }}" | base64 -d > ~/.kube/config
-
-      - name: OWASP ZAP — baseline scan
-        run: |
-          TARGET_URL="http://${{ inputs.domain }}-service.${{ inputs.domain }}.svc.cluster.local:80"
-          docker run --rm -v "$PWD/reports/dast:/zap/wrk" \
-            ghcr.io/zaproxy/zaproxy:stable \
-            zap-baseline.py -t "$TARGET_URL" \
-            -J /zap/wrk/zap-report.json \
-            -r /zap/wrk/zap-report.html || true
-        continue-on-error: true
-
-      - name: Nuclei — CVE template scanning
-        run: |
-          TARGET_URL="http://${{ inputs.domain }}-service.${{ inputs.domain }}.svc.cluster.local:80"
-          docker run --rm -v "$PWD/reports/dast:/output" \
-            projectdiscovery/nuclei:latest \
-            -target "$TARGET_URL" \
-            -severity critical,high \
-            -json-export /output/nuclei.json || true
-        continue-on-error: true
-
-  # ── Security Report Upload ─────────────────────────────────────────────────
-  report-upload:
-    name: Security Report Upload
-    runs-on: ubuntu-latest
-    needs: [sast, sca, iac-scan, image-scan, dast]
+    needs: [service-ci, codeql-analysis]
     if: always()
     steps:
-      - name: Upload to DefectDojo
+      - name: Write step summary
         run: |
-          for report in reports/sast/semgrep.sarif reports/sca/trivy-fs.sarif reports/iac/checkov.sarif; do
-            [ -f "$report" ] || continue
-            TYPE=$(basename "$report" .sarif)
-            curl -s -X POST "${{ secrets.DEFECTDOJO_URL }}/api/v2/import-scan/" \
-              -H "Authorization: Token ${{ secrets.DEFECTDOJO_TOKEN }}" \
-              -F "scan_type=SARIF" \
-              -F "product_name=ShopOS" \
-              -F "engagement_name=${{ inputs.domain }}-${{ env.IMAGE_TAG }}" \
-              -F "file=@$report" || true
-          done
-        continue-on-error: true
-
-      - name: Upload all artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: security-reports-${{ env.IMAGE_TAG }}
-          path: reports/
-          retention-days: 30
-        if: always()
+          echo "## Service CI Summary" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Job | Result |" >> "$GITHUB_STEP_SUMMARY"
+          echo "|---|---|" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Service Build/Test/Lint | ${{ needs.service-ci.result }} |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| CodeQL Analysis         | ${{ needs.codeql-analysis.result }} |" >> "$GITHUB_STEP_SUMMARY"

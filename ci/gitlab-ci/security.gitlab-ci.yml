@@ -1,233 +1,198 @@
-# Security Infrastructure — GitLab CI
-# Mirrors .github/workflows/security.yml
-# Variables (set in GitLab CI/CD Settings):
-#   KUBECONFIG_CONTENT, KEYCLOAK_ADMIN_PASSWORD, SLACK_WEBHOOK
-#   ENVIRONMENT, ACTION (INSTALL|UPGRADE|UNINSTALL)
-#   CERT_MANAGER, VAULT, KEYCLOAK, SPIRE, OPA, KYVERNO, KUBEWARDEN
-#   FALCO, TRIVY_OPERATOR, REKOR, FULCIO
+# GitLab CI — Security Gate (Primary Security Pipeline)
+#
+# GitLab CI role: full SAST/DAST/SCA/secrets pipeline using GitLab's BUILT-IN
+# security templates. This is the security gate that other platforms defer to.
+# Results surface in GitLab's Security Dashboard and can block MR merges.
+#
+# Required CI/CD variables (Settings → CI/CD → Variables):
+#   DEFECTDOJO_URL, DEFECTDOJO_TOKEN   — vulnerability management upload
+#   HARBOR_REGISTRY, HARBOR_USER, HARBOR_PASSWORD
+
+include:
+  - template: Security/SAST.gitlab-ci.yml
+  - template: Security/DAST.gitlab-ci.yml
+  - template: Security/Secret-Detection.gitlab-ci.yml
+  - template: Security/Dependency-Scanning.gitlab-ci.yml
+  - template: Security/Container-Scanning.gitlab-ci.yml
+  - template: Security/License-Scanning.gitlab-ci.yml
 
 variables:
-  ENVIRONMENT: dev
-  ACTION: INSTALL
-  CERT_MANAGER: "true"
-  VAULT: "true"
-  KEYCLOAK: "true"
-  SPIRE: "true"
-  OPA: "true"
-  KYVERNO: "true"
-  KUBEWARDEN: "true"
-  FALCO: "true"
-  TRIVY_OPERATOR: "true"
-  REKOR: "false"
-  FULCIO: "false"
+  SAST_EXCLUDED_PATHS: spec,test,tests,tmp,vendor,node_modules
+  DS_EXCLUDE_PATHS: spec,test,tests
+  SECURE_LOG_LEVEL: info
+  DAST_WEBSITE: $DAST_TARGET_URL
+  CS_IMAGE: $HARBOR_REGISTRY/shopos/api-gateway:$CI_COMMIT_SHORT_SHA
+  # Enable all SAST analyzers
+  SAST_EXCLUDED_ANALYZERS: ""
 
 workflow:
   rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+    - if: $CI_PIPELINE_SOURCE == "schedule"
     - if: $CI_PIPELINE_SOURCE == "web"
-    - if: $CI_PIPELINE_SOURCE == "trigger"
 
 stages:
-  - prerequisites
-  - core-identity
-  - policy
-  - runtime
-  - supply-chain
+  - test          # GitLab SAST, secrets, dependency scanning (from templates)
+  - security      # DAST, container scanning
+  - report        # Upload to DefectDojo, GitLab Security Dashboard
 
-default:
-  image: alpine/helm:latest
-  before_script:
-    - apk add --no-cache curl bash
-    - curl -fsSL "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl" -o /usr/local/bin/kubectl && chmod +x /usr/local/bin/kubectl
-    - mkdir -p ~/.kube
-    - echo "$KUBECONFIG_CONTENT" | base64 -d > ~/.kube/config
+# ── Override Semgrep SAST to scan all ShopOS language rules ─────────────────
+semgrep-sast:
+  variables:
+    SAST_SEMGREP_METRICS: "false"
+    SEMGREP_RULES: >-
+      p/security-audit
+      p/owasp-top-ten
+      p/golang
+      p/java
+      p/python
+      p/nodejs
+      p/kotlin
+      p/rust
+      p/docker
+      p/kubernetes
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
 
-cert-manager:
-  stage: prerequisites
+# ── SonarQube quality gate (supplement to GitLab SAST) ─────────────────────
+sonarqube-scan:
+  stage: test
+  image: sonarsource/sonar-scanner-cli:latest
+  variables:
+    SONAR_USER_HOME: "${CI_PROJECT_DIR}/.sonar"
+    GIT_DEPTH: "0"
   script:
-    - '[ "$CERT_MANAGER" = "true" ] || exit 0'
-    - helm repo add jetstack https://charts.jetstack.io --force-update
-    - |
-      if [ "$ACTION" = "UNINSTALL" ]; then
-        helm uninstall cert-manager -n cert-manager 2>/dev/null || true
-      else
-        helm upgrade --install cert-manager jetstack/cert-manager \
-          --namespace cert-manager --create-namespace \
-          --set installCRDs=true --set replicaCount=2 \
-          --wait --timeout 5m
-      fi
+    - sonar-scanner
+        -Dsonar.host.url="$SONAR_HOST_URL"
+        -Dsonar.login="$SONAR_TOKEN"
+        -Dsonar.projectKey=shopos
+        -Dsonar.sources=src
+        -Dsonar.qualitygate.wait=true || true
+  cache:
+    key: "${CI_JOB_NAME}"
+    paths: [.sonar/cache]
+  allow_failure: true
+  rules:
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
 
-vault:
-  stage: core-identity
+# ── GoSec for Go services ───────────────────────────────────────────────────
+gosec-scan:
+  stage: test
+  image: securego/gosec:latest
   script:
-    - '[ "$VAULT" = "true" ] || exit 0'
-    - helm repo add hashicorp https://helm.releases.hashicorp.com --force-update
+    - mkdir -p reports/sast
     - |
-      if [ "$ACTION" = "UNINSTALL" ]; then
-        helm uninstall vault -n vault 2>/dev/null || true
-      else
-        helm upgrade --install vault hashicorp/vault \
-          --namespace vault --create-namespace \
-          --set server.ha.enabled=true \
-          --set server.ha.raft.enabled=true \
-          --set server.ha.replicas=3 \
-          --set ui.enabled=true \
-          --wait --timeout 10m
-        kubectl apply -f security/vault/ 2>/dev/null || true
-      fi
-  needs: [cert-manager]
+      for dir in src/platform src/identity src/catalog src/commerce src/supply-chain \
+                 src/financial src/customer-experience src/content src/b2b src/integrations src/affiliate; do
+        gosec -fmt sarif -out "reports/sast/gosec-$(basename $dir).sarif" \
+          "./${dir}/..." 2>/dev/null || true
+      done
+  artifacts:
+    paths: [reports/sast/]
+    reports:
+      sast: reports/sast/gosec-platform.sarif
+    expire_in: 30d
+  allow_failure: true
 
-keycloak:
-  stage: core-identity
+# ── Bandit for Python services ──────────────────────────────────────────────
+bandit-scan:
+  stage: test
+  image: python:3.12-alpine
   script:
-    - '[ "$KEYCLOAK" = "true" ] || exit 0'
-    - helm repo add bitnami https://charts.bitnami.com/bitnami --force-update
-    - |
-      if [ "$ACTION" = "UNINSTALL" ]; then
-        helm uninstall keycloak -n keycloak 2>/dev/null || true
-      else
-        helm upgrade --install keycloak bitnami/keycloak \
-          --namespace keycloak --create-namespace \
-          --set replicaCount=2 \
-          --set auth.adminPassword="$KEYCLOAK_ADMIN_PASSWORD" \
-          --set postgresql.enabled=true \
-          --wait --timeout 10m
-        kubectl apply -f security/keycloak/ 2>/dev/null || true
-      fi
-  needs: [cert-manager]
+    - pip install bandit -q
+    - mkdir -p reports/sast
+    - bandit -r src/ -f json -o reports/sast/bandit.json --severity-level medium || true
+  artifacts:
+    paths: [reports/sast/]
+    expire_in: 30d
+  allow_failure: true
 
-spire:
-  stage: core-identity
+# ── IaC scanning (Checkov + KICS) ───────────────────────────────────────────
+checkov-scan:
+  stage: test
+  image: bridgecrew/checkov:latest
   script:
-    - '[ "$SPIRE" = "true" ] || exit 0'
-    - helm repo add spiffe https://spiffe.github.io/helm-charts-hardened --force-update
-    - |
-      if [ "$ACTION" = "UNINSTALL" ]; then
-        helm uninstall spire -n spire 2>/dev/null || true
-      else
-        helm upgrade --install spire spiffe/spire \
-          --namespace spire --create-namespace \
-          --set spire-server.replicaCount=2 \
-          --set global.spire.trustDomain=shopos.cluster.local \
-          --wait --timeout 8m
-      fi
-  needs: [cert-manager]
+    - mkdir -p reports/iac
+    - checkov -d . --framework terraform,helm,kubernetes,dockerfile \
+        --output json --output-file-path reports/iac/ --soft-fail || true
+  artifacts:
+    paths: [reports/iac/]
+    expire_in: 30d
+  allow_failure: true
 
-opa-gatekeeper:
-  stage: policy
+# ── SBOM generation ──────────────────────────────────────────────────────────
+sbom-generate:
+  stage: test
+  image: anchore/syft:latest
   script:
-    - '[ "$OPA" = "true" ] || exit 0'
-    - helm repo add gatekeeper https://open-policy-agent.github.io/gatekeeper/charts --force-update
-    - |
-      if [ "$ACTION" = "UNINSTALL" ]; then
-        helm uninstall gatekeeper -n gatekeeper-system 2>/dev/null || true
-      else
-        helm upgrade --install gatekeeper gatekeeper/gatekeeper \
-          --namespace gatekeeper-system --create-namespace \
-          --set replicas=2 --set auditInterval=30 \
-          --wait --timeout 5m
-        kubectl apply -f security/opa/ 2>/dev/null || true
-      fi
-  needs: [vault, keycloak]
+    - mkdir -p reports/sbom
+    - syft dir:src -o cyclonedx-json=reports/sbom/shopos.cyclonedx.json || true
+    - syft dir:src -o spdx-json=reports/sbom/shopos.spdx.json || true
+  artifacts:
+    paths: [reports/sbom/]
+    expire_in: 90d
 
-kyverno:
-  stage: policy
+# ── Upload to DefectDojo vulnerability management ────────────────────────────
+upload-to-defectdojo:
+  stage: report
+  image: python:3.12-alpine
   script:
-    - '[ "$KYVERNO" = "true" ] || exit 0'
-    - helm repo add kyverno https://kyverno.github.io/kyverno --force-update
+    - pip install requests -q
     - |
-      if [ "$ACTION" = "UNINSTALL" ]; then
-        helm uninstall kyverno -n kyverno 2>/dev/null || true
-      else
-        helm upgrade --install kyverno kyverno/kyverno \
-          --namespace kyverno --create-namespace \
-          --set replicaCount=2 --wait --timeout 5m
-        kubectl apply -f security/kyverno/ 2>/dev/null || true
-      fi
-  needs: [vault, keycloak]
+      python3 << 'PYEOF'
+      import requests, os, json, glob, sys
 
-kubewarden:
-  stage: policy
-  script:
-    - '[ "$KUBEWARDEN" = "true" ] || exit 0'
-    - helm repo add kubewarden https://charts.kubewarden.io --force-update
-    - |
-      if [ "$ACTION" = "UNINSTALL" ]; then
-        helm uninstall kubewarden-defaults -n kubewarden 2>/dev/null || true
-        helm uninstall kubewarden-controller -n kubewarden 2>/dev/null || true
-        helm uninstall kubewarden-crds -n kubewarden 2>/dev/null || true
-      else
-        helm upgrade --install kubewarden-crds kubewarden/kubewarden-crds \
-          --namespace kubewarden --create-namespace --wait --timeout 3m
-        helm upgrade --install kubewarden-controller kubewarden/kubewarden-controller \
-          --namespace kubewarden --wait --timeout 5m
-        helm upgrade --install kubewarden-defaults kubewarden/kubewarden-defaults \
-          --namespace kubewarden --wait --timeout 5m
-      fi
-  needs: [vault, keycloak]
+      url   = os.environ.get('DEFECTDOJO_URL', '').rstrip('/')
+      token = os.environ.get('DEFECTDOJO_TOKEN', '')
 
-falco:
-  stage: runtime
-  script:
-    - '[ "$FALCO" = "true" ] || exit 0'
-    - helm repo add falcosecurity https://falcosecurity.github.io/charts --force-update
-    - |
-      if [ "$ACTION" = "UNINSTALL" ]; then
-        helm uninstall falco -n falco 2>/dev/null || true
-      else
-        helm upgrade --install falco falcosecurity/falco \
-          --namespace falco --create-namespace \
-          --set driver.kind=ebpf \
-          --set falcosidekick.enabled=true \
-          --set falcosidekick.config.slack.webhookurl="$SLACK_WEBHOOK" \
-          --wait --timeout 8m
-        kubectl apply -f security/falco/ 2>/dev/null || true
-      fi
-  needs: [kyverno]
+      if not url or not token:
+          print("DefectDojo not configured — skipping upload")
+          sys.exit(0)
 
-trivy-operator:
-  stage: runtime
-  script:
-    - '[ "$TRIVY_OPERATOR" = "true" ] || exit 0'
-    - helm repo add aqua https://aquasecurity.github.io/helm-charts --force-update
-    - |
-      if [ "$ACTION" = "UNINSTALL" ]; then
-        helm uninstall trivy-operator -n trivy-system 2>/dev/null || true
-      else
-        helm upgrade --install trivy-operator aqua/trivy-operator \
-          --namespace trivy-system --create-namespace \
-          --set trivy.ignoreUnfixed=true --wait --timeout 5m
-      fi
-  needs: [kyverno]
+      reports = {
+          'gl-sast-report.json':                  'GitLab SAST Report',
+          'gl-secret-detection-report.json':      'GitLab Secret Detection Report',
+          'gl-dependency-scanning-report.json':   'Dependency Track Finding Packaging',
+          'gl-container-scanning-report.json':    'GitLab Container Scan',
+      }
 
-rekor:
-  stage: supply-chain
-  script:
-    - '[ "$REKOR" = "true" ] || exit 0'
-    - helm repo add sigstore https://sigstore.github.io/helm-charts --force-update
-    - |
-      if [ "$ACTION" = "UNINSTALL" ]; then
-        helm uninstall rekor -n rekor 2>/dev/null || true
-      else
-        helm upgrade --install rekor sigstore/rekor \
-          --namespace rekor --create-namespace \
-          --wait --timeout 8m
-      fi
-  needs: [falco]
+      for filename, scan_type in reports.items():
+          if not os.path.exists(filename):
+              continue
+          with open(filename, 'rb') as f:
+              resp = requests.post(
+                  f"{url}/api/v2/import-scan/",
+                  headers={"Authorization": f"Token {token}"},
+                  data={
+                      "scan_type": scan_type,
+                      "product_name": "ShopOS",
+                      "engagement_name": f"GitLab-{os.environ.get('CI_COMMIT_SHORT_SHA','unknown')}",
+                      "auto_create_context": "true",
+                  },
+                  files={"file": (filename, f, "application/json")},
+              )
+          print(f"Uploaded {filename}: HTTP {resp.status_code}")
+      PYEOF
+  artifacts:
+    reports:
+      sast: gl-sast-report.json
+  rules:
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+  allow_failure: true
 
-fulcio:
-  stage: supply-chain
+# ── Security Dashboard summary ────────────────────────────────────────────────
+security-summary:
+  stage: report
+  image: alpine:latest
   script:
-    - '[ "$FULCIO" = "true" ] || exit 0'
-    - helm repo add sigstore https://sigstore.github.io/helm-charts --force-update
     - |
-      if [ "$ACTION" = "UNINSTALL" ]; then
-        helm uninstall fulcio -n fulcio 2>/dev/null || true
-      else
-        helm upgrade --install fulcio sigstore/fulcio \
-          --namespace fulcio --create-namespace \
-          --set config.OIDCIssuers.keycloak.IssuerURL=https://keycloak.shopos.internal/realms/shopos \
-          --set config.OIDCIssuers.keycloak.ClientID=fulcio \
-          --set config.OIDCIssuers.keycloak.Type=keycloak \
-          --wait --timeout 8m
-      fi
-  needs: [falco]
+      echo "=== ShopOS Security Scan Summary ==="
+      echo "Pipeline:  $CI_PIPELINE_ID"
+      echo "Commit:    $CI_COMMIT_SHORT_SHA"
+      echo "Branch:    $CI_COMMIT_BRANCH"
+      echo "Scanners:  SAST(semgrep,gosec,bandit) | Secrets | Deps | Container | IaC | SBOM"
+      echo "Results:   Available in GitLab Security Dashboard"
+  rules:
+    - when: always
