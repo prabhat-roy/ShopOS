@@ -17,35 +17,35 @@ def call() {
                 AUTH=admin:admin
 
                 # Declare exchanges
-                curl -sf -u "\$AUTH" -X PUT "\$BASE/exchanges/shopos/commerce.events" \
+                curl -sf --max-time 15 -u "\$AUTH" -X PUT "\$BASE/exchanges/shopos/commerce.events" \
                     -H "Content-Type: application/json" \
                     -d "{\"type\":\"topic\",\"durable\":true}" || true
-                curl -sf -u "\$AUTH" -X PUT "\$BASE/exchanges/shopos/notification.events" \
+                curl -sf --max-time 15 -u "\$AUTH" -X PUT "\$BASE/exchanges/shopos/notification.events" \
                     -H "Content-Type: application/json" \
                     -d "{\"type\":\"topic\",\"durable\":true}" || true
-                curl -sf -u "\$AUTH" -X PUT "\$BASE/exchanges/shopos/deadletter" \
+                curl -sf --max-time 15 -u "\$AUTH" -X PUT "\$BASE/exchanges/shopos/deadletter" \
                     -H "Content-Type: application/json" \
                     -d "{\"type\":\"fanout\",\"durable\":true}" || true
 
                 # Declare queues
-                curl -sf -u "\$AUTH" -X PUT "\$BASE/queues/shopos/order.processing" \
+                curl -sf --max-time 15 -u "\$AUTH" -X PUT "\$BASE/queues/shopos/order.processing" \
                     -H "Content-Type: application/json" \
                     -d "{\"durable\":true,\"arguments\":{\"x-dead-letter-exchange\":\"deadletter\"}}" || true
-                curl -sf -u "\$AUTH" -X PUT "\$BASE/queues/shopos/email.sending" \
+                curl -sf --max-time 15 -u "\$AUTH" -X PUT "\$BASE/queues/shopos/email.sending" \
                     -H "Content-Type: application/json" \
                     -d "{\"durable\":true,\"arguments\":{\"x-dead-letter-exchange\":\"deadletter\"}}" || true
-                curl -sf -u "\$AUTH" -X PUT "\$BASE/queues/shopos/sms.sending" \
+                curl -sf --max-time 15 -u "\$AUTH" -X PUT "\$BASE/queues/shopos/sms.sending" \
                     -H "Content-Type: application/json" \
                     -d "{\"durable\":true,\"arguments\":{\"x-dead-letter-exchange\":\"deadletter\"}}" || true
 
                 # Bind queues to exchanges
-                curl -sf -u "\$AUTH" -X POST "\$BASE/bindings/shopos/e/commerce.events/q/order.processing" \
+                curl -sf --max-time 15 -u "\$AUTH" -X POST "\$BASE/bindings/shopos/e/commerce.events/q/order.processing" \
                     -H "Content-Type: application/json" \
                     -d "{\"routing_key\":\"order.*\"}" || true
-                curl -sf -u "\$AUTH" -X POST "\$BASE/bindings/shopos/e/notification.events/q/email.sending" \
+                curl -sf --max-time 15 -u "\$AUTH" -X POST "\$BASE/bindings/shopos/e/notification.events/q/email.sending" \
                     -H "Content-Type: application/json" \
                     -d "{\"routing_key\":\"email.*\"}" || true
-                curl -sf -u "\$AUTH" -X POST "\$BASE/bindings/shopos/e/notification.events/q/sms.sending" \
+                curl -sf --max-time 15 -u "\$AUTH" -X POST "\$BASE/bindings/shopos/e/notification.events/q/sms.sending" \
                     -H "Content-Type: application/json" \
                     -d "{\"routing_key\":\"sms.*\"}" || true
 

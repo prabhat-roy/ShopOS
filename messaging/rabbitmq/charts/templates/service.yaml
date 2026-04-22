@@ -11,5 +11,9 @@ spec:
       targetPort: http
       protocol: TCP
       name: http
+    - port: 15672
+      targetPort: 15672
+      protocol: TCP
+      name: management
   selector:
     {{- include "app.selectorLabels" . | nindent 4 }}
