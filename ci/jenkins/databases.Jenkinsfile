@@ -144,7 +144,7 @@ pipeline {
                         fi
                         helm upgrade --install scylla-operator scylla/scylla-operator \
                             --namespace scylla-operator --create-namespace \
-                            --wait --timeout=5m
+                            --wait --timeout=10m
                         helm upgrade --install scylla scylla/scylla \
                             --namespace databases \
                             --set developerMode=true \
