@@ -1,7 +1,7 @@
 def call() {
     sh """
         echo "Waiting for NATS rollout..."
-        kubectl rollout status deployment/nats -n nats --timeout=5m
+        kubectl rollout status statefulset/nats -n nats --timeout=5m
 
         # Clean up any leftover pod from a prior run
         kubectl delete pod nats-setup -n nats --ignore-not-found=true 2>/dev/null || true
