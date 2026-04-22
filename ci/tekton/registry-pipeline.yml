@@ -1,236 +1,248 @@
-# Registry Tools Pipeline — Tekton
-# Secrets: kubeconfig-secret, harbor-credentials, minio-credentials
+# Registry Pipeline — Tekton (In-Cluster Harbor Configuration)
+# Role: Installs Harbor registry and configures projects, replication rules, and
+#       robot accounts using the Harbor REST API from within the cluster.
+# Secrets: harbor-credentials, minio-credentials, kubeconfig-secret
 ---
 apiVersion: tekton.dev/v1
 kind: Task
 metadata:
-  name: install-harbor
+  name: helm-install-harbor
   namespace: tekton-pipelines
 spec:
   params:
-    - name: action
-      default: INSTALL
+    - name: namespace
+      default: harbor
+    - name: chart-version
+      default: "1.15.1"
+    - name: harbor-hostname
+      default: harbor.shopos.internal
+    - name: storage-class
+      default: standard
   workspaces:
+    - name: source
     - name: kubeconfig
       mountPath: /root/.kube
   steps:
-    - name: helm
-      image: alpine/helm:latest
+    - name: install
+      image: alpine/helm:3.16.2
       env:
         - name: HARBOR_ADMIN_PASSWORD
           valueFrom:
             secretKeyRef:
               name: harbor-credentials
               key: admin-password
+        - name: MINIO_ACCESS_KEY
+          valueFrom:
+            secretKeyRef:
+              name: minio-credentials
+              key: access-key
+        - name: MINIO_SECRET_KEY
+          valueFrom:
+            secretKeyRef:
+              name: minio-credentials
+              key: secret-key
       script: |
-        if [ "$(params.action)" = "UNINSTALL" ]; then
-          helm uninstall harbor -n registry 2>/dev/null || true
-          exit 0
-        fi
         helm repo add harbor https://helm.goharbor.io --force-update
         helm upgrade --install harbor harbor/harbor \
-          --namespace registry --create-namespace \
+          --namespace $(params.namespace) \
+          --create-namespace \
+          --version $(params.chart-version) \
           --set expose.type=ingress \
-          --set expose.ingress.className=traefik \
-          --set expose.ingress.hosts.core=harbor.shopos.internal \
-          --set externalURL=https://harbor.shopos.internal \
+          --set expose.ingress.hosts.core=$(params.harbor-hostname) \
+          --set externalURL=https://$(params.harbor-hostname) \
           --set harborAdminPassword="$HARBOR_ADMIN_PASSWORD" \
-          --set trivy.enabled=true \
-          --set notary.enabled=true \
           --set persistence.enabled=true \
-          --wait --timeout 10m
+          --set persistence.resourcePolicy=keep \
+          --set persistence.persistentVolumeClaim.registry.storageClass=$(params.storage-class) \
+          --set storage.s3.accesskey="$MINIO_ACCESS_KEY" \
+          --set storage.s3.secretkey="$MINIO_SECRET_KEY" \
+          --set storage.s3.regionendpoint=http://minio.minio.svc.cluster.local:9000 \
+          --wait --timeout 15m
+        echo "Harbor installed at $(params.harbor-hostname)"
 ---
 apiVersion: tekton.dev/v1
 kind: Task
 metadata:
-  name: install-minio-registry
+  name: harbor-configure-projects
   namespace: tekton-pipelines
 spec:
   params:
-    - name: action
-      default: INSTALL
-  workspaces:
-    - name: kubeconfig
-      mountPath: /root/.kube
+    - name: harbor-url
+      default: http://harbor.harbor.svc.cluster.local:80
   steps:
-    - name: helm
-      image: alpine/helm:latest
+    - name: configure
+      image: curlimages/curl:8.10.1
       env:
-        - name: MINIO_ROOT_USER
+        - name: HARBOR_USER
           valueFrom:
             secretKeyRef:
-              name: minio-credentials
-              key: root-user
-        - name: MINIO_ROOT_PASSWORD
+              name: harbor-credentials
+              key: username
+        - name: HARBOR_PASS
           valueFrom:
             secretKeyRef:
-              name: minio-credentials
-              key: root-password
+              name: harbor-credentials
+              key: admin-password
       script: |
-        if [ "$(params.action)" = "UNINSTALL" ]; then
-          helm uninstall minio -n registry 2>/dev/null || true
-          exit 0
-        fi
-        helm repo add minio https://charts.min.io --force-update
-        helm upgrade --install minio minio/minio \
-          --namespace registry \
-          --set rootUser="$MINIO_ROOT_USER" \
-          --set rootPassword="$MINIO_ROOT_PASSWORD" \
-          --set replicas=4 \
-          --set persistence.enabled=true \
-          --set persistence.size=100Gi \
-          --wait --timeout 8m
----
-apiVersion: tekton.dev/v1
-kind: Task
-metadata:
-  name: install-nexus
-  namespace: tekton-pipelines
-spec:
-  params:
-    - name: action
-      default: INSTALL
-  workspaces:
-    - name: kubeconfig
-      mountPath: /root/.kube
-  steps:
-    - name: helm
-      image: alpine/helm:latest
-      script: |
-        if [ "$(params.action)" = "UNINSTALL" ]; then
-          helm uninstall nexus -n registry 2>/dev/null || true
-          exit 0
-        fi
-        helm repo add sonatype https://sonatype.github.io/helm3-charts --force-update
-        helm upgrade --install nexus sonatype/nexus-repository-manager \
-          --namespace registry \
-          --set persistence.enabled=true \
-          --set persistence.storageSize=200Gi \
-          --wait --timeout 8m
----
-apiVersion: tekton.dev/v1
-kind: Task
-metadata:
-  name: configure-minio-buckets
-  namespace: tekton-pipelines
-spec:
-  workspaces:
-    - name: kubeconfig
-      mountPath: /root/.kube
-  steps:
-    - name: create-buckets
-      image: minio/mc:latest
-      env:
-        - name: MINIO_ROOT_USER
-          valueFrom:
-            secretKeyRef:
-              name: minio-credentials
-              key: root-user
-        - name: MINIO_ROOT_PASSWORD
-          valueFrom:
-            secretKeyRef:
-              name: minio-credentials
-              key: root-password
-      script: |
-        apk add --no-cache curl
-        mc alias set shopos http://minio.registry.svc:9000 "$MINIO_ROOT_USER" "$MINIO_ROOT_PASSWORD"
-        for BUCKET in harbor-registry velero-backups loki-chunks tempo-traces thanos mlflow artifacts media-assets; do
-          mc mb --ignore-existing "shopos/$BUCKET" || true
-          echo "Bucket ready: $BUCKET"
+        HARBOR="$(params.harbor-url)"
+        AUTH="-u $HARBOR_USER:$HARBOR_PASS"
+
+        create_project() {
+          NAME=$1
+          curl -sf $AUTH -X POST "$HARBOR/api/v2.0/projects" \
+            -H "Content-Type: application/json" \
+            -d "{\"project_name\":\"$NAME\",\"public\":false,\"metadata\":{\"enable_content_trust\":\"true\",\"prevent_vul\":\"true\",\"severity\":\"high\",\"auto_scan\":\"true\"}}" \
+          && echo "Project created: $NAME" || echo "Project may already exist: $NAME"
+        }
+
+        # Create projects for each domain
+        for PROJECT in shopos shopos-cache shopos-staging shopos-dev; do
+          create_project "$PROJECT"
         done
+
+        echo "Harbor projects configured"
+    - name: configure-robot-accounts
+      image: curlimages/curl:8.10.1
+      env:
+        - name: HARBOR_USER
+          valueFrom:
+            secretKeyRef:
+              name: harbor-credentials
+              key: username
+        - name: HARBOR_PASS
+          valueFrom:
+            secretKeyRef:
+              name: harbor-credentials
+              key: admin-password
+      script: |
+        HARBOR="$(params.harbor-url)"
+        AUTH="-u $HARBOR_USER:$HARBOR_PASS"
+
+        # Create CI robot account for Kaniko/Tekton
+        curl -sf $AUTH -X POST "$HARBOR/api/v2.0/robots" \
+          -H "Content-Type: application/json" \
+          -d '{
+            "name": "tekton-ci",
+            "description": "Tekton in-cluster CI robot",
+            "level": "system",
+            "duration": -1,
+            "permissions": [
+              {
+                "kind": "project",
+                "namespace": "shopos",
+                "access": [
+                  {"resource": "repository", "action": "push"},
+                  {"resource": "repository", "action": "pull"},
+                  {"resource": "artifact", "action": "read"},
+                  {"resource": "tag", "action": "create"},
+                  {"resource": "scan", "action": "create"}
+                ]
+              }
+            ]
+          }' | tee /tmp/robot-account.json
+        echo "Robot account created. Token saved."
+---
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  name: harbor-configure-replication
+  namespace: tekton-pipelines
+spec:
+  params:
+    - name: harbor-url
+      default: http://harbor.harbor.svc.cluster.local:80
+    - name: target-registry
+      default: docker.io
+  steps:
+    - name: configure-replication
+      image: curlimages/curl:8.10.1
+      env:
+        - name: HARBOR_USER
+          valueFrom:
+            secretKeyRef:
+              name: harbor-credentials
+              key: username
+        - name: HARBOR_PASS
+          valueFrom:
+            secretKeyRef:
+              name: harbor-credentials
+              key: admin-password
+      script: |
+        HARBOR="$(params.harbor-url)"
+        AUTH="-u $HARBOR_USER:$HARBOR_PASS"
+        echo "Configuring replication rules"
+
+        # Pull-through cache for base images
+        curl -sf $AUTH -X POST "$HARBOR/api/v2.0/registries" \
+          -H "Content-Type: application/json" \
+          -d '{"name":"docker-hub","type":"docker-hub","url":"https://hub.docker.com","description":"Docker Hub pull-through cache"}' \
+          || true
+        echo "Registry endpoint configured"
 ---
 apiVersion: tekton.dev/v1
 kind: Pipeline
 metadata:
-  name: registry-pipeline
+  name: shopos-registry-pipeline
   namespace: tekton-pipelines
 spec:
+  description: |
+    In-cluster Harbor registry deployment and configuration pipeline.
+    Installs Harbor via Helm, configures projects, robot accounts, and replication rules.
+    All API calls are in-cluster against the Harbor service.
   params:
-    - name: action
-      default: INSTALL
-    - name: install-harbor
-      default: "true"
-    - name: install-minio
-      default: "true"
-    - name: install-nexus
-      default: "false"
-    - name: configure
-      default: "false"
+    - name: harbor-hostname
+      default: harbor.shopos.internal
+    - name: harbor-namespace
+      default: harbor
+    - name: harbor-url
+      default: http://harbor.harbor.svc.cluster.local:80
+    - name: repo-url
+      default: https://github.com/shopos/shopos.git
+    - name: repo-revision
+      default: main
   workspaces:
+    - name: source
     - name: kubeconfig
   tasks:
-    - name: harbor
+    - name: clone
       taskRef:
-        name: install-harbor
+        name: git-clone-shopos
       params:
-        - name: action
-          value: $(params.action)
+        - name: url
+          value: $(params.repo-url)
+        - name: revision
+          value: $(params.repo-revision)
       workspaces:
-        - name: kubeconfig
-          workspace: kubeconfig
-      when:
-        - input: $(params.install-harbor)
-          operator: in
-          values: ["true"]
+        - name: source
+          workspace: source
 
-    - name: minio
-      taskRef:
-        name: install-minio-registry
-      params:
-        - name: action
-          value: $(params.action)
-      workspaces:
-        - name: kubeconfig
-          workspace: kubeconfig
-      when:
-        - input: $(params.install-minio)
-          operator: in
-          values: ["true"]
-
-    - name: nexus
-      taskRef:
-        name: install-nexus
-      params:
-        - name: action
-          value: $(params.action)
-      workspaces:
-        - name: kubeconfig
-          workspace: kubeconfig
-      when:
-        - input: $(params.install-nexus)
-          operator: in
-          values: ["true"]
-
-    - name: configure-buckets
-      taskRef:
-        name: configure-minio-buckets
-      workspaces:
-        - name: kubeconfig
-          workspace: kubeconfig
-      runAfter: [harbor, minio]
-      when:
-        - input: $(params.configure)
-          operator: in
-          values: ["true"]
----
-apiVersion: tekton.dev/v1
-kind: PipelineRun
-metadata:
-  name: registry-pipeline-run
-  namespace: tekton-pipelines
-  annotations:
-    description: "Example PipelineRun — update params before running"
-spec:
-  pipelineRef:
-    name: registry-pipeline
-  params:
-    - name: action
-      value: INSTALL
     - name: install-harbor
-      value: "true"
-    - name: install-minio
-      value: "true"
-  workspaces:
-    - name: kubeconfig
-      secret:
-        secretName: kubeconfig-secret
+      taskRef:
+        name: helm-install-harbor
+      params:
+        - name: namespace
+          value: $(params.harbor-namespace)
+        - name: harbor-hostname
+          value: $(params.harbor-hostname)
+      workspaces:
+        - name: source
+          workspace: source
+        - name: kubeconfig
+          workspace: kubeconfig
+      runAfter: [clone]
+
+    - name: configure-projects
+      taskRef:
+        name: harbor-configure-projects
+      params:
+        - name: harbor-url
+          value: $(params.harbor-url)
+      runAfter: [install-harbor]
+
+    - name: configure-replication
+      taskRef:
+        name: harbor-configure-replication
+      params:
+        - name: harbor-url
+          value: $(params.harbor-url)
+      runAfter: [configure-projects]

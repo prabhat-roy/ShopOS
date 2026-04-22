@@ -1,136 +1,193 @@
-# Security Infrastructure Pipeline — CircleCI
-# Context: shopos-kubernetes, shopos-keycloak, shopos-slack
+# Security Pipeline — CircleCI
+# Role: Container vulnerability scanning using circleci/trivy orb + Semgrep SAST.
+#       Generates SBOM and stores scan results as artifacts.
+# Context: shopos-harbor (HARBOR_REGISTRY), shopos-sonarqube (SONAR_TOKEN)
 version: 2.1
 
+orbs:
+  trivy: aquasecurity/trivy@0.0.6
+
 executors:
-  helm-executor:
+  security-executor:
     docker:
-      - image: alpine/helm:latest
+      - image: cimg/base:current
+    resource_class: medium
+
+  semgrep-executor:
+    docker:
+      - image: returntocorp/semgrep:1.94.0
     resource_class: medium
 
 jobs:
-  install-cert-manager:
-    executor: helm-executor
+  trivy-image-scan:
+    executor: security-executor
+    parameters:
+      service:
+        type: string
+        default: api-gateway
+      severity:
+        type: string
+        default: CRITICAL
     steps:
       - checkout
+      - setup_remote_docker:
+          version: docker24
       - run:
-          name: Setup kubeconfig
-          command: mkdir -p ~/.kube && echo "$KUBECONFIG_CONTENT" | base64 -d > ~/.kube/config
-      - run:
-          name: Install cert-manager
+          name: Trivy image scan (<< parameters.severity >>)
           command: |
-            [ "$CERT_MANAGER" = "true" ] || { echo "Skipped"; exit 0; }
-            helm repo add jetstack https://charts.jetstack.io --force-update
-            helm upgrade --install cert-manager jetstack/cert-manager \
-              --namespace cert-manager --create-namespace \
-              --set installCRDs=true --set replicaCount=2 \
-              --wait --timeout 5m
+            IMAGE="${HARBOR_REGISTRY:-harbor.shopos.internal}/shopos/<< parameters.service >>:latest"
+            docker run --rm \
+              aquasec/trivy:0.57.1 image \
+              --exit-code 1 \
+              --severity << parameters.severity >> \
+              --format table \
+              --no-progress \
+              "$IMAGE" 2>&1 | tee /tmp/trivy-<< parameters.service >>.txt
+          no_output_timeout: 10m
+      - store_artifacts:
+          path: /tmp/trivy-<< parameters.service >>.txt
+          destination: trivy-<< parameters.service >>
 
-  install-vault:
-    executor: helm-executor
+  trivy-sbom-generate:
+    executor: security-executor
+    parameters:
+      service:
+        type: string
+        default: api-gateway
     steps:
-      - checkout
+      - setup_remote_docker:
+          version: docker24
       - run:
-          name: Setup kubeconfig
-          command: mkdir -p ~/.kube && echo "$KUBECONFIG_CONTENT" | base64 -d > ~/.kube/config
-      - run:
-          name: Install Vault HA
+          name: Generate SBOM (CycloneDX) for << parameters.service >>
           command: |
-            [ "$VAULT" = "true" ] || { echo "Skipped"; exit 0; }
-            helm repo add hashicorp https://helm.releases.hashicorp.com --force-update
-            helm upgrade --install vault hashicorp/vault \
-              --namespace vault --create-namespace \
-              --set server.ha.enabled=true --set server.ha.raft.enabled=true \
-              --set server.ha.replicas=3 --wait --timeout 10m
+            IMAGE="${HARBOR_REGISTRY:-harbor.shopos.internal}/shopos/<< parameters.service >>:latest"
+            docker run --rm \
+              aquasec/trivy:0.57.1 image \
+              --format cyclonedx \
+              --output /tmp/sbom-<< parameters.service >>.json \
+              --no-progress \
+              "$IMAGE" 2>&1 || true
+            echo "SBOM generated"
+      - store_artifacts:
+          path: /tmp/sbom-<< parameters.service >>.json
+          destination: sbom-<< parameters.service >>
 
-  install-keycloak:
-    executor: helm-executor
+  semgrep-sast:
+    executor: semgrep-executor
     steps:
       - checkout
       - run:
-          name: Setup kubeconfig
-          command: mkdir -p ~/.kube && echo "$KUBECONFIG_CONTENT" | base64 -d > ~/.kube/config
-      - run:
-          name: Install Keycloak
+          name: Semgrep SAST scan (auto config)
           command: |
-            [ "$KEYCLOAK" = "true" ] || { echo "Skipped"; exit 0; }
-            helm repo add bitnami https://charts.bitnami.com/bitnami --force-update
-            helm upgrade --install keycloak bitnami/keycloak \
-              --namespace keycloak --create-namespace \
-              --set replicaCount=2 \
-              --set auth.adminPassword="$KEYCLOAK_ADMIN_PASSWORD" \
-              --set postgresql.enabled=true --wait --timeout 10m
+            semgrep \
+              --config=auto \
+              --json \
+              --output=/tmp/semgrep-report.json \
+              --no-git-ignore \
+              src/ 2>&1 | tail -30
+            FINDINGS=$(python3 -c "import json; d=json.load(open('/tmp/semgrep-report.json')); print(len(d.get('results',[])))" 2>/dev/null || echo "0")
+            echo "SAST findings: $FINDINGS"
+      - run:
+          name: Semgrep custom rules scan
+          command: |
+            if [ -d "security/semgrep" ]; then
+              semgrep \
+                --config=security/semgrep \
+                --json \
+                --output=/tmp/semgrep-custom.json \
+                --no-git-ignore \
+                src/ 2>&1 | tail -15 || true
+            fi
+      - store_artifacts:
+          path: /tmp/semgrep-report.json
+          destination: semgrep-report
+      - store_test_results:
+          path: /tmp/semgrep-report.json
 
-  install-kyverno:
-    executor: helm-executor
+  gitleaks-secret-scan:
+    docker:
+      - image: zricethezav/gitleaks:latest
     steps:
       - checkout
       - run:
-          name: Setup kubeconfig
-          command: mkdir -p ~/.kube && echo "$KUBECONFIG_CONTENT" | base64 -d > ~/.kube/config
-      - run:
-          name: Install Kyverno
+          name: Gitleaks secret scan
           command: |
-            [ "$KYVERNO" = "true" ] || { echo "Skipped"; exit 0; }
-            helm repo add kyverno https://kyverno.github.io/kyverno --force-update
-            helm upgrade --install kyverno kyverno/kyverno \
-              --namespace kyverno --create-namespace \
-              --set replicaCount=3 --wait --timeout 5m
-            kubectl apply -f security/kyverno/ 2>/dev/null || true
+            gitleaks detect \
+              --source . \
+              --report-format json \
+              --report-path /tmp/gitleaks-report.json \
+              --exit-code 0 2>&1
+            COUNT=$(python3 -c "import json; d=json.load(open('/tmp/gitleaks-report.json')); print(len(d))" 2>/dev/null || echo "0")
+            echo "Potential secrets: $COUNT"
+            [ "$COUNT" -gt 0 ] && cat /tmp/gitleaks-report.json | python3 -c "import json,sys; [print(r.get('Description',''),r.get('File','')) for r in json.load(sys.stdin)]"
+            exit 0
+      - store_artifacts:
+          path: /tmp/gitleaks-report.json
+          destination: gitleaks-report
 
-  install-falco:
-    executor: helm-executor
+  checkov-iac-scan:
+    docker:
+      - image: bridgecrew/checkov:latest
     steps:
       - checkout
       - run:
-          name: Setup kubeconfig
-          command: mkdir -p ~/.kube && echo "$KUBECONFIG_CONTENT" | base64 -d > ~/.kube/config
-      - run:
-          name: Install Falco
+          name: Checkov IaC scan (Terraform + K8s)
           command: |
-            [ "$FALCO" = "true" ] || { echo "Skipped"; exit 0; }
-            helm repo add falcosecurity https://falcosecurity.github.io/charts --force-update
-            helm upgrade --install falco falcosecurity/falco \
-              --namespace falco --create-namespace \
-              --set driver.kind=ebpf \
-              --set falcosidekick.enabled=true \
-              --set falcosidekick.config.slack.webhookurl="$SLACK_WEBHOOK" \
-              --wait --timeout 8m
-
-  install-opa:
-    executor: helm-executor
-    steps:
-      - checkout
-      - run:
-          name: Setup kubeconfig
-          command: mkdir -p ~/.kube && echo "$KUBECONFIG_CONTENT" | base64 -d > ~/.kube/config
-      - run:
-          name: Install OPA Gatekeeper
-          command: |
-            [ "$OPA" = "true" ] || { echo "Skipped"; exit 0; }
-            helm repo add gatekeeper https://open-policy-agent.github.io/gatekeeper/charts --force-update
-            helm upgrade --install gatekeeper gatekeeper/gatekeeper \
-              --namespace gatekeeper-system --create-namespace \
-              --set replicaCount=3 --wait --timeout 5m
-            kubectl apply -f security/opa/ 2>/dev/null || true
+            checkov -d infra/ \
+              --output json \
+              --output-file-path /tmp/checkov-infra \
+              --soft-fail 2>&1 | tail -20 || true
+            checkov -d kubernetes/ \
+              --output json \
+              --output-file-path /tmp/checkov-k8s \
+              --soft-fail 2>&1 | tail -10 || true
+            echo "IaC scanning complete"
+      - store_artifacts:
+          path: /tmp/checkov-infra
+          destination: checkov-infra
 
 workflows:
-  security-workflow:
+  security-scan:
     jobs:
-      - install-cert-manager:
-          context: shopos-kubernetes
-      - install-vault:
-          requires: [install-cert-manager]
-          context: shopos-kubernetes
-      - install-keycloak:
-          requires: [install-cert-manager]
-          context: [shopos-kubernetes, shopos-keycloak]
-      - install-kyverno:
-          requires: [install-cert-manager]
-          context: shopos-kubernetes
-      - install-falco:
-          requires: [install-cert-manager]
-          context: [shopos-kubernetes, shopos-slack]
-      - install-opa:
-          requires: [install-cert-manager]
-          context: shopos-kubernetes
+      - gitleaks-secret-scan:
+          filters:
+            branches:
+              only: [main, develop, /release\/.*/]
+
+      - semgrep-sast:
+          filters:
+            branches:
+              only: [main, develop, /release\/.*/]
+
+      - checkov-iac-scan:
+          filters:
+            branches:
+              only: [main, develop]
+
+      - trivy-image-scan:
+          name: trivy-api-gateway
+          service: api-gateway
+          severity: CRITICAL
+          context: shopos-harbor
+          filters:
+            branches:
+              only: main
+
+      - trivy-image-scan:
+          name: trivy-order-service
+          service: order-service
+          severity: CRITICAL
+          context: shopos-harbor
+          requires: [trivy-api-gateway]
+          filters:
+            branches:
+              only: main
+
+      - trivy-sbom-generate:
+          name: sbom-api-gateway
+          service: api-gateway
+          context: shopos-harbor
+          requires: [trivy-api-gateway]
+          filters:
+            branches:
+              only: main

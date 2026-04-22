@@ -1,119 +1,151 @@
 # Observability Stack Pipeline — CircleCI
+# Role: Installs observability stack (Prometheus, Loki, Jaeger, OTel) via Helm orb.
+#       Verifies dashboard and metrics endpoints after deployment.
 # Context: shopos-kubernetes, shopos-grafana, shopos-minio
 version: 2.1
 
-executors:
-  helm-executor:
-    docker:
-      - image: alpine/helm:latest
-    resource_class: medium
+orbs:
+  helm: circleci/helm@3.0
 
 jobs:
-  install-prometheus:
-    executor: helm-executor
+  install-prometheus-stack:
+    docker:
+      - image: alpine/helm:3.16.2
     steps:
       - checkout
       - run:
-          name: Setup kubeconfig
-          command: mkdir -p ~/.kube && echo "$KUBECONFIG_CONTENT" | base64 -d > ~/.kube/config
+          name: Configure kubeconfig
+          command: |
+            mkdir -p ~/.kube
+            echo "$KUBECONFIG_DATA" | base64 -d > ~/.kube/config
       - run:
-          name: Install kube-prometheus-stack
+          name: Helm install kube-prometheus-stack
           command: |
             helm repo add prometheus-community https://prometheus-community.github.io/helm-charts --force-update
-            helm upgrade --install kube-prometheus-stack prometheus-community/kube-prometheus-stack \
+            helm upgrade --install kube-prometheus-stack \
+              prometheus-community/kube-prometheus-stack \
               --namespace observability --create-namespace \
-              --set prometheus.prometheusSpec.retention=30d \
-              --set prometheus.prometheusSpec.replicas=2 \
-              --set alertmanager.alertmanagerSpec.replicas=2 \
-              --set grafana.enabled=false \
-              --wait --timeout 10m
+              --version 65.8.1 \
+              --values observability/prometheus/values.yaml \
+              --set grafana.adminPassword="$GRAFANA_ADMIN_PASSWORD" \
+              --wait --timeout 15m
+            echo "kube-prometheus-stack installed"
 
-  install-grafana:
-    executor: helm-executor
+  install-loki:
+    docker:
+      - image: alpine/helm:3.16.2
     steps:
       - checkout
       - run:
-          name: Setup kubeconfig
-          command: mkdir -p ~/.kube && echo "$KUBECONFIG_CONTENT" | base64 -d > ~/.kube/config
+          name: Configure kubeconfig
+          command: |
+            mkdir -p ~/.kube
+            echo "$KUBECONFIG_DATA" | base64 -d > ~/.kube/config
       - run:
-          name: Install Grafana
+          name: Helm install Loki stack
           command: |
             helm repo add grafana https://grafana.github.io/helm-charts --force-update
-            helm upgrade --install grafana grafana/grafana \
+            helm upgrade --install loki grafana/loki-stack \
               --namespace observability \
-              --set adminPassword="$GRAFANA_ADMIN_PASSWORD" \
-              --set persistence.enabled=true --set replicas=2 \
-              --wait --timeout 5m
-            kubectl apply -f observability/grafana/ 2>/dev/null || true
-
-  install-loki:
-    executor: helm-executor
-    steps:
-      - run:
-          name: Setup kubeconfig
-          command: mkdir -p ~/.kube && echo "$KUBECONFIG_CONTENT" | base64 -d > ~/.kube/config
-      - run:
-          name: Install Loki
-          command: |
-            helm repo add grafana https://grafana.github.io/helm-charts --force-update
-            helm upgrade --install loki grafana/loki \
-              --namespace observability \
-              --set loki.storage.type=s3 \
-              --set loki.storage.s3.endpoint="http://minio.registry.svc:9000" \
-              --set loki.storage.s3.bucketnames=loki-chunks \
-              --set loki.storage.s3.secretAccessKey="$MINIO_SECRET_KEY" \
-              --set loki.storage.s3.s3ForcePathStyle=true \
-              --set deploymentMode=SimpleScalable \
-              --wait --timeout 8m
+              --version 6.23.0 \
+              --values observability/loki/values.yaml \
+              --wait --timeout 10m
+            echo "Loki installed"
 
   install-jaeger:
-    executor: helm-executor
+    docker:
+      - image: alpine/helm:3.16.2
     steps:
+      - checkout
       - run:
-          name: Setup kubeconfig
-          command: mkdir -p ~/.kube && echo "$KUBECONFIG_CONTENT" | base64 -d > ~/.kube/config
+          name: Configure kubeconfig
+          command: |
+            mkdir -p ~/.kube
+            echo "$KUBECONFIG_DATA" | base64 -d > ~/.kube/config
       - run:
-          name: Install Jaeger
+          name: Helm install Jaeger
           command: |
             helm repo add jaegertracing https://jaegertracing.github.io/helm-charts --force-update
             helm upgrade --install jaeger jaegertracing/jaeger \
               --namespace observability \
-              --set provisionDataStore.cassandra=false \
-              --set allInOne.enabled=false \
-              --set collector.replicaCount=2 \
-              --set query.replicaCount=2 \
-              --wait --timeout 8m
+              --version 3.3.1 \
+              --values observability/jaeger/values.yaml \
+              --wait --timeout 10m
+            echo "Jaeger installed"
 
   install-otel-collector:
-    executor: helm-executor
+    docker:
+      - image: alpine/helm:3.16.2
     steps:
+      - checkout
       - run:
-          name: Setup kubeconfig
-          command: mkdir -p ~/.kube && echo "$KUBECONFIG_CONTENT" | base64 -d > ~/.kube/config
+          name: Configure kubeconfig
+          command: |
+            mkdir -p ~/.kube
+            echo "$KUBECONFIG_DATA" | base64 -d > ~/.kube/config
       - run:
-          name: Install OTel Collector
+          name: Helm install OTel Collector
           command: |
             helm repo add open-telemetry https://open-telemetry.github.io/opentelemetry-helm-charts --force-update
             helm upgrade --install otel-collector open-telemetry/opentelemetry-collector \
               --namespace observability \
-              --set mode=daemonset \
-              --set config.exporters.otlp.endpoint=jaeger-collector.observability.svc:4317 \
-              --wait --timeout 5m
+              --version 0.108.0 \
+              --values observability/otel-collector/values.yaml \
+              --wait --timeout 8m
+            echo "OTel Collector installed"
+
+  verify-observability:
+    docker:
+      - image: curlimages/curl:8.10.1
+    steps:
+      - run:
+          name: Verify observability endpoints
+          command: |
+            PROMETHEUS="http://kube-prometheus-stack-prometheus.observability.svc.cluster.local:9090"
+            GRAFANA="http://kube-prometheus-stack-grafana.observability.svc.cluster.local:80"
+            FAILED=0
+            for URL in "$PROMETHEUS/-/ready" "$GRAFANA/api/health"; do
+              STATUS=$(curl -sf --max-time 15 "$URL" -o /dev/null -w "%{http_code}" 2>/dev/null || echo "000")
+              echo "$URL → $STATUS"
+              [ "$STATUS" = "200" ] || FAILED=1
+            done
+            [ $FAILED -eq 1 ] && exit 1 || echo "All observability endpoints healthy"
 
 workflows:
-  observability-workflow:
+  observability-stack:
     jobs:
-      - install-prometheus:
-          context: shopos-kubernetes
-      - install-grafana:
-          requires: [install-prometheus]
-          context: [shopos-kubernetes, shopos-grafana]
+      - install-prometheus-stack:
+          context:
+            - shopos-kubernetes
+            - shopos-grafana
+          filters:
+            branches:
+              only: [main, /infra\/.*/]
+
       - install-loki:
-          requires: [install-prometheus]
-          context: [shopos-kubernetes, shopos-minio]
+          context:
+            - shopos-kubernetes
+            - shopos-minio
+          filters:
+            branches:
+              only: [main, /infra\/.*/]
+
       - install-jaeger:
-          requires: [install-prometheus]
           context: shopos-kubernetes
+          filters:
+            branches:
+              only: [main, /infra\/.*/]
+
       - install-otel-collector:
-          requires: [install-jaeger]
           context: shopos-kubernetes
+          requires: [install-prometheus-stack]
+          filters:
+            branches:
+              only: [main, /infra\/.*/]
+
+      - verify-observability:
+          context: shopos-kubernetes
+          requires: [install-prometheus-stack, install-loki, install-jaeger]
+          filters:
+            branches:
+              only: main

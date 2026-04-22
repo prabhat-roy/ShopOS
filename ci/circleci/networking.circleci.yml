@@ -1,98 +1,92 @@
 # Networking Infrastructure Pipeline — CircleCI
+# Role: Installs networking stack (Traefik, Istio) using circleci/helm orb.
 # Context: shopos-kubernetes
 version: 2.1
 
-executors:
-  helm-executor:
-    docker:
-      - image: alpine/helm:latest
-    resource_class: medium
+orbs:
+  helm: circleci/helm@3.0
 
 jobs:
-  install-cilium:
-    executor: helm-executor
-    steps:
-      - run:
-          name: Setup kubeconfig
-          command: mkdir -p ~/.kube && echo "$KUBECONFIG_CONTENT" | base64 -d > ~/.kube/config
-      - run:
-          name: Install Cilium
-          command: |
-            [ "$CILIUM" = "true" ] || { echo "Skipped"; exit 0; }
-            helm repo add cilium https://helm.cilium.io --force-update
-            helm upgrade --install cilium cilium/cilium \
-              --namespace kube-system \
-              --set hubble.enabled=true --set hubble.relay.enabled=true \
-              --set hubble.ui.enabled=true --set prometheus.enabled=true \
-              --wait --timeout 8m
-
-  install-istio:
-    executor: helm-executor
-    steps:
-      - run:
-          name: Setup kubeconfig
-          command: mkdir -p ~/.kube && echo "$KUBECONFIG_CONTENT" | base64 -d > ~/.kube/config
-      - run:
-          name: Install Istio
-          command: |
-            [ "$ISTIO" = "true" ] || { echo "Skipped"; exit 0; }
-            helm repo add istio https://istio-release.storage.googleapis.com/charts --force-update
-            helm upgrade --install istio-base istio/base \
-              --namespace istio-system --create-namespace --wait --timeout 3m
-            helm upgrade --install istiod istio/istiod \
-              --namespace istio-system \
-              --set telemetry.enabled=true --set pilot.traceSampling=1.0 \
-              --wait --timeout 5m
-            helm upgrade --install istio-ingress istio/gateway \
-              --namespace istio-ingress --create-namespace --wait --timeout 5m
-
   install-traefik:
-    executor: helm-executor
+    docker:
+      - image: alpine/helm:3.16.2
     steps:
+      - checkout
       - run:
-          name: Setup kubeconfig
-          command: mkdir -p ~/.kube && echo "$KUBECONFIG_CONTENT" | base64 -d > ~/.kube/config
-      - run:
-          name: Install Traefik
+          name: Configure kubeconfig
           command: |
-            [ "$TRAEFIK" = "true" ] || { echo "Skipped"; exit 0; }
+            mkdir -p ~/.kube
+            echo "$KUBECONFIG_DATA" | base64 -d > ~/.kube/config
+      - run:
+          name: Helm install Traefik
+          command: |
             helm repo add traefik https://traefik.github.io/charts --force-update
             helm upgrade --install traefik traefik/traefik \
               --namespace networking --create-namespace \
-              --set deployment.replicas=2 \
-              --set ingressClass.enabled=true --set ingressClass.isDefaultClass=true \
-              --set metrics.prometheus.enabled=true \
-              --wait --timeout 5m
-
-  install-consul:
-    executor: helm-executor
-    steps:
-      - run:
-          name: Setup kubeconfig
-          command: mkdir -p ~/.kube && echo "$KUBECONFIG_CONTENT" | base64 -d > ~/.kube/config
-      - run:
-          name: Install Consul
-          command: |
-            [ "$CONSUL" = "true" ] || { echo "Skipped"; exit 0; }
-            helm repo add hashicorp https://helm.releases.hashicorp.com --force-update
-            helm upgrade --install consul hashicorp/consul \
-              --namespace consul --create-namespace \
-              --set global.datacenter=shopos-dc1 \
-              --set server.replicas=3 \
-              --set connectInject.enabled=true \
+              --version 33.1.0 \
+              --values networking/traefik/values.yaml \
+              --set ingressClass.enabled=true \
+              --set ingressClass.isDefaultClass=true \
               --wait --timeout 8m
+            echo "Traefik installed"
+
+  install-istio:
+    docker:
+      - image: alpine/helm:3.16.2
+    steps:
+      - checkout
+      - run:
+          name: Configure kubeconfig
+          command: |
+            mkdir -p ~/.kube
+            echo "$KUBECONFIG_DATA" | base64 -d > ~/.kube/config
+      - run:
+          name: Install Istio via Helm
+          command: |
+            helm repo add istio https://istio-release.storage.googleapis.com/charts --force-update
+            helm upgrade --install istio-base istio/base \
+              --namespace istio-system --create-namespace \
+              --version 1.23.3 --wait
+            helm upgrade --install istiod istio/istiod \
+              --namespace istio-system \
+              --version 1.23.3 \
+              --set pilot.traceSampling=1.0 \
+              --wait --timeout 10m
+            echo "Istio installed"
+
+  apply-network-policies:
+    docker:
+      - image: bitnami/kubectl:1.31.0
+    steps:
+      - checkout
+      - run:
+          name: Configure kubeconfig
+          command: |
+            mkdir -p ~/.kube
+            echo "$KUBECONFIG_DATA" | base64 -d > ~/.kube/config
+      - run:
+          name: Apply network policies
+          command: |
+            kubectl apply -f kubernetes/network-policies/ --server-side
+            [ -d "networking/cilium" ] && kubectl apply -f networking/cilium/ --server-side || true
+            echo "Network policies applied"
 
 workflows:
-  networking-workflow:
+  networking-infra:
     jobs:
-      - install-cilium:
-          context: shopos-kubernetes
-      - install-istio:
-          requires: [install-cilium]
-          context: shopos-kubernetes
       - install-traefik:
-          requires: [install-cilium]
           context: shopos-kubernetes
-      - install-consul:
-          requires: [install-istio, install-traefik]
+          filters:
+            branches:
+              only: [main, /infra\/.*/]
+      - install-istio:
           context: shopos-kubernetes
+          filters:
+            branches:
+              only: [main, /infra\/.*/]
+      - apply-network-policies:
+          context: shopos-kubernetes
+          requires: [install-traefik, install-istio]
+          filters:
+            branches:
+              only: main

@@ -1,171 +1,193 @@
-# Install CI Tools — Tekton
-# Verifies all required runtimes and security tools are available
+# Install Tools Pipeline — Tekton (In-Cluster Tool Verification)
+# Role: Verifies all required tools and runtimes are available in-cluster.
+#       Runs as a preflight check before other pipelines. Creates ConfigMap
+#       with tool versions for downstream Tasks to reference.
+# No secrets required.
 ---
 apiVersion: tekton.dev/v1
 kind: Task
 metadata:
-  name: verify-kubectl-helm
+  name: verify-cluster-tools
   namespace: tekton-pipelines
 spec:
+  workspaces:
+    - name: kubeconfig
+      mountPath: /root/.kube
+  results:
+    - name: kubectl-version
+    - name: helm-version
+    - name: node-count
   steps:
-    - name: kubectl
-      image: bitnami/kubectl:latest
-      script: kubectl version --client
-    - name: helm
-      image: alpine/helm:latest
-      script: helm version --short
----
-apiVersion: tekton.dev/v1
-kind: Task
-metadata:
-  name: verify-terraform
-  namespace: tekton-pipelines
-spec:
-  steps:
-    - name: version
-      image: hashicorp/terraform:1.9.0
-      script: terraform version
----
-apiVersion: tekton.dev/v1
-kind: Task
-metadata:
-  name: verify-golang
-  namespace: tekton-pipelines
-spec:
-  steps:
-    - name: version
-      image: golang:1.23
-      script: go version
----
-apiVersion: tekton.dev/v1
-kind: Task
-metadata:
-  name: verify-java
-  namespace: tekton-pipelines
-spec:
-  steps:
-    - name: version
-      image: eclipse-temurin:21
-      script: java -version
----
-apiVersion: tekton.dev/v1
-kind: Task
-metadata:
-  name: verify-nodejs
-  namespace: tekton-pipelines
-spec:
-  steps:
-    - name: version
-      image: node:22
+    - name: check-kubectl
+      image: bitnami/kubectl:1.31.0
       script: |
-        node --version
-        npm --version
----
-apiVersion: tekton.dev/v1
-kind: Task
-metadata:
-  name: verify-python
-  namespace: tekton-pipelines
-spec:
-  steps:
-    - name: version
-      image: python:3.13
-      script: python --version
----
-apiVersion: tekton.dev/v1
-kind: Task
-metadata:
-  name: verify-dotnet
-  namespace: tekton-pipelines
-spec:
-  steps:
-    - name: version
-      image: mcr.microsoft.com/dotnet/sdk:8.0
-      script: dotnet --version
----
-apiVersion: tekton.dev/v1
-kind: Task
-metadata:
-  name: verify-rust
-  namespace: tekton-pipelines
-spec:
-  steps:
-    - name: version
-      image: rust:latest
-      script: rustc --version
----
-apiVersion: tekton.dev/v1
-kind: Task
-metadata:
-  name: verify-security-tools
-  namespace: tekton-pipelines
-spec:
-  steps:
-    - name: install-and-verify
-      image: ubuntu:24.04
+        VERSION=$(kubectl version --client -o json 2>/dev/null | python3 -c "import json,sys; d=json.load(sys.stdin); print(d['clientVersion']['gitVersion'])" 2>/dev/null || kubectl version --client --short 2>/dev/null || echo "unknown")
+        printf '%s' "$VERSION" > $(results.kubectl-version.path)
+        echo "kubectl: $VERSION"
+    - name: check-helm
+      image: alpine/helm:3.16.2
       script: |
-        apt-get update -qq && apt-get install -y curl --quiet
-        curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh -s -- -b /usr/local/bin
-        curl -sSfL https://raw.githubusercontent.com/anchore/grype/main/install.sh | sh -s -- -b /usr/local/bin
-        curl -sSfL https://raw.githubusercontent.com/anchore/syft/main/install.sh | sh -s -- -b /usr/local/bin
-        curl -fsSL "https://github.com/sigstore/cosign/releases/download/v2.4.0/cosign-linux-amd64" -o /usr/local/bin/cosign && chmod +x /usr/local/bin/cosign
-        curl -fsSL "https://github.com/gitleaks/gitleaks/releases/download/v8.21.0/gitleaks_8.21.0_linux_x64.tar.gz" | tar -xz -C /usr/local/bin gitleaks
-        pip3 install semgrep checkov --quiet
-        trivy --version | head -1
-        grype version | head -1
-        syft --version
-        cosign version
-        gitleaks version
-        semgrep --version
+        VERSION=$(helm version --short 2>/dev/null || echo "unknown")
+        printf '%s' "$VERSION" > $(results.helm-version.path)
+        echo "helm: $VERSION"
+    - name: check-cluster
+      image: bitnami/kubectl:1.31.0
+      script: |
+        NODES=$(kubectl get nodes --no-headers 2>/dev/null | wc -l | tr -d ' ')
+        printf '%s' "$NODES" > $(results.node-count.path)
+        echo "Cluster nodes: $NODES"
+        kubectl get nodes -o wide
+    - name: check-tekton
+      image: bitnami/kubectl:1.31.0
+      script: |
+        echo "==> Checking Tekton CRDs"
+        kubectl get crd taskruns.tekton.dev pipelines.tekton.dev 2>/dev/null \
+          && echo "Tekton Pipelines CRDs: OK" \
+          || echo "WARN: Tekton Pipelines CRDs not found"
+        kubectl get crd eventlisteners.triggers.tekton.dev 2>/dev/null \
+          && echo "Tekton Triggers CRDs: OK" \
+          || echo "WARN: Tekton Triggers CRDs not found"
+---
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  name: verify-container-images
+  namespace: tekton-pipelines
+spec:
+  steps:
+    - name: verify-kaniko
+      image: gcr.io/kaniko-project/executor:v1.23.0
+      args: ["--help"]
+      onError: continue
+    - name: verify-trivy
+      image: aquasec/trivy:0.57.1
+      args: ["version"]
+    - name: verify-helm
+      image: alpine/helm:3.16.2
+      args: ["version", "--short"]
+    - name: verify-argocd
+      image: argoproj/argocd:v2.13.0
+      args: ["version", "--client"]
+    - name: verify-k6
+      image: grafana/k6:0.55.0
+      args: ["version"]
+    - name: verify-terraform
+      image: hashicorp/terraform:1.9.8
+      args: ["version"]
+    - name: verify-semgrep
+      image: returntocorp/semgrep:1.94.0
+      args: ["--version"]
+---
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  name: create-tekton-configmap
+  namespace: tekton-pipelines
+spec:
+  params:
+    - name: kubectl-version
+    - name: helm-version
+    - name: node-count
+  workspaces:
+    - name: kubeconfig
+      mountPath: /root/.kube
+  steps:
+    - name: create-configmap
+      image: bitnami/kubectl:1.31.0
+      script: |
+        kubectl create configmap shopos-pipeline-config \
+          --namespace tekton-pipelines \
+          --from-literal=kubectl-version="$(params.kubectl-version)" \
+          --from-literal=helm-version="$(params.helm-version)" \
+          --from-literal=cluster-node-count="$(params.node-count)" \
+          --from-literal=verified-at="$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+          --from-literal=harbor-registry="harbor.shopos.internal" \
+          --from-literal=default-namespace="default" \
+          --from-literal=observability-namespace="observability" \
+          --from-literal=messaging-namespace="messaging" \
+          --dry-run=client -o yaml | kubectl apply -f -
+        echo "ConfigMap shopos-pipeline-config created/updated"
+---
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  name: verify-storage-classes
+  namespace: tekton-pipelines
+spec:
+  workspaces:
+    - name: kubeconfig
+      mountPath: /root/.kube
+  steps:
+    - name: check-storage
+      image: bitnami/kubectl:1.31.0
+      script: |
+        echo "==> Storage classes available:"
+        kubectl get storageclass -o wide
+        DEFAULT=$(kubectl get storageclass -o jsonpath='{.items[?(@.metadata.annotations.storageclass\.kubernetes\.io/is-default-class=="true")].metadata.name}' 2>/dev/null || echo "none")
+        echo "Default storage class: $DEFAULT"
+        [ -z "$DEFAULT" ] || [ "$DEFAULT" = "none" ] && echo "WARN: No default storage class set"
+        echo "==> PersistentVolumes:"
+        kubectl get pv 2>/dev/null | head -20 || true
 ---
 apiVersion: tekton.dev/v1
 kind: Pipeline
 metadata:
-  name: install-tools-pipeline
+  name: shopos-install-tools-pipeline
   namespace: tekton-pipelines
 spec:
+  description: |
+    In-cluster tool verification pipeline. Checks kubectl, Helm, Tekton CRDs,
+    verifies container images are pullable, and creates a ConfigMap with verified
+    tool versions for downstream pipelines to reference.
+  workspaces:
+    - name: kubeconfig
   tasks:
-    - name: kubectl-helm
+    - name: verify-cluster-tools
       taskRef:
-        name: verify-kubectl-helm
+        name: verify-cluster-tools
+      workspaces:
+        - name: kubeconfig
+          workspace: kubeconfig
 
-    - name: terraform
+    - name: verify-container-images
       taskRef:
-        name: verify-terraform
+        name: verify-container-images
+      runAfter: [verify-cluster-tools]
 
-    - name: golang
+    - name: verify-storage-classes
       taskRef:
-        name: verify-golang
+        name: verify-storage-classes
+      workspaces:
+        - name: kubeconfig
+          workspace: kubeconfig
+      runAfter: [verify-cluster-tools]
 
-    - name: java
+    - name: create-configmap
       taskRef:
-        name: verify-java
-
-    - name: nodejs
-      taskRef:
-        name: verify-nodejs
-
-    - name: python
-      taskRef:
-        name: verify-python
-
-    - name: dotnet
-      taskRef:
-        name: verify-dotnet
-
-    - name: rust
-      taskRef:
-        name: verify-rust
-
-    - name: security-tools
-      taskRef:
-        name: verify-security-tools
+        name: create-tekton-configmap
+      params:
+        - name: kubectl-version
+          value: $(tasks.verify-cluster-tools.results.kubectl-version)
+        - name: helm-version
+          value: $(tasks.verify-cluster-tools.results.helm-version)
+        - name: node-count
+          value: $(tasks.verify-cluster-tools.results.node-count)
+      workspaces:
+        - name: kubeconfig
+          workspace: kubeconfig
+      runAfter: [verify-cluster-tools, verify-container-images]
 ---
 apiVersion: tekton.dev/v1
 kind: PipelineRun
 metadata:
   name: install-tools-pipeline-run
   namespace: tekton-pipelines
+  annotations:
+    description: "Run this first before any other ShopOS pipeline to verify cluster readiness"
 spec:
   pipelineRef:
-    name: install-tools-pipeline
+    name: shopos-install-tools-pipeline
+  workspaces:
+    - name: kubeconfig
+      secret:
+        secretName: kubeconfig-secret

@@ -1,122 +1,182 @@
-# Networking Infrastructure Pipeline — Harness CI
+# Networking Infrastructure Pipeline — Harness CI/CD
+# Role: Deploys networking stack (Traefik, Istio, Cilium) using Harness CD stages.
+#       Applies progressive rollout with health checks at each layer.
 pipeline:
-  identifier: shopos_networking
-  name: ShopOS Networking Infrastructure
-  projectIdentifier: shopos
+  name: shopos-networking-infra
+  identifier: shopos_networking_infra
+  projectIdentifier: ShopOS
   orgIdentifier: default
-
-  variables:
-    - name: ACTION
-      type: String
-      value: INSTALL
-    - name: CILIUM
-      type: String
-      value: "true"
-    - name: ISTIO
-      type: String
-      value: "true"
-    - name: TRAEFIK
-      type: String
-      value: "true"
-    - name: CONSUL
-      type: String
-      value: "false"
+  tags:
+    app: shopos
+    role: networking
 
   stages:
     - stage:
-        identifier: cni
-        name: CNI — Cilium
-        type: CI
+        name: Deploy Traefik Edge Router
+        identifier: Deploy_Traefik
+        type: Deployment
         spec:
-          cloneCodebase: false
+          deploymentType: Kubernetes
+          service:
+            serviceRef: traefik
+          environment:
+            environmentRef: <+pipeline.variables.TARGET_ENV>
+            infrastructureDefinitions:
+              - identifier: <+pipeline.variables.TARGET_ENV>_k8s
           execution:
             steps:
               - step:
-                  identifier: cilium
-                  name: Install Cilium
+                  name: Helm Deploy Traefik
+                  identifier: helm_deploy_traefik
+                  type: K8sRollingDeploy
+                  timeout: 10m
+              - step:
+                  name: Verify Traefik Ready
+                  identifier: verify_traefik
                   type: Run
                   spec:
-                    image: alpine/helm:latest
-                    envVariables:
-                      KUBECONFIG_CONTENT: <+secrets.getValue("kubeconfig_content")>
+                    connectorRef: account.k8s_connector
+                    image: bitnami/kubectl:1.31.0
+                    shell: Sh
                     command: |
-                      [ "<+pipeline.variables.CILIUM>" = "true" ] || { echo "Skipped"; exit 0; }
-                      mkdir -p ~/.kube && echo "$KUBECONFIG_CONTENT" | base64 -d > ~/.kube/config
-                      helm repo add cilium https://helm.cilium.io --force-update
-                      helm upgrade --install cilium cilium/cilium \
-                        --namespace kube-system \
-                        --set hubble.enabled=true --set hubble.relay.enabled=true \
-                        --set hubble.ui.enabled=true --set prometheus.enabled=true \
-                        --wait --timeout 8m
+                      kubectl rollout status deployment/traefik \
+                        --namespace networking \
+                        --timeout=300s
+                      kubectl get svc traefik -n networking
+                      echo "Traefik edge router ready"
+            rollbackSteps:
+              - step:
+                  name: Rollback Traefik
+                  identifier: rollback_traefik
+                  type: K8sRollingRollback
 
     - stage:
-        identifier: service_mesh
-        name: Service Mesh — Istio
+        name: Deploy Istio Service Mesh
+        identifier: Deploy_Istio
         type: CI
         spec:
-          cloneCodebase: false
+          cloneCodebase: true
+          infrastructure:
+            type: KubernetesDirect
+            spec:
+              connectorRef: account.k8s_connector
+              namespace: harness-builds
           execution:
             steps:
               - step:
-                  identifier: istio
-                  name: Install Istio
+                  name: Install Istio Base CRDs
+                  identifier: install_istio_base
                   type: Run
                   spec:
-                    image: alpine/helm:latest
-                    envVariables:
-                      KUBECONFIG_CONTENT: <+secrets.getValue("kubeconfig_content")>
+                    image: alpine/helm:3.16.2
+                    shell: Sh
                     command: |
-                      [ "<+pipeline.variables.ISTIO>" = "true" ] || { echo "Skipped"; exit 0; }
-                      mkdir -p ~/.kube && echo "$KUBECONFIG_CONTENT" | base64 -d > ~/.kube/config
                       helm repo add istio https://istio-release.storage.googleapis.com/charts --force-update
                       helm upgrade --install istio-base istio/base \
-                        --namespace istio-system --create-namespace --wait --timeout 3m
+                        --namespace istio-system \
+                        --create-namespace \
+                        --version 1.23.3 \
+                        --wait --timeout 5m
+                      echo "Istio base CRDs installed"
+
+              - step:
+                  name: Install Istiod
+                  identifier: install_istiod
+                  type: Run
+                  spec:
+                    image: alpine/helm:3.16.2
+                    shell: Sh
+                    command: |
                       helm upgrade --install istiod istio/istiod \
                         --namespace istio-system \
-                        --set telemetry.enabled=true --wait --timeout 5m
-                      helm upgrade --install istio-ingress istio/gateway \
-                        --namespace istio-ingress --create-namespace --wait --timeout 5m
+                        --version 1.23.3 \
+                        --set pilot.traceSampling=1.0 \
+                        --set global.proxy.resources.requests.cpu=100m \
+                        --set global.proxy.resources.requests.memory=128Mi \
+                        --wait --timeout 10m
+                      echo "Istiod installed"
+
+              - step:
+                  name: Enable Sidecar Injection
+                  identifier: enable_sidecar_injection
+                  type: Run
+                  spec:
+                    image: bitnami/kubectl:1.31.0
+                    shell: Sh
+                    command: |
+                      NAMESPACES="platform identity catalog commerce supply-chain financial customer-experience communications content analytics-ai b2b integrations affiliate"
+                      for NS in $NAMESPACES; do
+                        kubectl label namespace "$NS" istio-injection=enabled --overwrite 2>/dev/null || true
+                        echo "Sidecar injection enabled: $NS"
+                      done
+
+              - step:
+                  name: Apply mTLS PeerAuthentication
+                  identifier: apply_mtls
+                  type: Run
+                  spec:
+                    image: bitnami/kubectl:1.31.0
+                    shell: Sh
+                    command: |
+                      kubectl apply -f - <<'EOF'
+                      apiVersion: security.istio.io/v1beta1
+                      kind: PeerAuthentication
+                      metadata:
+                        name: default
+                        namespace: istio-system
+                      spec:
+                        mtls:
+                          mode: STRICT
+                      EOF
+                      echo "mTLS STRICT mode enforced cluster-wide"
 
     - stage:
-        identifier: edge_routing
-        name: Edge Routing — Traefik + Consul
+        name: Apply Network Policies
+        identifier: Apply_Network_Policies
         type: CI
         spec:
-          cloneCodebase: false
+          cloneCodebase: true
+          infrastructure:
+            type: KubernetesDirect
+            spec:
+              connectorRef: account.k8s_connector
+              namespace: harness-builds
           execution:
             steps:
               - step:
-                  identifier: traefik
-                  name: Install Traefik
+                  name: Apply Kubernetes Network Policies
+                  identifier: apply_k8s_netpol
                   type: Run
                   spec:
-                    image: alpine/helm:latest
-                    envVariables:
-                      KUBECONFIG_CONTENT: <+secrets.getValue("kubeconfig_content")>
+                    image: bitnami/kubectl:1.31.0
+                    shell: Sh
                     command: |
-                      mkdir -p ~/.kube && echo "$KUBECONFIG_CONTENT" | base64 -d > ~/.kube/config
-                      helm repo add traefik https://traefik.github.io/charts --force-update
-                      helm upgrade --install traefik traefik/traefik \
-                        --namespace networking --create-namespace \
-                        --set deployment.replicas=2 \
-                        --set ingressClass.enabled=true --set ingressClass.isDefaultClass=true \
-                        --set metrics.prometheus.enabled=true \
-                        --wait --timeout 5m
+                      kubectl apply -f kubernetes/network-policies/ --server-side
+                      echo "K8s network policies applied"
               - step:
-                  identifier: consul
-                  name: Install Consul
+                  name: Apply Cilium Policies
+                  identifier: apply_cilium
                   type: Run
                   spec:
-                    image: alpine/helm:latest
-                    envVariables:
-                      KUBECONFIG_CONTENT: <+secrets.getValue("kubeconfig_content")>
+                    image: bitnami/kubectl:1.31.0
+                    shell: Sh
                     command: |
-                      [ "<+pipeline.variables.CONSUL>" = "true" ] || { echo "Skipped"; exit 0; }
-                      mkdir -p ~/.kube && echo "$KUBECONFIG_CONTENT" | base64 -d > ~/.kube/config
-                      helm repo add hashicorp https://helm.releases.hashicorp.com --force-update
-                      helm upgrade --install consul hashicorp/consul \
-                        --namespace consul --create-namespace \
-                        --set global.datacenter=shopos-dc1 \
-                        --set server.replicas=3 \
-                        --set connectInject.enabled=true \
-                        --wait --timeout 8m
+                      if [ -d "networking/cilium" ]; then
+                        kubectl apply -f networking/cilium/ --server-side
+                        echo "Cilium network policies applied"
+                      fi
+
+  variables:
+    - name: TARGET_ENV
+      type: String
+      value: production
+    - name: ENABLE_MTLS
+      type: String
+      value: "true"
+
+  properties:
+    ci:
+      codebase:
+        connectorRef: account.github_connector
+        repoName: shopos/shopos
+        build: <+input>

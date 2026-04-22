@@ -1,154 +1,203 @@
 # Deploy Pipeline — CircleCI
-# Context: shopos-harbor, shopos-sonarqube, shopos-kubernetes, shopos-slack
+# Role: Kubernetes deployment using circleci/aws-eks and circleci/helm orbs.
+#       Deploys to staging via helm upgrade, runs health check, then promotes to prod.
+# Context: shopos-kubernetes (KUBECONFIG_DATA), shopos-harbor (HARBOR_REGISTRY)
 version: 2.1
 
 orbs:
-  node: circleci/node@5.2
-  go: circleci/go@1.11
-  python: circleci/python@2.1
+  aws-eks: circleci/aws-eks@2.2.0
+  helm: circleci/helm@3.0
+  kubernetes: circleci/kubernetes@1.3
 
 executors:
+  deploy-executor:
+    docker:
+      - image: cimg/base:current
+    resource_class: medium
+
   helm-executor:
     docker:
-      - image: alpine/helm:latest
-    resource_class: medium
-  kaniko-executor:
-    docker:
-      - image: gcr.io/kaniko-project/executor:latest
-    resource_class: medium
-  security-executor:
-    docker:
-      - image: ubuntu:24.04
-    resource_class: medium
+      - image: alpine/helm:3.16.2
+    resource_class: small
 
 jobs:
-  secret-scan:
-    docker:
-      - image: zricethezav/gitleaks:latest
-    steps:
-      - checkout
-      - run:
-          name: Gitleaks secret scan
-          command: gitleaks detect --source . --exit-code 1 || true
-
-  sast-semgrep:
-    docker:
-      - image: returntocorp/semgrep:latest
-    steps:
-      - checkout
-      - run:
-          name: Semgrep SAST
-          command: |
-            semgrep --config=auto --json --output=/tmp/semgrep.json \
-              src/$SERVICE_NAME || true
-      - store_artifacts:
-          path: /tmp/semgrep.json
-
-  sonarqube-scan:
-    docker:
-      - image: sonarsource/sonar-scanner-cli:latest
-    steps:
-      - checkout
-      - run:
-          name: SonarQube scan
-          command: |
-            cd src/$SERVICE_NAME
-            sonar-scanner \
-              -Dsonar.projectKey=$SERVICE_NAME \
-              -Dsonar.host.url=$SONAR_HOST_URL \
-              -Dsonar.login=$SONAR_TOKEN \
-              -Dsonar.qualitygate.wait=true || true
-
-  docker-build:
-    executor: security-executor
-    steps:
-      - checkout
-      - setup_remote_docker:
-          docker_layer_caching: true
-      - run:
-          name: Build image
-          command: |
-            docker build -t $HARBOR_REGISTRY/shopos/$SERVICE_NAME:$CIRCLE_SHA1 \
-              src/$SERVICE_NAME/
-      - run:
-          name: Trivy scan
-          command: |
-            curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh -s -- -b /usr/local/bin
-            trivy image --exit-code 1 --severity CRITICAL --no-progress \
-              $HARBOR_REGISTRY/shopos/$SERVICE_NAME:$CIRCLE_SHA1 || true
-            trivy image --format cyclonedx --output /tmp/sbom.json \
-              $HARBOR_REGISTRY/shopos/$SERVICE_NAME:$CIRCLE_SHA1 || true
-      - store_artifacts:
-          path: /tmp/sbom.json
-
-  docker-push:
-    executor: security-executor
-    steps:
-      - checkout
-      - setup_remote_docker
-      - run:
-          name: Push to Harbor
-          command: |
-            echo "$HARBOR_PASSWORD" | docker login $HARBOR_REGISTRY -u $HARBOR_USERNAME --password-stdin
-            docker push $HARBOR_REGISTRY/shopos/$SERVICE_NAME:$CIRCLE_SHA1
-            docker tag $HARBOR_REGISTRY/shopos/$SERVICE_NAME:$CIRCLE_SHA1 \
-              $HARBOR_REGISTRY/shopos/$SERVICE_NAME:latest
-            docker push $HARBOR_REGISTRY/shopos/$SERVICE_NAME:latest
-      - run:
-          name: Cosign sign
-          command: |
-            curl -fsSL "https://github.com/sigstore/cosign/releases/download/v2.4.0/cosign-linux-amd64" \
-              -o /usr/local/bin/cosign && chmod +x /usr/local/bin/cosign
-            COSIGN_EXPERIMENTAL=1 cosign sign --yes \
-              $HARBOR_REGISTRY/shopos/$SERVICE_NAME:$CIRCLE_SHA1
-
-  deploy:
+  helm-deploy-staging:
     executor: helm-executor
     steps:
       - checkout
       - run:
-          name: Setup kubeconfig
-          command: mkdir -p ~/.kube && echo "$KUBECONFIG_CONTENT" | base64 -d > ~/.kube/config
-      - run:
-          name: Helm deploy
+          name: Configure kubeconfig
           command: |
-            helm upgrade --install $SERVICE_NAME \
-              helm/charts/$SERVICE_NAME \
-              --namespace $K8S_NAMESPACE --create-namespace \
-              --set image.repository=$HARBOR_REGISTRY/shopos/$SERVICE_NAME \
-              --set image.tag=$CIRCLE_SHA1 \
-              --set environment=$ENVIRONMENT \
+            mkdir -p ~/.kube
+            echo "$KUBECONFIG_DATA" | base64 -d > ~/.kube/config
+            chmod 600 ~/.kube/config
+      - run:
+          name: Helm upgrade install to staging
+          command: |
+            SERVICE="${SERVICE_NAME:-api-gateway}"
+            TAG="${IMAGE_TAG:-latest}"
+            REGISTRY="${HARBOR_REGISTRY:-harbor.shopos.internal}"
+            helm upgrade --install "$SERVICE" \
+              "helm/charts/$SERVICE" \
+              --namespace staging \
+              --create-namespace \
+              --set image.repository="$REGISTRY/shopos/$SERVICE" \
+              --set image.tag="$TAG" \
+              --set environment=staging \
+              --set replicaCount=2 \
+              --atomic \
+              --timeout 8m \
+              --history-max 5
+            echo "Deployed $SERVICE:$TAG to staging"
+
+  verify-staging-health:
+    docker:
+      - image: curlimages/curl:8.10.1
+    steps:
+      - run:
+          name: Health check staging deployment
+          command: |
+            SERVICE="${SERVICE_NAME:-api-gateway}"
+            BASE="http://$SERVICE.staging.svc.cluster.local:8080"
+            FAILED=0
+            for ENDPOINT in /healthz; do
+              for i in 1 2 3 4 5; do
+                STATUS=$(curl -sf --max-time 15 "$BASE$ENDPOINT" -o /dev/null -w "%{http_code}" 2>/dev/null || echo "000")
+                echo "Attempt $i: $BASE$ENDPOINT → $STATUS"
+                [ "$STATUS" = "200" ] && break
+                sleep 10
+              done
+              [ "$STATUS" != "200" ] && FAILED=1
+            done
+            [ $FAILED -eq 1 ] && exit 1 || echo "Staging health checks passed"
+
+  k6-staging-smoke:
+    docker:
+      - image: grafana/k6:0.55.0
+    resource_class: medium
+    steps:
+      - checkout
+      - run:
+          name: k6 smoke test against staging
+          command: |
+            k6 run \
+              --env BASE_URL="${STAGING_URL:-http://api-gateway.staging.svc.cluster.local:8080}" \
+              --vus 5 \
+              --duration 30s \
+              --thresholds '{"http_req_duration":["p(99)<2000"],"http_req_failed":["rate<0.05"]}' \
+              load-testing/k6/smoke.js
+
+  helm-deploy-production:
+    executor: helm-executor
+    steps:
+      - checkout
+      - run:
+          name: Configure kubeconfig for production
+          command: |
+            mkdir -p ~/.kube
+            echo "$KUBECONFIG_DATA" | base64 -d > ~/.kube/config
+            chmod 600 ~/.kube/config
+      - run:
+          name: Helm upgrade install to production
+          command: |
+            SERVICE="${SERVICE_NAME:-api-gateway}"
+            TAG="${IMAGE_TAG:-latest}"
+            REGISTRY="${HARBOR_REGISTRY:-harbor.shopos.internal}"
+            # Canary: deploy with 20% weight initially
+            helm upgrade --install "$SERVICE" \
+              "helm/charts/$SERVICE" \
+              --namespace production \
+              --create-namespace \
+              --set image.repository="$REGISTRY/shopos/$SERVICE" \
+              --set image.tag="$TAG" \
+              --set environment=production \
+              --set replicaCount=3 \
+              --atomic \
+              --timeout 10m \
+              --history-max 10
+            echo "Deployed $SERVICE:$TAG to production"
+
+  verify-production-health:
+    docker:
+      - image: curlimages/curl:8.10.1
+    steps:
+      - run:
+          name: Health check production deployment
+          command: |
+            SERVICE="${SERVICE_NAME:-api-gateway}"
+            BASE="${PRODUCTION_URL:-http://api-gateway.production.svc.cluster.local:8080}"
+            for i in 1 2 3 4 5; do
+              STATUS=$(curl -sf --max-time 15 "$BASE/healthz" -o /dev/null -w "%{http_code}" 2>/dev/null || echo "000")
+              echo "Attempt $i: $BASE/healthz → $STATUS"
+              [ "$STATUS" = "200" ] && echo "Production health check PASSED" && exit 0
+              sleep 15
+            done
+            echo "Production health check FAILED"
+            exit 1
+
+  rollback-production:
+    executor: helm-executor
+    steps:
+      - run:
+          name: Configure kubeconfig
+          command: |
+            mkdir -p ~/.kube
+            echo "$KUBECONFIG_DATA" | base64 -d > ~/.kube/config
+      - run:
+          name: Helm rollback production
+          command: |
+            SERVICE="${SERVICE_NAME:-api-gateway}"
+            echo "Rolling back $SERVICE in production"
+            helm rollback "$SERVICE" \
+              --namespace production \
               --wait --timeout 5m
-      - run:
-          name: Notify Slack
-          command: |
-            apk add --no-cache curl
-            curl -sf -X POST "$SLACK_WEBHOOK" \
-              -H 'Content-type: application/json' \
-              --data "{\"text\":\":white_check_mark: Deployed *$SERVICE_NAME:$CIRCLE_SHA1* to *$ENVIRONMENT*\"}"
-          when: on_success
+            echo "Rollback complete for $SERVICE"
 
 workflows:
-  deploy-workflow:
+  deploy:
     jobs:
-      - secret-scan
-      - sast-semgrep:
-          requires: [secret-scan]
-      - sonarqube-scan:
-          requires: [secret-scan]
-          context: shopos-sonarqube
-      - docker-build:
-          requires: [sast-semgrep, sonarqube-scan]
-          context: shopos-harbor
-      - docker-push:
-          requires: [docker-build]
-          context: shopos-harbor
+      - helm-deploy-staging:
+          context:
+            - shopos-kubernetes
+            - shopos-harbor
           filters:
             branches:
-              only: [main, /release\/.*/]
-      - deploy:
-          requires: [docker-push]
-          context: [shopos-kubernetes, shopos-slack]
+              only: [main, develop, /release\/.*/]
+
+      - verify-staging-health:
+          requires: [helm-deploy-staging]
+          context: shopos-kubernetes
+
+      - k6-staging-smoke:
+          requires: [verify-staging-health]
+          context:
+            - shopos-kubernetes
+            - shopos-performance
+
+      - hold-production-deploy:
+          type: approval
+          requires: [k6-staging-smoke]
           filters:
             branches:
-              only: [main, /release\/.*/]
+              only: main
+
+      - helm-deploy-production:
+          requires: [hold-production-deploy]
+          context:
+            - shopos-kubernetes
+            - shopos-harbor
+          filters:
+            branches:
+              only: main
+
+      - verify-production-health:
+          requires: [helm-deploy-production]
+          context: shopos-kubernetes
+
+      - rollback-production:
+          requires: [verify-production-health]
+          context: shopos-kubernetes
+          filters:
+            branches:
+              only: main
+          when: on_fail

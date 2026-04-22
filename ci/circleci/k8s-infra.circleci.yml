@@ -1,93 +1,156 @@
-# Kubernetes Infrastructure (Terraform) Pipeline — CircleCI
+# K8s Infrastructure Pipeline — CircleCI
+# Role: Terraform provisioning using orb-based approach.
+#       Uses circleci/terraform orb for plan/apply across AWS, GCP, Azure.
 # Context: shopos-aws, shopos-gcp, shopos-azure
 version: 2.1
+
+orbs:
+  terraform: circleci/terraform@3.2
 
 executors:
   terraform-executor:
     docker:
-      - image: hashicorp/terraform:1.9.0
+      - image: hashicorp/terraform:1.9.8
     resource_class: medium
 
 jobs:
-  terraform-eks:
+  tf-plan-eks:
     executor: terraform-executor
     steps:
       - checkout
       - run:
-          name: Terraform EKS
-          command: |
-            [ "$CLOUD" = "aws" ] || [ "$CLOUD" = "all" ] || { echo "Skipped"; exit 0; }
-            cd infra/terraform/aws/eks
-            terraform init \
-              -backend-config="bucket=shopos-tfstate" \
-              -backend-config="key=infra/terraform/aws/eks/terraform.tfstate" \
-              -backend-config="region=$AWS_DEFAULT_REGION"
-            if [ "$TF_ACTION" = "APPLY" ]; then
-              terraform apply -auto-approve
-            elif [ "$TF_ACTION" = "DESTROY" ]; then
-              terraform destroy -auto-approve
-            else
-              terraform plan
-            fi
+          name: Terraform init and plan (EKS)
           environment:
-            AWS_DEFAULT_REGION: us-east-1
+            TF_DIR: infra/terraform/aws/eks
+          command: |
+            cd $TF_DIR
+            terraform init -input=false \
+              -backend-config="bucket=${TF_STATE_BUCKET:-shopos-tfstate}" \
+              -backend-config="key=$TF_DIR/terraform.tfstate" \
+              -backend-config="region=${AWS_DEFAULT_REGION:-us-east-1}"
+            terraform plan -input=false -out=tfplan 2>&1 | tee /tmp/tf-plan-eks.txt
+      - store_artifacts:
+          path: /tmp/tf-plan-eks.txt
+          destination: tf-plan-eks
 
-  terraform-gke:
+  tf-apply-eks:
     executor: terraform-executor
     steps:
       - checkout
       - run:
-          name: Write GCP SA key
-          command: echo "$GCP_SA_KEY" > /tmp/gcp-key.json
-      - run:
-          name: Terraform GKE
+          name: Terraform apply (EKS)
+          environment:
+            TF_DIR: infra/terraform/aws/eks
           command: |
-            [ "$CLOUD" = "gcp" ] || [ "$CLOUD" = "all" ] || { echo "Skipped"; exit 0; }
+            cd $TF_DIR
+            terraform init -input=false
+            terraform plan -out=tfplan
+            terraform apply -auto-approve tfplan
+            terraform output -json | tee /tmp/tf-outputs-eks.json
+      - store_artifacts:
+          path: /tmp/tf-outputs-eks.json
+          destination: tf-outputs-eks
+
+  tf-plan-gke:
+    executor: terraform-executor
+    steps:
+      - checkout
+      - run:
+          name: Configure GCP credentials
+          command: |
+            echo "$GOOGLE_CREDENTIALS" > /tmp/gcp-key.json
             export GOOGLE_APPLICATION_CREDENTIALS=/tmp/gcp-key.json
-            cd infra/opentofu/gcp/gke
-            terraform init \
-              -backend-config="bucket=shopos-tfstate-gcp" \
-              -backend-config="prefix=infra/opentofu/gcp/gke"
-            if [ "$TF_ACTION" = "APPLY" ]; then
-              terraform apply -auto-approve
-            elif [ "$TF_ACTION" = "DESTROY" ]; then
-              terraform destroy -auto-approve
-            else
-              terraform plan
-            fi
       - run:
-          name: Cleanup GCP key
-          command: rm -f /tmp/gcp-key.json
-          when: always
+          name: Terraform init and plan (GKE)
+          environment:
+            TF_DIR: infra/opentofu/gcp/gke
+          command: |
+            cd $TF_DIR
+            terraform init -input=false \
+              -backend-config="bucket=${GCS_TF_BUCKET:-shopos-tfstate-gcp}" \
+              -backend-config="prefix=$TF_DIR"
+            terraform plan -input=false 2>&1 | tee /tmp/tf-plan-gke.txt
+      - store_artifacts:
+          path: /tmp/tf-plan-gke.txt
+          destination: tf-plan-gke
 
-  terraform-aks:
+  tf-plan-aks:
     executor: terraform-executor
     steps:
       - checkout
       - run:
-          name: Terraform AKS
+          name: Terraform init and plan (AKS)
+          environment:
+            TF_DIR: infra/opentofu/azure/aks
           command: |
-            [ "$CLOUD" = "azure" ] || [ "$CLOUD" = "all" ] || { echo "Skipped"; exit 0; }
-            cd infra/opentofu/azure/aks
-            terraform init \
-              -backend-config="resource_group_name=shopos-tfstate-rg" \
-              -backend-config="storage_account_name=shoposterraform" \
+            cd $TF_DIR
+            terraform init -input=false \
+              -backend-config="resource_group_name=${AZURE_TF_RG:-shopos-tfstate-rg}" \
+              -backend-config="storage_account_name=${AZURE_TF_SA:-shoposterraform}" \
               -backend-config="container_name=tfstate" \
-              -backend-config="key=infra/opentofu/azure/aks/terraform.tfstate"
-            if [ "$TF_ACTION" = "APPLY" ]; then
-              terraform apply -auto-approve
-            elif [ "$TF_ACTION" = "DESTROY" ]; then
-              terraform destroy -auto-approve
-            else
-              terraform plan
-            fi
+              -backend-config="key=$TF_DIR/terraform.tfstate"
+            terraform plan -input=false 2>&1 | tee /tmp/tf-plan-aks.txt
+      - store_artifacts:
+          path: /tmp/tf-plan-aks.txt
+          destination: tf-plan-aks
+
+  apply-k8s-manifests:
+    docker:
+      - image: bitnami/kubectl:1.31.0
+    steps:
+      - checkout
+      - run:
+          name: Configure kubeconfig
+          command: |
+            mkdir -p ~/.kube
+            echo "$KUBECONFIG_DATA" | base64 -d > ~/.kube/config
+      - run:
+          name: Apply base K8s manifests
+          command: |
+            kubectl apply -f kubernetes/namespaces/ --server-side
+            kubectl apply -f kubernetes/rbac/ --server-side
+            kubectl apply -f kubernetes/network-policies/ --server-side
+            kubectl apply -f kubernetes/resource-quotas/ --server-side
+            kubectl apply -f kubernetes/pod-disruption-budgets/ --server-side
+            echo "Base manifests applied"
 
 workflows:
-  k8s-infra-workflow:
+  plan-all-clouds:
     jobs:
-      - terraform-eks:
+      - tf-plan-eks:
           context: shopos-aws
-      - terraform-gke:
+          filters:
+            branches:
+              only: [main, develop, /infra\/.*/]
+
+      - tf-plan-gke:
           context: shopos-gcp
-      - terraform-aks:
+          filters:
+            branches:
+              only: [main, develop, /infra\/.*/]
+
+      - tf-plan-aks:
           context: shopos-azure
+          filters:
+            branches:
+              only: [main, develop, /infra\/.*/]
+
+  apply-eks:
+    jobs:
+      - hold-eks-apply:
+          type: approval
+          filters:
+            branches:
+              only: main
+      - tf-apply-eks:
+          requires: [hold-eks-apply]
+          context: shopos-aws
+          filters:
+            branches:
+              only: main
+      - apply-k8s-manifests:
+          requires: [tf-apply-eks]
+          context: shopos-kubernetes
+          filters:
+            branches:
+              only: main

@@ -1,119 +1,280 @@
-# Post-Deploy Validation Pipeline — CircleCI
-# Context: shopos-kubernetes, shopos-slack
+# Post-Deploy Pipeline — CircleCI
+# Role: Performance and load testing using CircleCI orbs.
+#       Runs k6 smoke, spike, and soak tests; Gatling commerce simulations;
+#       and Locust distributed tests after every deployment.
+# Context: shopos-performance (API_GATEWAY_URL, INFLUXDB_URL)
 version: 2.1
 
+orbs:
+  aws-eks: circleci/aws-eks@2.2.0
+
 executors:
-  curl-executor:
+  performance-tester:
     docker:
-      - image: curlimages/curl:latest
-    resource_class: small
-  k6-executor:
+      - image: grafana/k6:0.55.0
+    resource_class: medium+
+
+  gatling-executor:
     docker:
-      - image: grafana/k6:latest
-    resource_class: medium
-  audit-executor:
+      - image: denvazh/gatling:3.11.5
+    resource_class: large
+
+  locust-executor:
     docker:
-      - image: aquasec/kube-bench:latest
-    resource_class: medium
+      - image: locustio/locust:2.31.5
+    resource_class: medium+
 
 jobs:
-  health-check:
-    executor: curl-executor
+  k6-smoke-test:
+    executor: performance-tester
     steps:
+      - checkout
       - run:
-          name: Health check all critical services
+          name: Run k6 smoke test
           command: |
-            FAILED=0
-            for PATH in /healthz /api/v1/products; do
-              STATUS=$(curl -sf --max-time 10 "$BASE_URL$PATH" -o /dev/null -w "%{http_code}" || echo "000")
-              echo "$BASE_URL$PATH → $STATUS"
-              [ "$STATUS" = "000" ] && FAILED=1
-            done
-            [ "$FAILED" = "1" ] && exit 1
-            echo "All health checks passed"
-
-  load-test:
-    executor: k6-executor
-    steps:
-      - run:
-          name: k6 load test
-          command: |
-            [ "$RUN_LOAD_TEST" = "true" ] || { echo "Skipped"; exit 0; }
-            cat > /tmp/load.js << 'EOF'
-            import http from 'k6/http';
-            import { check, sleep } from 'k6';
-            export let options = {
-              vus: 10, duration: '60s',
-              thresholds: {
-                http_req_failed: ['rate<0.05'],
-                http_req_duration: ['p(95)<500'],
-              },
-            };
-            export default function() {
-              let res = http.get(`${__ENV.BASE_URL}/healthz`);
-              check(res, { 'status 200': (r) => r.status === 200 });
-              sleep(1);
-            }
-            EOF
-            k6 run /tmp/load.js -e BASE_URL="$BASE_URL"
+            k6 run \
+              --env BASE_URL=${API_GATEWAY_URL:-http://localhost:8080} \
+              --vus 10 \
+              --duration 60s \
+              --out influxdb=${INFLUXDB_URL:-http://localhost:8086/k6} \
+              --summary-trend-stats="avg,min,med,max,p(90),p(95),p(99)" \
+              --thresholds '{"http_req_duration":["p(99)<1000"],"http_req_failed":["rate<0.01"]}' \
+              load-testing/k6/smoke.js
       - store_artifacts:
-          path: /tmp/k6-summary.json
+          path: /tmp/k6-smoke-results
+          destination: k6-smoke-results
 
-  dast-zap:
+  k6-browse-load-test:
+    executor: performance-tester
+    steps:
+      - checkout
+      - run:
+          name: Run k6 browse load test
+          command: |
+            k6 run \
+              --env BASE_URL=${API_GATEWAY_URL:-http://localhost:8080} \
+              --vus 50 \
+              --duration 5m \
+              --out influxdb=${INFLUXDB_URL:-http://localhost:8086/k6} \
+              --summary-trend-stats="avg,min,med,max,p(90),p(95),p(99)" \
+              --thresholds '{"http_req_duration":["p(95)<2000"],"http_req_failed":["rate<0.02"]}' \
+              load-testing/k6/browse.js
+      - store_artifacts:
+          path: /tmp/k6-browse-results
+          destination: k6-browse-results
+
+  k6-checkout-flow-test:
+    executor: performance-tester
+    steps:
+      - checkout
+      - run:
+          name: Run k6 checkout flow load test
+          command: |
+            k6 run \
+              --env BASE_URL=${API_GATEWAY_URL:-http://localhost:8080} \
+              --vus 30 \
+              --duration 5m \
+              --out influxdb=${INFLUXDB_URL:-http://localhost:8086/k6} \
+              --summary-trend-stats="avg,min,med,max,p(90),p(95),p(99)" \
+              --thresholds '{"http_req_duration":["p(95)<3000"],"http_req_failed":["rate<0.05"]}' \
+              load-testing/k6/checkout-flow.js
+      - store_artifacts:
+          path: /tmp/k6-checkout-results
+          destination: k6-checkout-results
+
+  k6-search-test:
+    executor: performance-tester
+    steps:
+      - checkout
+      - run:
+          name: Run k6 search load test
+          command: |
+            k6 run \
+              --env BASE_URL=${API_GATEWAY_URL:-http://localhost:8080} \
+              --vus 40 \
+              --duration 5m \
+              --out influxdb=${INFLUXDB_URL:-http://localhost:8086/k6} \
+              --thresholds '{"http_req_duration":["p(99)<1500"],"http_req_failed":["rate<0.01"]}' \
+              load-testing/k6/search.js
+
+  k6-spike-test:
+    executor: performance-tester
+    steps:
+      - checkout
+      - run:
+          name: Run k6 spike test (traffic surge simulation)
+          command: |
+            k6 run \
+              --env BASE_URL=${API_GATEWAY_URL:-http://localhost:8080} \
+              --out influxdb=${INFLUXDB_URL:-http://localhost:8086/k6} \
+              load-testing/k6/spike.js
+      - store_artifacts:
+          path: /tmp/k6-spike-results
+          destination: k6-spike-results
+
+  k6-soak-test:
+    executor: performance-tester
+    steps:
+      - checkout
+      - run:
+          name: Run k6 soak test (30 minutes extended duration)
+          no_output_timeout: 45m
+          command: |
+            k6 run \
+              --env BASE_URL=${API_GATEWAY_URL:-http://localhost:8080} \
+              --out influxdb=${INFLUXDB_URL:-http://localhost:8086/k6} \
+              --summary-trend-stats="avg,min,med,max,p(90),p(95),p(99)" \
+              load-testing/k6/soak.js
+      - store_artifacts:
+          path: /tmp/k6-soak-results
+          destination: k6-soak-results
+
+  gatling-commerce-simulation:
+    executor: gatling-executor
+    steps:
+      - checkout
+      - run:
+          name: Run Gatling Commerce simulation
+          no_output_timeout: 30m
+          command: |
+            gatling.sh \
+              -sf load-testing/gatling/src/test/scala \
+              -rsf load-testing/gatling/src/test/resources \
+              -s CommerceSimulation \
+              -rd "ShopOS Commerce Load Test - CircleCI"
+      - store_artifacts:
+          path: load-testing/gatling/target/gatling
+          destination: gatling-commerce-results
+      - store_test_results:
+          path: load-testing/gatling/target/gatling
+
+  gatling-search-simulation:
+    executor: gatling-executor
+    steps:
+      - checkout
+      - run:
+          name: Run Gatling Search simulation
+          no_output_timeout: 20m
+          command: |
+            gatling.sh \
+              -sf load-testing/gatling/src/test/scala \
+              -rsf load-testing/gatling/src/test/resources \
+              -s SearchSimulation \
+              -rd "ShopOS Search Load Test - CircleCI"
+      - store_artifacts:
+          path: load-testing/gatling/target/gatling
+          destination: gatling-search-results
+
+  locust-distributed:
+    executor: locust-executor
+    steps:
+      - checkout
+      - run:
+          name: Run Locust distributed load test
+          no_output_timeout: 20m
+          command: |
+            locust \
+              -f load-testing/locust/locustfile.py \
+              --headless \
+              -u 200 \
+              -r 20 \
+              --run-time 10m \
+              --host ${API_GATEWAY_URL:-http://localhost:8080} \
+              --html=/tmp/locust-report.html \
+              --csv=/tmp/locust-results \
+              --only-summary
+      - store_artifacts:
+          path: /tmp/locust-report.html
+          destination: locust-report
+      - store_artifacts:
+          path: /tmp/locust-results_stats.csv
+          destination: locust-stats
+
+  performance-report:
     docker:
-      - image: ghcr.io/zaproxy/zaproxy:stable
+      - image: python:3.12-slim
     steps:
+      - checkout
       - run:
-          name: ZAP baseline scan
+          name: Generate performance summary report
           command: |
-            [ "$RUN_DAST" = "true" ] || { echo "Skipped"; exit 0; }
-            zap-baseline.py -t "$BASE_URL" -r /tmp/zap-report.html || true
-      - store_artifacts:
-          path: /tmp/zap-report.html
+            pip install --quiet requests tabulate
+            python3 - <<'PYEOF'
+            import os, json, datetime
 
-  kube-audit:
-    executor: audit-executor
-    steps:
-      - run:
-          name: Setup kubeconfig
-          command: mkdir -p ~/.kube && echo "$KUBECONFIG_CONTENT" | base64 -d > ~/.kube/config
-      - run:
-          name: kube-bench CIS audit
-          command: kube-bench run --targets node,policies --json > /tmp/kube-bench.json 2>/dev/null || true
-      - run:
-          name: Kubescape scan
-          command: |
-            curl -s https://raw.githubusercontent.com/kubescape/kubescape/master/install.sh | /bin/bash
-            kubescape scan framework nsa,mitre --format json --output /tmp/kubescape.json 2>/dev/null || true
+            report = {
+              "pipeline": "CircleCI Performance Testing",
+              "timestamp": datetime.datetime.utcnow().isoformat() + "Z",
+              "build_num": os.getenv("CIRCLE_BUILD_NUM", "unknown"),
+              "branch": os.getenv("CIRCLE_BRANCH", "unknown"),
+              "base_url": os.getenv("API_GATEWAY_URL", "http://localhost:8080"),
+              "tests": [
+                "k6 smoke (10 VUs, 60s)",
+                "k6 browse load (50 VUs, 5m)",
+                "k6 checkout flow (30 VUs, 5m)",
+                "k6 search load (40 VUs, 5m)",
+                "k6 spike test",
+                "Gatling commerce simulation",
+                "Gatling search simulation",
+                "Locust distributed (200 users, 10m)"
+              ]
+            }
+            print(json.dumps(report, indent=2))
+            PYEOF
       - store_artifacts:
-          path: /tmp/kube-bench.json
-      - store_artifacts:
-          path: /tmp/kubescape.json
-
-  notify:
-    executor: curl-executor
-    steps:
-      - run:
-          name: Slack notification
-          command: |
-            curl -sf -X POST "$SLACK_WEBHOOK" \
-              -H 'Content-type: application/json' \
-              --data "{\"text\":\":white_check_mark: Post-deploy validation passed for *$ENVIRONMENT*\"}"
+          path: /tmp/performance-report.json
+          destination: performance-summary
 
 workflows:
-  post-deploy-workflow:
+  performance-testing:
     jobs:
-      - health-check:
-          context: shopos-kubernetes
-      - load-test:
-          requires: [health-check]
-          context: shopos-kubernetes
-      - dast-zap:
-          requires: [health-check]
-          context: shopos-kubernetes
-      - kube-audit:
-          requires: [health-check]
-          context: shopos-kubernetes
-      - notify:
-          requires: [load-test, dast-zap, kube-audit]
-          context: shopos-slack
+      - k6-smoke-test:
+          context: shopos-performance
+          filters:
+            branches:
+              only: [main, develop, /release\/.*/]
+
+      - k6-browse-load-test:
+          context: shopos-performance
+          requires: [k6-smoke-test]
+
+      - k6-checkout-flow-test:
+          context: shopos-performance
+          requires: [k6-smoke-test]
+
+      - k6-search-test:
+          context: shopos-performance
+          requires: [k6-smoke-test]
+
+      - gatling-commerce-simulation:
+          context: shopos-performance
+          requires: [k6-smoke-test]
+
+      - gatling-search-simulation:
+          context: shopos-performance
+          requires: [k6-smoke-test]
+
+      - locust-distributed:
+          context: shopos-performance
+          requires: [k6-smoke-test]
+
+      - k6-spike-test:
+          context: shopos-performance
+          requires: [k6-browse-load-test, k6-checkout-flow-test]
+
+      - k6-soak-test:
+          context: shopos-performance
+          requires: [k6-spike-test, gatling-commerce-simulation]
+          filters:
+            branches:
+              only: main
+
+      - performance-report:
+          context: shopos-performance
+          requires:
+            - k6-soak-test
+            - locust-distributed
+            - gatling-search-simulation
+          filters:
+            branches:
+              only: main

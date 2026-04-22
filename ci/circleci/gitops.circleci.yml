@@ -1,117 +1,79 @@
-# GitOps Tools Pipeline — CircleCI
-# Context: shopos-kubernetes, shopos-argocd, shopos-minio
+# GitOps Pipeline — CircleCI
+# Role: ArgoCD sync and image tag update using orb-based kubectl approach.
+#       Uses circleci/kubernetes orb for cluster interaction.
+# Context: shopos-kubernetes, shopos-argocd
 version: 2.1
 
-executors:
-  helm-executor:
-    docker:
-      - image: alpine/helm:latest
-    resource_class: medium
-  kubectl-executor:
-    docker:
-      - image: bitnami/kubectl:latest
-    resource_class: medium
+orbs:
+  kubernetes: circleci/kubernetes@1.3
 
 jobs:
-  install-argocd:
-    executor: helm-executor
-    steps:
-      - run:
-          name: Setup kubeconfig
-          command: mkdir -p ~/.kube && echo "$KUBECONFIG_CONTENT" | base64 -d > ~/.kube/config
-      - run:
-          name: Install ArgoCD HA
-          command: |
-            helm repo add argo https://argoproj.github.io/argo-helm --force-update
-            helm upgrade --install argocd argo/argo-cd \
-              --namespace argocd --create-namespace \
-              --set server.replicas=2 --set redis-ha.enabled=true \
-              --set controller.replicas=1 --set repoServer.replicas=2 \
-              --set configs.secret.argocdServerAdminPassword="$ARGOCD_ADMIN_PASSWORD_HASH" \
-              --wait --timeout 10m
-
-  install-argo-rollouts:
-    executor: helm-executor
-    steps:
-      - run:
-          name: Setup kubeconfig
-          command: mkdir -p ~/.kube && echo "$KUBECONFIG_CONTENT" | base64 -d > ~/.kube/config
-      - run:
-          name: Install Argo Rollouts
-          command: |
-            helm repo add argo https://argoproj.github.io/argo-helm --force-update
-            helm upgrade --install argo-rollouts argo/argo-rollouts \
-              --namespace argo-rollouts --create-namespace \
-              --set dashboard.enabled=true --wait --timeout 5m
-
-  install-keda:
-    executor: helm-executor
+  update-image-tag:
+    docker:
+      - image: alpine/git:2.47.0
     steps:
       - checkout
       - run:
-          name: Setup kubeconfig
-          command: mkdir -p ~/.kube && echo "$KUBECONFIG_CONTENT" | base64 -d > ~/.kube/config
-      - run:
-          name: Install KEDA
+          name: Update image tag in GitOps repo
           command: |
-            helm repo add kedacore https://kedacore.github.io/charts --force-update
-            helm upgrade --install keda kedacore/keda \
-              --namespace keda --create-namespace \
-              --set metricsServer.replicaCount=2 --wait --timeout 5m
-            kubectl apply -f kubernetes/keda/ 2>/dev/null || true
+            git config --global user.email "circleci@shopos.internal"
+            git config --global user.name "CircleCI GitOps"
+            SERVICE="${SERVICE_NAME:-api-gateway}"
+            TAG="${IMAGE_TAG:-${CIRCLE_SHA1:0:8}-${CIRCLE_BUILD_NUM}}"
+            # Update values in gitops manifests
+            if [ -f "gitops/argocd/apps/$SERVICE/values.yaml" ]; then
+              sed -i "s|tag:.*|tag: \"$TAG\"|g" "gitops/argocd/apps/$SERVICE/values.yaml"
+              git add "gitops/argocd/apps/$SERVICE/values.yaml"
+              git commit -m "chore: update $SERVICE to $TAG [skip ci]" || true
+              git push origin main || true
+            fi
 
-  install-velero:
-    executor: helm-executor
+  argocd-sync:
+    docker:
+      - image: argoproj/argocd:v2.13.0
     steps:
       - run:
-          name: Setup kubeconfig
-          command: mkdir -p ~/.kube && echo "$KUBECONFIG_CONTENT" | base64 -d > ~/.kube/config
-      - run:
-          name: Install Velero
+          name: ArgoCD sync application
           command: |
-            helm repo add vmware-tanzu https://vmware-tanzu.github.io/helm-charts --force-update
-            helm upgrade --install velero vmware-tanzu/velero \
-              --namespace velero --create-namespace \
-              --set configuration.backupStorageLocation[0].provider=aws \
-              --set configuration.backupStorageLocation[0].bucket=velero-backups \
-              --set "configuration.backupStorageLocation[0].config.s3Url=http://minio.registry.svc:9000" \
-              --set configuration.backupStorageLocation[0].config.s3ForcePathStyle=true \
-              --set "credentials.secretContents.cloud=[default]\naws_access_key_id=$MINIO_ACCESS_KEY\naws_secret_access_key=$MINIO_SECRET_KEY" \
-              --wait --timeout 5m
+            argocd login "${ARGOCD_SERVER:-argocd-server.argocd.svc.cluster.local}" \
+              --username "$ARGOCD_USERNAME" \
+              --password "$ARGOCD_PASSWORD" \
+              --insecure --grpc-web
+            APP="${SERVICE_NAME:-api-gateway}"
+            argocd app sync "$APP" --prune --timeout 300
+            argocd app wait "$APP" --health --timeout 300
+            echo "ArgoCD sync complete: $APP"
+            argocd app get "$APP"
 
-  argocd-bootstrap:
-    executor: kubectl-executor
+  flux-reconcile:
+    docker:
+      - image: fluxcd/flux-cli:v2.4.0
     steps:
-      - checkout
       - run:
-          name: Setup kubeconfig
-          command: mkdir -p ~/.kube && echo "$KUBECONFIG_CONTENT" | base64 -d > ~/.kube/config
-      - run:
-          name: Wait for ArgoCD
-          command: kubectl wait --for=condition=available deployment/argocd-server -n argocd --timeout=120s
-      - run:
-          name: Apply App-of-Apps
+          name: Flux reconcile kustomization
           command: |
-            kubectl apply -f gitops/argocd/app-of-apps.yaml
-            kubectl apply -f gitops/argocd/applicationsets/ 2>/dev/null || true
+            mkdir -p ~/.kube
+            echo "$KUBECONFIG_DATA" | base64 -d > ~/.kube/config
+            flux reconcile kustomization shopos \
+              --namespace flux-system \
+              --timeout 5m \
+              --with-source
+            echo "Flux reconciliation complete"
 
 workflows:
-  gitops-workflow:
+  gitops:
     jobs:
-      - install-argocd:
-          context: [shopos-kubernetes, shopos-argocd]
-      - install-argo-rollouts:
-          requires: [install-argocd]
-          context: shopos-kubernetes
-      - install-keda:
-          requires: [install-argocd]
-          context: shopos-kubernetes
-      - install-velero:
-          requires: [install-argocd]
-          context: [shopos-kubernetes, shopos-minio]
-      - argocd-bootstrap:
-          requires: [install-argocd, install-keda, install-velero]
-          context: shopos-kubernetes
+      - argocd-sync:
+          context:
+            - shopos-kubernetes
+            - shopos-argocd
           filters:
             branches:
-              only: [main]
+              only: main
+
+      - flux-reconcile:
+          context: shopos-kubernetes
+          requires: [argocd-sync]
+          filters:
+            branches:
+              only: main

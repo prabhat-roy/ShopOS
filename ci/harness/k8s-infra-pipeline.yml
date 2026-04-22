@@ -1,119 +1,163 @@
-# Kubernetes Infrastructure (Terraform) Pipeline — Harness CI
+# K8s Infrastructure Pipeline — Harness CI/CD
+# Role: Provisions cloud infrastructure using Harness Terraform steps.
+#       Supports plan/apply/destroy across AWS, GCP, Azure.
+#       Uses Harness failure strategies and approval gates before apply.
 pipeline:
+  name: shopos-k8s-infra
   identifier: shopos_k8s_infra
-  name: ShopOS K8s Infrastructure
-  projectIdentifier: shopos
+  projectIdentifier: ShopOS
   orgIdentifier: default
-
-  variables:
-    - name: TF_ACTION
-      type: String
-      value: PLAN
-    - name: CLOUD
-      type: String
-      value: aws
+  tags:
+    app: shopos
+    role: infrastructure
 
   stages:
     - stage:
-        identifier: eks
-        name: AWS EKS (Terraform)
+        name: Terraform Plan
+        identifier: Terraform_Plan
         type: CI
-        when:
-          condition: <+pipeline.variables.CLOUD> == "aws" || <+pipeline.variables.CLOUD> == "all"
         spec:
           cloneCodebase: true
+          infrastructure:
+            type: KubernetesDirect
+            spec:
+              connectorRef: account.k8s_connector
+              namespace: harness-builds
           execution:
             steps:
               - step:
-                  identifier: terraform_eks
-                  name: Terraform EKS
+                  name: Terraform Init and Plan
+                  identifier: tf_plan
                   type: Run
                   spec:
-                    image: hashicorp/terraform:1.9.0
+                    image: hashicorp/terraform:1.9.8
+                    shell: Sh
                     envVariables:
+                      TF_DIR: infra/terraform/<+pipeline.variables.CLOUD_PROVIDER>/<+pipeline.variables.CLUSTER_TYPE>
+                      TF_IN_AUTOMATION: "true"
                       AWS_ACCESS_KEY_ID: <+secrets.getValue("aws_access_key_id")>
                       AWS_SECRET_ACCESS_KEY: <+secrets.getValue("aws_secret_access_key")>
-                      AWS_DEFAULT_REGION: us-east-1
-                    command: |
-                      cd infra/terraform/aws/eks
-                      terraform init \
-                        -backend-config="bucket=shopos-tfstate" \
-                        -backend-config="key=infra/terraform/aws/eks/terraform.tfstate" \
-                        -backend-config="region=$AWS_DEFAULT_REGION"
-                      if [ "<+pipeline.variables.TF_ACTION>" = "APPLY" ]; then
-                        terraform apply -auto-approve
-                      elif [ "<+pipeline.variables.TF_ACTION>" = "DESTROY" ]; then
-                        terraform destroy -auto-approve
-                      else
-                        terraform plan
-                      fi
-
-    - stage:
-        identifier: gke
-        name: GCP GKE (Terraform)
-        type: CI
-        when:
-          condition: <+pipeline.variables.CLOUD> == "gcp" || <+pipeline.variables.CLOUD> == "all"
-        spec:
-          cloneCodebase: true
-          execution:
-            steps:
-              - step:
-                  identifier: terraform_gke
-                  name: Terraform GKE
-                  type: Run
-                  spec:
-                    image: hashicorp/terraform:1.9.0
-                    envVariables:
-                      GCP_SA_KEY: <+secrets.getValue("gcp_sa_key")>
-                    command: |
-                      echo "$GCP_SA_KEY" > /tmp/gcp-key.json
-                      export GOOGLE_APPLICATION_CREDENTIALS=/tmp/gcp-key.json
-                      cd infra/opentofu/gcp/gke
-                      terraform init \
-                        -backend-config="bucket=shopos-tfstate-gcp" \
-                        -backend-config="prefix=infra/opentofu/gcp/gke"
-                      if [ "<+pipeline.variables.TF_ACTION>" = "APPLY" ]; then
-                        terraform apply -auto-approve
-                      elif [ "<+pipeline.variables.TF_ACTION>" = "DESTROY" ]; then
-                        terraform destroy -auto-approve
-                      else
-                        terraform plan
-                      fi
-                      rm -f /tmp/gcp-key.json
-
-    - stage:
-        identifier: aks
-        name: Azure AKS (Terraform)
-        type: CI
-        when:
-          condition: <+pipeline.variables.CLOUD> == "azure" || <+pipeline.variables.CLOUD> == "all"
-        spec:
-          cloneCodebase: true
-          execution:
-            steps:
-              - step:
-                  identifier: terraform_aks
-                  name: Terraform AKS
-                  type: Run
-                  spec:
-                    image: hashicorp/terraform:1.9.0
-                    envVariables:
+                      GOOGLE_CREDENTIALS: <+secrets.getValue("gcp_service_account_key")>
                       ARM_CLIENT_ID: <+secrets.getValue("azure_client_id")>
                       ARM_CLIENT_SECRET: <+secrets.getValue("azure_client_secret")>
                       ARM_SUBSCRIPTION_ID: <+secrets.getValue("azure_subscription_id")>
                       ARM_TENANT_ID: <+secrets.getValue("azure_tenant_id")>
                     command: |
-                      cd infra/opentofu/azure/aks
-                      terraform init \
-                        -backend-config="resource_group_name=shopos-tfstate-rg" \
-                        -backend-config="storage_account_name=shoposterraform" \
-                        -backend-config="container_name=tfstate" \
-                        -backend-config="key=infra/opentofu/azure/aks/terraform.tfstate"
-                      if [ "<+pipeline.variables.TF_ACTION>" = "APPLY" ]; then
-                        terraform apply -auto-approve
-                      elif [ "<+pipeline.variables.TF_ACTION>" = "DESTROY" ]; then
+                      cd $TF_DIR
+                      terraform init -input=false \
+                        -backend-config="bucket=shopos-tfstate-<+pipeline.variables.CLOUD_PROVIDER>" \
+                        -backend-config="prefix=$TF_DIR"
+                      terraform plan -input=false -out=tfplan 2>&1 | tee /tmp/tf-plan-output.txt
+                      echo "Plan complete. Review output above."
+
+    - stage:
+        name: Approve Infrastructure Changes
+        identifier: Approve_Infra
+        type: Approval
+        spec:
+          execution:
+            steps:
+              - step:
+                  type: HarnessApproval
+                  name: Approve Terraform Apply
+                  identifier: approve_tf_apply
+                  timeout: 8h
+                  spec:
+                    approvalMessage: |
+                      Review Terraform plan output before approving infrastructure changes.
+                      Cloud: <+pipeline.variables.CLOUD_PROVIDER>
+                      Cluster type: <+pipeline.variables.CLUSTER_TYPE>
+                      Action: <+pipeline.variables.TF_ACTION>
+                    includePipelineExecutionHistory: true
+                    approvers:
+                      userGroups:
+                        - account.platform_team
+                        - account.sre_team
+                      minimumCount: 2
+                      disallowPipelineExecutor: true
+                    approverInputs:
+                      - name: reviewed_plan
+                        defaultValue: "true"
+                      - name: cost_estimate_ok
+                        defaultValue: "true"
+        when:
+          stageStatus: Success
+          condition: <+pipeline.variables.TF_ACTION> == "apply" || <+pipeline.variables.TF_ACTION> == "destroy"
+
+    - stage:
+        name: Terraform Apply
+        identifier: Terraform_Apply
+        type: CI
+        spec:
+          cloneCodebase: true
+          infrastructure:
+            type: KubernetesDirect
+            spec:
+              connectorRef: account.k8s_connector
+              namespace: harness-builds
+          execution:
+            steps:
+              - step:
+                  name: Terraform Apply
+                  identifier: tf_apply
+                  type: Run
+                  spec:
+                    image: hashicorp/terraform:1.9.8
+                    shell: Sh
+                    envVariables:
+                      TF_DIR: infra/terraform/<+pipeline.variables.CLOUD_PROVIDER>/<+pipeline.variables.CLUSTER_TYPE>
+                      TF_IN_AUTOMATION: "true"
+                      AWS_ACCESS_KEY_ID: <+secrets.getValue("aws_access_key_id")>
+                      AWS_SECRET_ACCESS_KEY: <+secrets.getValue("aws_secret_access_key")>
+                      GOOGLE_CREDENTIALS: <+secrets.getValue("gcp_service_account_key")>
+                    command: |
+                      cd $TF_DIR
+                      terraform init -input=false
+                      if [ "<+pipeline.variables.TF_ACTION>" = "apply" ]; then
+                        terraform plan -out=tfplan
+                        terraform apply -auto-approve tfplan
+                        terraform output -json | tee /tmp/tf-outputs.json
+                      elif [ "<+pipeline.variables.TF_ACTION>" = "destroy" ]; then
                         terraform destroy -auto-approve
-                      else
-                        terraform plan
                       fi
+                      echo "Terraform <+pipeline.variables.TF_ACTION> complete"
+        failureStrategies:
+          - onFailure:
+              errors:
+                - AllErrors
+              action:
+                type: Abort
+        when:
+          stageStatus: Success
+          condition: <+pipeline.variables.TF_ACTION> != "plan"
+
+  variables:
+    - name: CLOUD_PROVIDER
+      type: String
+      value: aws
+      description: "aws | gcp | azure"
+    - name: CLUSTER_TYPE
+      type: String
+      value: eks
+      description: "eks | gke | aks"
+    - name: TF_ACTION
+      type: String
+      value: plan
+      description: "plan | apply | destroy"
+
+  notificationRules:
+    - name: infra-failure
+      identifier: infra_failure_notify
+      pipelineEvents:
+        - type: PipelineFailed
+      notificationMethod:
+        type: Slack
+        spec:
+          webhookUrl: <+secrets.getValue("slack_webhook")>
+
+  properties:
+    ci:
+      codebase:
+        connectorRef: account.github_connector
+        repoName: shopos/shopos
+        build: <+input>

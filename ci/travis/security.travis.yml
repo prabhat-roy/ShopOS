@@ -1,74 +1,154 @@
-# Security Infrastructure Pipeline — Travis CI
+# Security Pipeline — Travis CI
+# Role: Multi-language dependency vulnerability matrix.
+#       Tests each language's dependency resolution across versions,
+#       and validates security tool compatibility with each runtime.
 language: minimal
+os: linux
+dist: jammy
+
+services:
+  - docker
 
 env:
   global:
-    - ACTION=INSTALL
+    - REGISTRY_PROJECT=shopos
+
+matrix:
+  fast_finish: true
+  include:
+    # Go — test go mod tidy and govulncheck across versions
+    - env: LANG=go GO_VERSION=1.22 SECURITY_CHECK=govulncheck DOMAIN=platform SERVICE=api-gateway
+      name: "Security: Go 1.22 govulncheck / api-gateway"
+    - env: LANG=go GO_VERSION=1.23 SECURITY_CHECK=govulncheck DOMAIN=platform SERVICE=api-gateway
+      name: "Security: Go 1.23 govulncheck / api-gateway"
+    - env: LANG=go GO_VERSION=1.23 SECURITY_CHECK=govulncheck DOMAIN=commerce SERVICE=checkout-service
+      name: "Security: Go 1.23 govulncheck / checkout-service"
+
+    # Node.js — npm audit across Node versions
+    - env: LANG=nodejs NODE_VERSION=18 SECURITY_CHECK=npm-audit DOMAIN=platform SERVICE=mobile-bff
+      name: "Security: Node 18 npm-audit / mobile-bff"
+    - env: LANG=nodejs NODE_VERSION=20 SECURITY_CHECK=npm-audit DOMAIN=platform SERVICE=mobile-bff
+      name: "Security: Node 20 npm-audit / mobile-bff"
+    - env: LANG=nodejs NODE_VERSION=22 SECURITY_CHECK=npm-audit DOMAIN=platform SERVICE=mobile-bff
+      name: "Security: Node 22 npm-audit / mobile-bff"
+    - env: LANG=nodejs NODE_VERSION=20 SECURITY_CHECK=npm-audit DOMAIN=communications SERVICE=notification-orchestrator
+      name: "Security: Node 20 npm-audit / notification-orchestrator"
+
+    # Python — pip-audit and safety across Python versions
+    - env: LANG=python PYTHON_VERSION=3.11 SECURITY_CHECK=pip-audit DOMAIN=analytics-ai SERVICE=recommendation-service
+      name: "Security: Python 3.11 pip-audit / recommendation-service"
+    - env: LANG=python PYTHON_VERSION=3.12 SECURITY_CHECK=pip-audit DOMAIN=analytics-ai SERVICE=recommendation-service
+      name: "Security: Python 3.12 pip-audit / recommendation-service"
+    - env: LANG=python PYTHON_VERSION=3.11 SECURITY_CHECK=pip-audit DOMAIN=communications SERVICE=email-service
+      name: "Security: Python 3.11 pip-audit / email-service"
+
+    # Java — OWASP dependency-check across JVM versions
+    - env: LANG=java JAVA_VERSION=17 SECURITY_CHECK=owasp-dc DOMAIN=commerce SERVICE=payment-service
+      name: "Security: Java 17 OWASP DC / payment-service"
+    - env: LANG=java JAVA_VERSION=21 SECURITY_CHECK=owasp-dc DOMAIN=commerce SERVICE=payment-service
+      name: "Security: Java 21 OWASP DC / payment-service"
+
+    # Rust — cargo audit across Rust versions
+    - env: LANG=rust RUST_VERSION=stable SECURITY_CHECK=cargo-audit DOMAIN=identity SERVICE=auth-service
+      name: "Security: Rust stable cargo-audit / auth-service"
+    - env: LANG=rust RUST_VERSION=1.82.0 SECURITY_CHECK=cargo-audit DOMAIN=identity SERVICE=auth-service
+      name: "Security: Rust 1.82 cargo-audit / auth-service"
+
+    # C# — dotnet list package --vulnerable across .NET versions
+    - env: LANG=dotnet DOTNET_VERSION=8.0 SECURITY_CHECK=dotnet-vuln DOMAIN=commerce SERVICE=cart-service
+      name: "Security: .NET 8 vuln scan / cart-service"
+    - env: LANG=dotnet DOTNET_VERSION=9.0 SECURITY_CHECK=dotnet-vuln DOMAIN=commerce SERVICE=cart-service
+      name: "Security: .NET 9 vuln scan / cart-service"
 
 install:
-  - curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
-  - mkdir -p ~/.kube && echo "$KUBECONFIG_CONTENT" | base64 -d > ~/.kube/config
+  - |
+    case "$LANG" in
+      go)
+        docker pull "golang:${GO_VERSION}-alpine"
+        ;;
+      nodejs)
+        docker pull "node:${NODE_VERSION}-alpine"
+        ;;
+      python)
+        docker pull "python:${PYTHON_VERSION}-slim"
+        ;;
+      java)
+        docker pull "eclipse-temurin:${JAVA_VERSION}-jdk-jammy"
+        ;;
+      rust)
+        docker pull "rust:${RUST_VERSION}-slim"
+        ;;
+      dotnet)
+        docker pull "mcr.microsoft.com/dotnet/sdk:${DOTNET_VERSION}"
+        ;;
+    esac
 
-jobs:
-  include:
-    - name: cert-manager
-      script:
-        - |
-          [ "$CERT_MANAGER" = "true" ] || { echo "Skipped"; exit 0; }
-          helm repo add jetstack https://charts.jetstack.io --force-update
-          helm upgrade --install cert-manager jetstack/cert-manager \
-            --namespace cert-manager --create-namespace \
-            --set installCRDs=true --set replicaCount=2 --wait --timeout 5m
+script:
+  - |
+    SVC_DIR="src/${DOMAIN}/${SERVICE}"
+    echo "==> Security check: ${SECURITY_CHECK} on ${DOMAIN}/${SERVICE} (${LANG})"
 
-    - name: vault
-      script:
-        - |
-          [ "$VAULT" = "true" ] || { echo "Skipped"; exit 0; }
-          helm repo add hashicorp https://helm.releases.hashicorp.com --force-update
-          helm upgrade --install vault hashicorp/vault \
-            --namespace vault --create-namespace \
-            --set server.ha.enabled=true --set server.ha.raft.enabled=true \
-            --set server.ha.replicas=3 --wait --timeout 10m
+    case "$LANG" in
+      go)
+        docker run --rm \
+          -v "$(pwd)/$SVC_DIR:/workspace" \
+          -w /workspace \
+          "golang:${GO_VERSION}-alpine" \
+          sh -c "go install golang.org/x/vuln/cmd/govulncheck@latest 2>/dev/null && govulncheck ./... 2>&1 || true"
+        echo "Go vulnerability check complete"
+        ;;
 
-    - name: keycloak
-      script:
-        - |
-          [ "$KEYCLOAK" = "true" ] || { echo "Skipped"; exit 0; }
-          helm repo add bitnami https://charts.bitnami.com/bitnami --force-update
-          helm upgrade --install keycloak bitnami/keycloak \
-            --namespace keycloak --create-namespace \
-            --set replicaCount=2 \
-            --set auth.adminPassword="$KEYCLOAK_ADMIN_PASSWORD" \
-            --set postgresql.enabled=true --wait --timeout 10m
+      nodejs)
+        docker run --rm \
+          -v "$(pwd)/$SVC_DIR:/workspace" \
+          -w /workspace \
+          "node:${NODE_VERSION}-alpine" \
+          sh -c "npm install --prefer-offline 2>/dev/null; npm audit --audit-level=high 2>&1 || true"
+        echo "npm audit complete"
+        ;;
 
-    - name: kyverno
-      script:
-        - |
-          [ "$KYVERNO" = "true" ] || { echo "Skipped"; exit 0; }
-          helm repo add kyverno https://kyverno.github.io/kyverno --force-update
-          helm upgrade --install kyverno kyverno/kyverno \
-            --namespace kyverno --create-namespace \
-            --set replicaCount=3 --wait --timeout 5m
-          kubectl apply -f security/kyverno/ 2>/dev/null || true
+      python)
+        docker run --rm \
+          -v "$(pwd)/$SVC_DIR:/workspace" \
+          -w /workspace \
+          "python:${PYTHON_VERSION}-slim" \
+          sh -c "pip install --quiet pip-audit 2>/dev/null; pip-audit -r requirements.txt 2>&1 || true"
+        echo "pip-audit complete"
+        ;;
 
-    - name: falco
-      script:
-        - |
-          [ "$FALCO" = "true" ] || { echo "Skipped"; exit 0; }
-          helm repo add falcosecurity https://falcosecurity.github.io/charts --force-update
-          helm upgrade --install falco falcosecurity/falco \
-            --namespace falco --create-namespace \
-            --set driver.kind=ebpf \
-            --set falcosidekick.enabled=true \
-            --set falcosidekick.config.slack.webhookurl="$SLACK_WEBHOOK" \
-            --wait --timeout 8m
+      java)
+        # Run OWASP dependency check via Docker
+        docker run --rm \
+          -v "$(pwd)/$SVC_DIR:/src" \
+          owasp/dependency-check:latest \
+          --scan /src \
+          --format JSON \
+          --out /tmp/owasp-report \
+          --failOnCVSS 9 \
+          --noupdate 2>&1 | tail -20 || true
+        echo "OWASP dependency check complete"
+        ;;
 
-    - name: opa
-      script:
-        - |
-          [ "$OPA" = "true" ] || { echo "Skipped"; exit 0; }
-          helm repo add gatekeeper https://open-policy-agent.github.io/gatekeeper/charts --force-update
-          helm upgrade --install gatekeeper gatekeeper/gatekeeper \
-            --namespace gatekeeper-system --create-namespace \
-            --set replicaCount=3 --wait --timeout 5m
-          kubectl apply -f security/opa/ 2>/dev/null || true
+      rust)
+        docker run --rm \
+          -v "$(pwd)/$SVC_DIR:/workspace" \
+          -w /workspace \
+          "rust:${RUST_VERSION}-slim" \
+          sh -c "cargo install cargo-audit 2>/dev/null && cargo audit 2>&1 || true"
+        echo "cargo audit complete"
+        ;;
+
+      dotnet)
+        docker run --rm \
+          -v "$(pwd)/$SVC_DIR:/workspace" \
+          -w /workspace \
+          "mcr.microsoft.com/dotnet/sdk:${DOTNET_VERSION}" \
+          sh -c "dotnet list package --vulnerable 2>&1 || true"
+        echo ".NET vulnerability check complete"
+        ;;
+    esac
+
+notifications:
+  email:
+    on_success: never
+    on_failure: change

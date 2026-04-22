@@ -1,128 +1,166 @@
-# Messaging Infrastructure Pipeline — Harness CI
+# Messaging Infrastructure Pipeline — Harness CI/CD
+# Role: Installs and validates messaging infrastructure (Kafka, RabbitMQ, NATS)
+#       using Harness CD stages with health verification steps.
 pipeline:
-  identifier: shopos_messaging
-  name: ShopOS Messaging Infrastructure
-  projectIdentifier: shopos
+  name: shopos-messaging-infra
+  identifier: shopos_messaging_infra
+  projectIdentifier: ShopOS
   orgIdentifier: default
-
-  variables:
-    - name: CREATE_TOPICS
-      type: String
-      value: "false"
+  tags:
+    app: shopos
+    role: messaging
 
   stages:
     - stage:
-        identifier: coordination
-        name: Coordination — ZooKeeper
-        type: CI
+        name: Deploy Kafka
+        identifier: Deploy_Kafka
+        type: Deployment
         spec:
-          cloneCodebase: false
+          deploymentType: Kubernetes
+          service:
+            serviceRef: kafka
+          environment:
+            environmentRef: <+pipeline.variables.TARGET_ENV>
+            infrastructureDefinitions:
+              - identifier: <+pipeline.variables.TARGET_ENV>_k8s
           execution:
             steps:
               - step:
-                  identifier: zookeeper
-                  name: Install ZooKeeper
-                  type: Run
+                  name: Helm Install Kafka
+                  identifier: helm_install_kafka
+                  type: K8sRollingDeploy
+                  timeout: 15m
                   spec:
-                    image: alpine/helm:latest
-                    envVariables:
-                      KUBECONFIG_CONTENT: <+secrets.getValue("kubeconfig_content")>
-                    command: |
-                      mkdir -p ~/.kube && echo "$KUBECONFIG_CONTENT" | base64 -d > ~/.kube/config
-                      helm repo add bitnami https://charts.bitnami.com/bitnami --force-update
-                      helm upgrade --install zookeeper bitnami/zookeeper \
-                        --namespace messaging --create-namespace \
-                        --set replicaCount=3 --wait --timeout 8m
-
-    - stage:
-        identifier: brokers
-        name: Message Brokers
-        type: CI
-        spec:
-          cloneCodebase: false
-          execution:
-            steps:
+                    skipDryRun: false
               - step:
-                  identifier: kafka
-                  name: Install Kafka
+                  name: Wait for Kafka Ready
+                  identifier: wait_kafka_ready
                   type: Run
                   spec:
-                    image: alpine/helm:latest
-                    envVariables:
-                      KUBECONFIG_CONTENT: <+secrets.getValue("kubeconfig_content")>
+                    connectorRef: account.k8s_connector
+                    image: bitnami/kubectl:1.31.0
+                    shell: Sh
                     command: |
-                      mkdir -p ~/.kube && echo "$KUBECONFIG_CONTENT" | base64 -d > ~/.kube/config
-                      helm repo add bitnami https://charts.bitnami.com/bitnami --force-update
-                      helm upgrade --install kafka bitnami/kafka \
+                      kubectl rollout status statefulset/kafka \
                         --namespace messaging \
-                        --set replicaCount=3 \
-                        --set zookeeper.enabled=false \
-                        --set externalZookeeper.servers=zookeeper.messaging.svc:2181 \
-                        --set autoCreateTopicsEnable=false \
-                        --set defaultReplicationFactor=3 --wait --timeout 10m
+                        --timeout=600s
+                      echo "Kafka cluster is ready"
               - step:
-                  identifier: rabbitmq
-                  name: Install RabbitMQ
-                  type: Run
-                  spec:
-                    image: alpine/helm:latest
-                    envVariables:
-                      KUBECONFIG_CONTENT: <+secrets.getValue("kubeconfig_content")>
-                      RABBITMQ_PASSWORD: <+secrets.getValue("rabbitmq_password")>
-                    command: |
-                      mkdir -p ~/.kube && echo "$KUBECONFIG_CONTENT" | base64 -d > ~/.kube/config
-                      helm repo add bitnami https://charts.bitnami.com/bitnami --force-update
-                      helm upgrade --install rabbitmq bitnami/rabbitmq \
-                        --namespace messaging \
-                        --set replicaCount=3 \
-                        --set auth.password="$RABBITMQ_PASSWORD" \
-                        --set clustering.enabled=true --wait --timeout 8m
-              - step:
-                  identifier: nats
-                  name: Install NATS JetStream
-                  type: Run
-                  spec:
-                    image: alpine/helm:latest
-                    envVariables:
-                      KUBECONFIG_CONTENT: <+secrets.getValue("kubeconfig_content")>
-                    command: |
-                      mkdir -p ~/.kube && echo "$KUBECONFIG_CONTENT" | base64 -d > ~/.kube/config
-                      helm repo add nats https://nats-io.github.io/k8s/helm/charts --force-update
-                      helm upgrade --install nats nats/nats \
-                        --namespace messaging \
-                        --set nats.jetstream.enabled=true \
-                        --set cluster.enabled=true --set cluster.replicas=3 --wait --timeout 5m
-
-    - stage:
-        identifier: configure
-        name: Configure — Kafka Topics
-        type: CI
-        spec:
-          cloneCodebase: false
-          execution:
-            steps:
-              - step:
-                  identifier: create_topics
                   name: Create Kafka Topics
+                  identifier: create_kafka_topics
                   type: Run
                   spec:
-                    image: bitnami/kubectl:latest
-                    envVariables:
-                      KUBECONFIG_CONTENT: <+secrets.getValue("kubeconfig_content")>
+                    connectorRef: account.k8s_connector
+                    image: bitnami/kafka:3.8.0
+                    shell: Sh
                     command: |
-                      [ "<+pipeline.variables.CREATE_TOPICS>" = "true" ] || { echo "Skipped"; exit 0; }
-                      mkdir -p ~/.kube && echo "$KUBECONFIG_CONTENT" | base64 -d > ~/.kube/config
-                      KAFKA_POD=$(kubectl get pods -n messaging -l app.kubernetes.io/name=kafka -o jsonpath='{.items[0].metadata.name}')
-                      for TOPIC in identity.user.registered identity.user.deleted \
-                        commerce.order.placed commerce.order.cancelled commerce.order.fulfilled \
-                        commerce.payment.processed commerce.payment.failed commerce.cart.abandoned \
-                        supplychain.shipment.created supplychain.shipment.updated \
-                        supplychain.inventory.low supplychain.inventory.restocked \
-                        notification.email.requested notification.sms.requested notification.push.requested \
-                        analytics.page.viewed analytics.product.clicked analytics.search.performed \
-                        security.fraud.detected security.login.failed; do
-                        kubectl exec -n messaging "$KAFKA_POD" -- \
-                          kafka-topics.sh --create --if-not-exists \
-                          --bootstrap-server kafka.messaging.svc:9092 \
-                          --topic "$TOPIC" --partitions 12 --replication-factor 3 || true
+                      TOPICS="
+                        identity.user.registered identity.user.deleted
+                        commerce.order.placed commerce.order.cancelled
+                        commerce.order.fulfilled commerce.payment.processed
+                        commerce.payment.failed commerce.cart.abandoned
+                        supplychain.shipment.created supplychain.shipment.updated
+                        supplychain.inventory.low supplychain.inventory.restocked
+                        notification.email.requested notification.sms.requested
+                        notification.push.requested analytics.page.viewed
+                        analytics.product.clicked analytics.search.performed
+                        security.fraud.detected security.login.failed
+                      "
+                      for TOPIC in $TOPICS; do
+                        kafka-topics.sh \
+                          --bootstrap-server kafka.messaging.svc.cluster.local:9092 \
+                          --create --if-not-exists \
+                          --topic "$TOPIC" \
+                          --partitions 6 \
+                          --replication-factor 3
+                        echo "Topic: $TOPIC"
                       done
+            rollbackSteps:
+              - step:
+                  name: Rollback Kafka
+                  identifier: rollback_kafka
+                  type: K8sRollingRollback
+
+    - stage:
+        name: Deploy RabbitMQ
+        identifier: Deploy_RabbitMQ
+        type: Deployment
+        spec:
+          deploymentType: Kubernetes
+          service:
+            serviceRef: rabbitmq
+          environment:
+            environmentRef: <+pipeline.variables.TARGET_ENV>
+            infrastructureDefinitions:
+              - identifier: <+pipeline.variables.TARGET_ENV>_k8s
+          execution:
+            steps:
+              - step:
+                  name: Helm Install RabbitMQ
+                  identifier: helm_install_rabbitmq
+                  type: K8sRollingDeploy
+                  timeout: 10m
+              - step:
+                  name: Verify RabbitMQ Health
+                  identifier: verify_rabbitmq
+                  type: Run
+                  spec:
+                    connectorRef: account.k8s_connector
+                    image: curlimages/curl:8.10.1
+                    shell: Sh
+                    command: |
+                      for i in 1 2 3 4 5; do
+                        STATUS=$(curl -sf --max-time 10 \
+                          http://rabbitmq.messaging.svc.cluster.local:15672/api/health/checks/alarms \
+                          -u guest:guest -o /dev/null -w "%{http_code}" 2>/dev/null || echo "000")
+                        echo "Attempt $i: RabbitMQ management → $STATUS"
+                        [ "$STATUS" = "200" ] && echo "RabbitMQ ready" && exit 0
+                        sleep 15
+                      done
+                      echo "RabbitMQ health check timed out"
+                      exit 1
+
+    - stage:
+        name: Deploy NATS JetStream
+        identifier: Deploy_NATS
+        type: Deployment
+        spec:
+          deploymentType: Kubernetes
+          service:
+            serviceRef: nats
+          environment:
+            environmentRef: <+pipeline.variables.TARGET_ENV>
+            infrastructureDefinitions:
+              - identifier: <+pipeline.variables.TARGET_ENV>_k8s
+          execution:
+            steps:
+              - step:
+                  name: Helm Install NATS
+                  identifier: helm_install_nats
+                  type: K8sRollingDeploy
+                  timeout: 8m
+              - step:
+                  name: Verify NATS JetStream
+                  identifier: verify_nats
+                  type: Run
+                  spec:
+                    connectorRef: account.k8s_connector
+                    image: bitnami/kubectl:1.31.0
+                    shell: Sh
+                    command: |
+                      kubectl rollout status statefulset/nats \
+                        --namespace messaging \
+                        --timeout=300s
+                      echo "NATS JetStream ready"
+
+  variables:
+    - name: TARGET_ENV
+      type: String
+      value: production
+
+  properties:
+    ci:
+      codebase:
+        connectorRef: account.github_connector
+        repoName: shopos/shopos
+        build: <+input>

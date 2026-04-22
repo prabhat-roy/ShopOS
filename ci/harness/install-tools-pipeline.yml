@@ -1,109 +1,159 @@
-# Install CI Tools — Harness CI
+# Install Tools Pipeline — Harness CI/CD
+# Role: Verifies tool availability and installs prerequisites using Harness Run steps.
+#       Acts as preflight for all other Harness pipelines.
 pipeline:
+  name: shopos-install-tools
   identifier: shopos_install_tools
-  name: ShopOS Install Tools
-  projectIdentifier: shopos
+  projectIdentifier: ShopOS
   orgIdentifier: default
+  tags:
+    app: shopos
+    role: tooling
 
   stages:
     - stage:
-        identifier: runtimes
-        name: Verify Runtimes
+        name: Verify CI Tools
+        identifier: Verify_CI_Tools
         type: CI
         spec:
           cloneCodebase: false
+          infrastructure:
+            type: KubernetesDirect
+            spec:
+              connectorRef: account.k8s_connector
+              namespace: harness-builds
           execution:
             steps:
-              - step:
-                  identifier: golang
-                  name: Go
-                  type: Run
-                  spec:
-                    image: golang:1.23
-                    command: go version
-              - step:
-                  identifier: java
-                  name: Java
-                  type: Run
-                  spec:
-                    image: eclipse-temurin:21
-                    command: java -version
-              - step:
-                  identifier: nodejs
-                  name: Node.js
-                  type: Run
-                  spec:
-                    image: node:22
-                    command: node --version && npm --version
-              - step:
-                  identifier: python
-                  name: Python
-                  type: Run
-                  spec:
-                    image: python:3.13
-                    command: python --version
-              - step:
-                  identifier: dotnet
-                  name: .NET
-                  type: Run
-                  spec:
-                    image: mcr.microsoft.com/dotnet/sdk:8.0
-                    command: dotnet --version
-              - step:
-                  identifier: rust
-                  name: Rust
-                  type: Run
-                  spec:
-                    image: rust:latest
-                    command: rustc --version && cargo --version
+              - parallel:
+                  - step:
+                      name: Verify kubectl and Helm
+                      identifier: verify_kubectl_helm
+                      type: Run
+                      spec:
+                        image: alpine/helm:3.16.2
+                        shell: Sh
+                        command: |
+                          helm version --short
+                          kubectl version --client --short 2>/dev/null || kubectl version --client
+                          echo "kubectl and Helm verified"
+
+                  - step:
+                      name: Verify Terraform
+                      identifier: verify_terraform
+                      type: Run
+                      spec:
+                        image: hashicorp/terraform:1.9.8
+                        shell: Sh
+                        command: |
+                          terraform version
+                          echo "Terraform verified"
+
+                  - step:
+                      name: Verify Trivy
+                      identifier: verify_trivy
+                      type: Run
+                      spec:
+                        image: aquasec/trivy:0.57.1
+                        shell: Sh
+                        command: |
+                          trivy version
+                          echo "Trivy verified"
+
+                  - step:
+                      name: Verify k6
+                      identifier: verify_k6
+                      type: Run
+                      spec:
+                        image: grafana/k6:0.55.0
+                        shell: Sh
+                        command: |
+                          k6 version
+                          echo "k6 verified"
+
+                  - step:
+                      name: Verify Semgrep
+                      identifier: verify_semgrep
+                      type: Run
+                      spec:
+                        image: returntocorp/semgrep:1.94.0
+                        shell: Sh
+                        command: |
+                          semgrep --version
+                          echo "Semgrep verified"
+
+                  - step:
+                      name: Verify ArgoCD CLI
+                      identifier: verify_argocd
+                      type: Run
+                      spec:
+                        image: argoproj/argocd:v2.13.0
+                        shell: Sh
+                        command: |
+                          argocd version --client
+                          echo "ArgoCD CLI verified"
 
     - stage:
-        identifier: cli_tools
-        name: Verify CLI Tools
+        name: Verify Cluster Access
+        identifier: Verify_Cluster_Access
         type: CI
         spec:
           cloneCodebase: false
+          infrastructure:
+            type: KubernetesDirect
+            spec:
+              connectorRef: account.k8s_connector
+              namespace: harness-builds
           execution:
             steps:
               - step:
-                  identifier: helm
-                  name: Helm
+                  name: Check Cluster Connectivity and Resources
+                  identifier: check_cluster
                   type: Run
                   spec:
-                    image: alpine/helm:latest
-                    command: helm version --short
-              - step:
-                  identifier: terraform
-                  name: Terraform
-                  type: Run
-                  spec:
-                    image: hashicorp/terraform:1.9.0
-                    command: terraform version
-
-    - stage:
-        identifier: security_tools
-        name: Verify Security Tools
-        type: CI
-        spec:
-          cloneCodebase: false
-          execution:
-            steps:
-              - step:
-                  identifier: install_verify
-                  name: Install + Verify Security Tools
-                  type: Run
-                  spec:
-                    image: ubuntu:24.04
+                    image: bitnami/kubectl:1.31.0
+                    shell: Sh
                     command: |
-                      apt-get update -qq && apt-get install -y curl python3-pip --quiet
-                      curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh -s -- -b /usr/local/bin
-                      curl -sSfL https://raw.githubusercontent.com/anchore/grype/main/install.sh | sh -s -- -b /usr/local/bin
-                      curl -sSfL https://raw.githubusercontent.com/anchore/syft/main/install.sh | sh -s -- -b /usr/local/bin
-                      curl -fsSL "https://github.com/sigstore/cosign/releases/download/v2.4.0/cosign-linux-amd64" \
-                        -o /usr/local/bin/cosign && chmod +x /usr/local/bin/cosign
-                      pip3 install semgrep checkov --quiet
-                      trivy --version | head -1
-                      grype version | head -1
-                      syft --version
-                      cosign version
-                      semgrep --version
+                      echo "==> Cluster Info"
+                      kubectl cluster-info
+                      echo ""
+                      echo "==> Nodes"
+                      kubectl get nodes -o wide
+                      echo ""
+                      echo "==> Namespaces"
+                      kubectl get namespaces
+                      echo ""
+                      echo "==> Storage Classes"
+                      kubectl get storageclass
+                      echo ""
+                      echo "==> Existing Helm Releases"
+                      helm list -A 2>/dev/null || true
+
+              - step:
+                  name: Verify Harbor Connectivity
+                  identifier: verify_harbor
+                  type: Run
+                  spec:
+                    image: curlimages/curl:8.10.1
+                    shell: Sh
+                    envVariables:
+                      HARBOR_URL: http://harbor.harbor.svc.cluster.local:80
+                    command: |
+                      STATUS=$(curl -sf --max-time 10 "$HARBOR_URL/api/v2.0/ping" \
+                        -o /dev/null -w "%{http_code}" 2>/dev/null || echo "000")
+                      echo "Harbor API: $STATUS"
+                      [ "$STATUS" = "200" ] \
+                        && echo "Harbor reachable" \
+                        || echo "WARN: Harbor not yet deployed (expected before registry-pipeline runs)"
+                      exit 0
+
+  variables:
+    - name: CLUSTER_NAME
+      type: String
+      value: shopos-cluster
+
+  properties:
+    ci:
+      codebase:
+        connectorRef: account.github_connector
+        repoName: shopos/shopos
+        build: <+input>

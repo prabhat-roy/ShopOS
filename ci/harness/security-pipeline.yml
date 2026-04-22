@@ -1,138 +1,234 @@
-# Security Infrastructure Pipeline — Harness CI
+# Security Pipeline — Harness CI/CD
+# Role: SAST, container scanning (Trivy/OWASP), and security gate with
+#       Harness failure strategies. Blocks deployment on CRITICAL findings.
+# Uses Harness-native Run steps with custom security images.
 pipeline:
-  identifier: shopos_security
-  name: ShopOS Security Infrastructure
-  projectIdentifier: shopos
+  name: shopos-security-scan
+  identifier: shopos_security_scan
+  projectIdentifier: ShopOS
   orgIdentifier: default
-
-  variables:
-    - name: ACTION
-      type: String
-      value: INSTALL
-    - name: CERT_MANAGER
-      type: String
-      value: "true"
-    - name: VAULT
-      type: String
-      value: "true"
-    - name: KEYCLOAK
-      type: String
-      value: "true"
-    - name: KYVERNO
-      type: String
-      value: "true"
-    - name: FALCO
-      type: String
-      value: "true"
+  tags:
+    app: shopos
+    role: security
 
   stages:
     - stage:
-        identifier: cert_manager
-        name: cert-manager
+        name: SAST Scanning
+        identifier: SAST_Scanning
         type: CI
         spec:
           cloneCodebase: true
+          infrastructure:
+            type: KubernetesDirect
+            spec:
+              connectorRef: account.k8s_connector
+              namespace: harness-builds
           execution:
             steps:
-              - step:
-                  identifier: install
-                  name: Install cert-manager
-                  type: Run
-                  spec:
-                    image: alpine/helm:latest
-                    envVariables:
-                      KUBECONFIG_CONTENT: <+secrets.getValue("kubeconfig_content")>
-                    command: |
-                      [ "<+pipeline.variables.CERT_MANAGER>" = "true" ] || { echo "Skipped"; exit 0; }
-                      mkdir -p ~/.kube && echo "$KUBECONFIG_CONTENT" | base64 -d > ~/.kube/config
-                      helm repo add jetstack https://charts.jetstack.io --force-update
-                      helm upgrade --install cert-manager jetstack/cert-manager \
-                        --namespace cert-manager --create-namespace \
-                        --set installCRDs=true --set replicaCount=2 --wait --timeout 5m
+              - parallel:
+                  - step:
+                      name: Semgrep SAST
+                      identifier: semgrep_sast
+                      type: Run
+                      spec:
+                        image: returntocorp/semgrep:1.94.0
+                        shell: Sh
+                        command: |
+                          echo "==> Semgrep SAST scan"
+                          semgrep --config=auto \
+                            --json \
+                            --output=/tmp/semgrep-report.json \
+                            --no-git-ignore \
+                            src/ 2>&1 | tail -20
+                          FINDINGS=$(python3 -c "import json; d=json.load(open('/tmp/semgrep-report.json')); print(len(d.get('results',[])))" 2>/dev/null || echo "0")
+                          echo "SAST findings: $FINDINGS"
+                          # Custom rules
+                          if [ -d "security/semgrep" ]; then
+                            semgrep --config=security/semgrep --json --output=/tmp/semgrep-custom.json src/ 2>&1 || true
+                          fi
+
+                  - step:
+                      name: Gitleaks Secret Scan
+                      identifier: gitleaks_scan
+                      type: Run
+                      spec:
+                        image: zricethezav/gitleaks:latest
+                        shell: Sh
+                        command: |
+                          gitleaks detect \
+                            --source . \
+                            --report-format json \
+                            --report-path /tmp/gitleaks-report.json \
+                            --exit-code 0 2>&1 || true
+                          COUNT=$(python3 -c "import json; d=json.load(open('/tmp/gitleaks-report.json')); print(len(d))" 2>/dev/null || echo "0")
+                          echo "Potential secrets found: $COUNT"
+                          [ "$COUNT" -gt 0 ] && echo "WARNING: Review /tmp/gitleaks-report.json"
+
+                  - step:
+                      name: Checkov IaC Scan
+                      identifier: checkov_iac
+                      type: Run
+                      spec:
+                        image: bridgecrew/checkov:latest
+                        shell: Sh
+                        command: |
+                          checkov -d infra/ \
+                            --output json \
+                            --output-file-path /tmp/checkov-report \
+                            --soft-fail 2>&1 | tail -20
+                          checkov -d kubernetes/ \
+                            --output json \
+                            --output-file-path /tmp/checkov-k8s-report \
+                            --soft-fail 2>&1 | tail -10 || true
+                          echo "IaC scan complete"
 
     - stage:
-        identifier: vault_keycloak
-        name: Vault + Keycloak
+        name: Container Image Scanning
+        identifier: Container_Scanning
         type: CI
         spec:
           cloneCodebase: false
+          infrastructure:
+            type: KubernetesDirect
+            spec:
+              connectorRef: account.k8s_connector
+              namespace: harness-builds
           execution:
             steps:
               - step:
-                  identifier: vault
-                  name: Install Vault HA
+                  name: Trivy Critical CVE Gate
+                  identifier: trivy_critical_gate
                   type: Run
                   spec:
-                    image: alpine/helm:latest
+                    image: aquasec/trivy:0.57.1
+                    shell: Sh
                     envVariables:
-                      KUBECONFIG_CONTENT: <+secrets.getValue("kubeconfig_content")>
+                      IMAGE_REF: <+pipeline.variables.HARBOR_REGISTRY>/shopos/<+pipeline.variables.SERVICE_NAME>:<+pipeline.variables.IMAGE_TAG>
                     command: |
-                      [ "<+pipeline.variables.VAULT>" = "true" ] || { echo "Skipped"; exit 0; }
-                      mkdir -p ~/.kube && echo "$KUBECONFIG_CONTENT" | base64 -d > ~/.kube/config
-                      helm repo add hashicorp https://helm.releases.hashicorp.com --force-update
-                      helm upgrade --install vault hashicorp/vault \
-                        --namespace vault --create-namespace \
-                        --set server.ha.enabled=true --set server.ha.raft.enabled=true \
-                        --set server.ha.replicas=3 --wait --timeout 10m
+                      echo "==> Trivy scan: $IMAGE_REF"
+                      trivy image \
+                        --exit-code 1 \
+                        --severity CRITICAL \
+                        --format table \
+                        --no-progress \
+                        "$IMAGE_REF" 2>&1
+                      EXIT=$?
+                      if [ $EXIT -ne 0 ]; then
+                        echo "CRITICAL CVEs found! Blocking deployment."
+                        exit 1
+                      fi
+                      echo "No CRITICAL CVEs found. Gate passed."
+                  failureStrategies:
+                    - onFailure:
+                        errors:
+                          - AllErrors
+                        action:
+                          type: Abort
+
               - step:
-                  identifier: keycloak
-                  name: Install Keycloak
+                  name: Trivy HIGH CVE Report
+                  identifier: trivy_high_report
                   type: Run
                   spec:
-                    image: alpine/helm:latest
+                    image: aquasec/trivy:0.57.1
+                    shell: Sh
                     envVariables:
-                      KUBECONFIG_CONTENT: <+secrets.getValue("kubeconfig_content")>
-                      KEYCLOAK_ADMIN_PASSWORD: <+secrets.getValue("keycloak_admin_password")>
+                      IMAGE_REF: <+pipeline.variables.HARBOR_REGISTRY>/shopos/<+pipeline.variables.SERVICE_NAME>:<+pipeline.variables.IMAGE_TAG>
                     command: |
-                      [ "<+pipeline.variables.KEYCLOAK>" = "true" ] || { echo "Skipped"; exit 0; }
-                      mkdir -p ~/.kube && echo "$KUBECONFIG_CONTENT" | base64 -d > ~/.kube/config
-                      helm repo add bitnami https://charts.bitnami.com/bitnami --force-update
-                      helm upgrade --install keycloak bitnami/keycloak \
-                        --namespace keycloak --create-namespace \
-                        --set replicaCount=2 \
-                        --set auth.adminPassword="$KEYCLOAK_ADMIN_PASSWORD" \
-                        --set postgresql.enabled=true --wait --timeout 10m
+                      trivy image \
+                        --exit-code 0 \
+                        --severity HIGH \
+                        --format json \
+                        --output /tmp/trivy-high-report.json \
+                        --no-progress \
+                        "$IMAGE_REF" 2>&1 || true
+                      echo "HIGH CVE report generated (non-blocking)"
+
+              - step:
+                  name: Generate SBOM
+                  identifier: generate_sbom
+                  type: Run
+                  spec:
+                    image: aquasec/trivy:0.57.1
+                    shell: Sh
+                    envVariables:
+                      IMAGE_REF: <+pipeline.variables.HARBOR_REGISTRY>/shopos/<+pipeline.variables.SERVICE_NAME>:<+pipeline.variables.IMAGE_TAG>
+                    command: |
+                      trivy image \
+                        --format cyclonedx \
+                        --output /tmp/sbom-<+pipeline.variables.SERVICE_NAME>.json \
+                        --no-progress \
+                        "$IMAGE_REF" || true
+                      echo "SBOM generated for $IMAGE_REF"
 
     - stage:
-        identifier: policy_runtime
-        name: Policy + Runtime Security
+        name: OWASP ZAP DAST
+        identifier: OWASP_ZAP_DAST
         type: CI
         spec:
-          cloneCodebase: true
+          cloneCodebase: false
+          infrastructure:
+            type: KubernetesDirect
+            spec:
+              connectorRef: account.k8s_connector
+              namespace: harness-builds
           execution:
             steps:
               - step:
-                  identifier: kyverno
-                  name: Install Kyverno
+                  name: ZAP Baseline Scan
+                  identifier: zap_baseline
                   type: Run
                   spec:
-                    image: alpine/helm:latest
+                    image: ghcr.io/zaproxy/zaproxy:stable
+                    shell: Sh
                     envVariables:
-                      KUBECONFIG_CONTENT: <+secrets.getValue("kubeconfig_content")>
+                      TARGET_URL: <+pipeline.variables.TARGET_URL>
                     command: |
-                      [ "<+pipeline.variables.KYVERNO>" = "true" ] || { echo "Skipped"; exit 0; }
-                      mkdir -p ~/.kube && echo "$KUBECONFIG_CONTENT" | base64 -d > ~/.kube/config
-                      helm repo add kyverno https://kyverno.github.io/kyverno --force-update
-                      helm upgrade --install kyverno kyverno/kyverno \
-                        --namespace kyverno --create-namespace \
-                        --set replicaCount=3 --wait --timeout 5m
-                      kubectl apply -f security/kyverno/ 2>/dev/null || true
-              - step:
-                  identifier: falco
-                  name: Install Falco
-                  type: Run
-                  spec:
-                    image: alpine/helm:latest
-                    envVariables:
-                      KUBECONFIG_CONTENT: <+secrets.getValue("kubeconfig_content")>
-                      SLACK_WEBHOOK: <+secrets.getValue("slack_webhook")>
-                    command: |
-                      [ "<+pipeline.variables.FALCO>" = "true" ] || { echo "Skipped"; exit 0; }
-                      mkdir -p ~/.kube && echo "$KUBECONFIG_CONTENT" | base64 -d > ~/.kube/config
-                      helm repo add falcosecurity https://falcosecurity.github.io/charts --force-update
-                      helm upgrade --install falco falcosecurity/falco \
-                        --namespace falco --create-namespace \
-                        --set driver.kind=ebpf \
-                        --set falcosidekick.enabled=true \
-                        --set falcosidekick.config.slack.webhookurl="$SLACK_WEBHOOK" \
-                        --wait --timeout 8m
+                      if [ -z "$TARGET_URL" ]; then
+                        echo "TARGET_URL not set, skipping DAST"
+                        exit 0
+                      fi
+                      zap-baseline.py \
+                        -t "$TARGET_URL" \
+                        -r /tmp/zap-report.html \
+                        -J /tmp/zap-report.json \
+                        -I 2>&1 | tail -30 || true
+                      echo "ZAP baseline scan complete"
+        when:
+          stageStatus: Success
+          condition: <+pipeline.variables.RUN_DAST> == "true"
+
+  variables:
+    - name: SERVICE_NAME
+      type: String
+      value: api-gateway
+    - name: IMAGE_TAG
+      type: String
+      value: latest
+    - name: HARBOR_REGISTRY
+      type: Secret
+      value: harbor_registry_url
+    - name: TARGET_URL
+      type: String
+      value: ""
+    - name: RUN_DAST
+      type: String
+      value: "false"
+
+  notificationRules:
+    - name: security-critical-failure
+      identifier: security_critical_notify
+      pipelineEvents:
+        - type: PipelineFailed
+        - type: StageSuccess
+      notificationMethod:
+        type: Slack
+        spec:
+          webhookUrl: <+secrets.getValue("slack_webhook")>
+
+  properties:
+    ci:
+      codebase:
+        connectorRef: account.github_connector
+        repoName: shopos/shopos
+        build: <+input>

@@ -1,85 +1,74 @@
-# Install CI Tools — CircleCI
+# Install Tools Pipeline — CircleCI
+# Role: Verifies all required tools and images are available using CircleCI orbs.
+#       Runs as preflight before other pipelines in CircleCI.
 version: 2.1
+
+orbs:
+  helm: circleci/helm@3.0
+  kubernetes: circleci/kubernetes@1.3
 
 jobs:
   verify-kubectl-helm:
     docker:
-      - image: alpine/helm:latest
+      - image: alpine/helm:3.16.2
     steps:
-      - run: helm version --short
-      - run: kubectl version --client 2>/dev/null || true
-
-  verify-terraform:
-    docker:
-      - image: hashicorp/terraform:1.9.0
-    steps:
-      - run: terraform version
-
-  verify-golang:
-    docker:
-      - image: golang:1.23
-    steps:
-      - run: go version
-
-  verify-java:
-    docker:
-      - image: eclipse-temurin:21
-    steps:
-      - run: java -version
-
-  verify-nodejs:
-    docker:
-      - image: node:22
-    steps:
-      - run: node --version && npm --version
-
-  verify-python:
-    docker:
-      - image: python:3.13
-    steps:
-      - run: python --version
-
-  verify-dotnet:
-    docker:
-      - image: mcr.microsoft.com/dotnet/sdk:8.0
-    steps:
-      - run: dotnet --version
-
-  verify-rust:
-    docker:
-      - image: rust:latest
-    steps:
-      - run: rustc --version && cargo --version
+      - run:
+          name: Verify kubectl and helm versions
+          command: |
+            helm version --short
+            kubectl version --client --short 2>/dev/null || kubectl version --client
+            echo "kubectl and Helm verified"
 
   verify-security-tools:
     docker:
-      - image: ubuntu:24.04
+      - image: aquasec/trivy:0.57.1
     steps:
       - run:
-          name: Install and verify security tools
+          name: Verify Trivy
+          command: trivy version
+
+  verify-performance-tools:
+    docker:
+      - image: grafana/k6:0.55.0
+    steps:
+      - run:
+          name: Verify k6
+          command: k6 version
+
+  verify-terraform:
+    docker:
+      - image: hashicorp/terraform:1.9.8
+    steps:
+      - run:
+          name: Verify Terraform
+          command: terraform version
+
+  verify-cluster-access:
+    docker:
+      - image: bitnami/kubectl:1.31.0
+    steps:
+      - run:
+          name: Configure kubeconfig and verify cluster access
           command: |
-            apt-get update -qq && apt-get install -y curl python3-pip --quiet
-            curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh -s -- -b /usr/local/bin
-            curl -sSfL https://raw.githubusercontent.com/anchore/grype/main/install.sh | sh -s -- -b /usr/local/bin
-            curl -sSfL https://raw.githubusercontent.com/anchore/syft/main/install.sh | sh -s -- -b /usr/local/bin
-            curl -fsSL "https://github.com/sigstore/cosign/releases/download/v2.4.0/cosign-linux-amd64" \
-              -o /usr/local/bin/cosign && chmod +x /usr/local/bin/cosign
-            pip3 install semgrep checkov --quiet
-            trivy --version | head -1
-            grype version | head -1
-            syft --version
-            cosign version
-            semgrep --version
+            if [ -n "$KUBECONFIG_DATA" ]; then
+              mkdir -p ~/.kube
+              echo "$KUBECONFIG_DATA" | base64 -d > ~/.kube/config
+              kubectl cluster-info
+              kubectl get nodes
+              echo "Cluster access verified"
+            else
+              echo "KUBECONFIG_DATA not set - cluster access skipped"
+            fi
 
 workflows:
-  install-tools-workflow:
+  verify-tools:
     jobs:
       - verify-kubectl-helm
-      - verify-terraform
-      - verify-golang
-      - verify-java
-      - verify-nodejs
-      - verify-python
-      - verify-dotnet
-      - verify-rust
       - verify-security-tools
+      - verify-performance-tools
+      - verify-terraform
+      - verify-cluster-access:
+          context: shopos-kubernetes
+          filters:
+            branches:
+              only: [main, develop]

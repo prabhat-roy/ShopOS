@@ -1,123 +1,110 @@
-# Messaging Infrastructure Pipeline — Tekton
-# Secrets: kubeconfig-secret, rabbitmq-credentials
+# Messaging Infrastructure Pipeline — Tekton (In-Cluster Helm Install)
+# Role: Installs and configures messaging infrastructure (Kafka, RabbitMQ, NATS)
+#       using helm Tasks running inside the cluster.
+# Secrets: kubeconfig-secret, kafka-credentials, rabbitmq-credentials
 ---
 apiVersion: tekton.dev/v1
 kind: Task
 metadata:
-  name: install-zookeeper
+  name: helm-install-kafka
   namespace: tekton-pipelines
 spec:
   params:
-    - name: action
-      default: INSTALL
+    - name: namespace
+      default: messaging
+    - name: chart-version
+      default: "29.3.4"
+    - name: replica-count
+      default: "3"
   workspaces:
+    - name: source
     - name: kubeconfig
       mountPath: /root/.kube
   steps:
-    - name: helm
-      image: alpine/helm:latest
+    - name: add-repo
+      image: alpine/helm:3.16.2
       script: |
-        if [ "$(params.action)" = "UNINSTALL" ]; then
-          helm uninstall zookeeper -n messaging 2>/dev/null || true
-          exit 0
-        fi
         helm repo add bitnami https://charts.bitnami.com/bitnami --force-update
-        helm upgrade --install zookeeper bitnami/zookeeper \
-          --namespace messaging --create-namespace \
-          --set replicaCount=3 --wait --timeout 8m
----
-apiVersion: tekton.dev/v1
-kind: Task
-metadata:
-  name: install-kafka
-  namespace: tekton-pipelines
-spec:
-  params:
-    - name: action
-      default: INSTALL
-  workspaces:
-    - name: kubeconfig
-      mountPath: /root/.kube
-  steps:
-    - name: helm
-      image: alpine/helm:latest
+        helm repo update
+    - name: install-kafka
+      image: alpine/helm:3.16.2
       script: |
-        if [ "$(params.action)" = "UNINSTALL" ]; then
-          helm uninstall kafka -n messaging 2>/dev/null || true
-          exit 0
-        fi
-        helm repo add bitnami https://charts.bitnami.com/bitnami --force-update
         helm upgrade --install kafka bitnami/kafka \
-          --namespace messaging \
-          --set replicaCount=3 \
-          --set zookeeper.enabled=false \
-          --set externalZookeeper.servers=zookeeper.messaging.svc:2181 \
-          --set autoCreateTopicsEnable=false \
-          --set defaultReplicationFactor=3 \
-          --set offsetsTopicReplicationFactor=3 \
+          --namespace $(params.namespace) \
+          --create-namespace \
+          --version $(params.chart-version) \
+          --values /workspace/source/messaging/kafka/values.yaml \
+          --set replicaCount=$(params.replica-count) \
+          --set kraft.enabled=true \
           --wait --timeout 10m
+        echo "Kafka installed in $(params.namespace)"
+    - name: verify
+      image: bitnami/kubectl:1.31.0
+      script: |
+        kubectl rollout status statefulset/kafka \
+          --namespace $(params.namespace) \
+          --timeout=300s
+        echo "Kafka is ready"
 ---
 apiVersion: tekton.dev/v1
 kind: Task
 metadata:
-  name: install-rabbitmq
+  name: helm-install-rabbitmq
   namespace: tekton-pipelines
 spec:
   params:
-    - name: action
-      default: INSTALL
+    - name: namespace
+      default: messaging
+    - name: chart-version
+      default: "14.7.0"
+    - name: replica-count
+      default: "3"
   workspaces:
+    - name: source
     - name: kubeconfig
       mountPath: /root/.kube
   steps:
-    - name: helm
-      image: alpine/helm:latest
-      env:
-        - name: RABBITMQ_PASSWORD
-          valueFrom:
-            secretKeyRef:
-              name: rabbitmq-credentials
-              key: password
+    - name: install-rabbitmq
+      image: alpine/helm:3.16.2
       script: |
-        if [ "$(params.action)" = "UNINSTALL" ]; then
-          helm uninstall rabbitmq -n messaging 2>/dev/null || true
-          exit 0
-        fi
         helm repo add bitnami https://charts.bitnami.com/bitnami --force-update
         helm upgrade --install rabbitmq bitnami/rabbitmq \
-          --namespace messaging \
-          --set replicaCount=3 \
-          --set auth.password="$RABBITMQ_PASSWORD" \
-          --set clustering.enabled=true \
+          --namespace $(params.namespace) \
+          --create-namespace \
+          --version $(params.chart-version) \
+          --values /workspace/source/messaging/rabbitmq/values.yaml \
+          --set replicaCount=$(params.replica-count) \
           --wait --timeout 8m
+        echo "RabbitMQ installed"
 ---
 apiVersion: tekton.dev/v1
 kind: Task
 metadata:
-  name: install-nats
+  name: helm-install-nats
   namespace: tekton-pipelines
 spec:
   params:
-    - name: action
-      default: INSTALL
+    - name: namespace
+      default: messaging
+    - name: chart-version
+      default: "1.2.6"
   workspaces:
+    - name: source
     - name: kubeconfig
       mountPath: /root/.kube
   steps:
-    - name: helm
-      image: alpine/helm:latest
+    - name: install-nats
+      image: alpine/helm:3.16.2
       script: |
-        if [ "$(params.action)" = "UNINSTALL" ]; then
-          helm uninstall nats -n messaging 2>/dev/null || true
-          exit 0
-        fi
-        helm repo add nats https://nats-io.github.io/k8s/helm/charts --force-update
+        helm repo add nats https://nats-io.github.io/k8s/helm/charts/ --force-update
         helm upgrade --install nats nats/nats \
-          --namespace messaging \
+          --namespace $(params.namespace) \
+          --create-namespace \
+          --version $(params.chart-version) \
+          --values /workspace/source/messaging/nats/values.yaml \
           --set nats.jetstream.enabled=true \
-          --set cluster.enabled=true \
-          --set cluster.replicas=3 \
           --wait --timeout 5m
+        echo "NATS JetStream installed"
 ---
 apiVersion: tekton.dev/v1
 kind: Task
@@ -125,137 +112,146 @@ metadata:
   name: create-kafka-topics
   namespace: tekton-pipelines
 spec:
-  workspaces:
-    - name: kubeconfig
-      mountPath: /root/.kube
+  params:
+    - name: kafka-namespace
+      default: messaging
+    - name: kafka-bootstrap
+      default: kafka.messaging.svc.cluster.local:9092
   steps:
     - name: create-topics
-      image: bitnami/kubectl:latest
+      image: bitnami/kafka:3.8.0
       script: |
-        KAFKA_POD=$(kubectl get pods -n messaging -l app.kubernetes.io/name=kafka -o jsonpath='{.items[0].metadata.name}')
-        TOPICS="identity.user.registered identity.user.deleted
-          commerce.order.placed commerce.order.cancelled commerce.order.fulfilled
-          commerce.payment.processed commerce.payment.failed commerce.cart.abandoned
-          supplychain.shipment.created supplychain.shipment.updated
-          supplychain.inventory.low supplychain.inventory.restocked
-          notification.email.requested notification.sms.requested notification.push.requested
-          analytics.page.viewed analytics.product.clicked analytics.search.performed
-          security.fraud.detected security.login.failed"
+        TOPICS="
+          identity.user.registered
+          identity.user.deleted
+          commerce.order.placed
+          commerce.order.cancelled
+          commerce.order.fulfilled
+          commerce.payment.processed
+          commerce.payment.failed
+          commerce.cart.abandoned
+          supplychain.shipment.created
+          supplychain.shipment.updated
+          supplychain.inventory.low
+          supplychain.inventory.restocked
+          notification.email.requested
+          notification.sms.requested
+          notification.push.requested
+          analytics.page.viewed
+          analytics.product.clicked
+          analytics.search.performed
+          security.fraud.detected
+          security.login.failed
+        "
         for TOPIC in $TOPICS; do
-          kubectl exec -n messaging "$KAFKA_POD" -- \
-            kafka-topics.sh --create --if-not-exists \
-            --bootstrap-server kafka.messaging.svc:9092 \
+          kafka-topics.sh \
+            --bootstrap-server $(params.kafka-bootstrap) \
+            --create \
+            --if-not-exists \
             --topic "$TOPIC" \
-            --partitions 12 \
-            --replication-factor 3 || true
-          echo "Created topic: $TOPIC"
+            --partitions 6 \
+            --replication-factor 3
+          echo "Topic created: $TOPIC"
         done
+        echo "All Kafka topics created"
 ---
 apiVersion: tekton.dev/v1
 kind: Pipeline
 metadata:
-  name: messaging-pipeline
+  name: shopos-messaging-pipeline
   namespace: tekton-pipelines
 spec:
+  description: |
+    In-cluster messaging infrastructure pipeline. Installs Kafka, RabbitMQ, NATS
+    via Helm and creates all required Kafka topics.
   params:
-    - name: action
-      default: INSTALL
-    - name: install-zookeeper
-      default: "true"
+    - name: messaging-namespace
+      default: messaging
+    - name: repo-url
+      default: https://github.com/shopos/shopos.git
+    - name: repo-revision
+      default: main
     - name: install-kafka
       default: "true"
     - name: install-rabbitmq
       default: "true"
     - name: install-nats
       default: "true"
-    - name: create-topics
-      default: "false"
   workspaces:
+    - name: source
     - name: kubeconfig
   tasks:
-    - name: zookeeper
+    - name: clone
       taskRef:
-        name: install-zookeeper
+        name: git-clone-shopos
       params:
-        - name: action
-          value: $(params.action)
+        - name: url
+          value: $(params.repo-url)
+        - name: revision
+          value: $(params.repo-revision)
       workspaces:
-        - name: kubeconfig
-          workspace: kubeconfig
-      when:
-        - input: $(params.install-zookeeper)
-          operator: in
-          values: ["true"]
+        - name: source
+          workspace: source
 
-    - name: kafka
+    - name: install-kafka
       taskRef:
-        name: install-kafka
+        name: helm-install-kafka
       params:
-        - name: action
-          value: $(params.action)
+        - name: namespace
+          value: $(params.messaging-namespace)
       workspaces:
+        - name: source
+          workspace: source
         - name: kubeconfig
           workspace: kubeconfig
-      runAfter: [zookeeper]
+      runAfter: [clone]
       when:
         - input: $(params.install-kafka)
           operator: in
           values: ["true"]
 
-    - name: rabbitmq
+    - name: install-rabbitmq
       taskRef:
-        name: install-rabbitmq
+        name: helm-install-rabbitmq
       params:
-        - name: action
-          value: $(params.action)
+        - name: namespace
+          value: $(params.messaging-namespace)
       workspaces:
+        - name: source
+          workspace: source
         - name: kubeconfig
           workspace: kubeconfig
+      runAfter: [clone]
       when:
         - input: $(params.install-rabbitmq)
           operator: in
           values: ["true"]
 
-    - name: nats
+    - name: install-nats
       taskRef:
-        name: install-nats
+        name: helm-install-nats
       params:
-        - name: action
-          value: $(params.action)
+        - name: namespace
+          value: $(params.messaging-namespace)
       workspaces:
+        - name: source
+          workspace: source
         - name: kubeconfig
           workspace: kubeconfig
+      runAfter: [clone]
       when:
         - input: $(params.install-nats)
           operator: in
           values: ["true"]
 
-    - name: kafka-topics
+    - name: create-topics
       taskRef:
         name: create-kafka-topics
-      workspaces:
-        - name: kubeconfig
-          workspace: kubeconfig
-      runAfter: [kafka]
+      params:
+        - name: kafka-namespace
+          value: $(params.messaging-namespace)
+      runAfter: [install-kafka]
       when:
-        - input: $(params.create-topics)
+        - input: $(params.install-kafka)
           operator: in
           values: ["true"]
----
-apiVersion: tekton.dev/v1
-kind: PipelineRun
-metadata:
-  name: messaging-pipeline-run
-  namespace: tekton-pipelines
-  annotations:
-    description: "Example PipelineRun — update params before running"
-spec:
-  pipelineRef:
-    name: messaging-pipeline
-  params:
-    - name: action
-      value: INSTALL
-  workspaces:
-    - name: kubeconfig
-      secret:
-        secretName: kubeconfig-secret

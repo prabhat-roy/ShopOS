@@ -1,119 +1,50 @@
-# Deploy Pipeline — Harness CI (Open Source / Self-Hosted)
-# Secrets: harbor_password, sonar_token, kubeconfig_content, slack_webhook
+# Deploy Pipeline — Harness CI/CD
+# Role: Blue/green and canary deployments using Harness-native deployment stages.
+#       Dev → rolling, Staging → canary 20% with approval, Prod → blue/green.
+# Connectors: account.k8s_connector, account.harbor_connector
+# Variables: SERVICE_NAME, DOMAIN, HARBOR_REGISTRY (secret)
 pipeline:
-  identifier: shopos_deploy
-  name: ShopOS Deploy
-  projectIdentifier: shopos
+  name: shopos-advanced-deploy
+  identifier: shopos_advanced_deploy
+  projectIdentifier: ShopOS
   orgIdentifier: default
   tags:
-    domain: delivery
-
-  variables:
-    - name: SERVICE_NAME
-      type: String
-      value: <+input>
-    - name: ENVIRONMENT
-      type: String
-      value: staging
-    - name: K8S_NAMESPACE
-      type: String
-      value: default
+    app: shopos
+    role: deployment
 
   stages:
     - stage:
-        identifier: preflight
-        name: Preflight
+        name: Build
+        identifier: Build
         type: CI
         spec:
           cloneCodebase: true
+          infrastructure:
+            type: KubernetesDirect
+            spec:
+              connectorRef: account.k8s_connector
+              namespace: tekton-pipelines
           execution:
             steps:
               - step:
-                  identifier: secret_scan
-                  name: Secret Scan (Gitleaks)
-                  type: Run
-                  spec:
-                    image: zricethezav/gitleaks:latest
-                    command: gitleaks detect --source . --exit-code 1 || true
-              - step:
-                  identifier: iac_scan
-                  name: IaC Scan (Checkov)
-                  type: Run
-                  spec:
-                    image: python:3.13
-                    command: |
-                      pip install checkov --quiet
-                      checkov -d infra/ --quiet || true
-
-    - stage:
-        identifier: sast
-        name: SAST
-        type: CI
-        spec:
-          cloneCodebase: true
-          execution:
-            steps:
-              - step:
-                  identifier: semgrep
-                  name: Semgrep
-                  type: Run
-                  spec:
-                    image: returntocorp/semgrep:latest
-                    command: |
-                      semgrep --config=auto --json --output=/tmp/semgrep.json \
-                        src/<+pipeline.variables.SERVICE_NAME> || true
-              - step:
-                  identifier: sonarqube
-                  name: SonarQube
-                  type: Run
-                  spec:
-                    image: sonarsource/sonar-scanner-cli:latest
-                    envVariables:
-                      SONAR_TOKEN: <+secrets.getValue("sonar_token")>
-                      SONAR_HOST_URL: <+pipeline.variables.SONAR_HOST_URL>
-                    command: |
-                      cd src/<+pipeline.variables.SERVICE_NAME>
-                      sonar-scanner \
-                        -Dsonar.projectKey=<+pipeline.variables.SERVICE_NAME> \
-                        -Dsonar.host.url=$SONAR_HOST_URL \
-                        -Dsonar.login=$SONAR_TOKEN \
-                        -Dsonar.qualitygate.wait=true || true
-
-    - stage:
-        identifier: build_scan
-        name: Build & Scan
-        type: CI
-        spec:
-          cloneCodebase: true
-          execution:
-            steps:
-              - step:
+                  name: Docker Build and Push
                   identifier: docker_build
-                  name: Docker Build (Kaniko)
                   type: BuildAndPushDockerRegistry
                   spec:
-                    connectorRef: harbor_connector
+                    connectorRef: account.harbor_connector
                     repo: <+pipeline.variables.HARBOR_REGISTRY>/shopos/<+pipeline.variables.SERVICE_NAME>
                     tags:
-                      - <+pipeline.sequenceId>
+                      - <+pipeline.executionId>
                       - latest
-                    context: src/<+pipeline.variables.SERVICE_NAME>
-                    dockerfile: src/<+pipeline.variables.SERVICE_NAME>/Dockerfile
-              - step:
-                  identifier: trivy_scan
-                  name: Trivy Image Scan
-                  type: Run
-                  spec:
-                    image: aquasec/trivy:latest
-                    command: |
-                      trivy image --exit-code 1 --severity CRITICAL \
-                        <+pipeline.variables.HARBOR_REGISTRY>/shopos/<+pipeline.variables.SERVICE_NAME>:<+pipeline.sequenceId> || true
-                      trivy image --format cyclonedx --output /harness/sbom.json \
-                        <+pipeline.variables.HARBOR_REGISTRY>/shopos/<+pipeline.variables.SERVICE_NAME>:<+pipeline.sequenceId> || true
+                    dockerfile: src/<+pipeline.variables.DOMAIN>/<+pipeline.variables.SERVICE_NAME>/Dockerfile
+                    context: src/<+pipeline.variables.DOMAIN>/<+pipeline.variables.SERVICE_NAME>
+                    buildArgs:
+                      BUILD_VERSION: <+pipeline.executionId>
+                      BUILD_DATE: <+currentDate>
 
     - stage:
-        identifier: deploy
-        name: Deploy
+        name: Deploy Dev
+        identifier: Deploy_Dev
         type: Deployment
         spec:
           deploymentType: Kubernetes
@@ -125,42 +56,205 @@ pipeline:
                 spec:
                   artifacts:
                     primary:
-                      primaryArtifactRef: harbor_image
+                      primaryArtifactRef: <+input>
                       sources:
                         - identifier: harbor_image
                           spec:
-                            connectorRef: harbor_connector
+                            connectorRef: account.harbor_connector
                             imagePath: shopos/<+pipeline.variables.SERVICE_NAME>
-                            tag: <+pipeline.sequenceId>
+                            tag: <+pipeline.executionId>
+                          type: DockerRegistry
           environment:
-            environmentRef: <+pipeline.variables.ENVIRONMENT>
+            environmentRef: dev
             deployToAll: false
             infrastructureDefinitions:
-              - identifier: k8s_infra
+              - identifier: dev_k8s
           execution:
             steps:
               - step:
-                  identifier: helm_deploy
-                  name: Helm Deploy
+                  name: Rolling Deploy to Dev
+                  identifier: rolling_deploy_dev
                   type: K8sRollingDeploy
+                  timeout: 10m
                   spec:
                     skipDryRun: false
-                    pruningEnabled: false
-              - step:
-                  identifier: notify_slack
-                  name: Slack Notification
-                  type: Run
-                  spec:
-                    image: curlimages/curl:latest
-                    envVariables:
-                      SLACK_WEBHOOK: <+secrets.getValue("slack_webhook")>
-                    command: |
-                      curl -sf -X POST "$SLACK_WEBHOOK" \
-                        -H 'Content-type: application/json' \
-                        --data "{\"text\":\":white_check_mark: Deployed *<+pipeline.variables.SERVICE_NAME>:<+pipeline.sequenceId>* to *<+pipeline.variables.ENVIRONMENT>*\"}"
             rollbackSteps:
               - step:
-                  identifier: rollback
-                  name: K8s Rollback
+                  name: Rolling Rollback Dev
+                  identifier: rolling_rollback_dev
                   type: K8sRollingRollback
-                  spec: {}
+                  timeout: 5m
+        failureStrategies:
+          - onFailure:
+              errors:
+                - AllErrors
+              action:
+                type: StageRollback
+
+    - stage:
+        name: Canary Deploy Staging
+        identifier: Canary_Staging
+        type: Deployment
+        spec:
+          deploymentType: Kubernetes
+          service:
+            serviceRef: <+pipeline.variables.SERVICE_NAME>
+          environment:
+            environmentRef: staging
+            deployToAll: false
+            infrastructureDefinitions:
+              - identifier: staging_k8s
+          execution:
+            steps:
+              - step:
+                  name: Canary Deploy 20%
+                  identifier: canary_20
+                  type: K8sCanaryDeploy
+                  timeout: 10m
+                  spec:
+                    instanceSelection:
+                      type: Percentage
+                      spec:
+                        percentage: 20
+                    skipDryRun: false
+              - step:
+                  type: HarnessApproval
+                  name: Approve Canary Promotion to 100%
+                  identifier: approve_canary_staging
+                  timeout: 1d
+                  spec:
+                    approvalMessage: |
+                      Review canary 20% metrics in Grafana before promoting.
+                      Error rate, P99 latency, and throughput must be within SLO thresholds.
+                    includePipelineExecutionHistory: true
+                    approvers:
+                      userGroups:
+                        - account.platform_team
+                      minimumCount: 1
+                      disallowPipelineExecutor: false
+                    approverInputs:
+                      - name: error_rate_ok
+                        defaultValue: "true"
+                      - name: latency_ok
+                        defaultValue: "true"
+              - step:
+                  name: Promote Canary 100%
+                  identifier: canary_100_staging
+                  type: K8sCanaryDelete
+                  timeout: 10m
+        failureStrategies:
+          - onFailure:
+              errors:
+                - AllErrors
+              action:
+                type: StageRollback
+
+    - stage:
+        name: Blue/Green Deploy Production
+        identifier: BlueGreen_Production
+        type: Deployment
+        spec:
+          deploymentType: Kubernetes
+          service:
+            serviceRef: <+pipeline.variables.SERVICE_NAME>
+          environment:
+            environmentRef: production
+            deployToAll: false
+            infrastructureDefinitions:
+              - identifier: production_k8s
+          execution:
+            steps:
+              - step:
+                  type: HarnessApproval
+                  name: Approve Production Deployment
+                  identifier: approve_production
+                  timeout: 4h
+                  spec:
+                    approvalMessage: |
+                      Approve blue/green production deployment for <+pipeline.variables.SERVICE_NAME>.
+                      Staging canary passed. Review production readiness checklist.
+                    includePipelineExecutionHistory: true
+                    approvers:
+                      userGroups:
+                        - account.platform_team
+                        - account.sre_team
+                      minimumCount: 2
+                      disallowPipelineExecutor: true
+              - step:
+                  name: Blue/Green Deploy Production
+                  identifier: bg_deploy_production
+                  type: K8sBlueGreenDeploy
+                  timeout: 15m
+                  spec:
+                    skipDryRun: false
+                    pruneResources: true
+              - step:
+                  type: HarnessApproval
+                  name: Approve Blue/Green Traffic Switch
+                  identifier: approve_traffic_switch
+                  timeout: 30m
+                  spec:
+                    approvalMessage: |
+                      Green environment is deployed. Approve traffic switch from Blue to Green.
+                      Verify green health in Grafana before approving.
+                    includePipelineExecutionHistory: true
+                    approvers:
+                      userGroups:
+                        - account.sre_team
+                      minimumCount: 1
+              - step:
+                  name: Blue/Green Traffic Switch
+                  identifier: bg_swap_production
+                  type: K8sSwapServiceSelectors
+                  timeout: 5m
+              - step:
+                  name: Delete Blue Environment
+                  identifier: delete_blue
+                  type: K8sBlueGreenStageScaleDown
+                  timeout: 5m
+            rollbackSteps:
+              - step:
+                  name: Blue/Green Rollback
+                  identifier: bg_rollback
+                  type: K8sBlueGreenRollback
+                  timeout: 10m
+        failureStrategies:
+          - onFailure:
+              errors:
+                - AllErrors
+              action:
+                type: StageRollback
+
+  variables:
+    - name: SERVICE_NAME
+      type: String
+      value: api-gateway
+    - name: DOMAIN
+      type: String
+      value: platform
+    - name: HARBOR_REGISTRY
+      type: Secret
+      value: harbor_registry_url
+    - name: CANARY_WEIGHT_PERCENT
+      type: Number
+      value: 20
+
+  notificationRules:
+    - name: on-failure
+      identifier: on_failure_slack
+      pipelineEvents:
+        - type: PipelineFailed
+        - type: StageRollback
+      notificationMethod:
+        type: Slack
+        spec:
+          userGroups:
+            - account.platform_team
+          webhookUrl: <+secrets.getValue("slack_webhook")>
+
+  properties:
+    ci:
+      codebase:
+        connectorRef: account.github_connector
+        repoName: shopos/shopos
+        build: <+input>

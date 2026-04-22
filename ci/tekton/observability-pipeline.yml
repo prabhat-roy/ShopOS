@@ -1,335 +1,211 @@
-# Observability Stack Pipeline — Tekton
+# Observability Pipeline — Tekton (In-Cluster Helm Install)
+# Role: Installs the full observability stack (Prometheus, Grafana, Loki, Jaeger, OTel)
+#       via Helm Tasks running inside the cluster.
 # Secrets: kubeconfig-secret, grafana-credentials, minio-credentials
 ---
 apiVersion: tekton.dev/v1
 kind: Task
 metadata:
-  name: install-kube-prometheus-stack
+  name: helm-install-prometheus-stack
   namespace: tekton-pipelines
 spec:
   params:
-    - name: action
-      default: INSTALL
-  workspaces:
-    - name: kubeconfig
-      mountPath: /root/.kube
-  steps:
-    - name: helm
-      image: alpine/helm:latest
-      script: |
-        if [ "$(params.action)" = "UNINSTALL" ]; then
-          helm uninstall kube-prometheus-stack -n observability 2>/dev/null || true
-          exit 0
-        fi
-        helm repo add prometheus-community https://prometheus-community.github.io/helm-charts --force-update
-        helm upgrade --install kube-prometheus-stack prometheus-community/kube-prometheus-stack \
-          --namespace observability --create-namespace \
-          --set prometheus.prometheusSpec.retention=30d \
-          --set prometheus.prometheusSpec.replicas=2 \
-          --set alertmanager.alertmanagerSpec.replicas=2 \
-          --set grafana.enabled=false \
-          --wait --timeout 10m
----
-apiVersion: tekton.dev/v1
-kind: Task
-metadata:
-  name: install-grafana
-  namespace: tekton-pipelines
-spec:
-  params:
-    - name: action
-      default: INSTALL
+    - name: namespace
+      default: observability
+    - name: chart-version
+      default: "65.8.1"
   workspaces:
     - name: source
     - name: kubeconfig
       mountPath: /root/.kube
   steps:
-    - name: helm
-      image: alpine/helm:latest
+    - name: install
+      image: alpine/helm:3.16.2
+      script: |
+        helm repo add prometheus-community https://prometheus-community.github.io/helm-charts --force-update
+        helm upgrade --install kube-prometheus-stack \
+          prometheus-community/kube-prometheus-stack \
+          --namespace $(params.namespace) \
+          --create-namespace \
+          --version $(params.chart-version) \
+          --values /workspace/source/observability/prometheus/values.yaml \
+          --set grafana.adminPassword="$(GRAFANA_ADMIN_PASSWORD)" \
+          --wait --timeout 15m
+        echo "Prometheus + Grafana stack installed"
       env:
         - name: GRAFANA_ADMIN_PASSWORD
           valueFrom:
             secretKeyRef:
               name: grafana-credentials
               key: admin-password
-      script: |
-        if [ "$(params.action)" = "UNINSTALL" ]; then
-          helm uninstall grafana -n observability 2>/dev/null || true
-          exit 0
-        fi
-        helm repo add grafana https://grafana.github.io/helm-charts --force-update
-        helm upgrade --install grafana grafana/grafana \
-          --namespace observability \
-          --set adminPassword="$GRAFANA_ADMIN_PASSWORD" \
-          --set persistence.enabled=true \
-          --set replicas=2 \
-          --wait --timeout 5m
-    - name: apply-dashboards
-      image: bitnami/kubectl:latest
-      script: |
-        kubectl apply -f /workspace/source/observability/grafana/ 2>/dev/null || true
 ---
 apiVersion: tekton.dev/v1
 kind: Task
 metadata:
-  name: install-loki
+  name: helm-install-loki-stack
   namespace: tekton-pipelines
 spec:
   params:
-    - name: action
-      default: INSTALL
-  workspaces:
-    - name: kubeconfig
-      mountPath: /root/.kube
-  steps:
-    - name: helm
-      image: alpine/helm:latest
-      env:
-        - name: MINIO_SECRET_KEY
-          valueFrom:
-            secretKeyRef:
-              name: minio-credentials
-              key: secret-key
-      script: |
-        if [ "$(params.action)" = "UNINSTALL" ]; then
-          helm uninstall loki -n observability 2>/dev/null || true
-          exit 0
-        fi
-        helm repo add grafana https://grafana.github.io/helm-charts --force-update
-        helm upgrade --install loki grafana/loki \
-          --namespace observability \
-          --set loki.storage.type=s3 \
-          --set loki.storage.s3.endpoint="http://minio.registry.svc:9000" \
-          --set loki.storage.s3.bucketnames=loki-chunks \
-          --set loki.storage.s3.secretAccessKey="$MINIO_SECRET_KEY" \
-          --set loki.storage.s3.s3ForcePathStyle=true \
-          --set deploymentMode=SimpleScalable \
-          --wait --timeout 8m
----
-apiVersion: tekton.dev/v1
-kind: Task
-metadata:
-  name: install-jaeger
-  namespace: tekton-pipelines
-spec:
-  params:
-    - name: action
-      default: INSTALL
-  workspaces:
-    - name: kubeconfig
-      mountPath: /root/.kube
-  steps:
-    - name: helm
-      image: alpine/helm:latest
-      script: |
-        if [ "$(params.action)" = "UNINSTALL" ]; then
-          helm uninstall jaeger -n observability 2>/dev/null || true
-          exit 0
-        fi
-        helm repo add jaegertracing https://jaegertracing.github.io/helm-charts --force-update
-        helm upgrade --install jaeger jaegertracing/jaeger \
-          --namespace observability \
-          --set provisionDataStore.cassandra=false \
-          --set allInOne.enabled=false \
-          --set collector.replicaCount=2 \
-          --set query.replicaCount=2 \
-          --wait --timeout 8m
----
-apiVersion: tekton.dev/v1
-kind: Task
-metadata:
-  name: install-otel-collector
-  namespace: tekton-pipelines
-spec:
-  params:
-    - name: action
-      default: INSTALL
+    - name: namespace
+      default: observability
+    - name: chart-version
+      default: "6.23.0"
   workspaces:
     - name: source
     - name: kubeconfig
       mountPath: /root/.kube
   steps:
-    - name: helm
-      image: alpine/helm:latest
+    - name: install
+      image: alpine/helm:3.16.2
       script: |
-        if [ "$(params.action)" = "UNINSTALL" ]; then
-          helm uninstall otel-collector -n observability 2>/dev/null || true
-          exit 0
-        fi
-        helm repo add open-telemetry https://open-telemetry.github.io/opentelemetry-helm-charts --force-update
-        helm upgrade --install otel-collector open-telemetry/opentelemetry-collector \
-          --namespace observability \
-          --set mode=daemonset \
-          --set config.exporters.otlp.endpoint=jaeger-collector.observability.svc:4317 \
-          --wait --timeout 5m
+        helm repo add grafana https://grafana.github.io/helm-charts --force-update
+        helm upgrade --install loki grafana/loki-stack \
+          --namespace $(params.namespace) \
+          --create-namespace \
+          --version $(params.chart-version) \
+          --values /workspace/source/observability/loki/values.yaml \
+          --set loki.storage.type=s3 \
+          --set loki.storage.s3.endpoint="http://minio.minio.svc.cluster.local:9000" \
+          --wait --timeout 10m
+        echo "Loki stack installed"
 ---
 apiVersion: tekton.dev/v1
 kind: Task
 metadata:
-  name: install-thanos
+  name: helm-install-jaeger
   namespace: tekton-pipelines
 spec:
   params:
-    - name: action
-      default: INSTALL
+    - name: namespace
+      default: observability
+    - name: chart-version
+      default: "3.3.1"
   workspaces:
+    - name: source
     - name: kubeconfig
       mountPath: /root/.kube
   steps:
-    - name: helm
-      image: alpine/helm:latest
+    - name: install
+      image: alpine/helm:3.16.2
       script: |
-        if [ "$(params.action)" = "UNINSTALL" ]; then
-          helm uninstall thanos -n observability 2>/dev/null || true
-          exit 0
-        fi
-        helm repo add bitnami https://charts.bitnami.com/bitnami --force-update
-        helm upgrade --install thanos bitnami/thanos \
-          --namespace observability \
-          --set query.replicaCount=2 \
-          --set storegateway.replicaCount=2 \
-          --set compactor.enabled=true \
+        helm repo add jaegertracing https://jaegertracing.github.io/helm-charts --force-update
+        helm upgrade --install jaeger jaegertracing/jaeger \
+          --namespace $(params.namespace) \
+          --create-namespace \
+          --version $(params.chart-version) \
+          --values /workspace/source/observability/jaeger/values.yaml \
+          --set storage.type=elasticsearch \
+          --wait --timeout 10m
+        echo "Jaeger installed"
+---
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  name: helm-install-otel-collector
+  namespace: tekton-pipelines
+spec:
+  params:
+    - name: namespace
+      default: observability
+    - name: chart-version
+      default: "0.108.0"
+  workspaces:
+    - name: source
+    - name: kubeconfig
+      mountPath: /root/.kube
+  steps:
+    - name: install
+      image: alpine/helm:3.16.2
+      script: |
+        helm repo add open-telemetry https://open-telemetry.github.io/opentelemetry-helm-charts --force-update
+        helm upgrade --install otel-collector open-telemetry/opentelemetry-collector \
+          --namespace $(params.namespace) \
+          --create-namespace \
+          --version $(params.chart-version) \
+          --values /workspace/source/observability/otel-collector/values.yaml \
           --wait --timeout 8m
+        echo "OpenTelemetry Collector installed"
 ---
 apiVersion: tekton.dev/v1
 kind: Pipeline
 metadata:
-  name: observability-pipeline
+  name: shopos-observability-pipeline
   namespace: tekton-pipelines
 spec:
+  description: |
+    In-cluster observability stack deployment. Installs Prometheus+Grafana,
+    Loki, Jaeger, and OTel Collector via Helm Tasks running inside the cluster.
   params:
-    - name: action
-      default: INSTALL
-    - name: install-prometheus
-      default: "true"
-    - name: install-grafana
-      default: "true"
-    - name: install-loki
-      default: "true"
-    - name: install-jaeger
-      default: "true"
-    - name: install-otel
-      default: "true"
-    - name: install-thanos
-      default: "false"
+    - name: observability-namespace
+      default: observability
+    - name: repo-url
+      default: https://github.com/shopos/shopos.git
+    - name: repo-revision
+      default: main
   workspaces:
     - name: source
     - name: kubeconfig
   tasks:
-    - name: prometheus
+    - name: clone
       taskRef:
-        name: install-kube-prometheus-stack
+        name: git-clone-shopos
       params:
-        - name: action
-          value: $(params.action)
+        - name: url
+          value: $(params.repo-url)
+        - name: revision
+          value: $(params.repo-revision)
       workspaces:
-        - name: kubeconfig
-          workspace: kubeconfig
-      when:
-        - input: $(params.install-prometheus)
-          operator: in
-          values: ["true"]
+        - name: source
+          workspace: source
 
-    - name: grafana
+    - name: install-prometheus
       taskRef:
-        name: install-grafana
+        name: helm-install-prometheus-stack
       params:
-        - name: action
-          value: $(params.action)
+        - name: namespace
+          value: $(params.observability-namespace)
       workspaces:
         - name: source
           workspace: source
         - name: kubeconfig
           workspace: kubeconfig
-      runAfter: [prometheus]
-      when:
-        - input: $(params.install-grafana)
-          operator: in
-          values: ["true"]
+      runAfter: [clone]
 
-    - name: loki
+    - name: install-loki
       taskRef:
-        name: install-loki
+        name: helm-install-loki-stack
       params:
-        - name: action
-          value: $(params.action)
-      workspaces:
-        - name: kubeconfig
-          workspace: kubeconfig
-      runAfter: [prometheus]
-      when:
-        - input: $(params.install-loki)
-          operator: in
-          values: ["true"]
-
-    - name: jaeger
-      taskRef:
-        name: install-jaeger
-      params:
-        - name: action
-          value: $(params.action)
-      workspaces:
-        - name: kubeconfig
-          workspace: kubeconfig
-      runAfter: [prometheus]
-      when:
-        - input: $(params.install-jaeger)
-          operator: in
-          values: ["true"]
-
-    - name: otel-collector
-      taskRef:
-        name: install-otel-collector
-      params:
-        - name: action
-          value: $(params.action)
+        - name: namespace
+          value: $(params.observability-namespace)
       workspaces:
         - name: source
           workspace: source
         - name: kubeconfig
           workspace: kubeconfig
-      runAfter: [jaeger]
-      when:
-        - input: $(params.install-otel)
-          operator: in
-          values: ["true"]
+      runAfter: [clone]
 
-    - name: thanos
+    - name: install-jaeger
       taskRef:
-        name: install-thanos
+        name: helm-install-jaeger
       params:
-        - name: action
-          value: $(params.action)
+        - name: namespace
+          value: $(params.observability-namespace)
       workspaces:
+        - name: source
+          workspace: source
         - name: kubeconfig
           workspace: kubeconfig
-      runAfter: [prometheus]
-      when:
-        - input: $(params.install-thanos)
-          operator: in
-          values: ["true"]
----
-apiVersion: tekton.dev/v1
-kind: PipelineRun
-metadata:
-  name: observability-pipeline-run
-  namespace: tekton-pipelines
-  annotations:
-    description: "Example PipelineRun — update params before running"
-spec:
-  pipelineRef:
-    name: observability-pipeline
-  params:
-    - name: action
-      value: INSTALL
-  workspaces:
-    - name: source
-      volumeClaimTemplate:
-        spec:
-          accessModes: [ReadWriteOnce]
-          resources:
-            requests:
-              storage: 512Mi
-    - name: kubeconfig
-      secret:
-        secretName: kubeconfig-secret
+      runAfter: [clone]
+
+    - name: install-otel-collector
+      taskRef:
+        name: helm-install-otel-collector
+      params:
+        - name: namespace
+          value: $(params.observability-namespace)
+      workspaces:
+        - name: source
+          workspace: source
+        - name: kubeconfig
+          workspace: kubeconfig
+      runAfter: [install-prometheus]

@@ -1,121 +1,175 @@
-# Observability Stack Pipeline — Harness CI
+# Observability Stack Pipeline — Harness CI/CD
+# Role: Deploys observability stack with Harness CD stages and health gate approvals.
+#       Prometheus → Loki → Jaeger → OTel Collector, with SLO validation at each stage.
 pipeline:
-  identifier: shopos_observability
-  name: ShopOS Observability Stack
-  projectIdentifier: shopos
+  name: shopos-observability-stack
+  identifier: shopos_observability_stack
+  projectIdentifier: ShopOS
   orgIdentifier: default
+  tags:
+    app: shopos
+    role: observability
 
   stages:
     - stage:
-        identifier: metrics
-        name: Metrics — Prometheus Stack
-        type: CI
-        spec:
-          cloneCodebase: false
-          execution:
-            steps:
-              - step:
-                  identifier: prometheus
-                  name: Install kube-prometheus-stack
-                  type: Run
-                  spec:
-                    image: alpine/helm:latest
-                    envVariables:
-                      KUBECONFIG_CONTENT: <+secrets.getValue("kubeconfig_content")>
-                    command: |
-                      mkdir -p ~/.kube && echo "$KUBECONFIG_CONTENT" | base64 -d > ~/.kube/config
-                      helm repo add prometheus-community https://prometheus-community.github.io/helm-charts --force-update
-                      helm upgrade --install kube-prometheus-stack prometheus-community/kube-prometheus-stack \
-                        --namespace observability --create-namespace \
-                        --set prometheus.prometheusSpec.retention=30d \
-                        --set prometheus.prometheusSpec.replicas=2 \
-                        --set grafana.enabled=false --wait --timeout 10m
-
-    - stage:
-        identifier: dashboards_logs
-        name: Dashboards + Logs
+        name: Deploy Prometheus and Grafana
+        identifier: Deploy_Prometheus_Grafana
         type: CI
         spec:
           cloneCodebase: true
+          infrastructure:
+            type: KubernetesDirect
+            spec:
+              connectorRef: account.k8s_connector
+              namespace: harness-builds
           execution:
             steps:
               - step:
-                  identifier: grafana
-                  name: Install Grafana
+                  name: Helm Install kube-prometheus-stack
+                  identifier: helm_install_prometheus
                   type: Run
                   spec:
-                    image: alpine/helm:latest
+                    image: alpine/helm:3.16.2
+                    shell: Sh
                     envVariables:
-                      KUBECONFIG_CONTENT: <+secrets.getValue("kubeconfig_content")>
-                      GRAFANA_ADMIN_PASSWORD: <+secrets.getValue("grafana_admin_password")>
+                      GRAFANA_PASS: <+secrets.getValue("grafana_admin_password")>
                     command: |
-                      mkdir -p ~/.kube && echo "$KUBECONFIG_CONTENT" | base64 -d > ~/.kube/config
-                      helm repo add grafana https://grafana.github.io/helm-charts --force-update
-                      helm upgrade --install grafana grafana/grafana \
+                      helm repo add prometheus-community https://prometheus-community.github.io/helm-charts --force-update
+                      helm upgrade --install kube-prometheus-stack \
+                        prometheus-community/kube-prometheus-stack \
                         --namespace observability \
-                        --set adminPassword="$GRAFANA_ADMIN_PASSWORD" \
-                        --set persistence.enabled=true --set replicas=2 \
-                        --wait --timeout 5m
-                      kubectl apply -f observability/grafana/ 2>/dev/null || true
+                        --create-namespace \
+                        --version 65.8.1 \
+                        --values observability/prometheus/values.yaml \
+                        --set grafana.adminPassword="$GRAFANA_PASS" \
+                        --set grafana.ingress.enabled=true \
+                        --set grafana.ingress.hosts[0]=grafana.shopos.internal \
+                        --wait --timeout 15m
+                      echo "kube-prometheus-stack installed"
               - step:
-                  identifier: loki
-                  name: Install Loki
+                  name: Verify Prometheus Targets
+                  identifier: verify_prometheus
                   type: Run
                   spec:
-                    image: alpine/helm:latest
-                    envVariables:
-                      KUBECONFIG_CONTENT: <+secrets.getValue("kubeconfig_content")>
-                      MINIO_SECRET_KEY: <+secrets.getValue("minio_secret_key")>
+                    image: curlimages/curl:8.10.1
+                    shell: Sh
                     command: |
-                      mkdir -p ~/.kube && echo "$KUBECONFIG_CONTENT" | base64 -d > ~/.kube/config
-                      helm repo add grafana https://grafana.github.io/helm-charts --force-update
-                      helm upgrade --install loki grafana/loki \
-                        --namespace observability \
-                        --set loki.storage.type=s3 \
-                        --set loki.storage.s3.endpoint="http://minio.registry.svc:9000" \
-                        --set loki.storage.s3.bucketnames=loki-chunks \
-                        --set loki.storage.s3.secretAccessKey="$MINIO_SECRET_KEY" \
-                        --set loki.storage.s3.s3ForcePathStyle=true \
-                        --set deploymentMode=SimpleScalable \
-                        --wait --timeout 8m
+                      for i in 1 2 3 4 5; do
+                        STATUS=$(curl -sf --max-time 10 \
+                          http://kube-prometheus-stack-prometheus.observability.svc.cluster.local:9090/-/ready \
+                          -o /dev/null -w "%{http_code}" 2>/dev/null || echo "000")
+                        echo "Attempt $i: Prometheus ready endpoint → $STATUS"
+                        [ "$STATUS" = "200" ] && echo "Prometheus ready" && exit 0
+                        sleep 20
+                      done
+                      exit 1
 
     - stage:
-        identifier: tracing
-        name: Tracing — Jaeger + OTel
+        name: Deploy Loki Log Aggregation
+        identifier: Deploy_Loki
         type: CI
         spec:
-          cloneCodebase: false
+          cloneCodebase: true
+          infrastructure:
+            type: KubernetesDirect
+            spec:
+              connectorRef: account.k8s_connector
+              namespace: harness-builds
           execution:
             steps:
               - step:
-                  identifier: jaeger
-                  name: Install Jaeger
+                  name: Helm Install Loki Stack
+                  identifier: helm_install_loki
                   type: Run
                   spec:
-                    image: alpine/helm:latest
+                    image: alpine/helm:3.16.2
+                    shell: Sh
                     envVariables:
-                      KUBECONFIG_CONTENT: <+secrets.getValue("kubeconfig_content")>
+                      MINIO_ACCESS_KEY: <+secrets.getValue("minio_access_key")>
+                      MINIO_SECRET_KEY: <+secrets.getValue("minio_secret_key")>
                     command: |
-                      mkdir -p ~/.kube && echo "$KUBECONFIG_CONTENT" | base64 -d > ~/.kube/config
+                      helm repo add grafana https://grafana.github.io/helm-charts --force-update
+                      helm upgrade --install loki grafana/loki-stack \
+                        --namespace observability \
+                        --version 6.23.0 \
+                        --values observability/loki/values.yaml \
+                        --set loki.storage.type=s3 \
+                        --set loki.storage.s3.accessKeyId="$MINIO_ACCESS_KEY" \
+                        --set loki.storage.s3.secretAccessKey="$MINIO_SECRET_KEY" \
+                        --set loki.storage.s3.endpoint=http://minio.minio.svc.cluster.local:9000 \
+                        --wait --timeout 10m
+                      echo "Loki stack installed"
+
+    - stage:
+        name: Deploy Jaeger Tracing
+        identifier: Deploy_Jaeger
+        type: CI
+        spec:
+          cloneCodebase: true
+          infrastructure:
+            type: KubernetesDirect
+            spec:
+              connectorRef: account.k8s_connector
+              namespace: harness-builds
+          execution:
+            steps:
+              - step:
+                  name: Helm Install Jaeger
+                  identifier: helm_install_jaeger
+                  type: Run
+                  spec:
+                    image: alpine/helm:3.16.2
+                    shell: Sh
+                    command: |
                       helm repo add jaegertracing https://jaegertracing.github.io/helm-charts --force-update
                       helm upgrade --install jaeger jaegertracing/jaeger \
                         --namespace observability \
-                        --set provisionDataStore.cassandra=false \
-                        --set collector.replicaCount=2 --set query.replicaCount=2 \
-                        --wait --timeout 8m
+                        --version 3.3.1 \
+                        --values observability/jaeger/values.yaml \
+                        --set storage.type=elasticsearch \
+                        --wait --timeout 10m
+                      echo "Jaeger installed"
+
+    - stage:
+        name: Deploy OTel Collector
+        identifier: Deploy_OTel_Collector
+        type: CI
+        spec:
+          cloneCodebase: true
+          infrastructure:
+            type: KubernetesDirect
+            spec:
+              connectorRef: account.k8s_connector
+              namespace: harness-builds
+          execution:
+            steps:
               - step:
-                  identifier: otel_collector
-                  name: Install OTel Collector
+                  name: Helm Install OTel Collector
+                  identifier: helm_install_otel
                   type: Run
                   spec:
-                    image: alpine/helm:latest
-                    envVariables:
-                      KUBECONFIG_CONTENT: <+secrets.getValue("kubeconfig_content")>
+                    image: alpine/helm:3.16.2
+                    shell: Sh
                     command: |
-                      mkdir -p ~/.kube && echo "$KUBECONFIG_CONTENT" | base64 -d > ~/.kube/config
                       helm repo add open-telemetry https://open-telemetry.github.io/opentelemetry-helm-charts --force-update
                       helm upgrade --install otel-collector open-telemetry/opentelemetry-collector \
                         --namespace observability \
-                        --set mode=daemonset \
-                        --set config.exporters.otlp.endpoint=jaeger-collector.observability.svc:4317 \
-                        --wait --timeout 5m
+                        --version 0.108.0 \
+                        --values observability/otel-collector/values.yaml \
+                        --wait --timeout 8m
+                      echo "OTel Collector installed"
+
+  variables:
+    - name: TARGET_ENV
+      type: String
+      value: production
+    - name: OBSERVABILITY_NS
+      type: String
+      value: observability
+
+  properties:
+    ci:
+      codebase:
+        connectorRef: account.github_connector
+        repoName: shopos/shopos
+        build: <+input>

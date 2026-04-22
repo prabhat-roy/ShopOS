@@ -1,87 +1,158 @@
-# Registry Tools Pipeline — Harness CI
+# Registry Pipeline — Harness CI/CD
+# Role: Deploys Harbor registry using Harness CD stages.
+#       Configures projects, robot accounts, and replication policies.
 pipeline:
-  identifier: shopos_registry
-  name: ShopOS Registry Infrastructure
-  projectIdentifier: shopos
+  name: shopos-registry-infra
+  identifier: shopos_registry_infra
+  projectIdentifier: ShopOS
   orgIdentifier: default
-
-  variables:
-    - name: CONFIGURE
-      type: String
-      value: "false"
+  tags:
+    app: shopos
+    role: registry
 
   stages:
     - stage:
-        identifier: install_registry
-        name: Install Harbor + MinIO
-        type: CI
+        name: Deploy Harbor
+        identifier: Deploy_Harbor
+        type: Deployment
         spec:
-          cloneCodebase: false
+          deploymentType: Kubernetes
+          service:
+            serviceRef: harbor
+          environment:
+            environmentRef: <+pipeline.variables.TARGET_ENV>
+            infrastructureDefinitions:
+              - identifier: <+pipeline.variables.TARGET_ENV>_k8s
           execution:
             steps:
               - step:
-                  identifier: harbor
-                  name: Install Harbor
-                  type: Run
-                  spec:
-                    image: alpine/helm:latest
-                    envVariables:
-                      KUBECONFIG_CONTENT: <+secrets.getValue("kubeconfig_content")>
-                      HARBOR_ADMIN_PASSWORD: <+secrets.getValue("harbor_admin_password")>
-                    command: |
-                      mkdir -p ~/.kube && echo "$KUBECONFIG_CONTENT" | base64 -d > ~/.kube/config
-                      helm repo add harbor https://helm.goharbor.io --force-update
-                      helm upgrade --install harbor harbor/harbor \
-                        --namespace registry --create-namespace \
-                        --set expose.type=ingress \
-                        --set expose.ingress.className=traefik \
-                        --set expose.ingress.hosts.core=harbor.shopos.internal \
-                        --set externalURL=https://harbor.shopos.internal \
-                        --set harborAdminPassword="$HARBOR_ADMIN_PASSWORD" \
-                        --set trivy.enabled=true --set persistence.enabled=true \
-                        --wait --timeout 10m
+                  name: Helm Install Harbor
+                  identifier: helm_install_harbor
+                  type: K8sRollingDeploy
+                  timeout: 20m
               - step:
-                  identifier: minio
-                  name: Install MinIO
+                  name: Wait for Harbor API
+                  identifier: wait_harbor_api
                   type: Run
                   spec:
-                    image: alpine/helm:latest
+                    connectorRef: account.k8s_connector
+                    image: curlimages/curl:8.10.1
+                    shell: Sh
                     envVariables:
-                      KUBECONFIG_CONTENT: <+secrets.getValue("kubeconfig_content")>
-                      MINIO_ROOT_USER: <+secrets.getValue("minio_root_user")>
-                      MINIO_ROOT_PASSWORD: <+secrets.getValue("minio_root_password")>
+                      HARBOR_URL: http://harbor.harbor.svc.cluster.local:80
+                      HARBOR_PASS: <+secrets.getValue("harbor_admin_password")>
                     command: |
-                      mkdir -p ~/.kube && echo "$KUBECONFIG_CONTENT" | base64 -d > ~/.kube/config
-                      helm repo add minio https://charts.min.io --force-update
-                      helm upgrade --install minio minio/minio \
-                        --namespace registry \
-                        --set rootUser="$MINIO_ROOT_USER" \
-                        --set rootPassword="$MINIO_ROOT_PASSWORD" \
-                        --set replicas=4 \
-                        --set persistence.enabled=true --set persistence.size=100Gi \
-                        --wait --timeout 8m
+                      for i in 1 2 3 4 5 6 7 8 9 10; do
+                        STATUS=$(curl -sf --max-time 10 "$HARBOR_URL/api/v2.0/ping" \
+                          -o /dev/null -w "%{http_code}" 2>/dev/null || echo "000")
+                        echo "Attempt $i: Harbor API → $STATUS"
+                        [ "$STATUS" = "200" ] && echo "Harbor ready" && exit 0
+                        sleep 30
+                      done
+                      exit 1
+            rollbackSteps:
+              - step:
+                  name: Rollback Harbor
+                  identifier: rollback_harbor
+                  type: K8sRollingRollback
 
     - stage:
-        identifier: configure_buckets
-        name: Configure MinIO Buckets
+        name: Configure Harbor
+        identifier: Configure_Harbor
         type: CI
-        when:
-          condition: <+pipeline.variables.CONFIGURE> == "true"
         spec:
           cloneCodebase: false
+          infrastructure:
+            type: KubernetesDirect
+            spec:
+              connectorRef: account.k8s_connector
+              namespace: harness-builds
           execution:
             steps:
               - step:
-                  identifier: create_buckets
-                  name: Create MinIO Buckets
+                  name: Create Harbor Projects
+                  identifier: create_harbor_projects
                   type: Run
                   spec:
-                    image: minio/mc:latest
+                    image: curlimages/curl:8.10.1
+                    shell: Sh
                     envVariables:
-                      MINIO_ROOT_USER: <+secrets.getValue("minio_root_user")>
-                      MINIO_ROOT_PASSWORD: <+secrets.getValue("minio_root_password")>
+                      HARBOR_URL: http://harbor.harbor.svc.cluster.local:80
+                      HARBOR_USER: admin
+                      HARBOR_PASS: <+secrets.getValue("harbor_admin_password")>
                     command: |
-                      mc alias set shopos http://minio.registry.svc:9000 "$MINIO_ROOT_USER" "$MINIO_ROOT_PASSWORD"
-                      for BUCKET in harbor-registry velero-backups loki-chunks tempo-traces thanos mlflow artifacts media-assets; do
-                        mc mb --ignore-existing "shopos/$BUCKET" || true
+                      AUTH="-u $HARBOR_USER:$HARBOR_PASS"
+                      for PROJECT in shopos shopos-staging shopos-dev shopos-cache; do
+                        curl -sf $AUTH -X POST "$HARBOR_URL/api/v2.0/projects" \
+                          -H "Content-Type: application/json" \
+                          -d "{\"project_name\":\"$PROJECT\",\"public\":false,\"metadata\":{\"auto_scan\":\"true\",\"prevent_vul\":\"true\",\"severity\":\"high\"}}" \
+                          && echo "Project created: $PROJECT" || echo "Project exists: $PROJECT"
                       done
+
+              - step:
+                  name: Create CI Robot Account
+                  identifier: create_robot_account
+                  type: Run
+                  spec:
+                    image: curlimages/curl:8.10.1
+                    shell: Sh
+                    envVariables:
+                      HARBOR_URL: http://harbor.harbor.svc.cluster.local:80
+                      HARBOR_USER: admin
+                      HARBOR_PASS: <+secrets.getValue("harbor_admin_password")>
+                    command: |
+                      AUTH="-u $HARBOR_USER:$HARBOR_PASS"
+                      curl -sf $AUTH -X POST "$HARBOR_URL/api/v2.0/robots" \
+                        -H "Content-Type: application/json" \
+                        -d '{
+                          "name":"harness-ci",
+                          "description":"Harness CI/CD robot account",
+                          "level":"system",
+                          "duration":-1,
+                          "permissions":[{
+                            "kind":"project","namespace":"shopos",
+                            "access":[
+                              {"resource":"repository","action":"push"},
+                              {"resource":"repository","action":"pull"},
+                              {"resource":"artifact","action":"read"},
+                              {"resource":"tag","action":"create"},
+                              {"resource":"scan","action":"create"}
+                            ]
+                          }]
+                        }' | tee /tmp/robot-account.json
+                      echo "Robot account created"
+
+              - step:
+                  name: Configure Registry Endpoints
+                  identifier: configure_registry_endpoints
+                  type: Run
+                  spec:
+                    image: curlimages/curl:8.10.1
+                    shell: Sh
+                    envVariables:
+                      HARBOR_URL: http://harbor.harbor.svc.cluster.local:80
+                      HARBOR_USER: admin
+                      HARBOR_PASS: <+secrets.getValue("harbor_admin_password")>
+                    command: |
+                      AUTH="-u $HARBOR_USER:$HARBOR_PASS"
+                      # Docker Hub pull-through cache
+                      curl -sf $AUTH -X POST "$HARBOR_URL/api/v2.0/registries" \
+                        -H "Content-Type: application/json" \
+                        -d '{"name":"docker-hub-cache","type":"docker-hub","url":"https://hub.docker.com","description":"Docker Hub pull-through cache"}' \
+                        || echo "Registry endpoint may exist"
+                      echo "Registry endpoints configured"
+
+  variables:
+    - name: TARGET_ENV
+      type: String
+      value: production
+    - name: HARBOR_HOSTNAME
+      type: String
+      value: harbor.shopos.internal
+
+  properties:
+    ci:
+      codebase:
+        connectorRef: account.github_connector
+        repoName: shopos/shopos
+        build: <+input>

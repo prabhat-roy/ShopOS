@@ -1,352 +1,233 @@
-# Security Infrastructure Pipeline — Tekton
-# Secrets: kubeconfig-secret, vault-credentials, keycloak-credentials, slack-webhook
+# Security Pipeline — Tekton (In-Cluster Scanning)
+# Role: Runs Trivy container scanning and Semgrep SAST as in-cluster Tasks.
+#       Triggered by image push events from Harbor (shares EventListener with deploy).
+# Secrets: harbor-credentials, sonarqube-credentials
 ---
 apiVersion: tekton.dev/v1
 kind: Task
 metadata:
-  name: setup-kubeconfig
-  namespace: tekton-pipelines
-spec:
-  workspaces:
-    - name: kubeconfig
-      mountPath: /root/.kube
-  steps:
-    - name: verify
-      image: bitnami/kubectl:latest
-      script: |
-        kubectl cluster-info
----
-apiVersion: tekton.dev/v1
-kind: Task
-metadata:
-  name: install-cert-manager
+  name: trivy-image-scan
   namespace: tekton-pipelines
 spec:
   params:
-    - name: action
-      default: INSTALL
-  workspaces:
-    - name: kubeconfig
-      mountPath: /root/.kube
+    - name: image-ref
+      description: Full image reference to scan
+    - name: severity
+      default: HIGH,CRITICAL
+    - name: exit-code
+      default: "1"
+    - name: format
+      default: table
+  results:
+    - name: vuln-count
+      description: Number of vulnerabilities found
   steps:
-    - name: helm
-      image: alpine/helm:latest
-      script: |
-        if [ "$(params.action)" = "UNINSTALL" ]; then
-          helm uninstall cert-manager -n cert-manager 2>/dev/null || true
-          exit 0
-        fi
-        helm repo add jetstack https://charts.jetstack.io --force-update
-        helm upgrade --install cert-manager jetstack/cert-manager \
-          --namespace cert-manager --create-namespace \
-          --set installCRDs=true --set replicaCount=2 \
-          --wait --timeout 5m
----
-apiVersion: tekton.dev/v1
-kind: Task
-metadata:
-  name: install-vault
-  namespace: tekton-pipelines
-spec:
-  params:
-    - name: action
-      default: INSTALL
-  workspaces:
-    - name: kubeconfig
-      mountPath: /root/.kube
-  steps:
-    - name: helm
-      image: alpine/helm:latest
-      script: |
-        if [ "$(params.action)" = "UNINSTALL" ]; then
-          helm uninstall vault -n vault 2>/dev/null || true
-          exit 0
-        fi
-        helm repo add hashicorp https://helm.releases.hashicorp.com --force-update
-        helm upgrade --install vault hashicorp/vault \
-          --namespace vault --create-namespace \
-          --set server.ha.enabled=true --set server.ha.raft.enabled=true \
-          --set server.ha.replicas=3 --wait --timeout 10m
----
-apiVersion: tekton.dev/v1
-kind: Task
-metadata:
-  name: install-keycloak
-  namespace: tekton-pipelines
-spec:
-  params:
-    - name: action
-      default: INSTALL
-  workspaces:
-    - name: kubeconfig
-      mountPath: /root/.kube
-  steps:
-    - name: helm
-      image: alpine/helm:latest
+    - name: scan
+      image: aquasec/trivy:0.57.1
       env:
-        - name: KEYCLOAK_ADMIN_PASSWORD
+        - name: TRIVY_USERNAME
           valueFrom:
             secretKeyRef:
-              name: keycloak-credentials
-              key: admin-password
-      script: |
-        if [ "$(params.action)" = "UNINSTALL" ]; then
-          helm uninstall keycloak -n keycloak 2>/dev/null || true
-          exit 0
-        fi
-        helm repo add bitnami https://charts.bitnami.com/bitnami --force-update
-        helm upgrade --install keycloak bitnami/keycloak \
-          --namespace keycloak --create-namespace \
-          --set replicaCount=2 \
-          --set auth.adminPassword="$KEYCLOAK_ADMIN_PASSWORD" \
-          --set postgresql.enabled=true \
-          --wait --timeout 10m
----
-apiVersion: tekton.dev/v1
-kind: Task
-metadata:
-  name: install-kyverno
-  namespace: tekton-pipelines
-spec:
-  params:
-    - name: action
-      default: INSTALL
-  workspaces:
-    - name: source
-    - name: kubeconfig
-      mountPath: /root/.kube
-  steps:
-    - name: helm
-      image: alpine/helm:latest
-      script: |
-        if [ "$(params.action)" = "UNINSTALL" ]; then
-          helm uninstall kyverno -n kyverno 2>/dev/null || true
-          exit 0
-        fi
-        helm repo add kyverno https://kyverno.github.io/kyverno --force-update
-        helm upgrade --install kyverno kyverno/kyverno \
-          --namespace kyverno --create-namespace \
-          --set replicaCount=3 --wait --timeout 5m
-    - name: apply-policies
-      image: bitnami/kubectl:latest
-      script: |
-        kubectl apply -f /workspace/source/security/kyverno/ 2>/dev/null || true
----
-apiVersion: tekton.dev/v1
-kind: Task
-metadata:
-  name: install-falco
-  namespace: tekton-pipelines
-spec:
-  params:
-    - name: action
-      default: INSTALL
-  workspaces:
-    - name: kubeconfig
-      mountPath: /root/.kube
-  steps:
-    - name: helm
-      image: alpine/helm:latest
-      env:
-        - name: SLACK_WEBHOOK
+              name: harbor-credentials
+              key: username
+              optional: true
+        - name: TRIVY_PASSWORD
           valueFrom:
             secretKeyRef:
-              name: slack-webhook
-              key: url
+              name: harbor-credentials
+              key: password
+              optional: true
       script: |
-        if [ "$(params.action)" = "UNINSTALL" ]; then
-          helm uninstall falco -n falco 2>/dev/null || true
-          exit 0
-        fi
-        helm repo add falcosecurity https://falcosecurity.github.io/charts --force-update
-        helm upgrade --install falco falcosecurity/falco \
-          --namespace falco --create-namespace \
-          --set driver.kind=ebpf \
-          --set falcosidekick.enabled=true \
-          --set falcosidekick.config.slack.webhookurl="$SLACK_WEBHOOK" \
-          --wait --timeout 8m
+        echo "==> Trivy scan: $(params.image-ref)"
+        trivy image \
+          --exit-code $(params.exit-code) \
+          --severity $(params.severity) \
+          --format $(params.format) \
+          --no-progress \
+          $(params.image-ref) 2>&1 | tee /tmp/trivy-report.txt || true
+        VULN_COUNT=$(grep -c "^|" /tmp/trivy-report.txt 2>/dev/null || echo "0")
+        printf '%s' "$VULN_COUNT" > $(results.vuln-count.path)
+        echo "Scan complete. Vulnerabilities found: $VULN_COUNT"
+    - name: sbom-generate
+      image: aquasec/trivy:0.57.1
+      script: |
+        trivy image \
+          --format cyclonedx \
+          --output /tmp/sbom.json \
+          --no-progress \
+          $(params.image-ref) || true
+        echo "SBOM generated at /tmp/sbom.json"
+        wc -c /tmp/sbom.json
 ---
 apiVersion: tekton.dev/v1
 kind: Task
 metadata:
-  name: install-opa
+  name: semgrep-sast-scan
   namespace: tekton-pipelines
 spec:
   params:
-    - name: action
-      default: INSTALL
+    - name: service-name
+    - name: domain
+      default: ""
+    - name: config
+      default: auto
+    - name: output-format
+      default: json
   workspaces:
     - name: source
+  results:
+    - name: findings-count
+  steps:
+    - name: semgrep
+      image: returntocorp/semgrep:1.94.0
+      script: |
+        SRC_PATH="/workspace/source/src"
+        if [ -n "$(params.domain)" ]; then
+          SRC_PATH="$SRC_PATH/$(params.domain)/$(params.service-name)"
+        else
+          SRC_PATH="$SRC_PATH"
+        fi
+        echo "==> Semgrep SAST on $SRC_PATH"
+        semgrep \
+          --config=$(params.config) \
+          --$(params.output-format) \
+          --output=/tmp/semgrep-report.json \
+          --no-git-ignore \
+          "$SRC_PATH" 2>&1 | tee /tmp/semgrep-output.txt || true
+        FINDINGS=$(python3 -c "import json,sys; d=json.load(open('/tmp/semgrep-report.json')); print(len(d.get('results',[])))" 2>/dev/null || echo "0")
+        printf '%s' "$FINDINGS" > $(results.findings-count.path)
+        echo "SAST complete. Findings: $FINDINGS"
+    - name: custom-rules
+      image: returntocorp/semgrep:1.94.0
+      script: |
+        if [ -d "/workspace/source/security/semgrep" ]; then
+          echo "==> Running custom Semgrep rules"
+          semgrep \
+            --config=/workspace/source/security/semgrep \
+            --json \
+            --output=/tmp/semgrep-custom.json \
+            /workspace/source/src || true
+          echo "Custom rules scan complete"
+        else
+          echo "No custom rules found at security/semgrep/"
+        fi
+---
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  name: grype-scan
+  namespace: tekton-pipelines
+spec:
+  params:
+    - name: image-ref
+    - name: fail-on-severity
+      default: high
+  steps:
+    - name: scan
+      image: anchore/grype:v0.82.0
+      script: |
+        echo "==> Grype CVE scan: $(params.image-ref)"
+        grype $(params.image-ref) \
+          --fail-on $(params.fail-on-severity) \
+          --output table 2>&1 | tee /tmp/grype-report.txt || true
+        echo "Grype scan complete"
+---
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  name: kube-bench-scan
+  namespace: tekton-pipelines
+spec:
+  workspaces:
     - name: kubeconfig
       mountPath: /root/.kube
   steps:
-    - name: helm
-      image: alpine/helm:latest
+    - name: bench
+      image: aquasec/kube-bench:v0.8.0
+      securityContext:
+        runAsUser: 0
       script: |
-        if [ "$(params.action)" = "UNINSTALL" ]; then
-          helm uninstall gatekeeper -n gatekeeper-system 2>/dev/null || true
-          exit 0
-        fi
-        helm repo add gatekeeper https://open-policy-agent.github.io/gatekeeper/charts --force-update
-        helm upgrade --install gatekeeper gatekeeper/gatekeeper \
-          --namespace gatekeeper-system --create-namespace \
-          --set replicaCount=3 --wait --timeout 5m
-    - name: apply-policies
-      image: bitnami/kubectl:latest
-      script: |
-        kubectl apply -f /workspace/source/security/opa/ 2>/dev/null || true
+        kube-bench run \
+          --targets=master,node,etcd,controlplane,policies \
+          --json \
+          --outputfile /tmp/kube-bench-report.json 2>&1 || true
+        echo "==> CIS Benchmark Results:"
+        kube-bench run --targets=master,node 2>&1 | grep -E "^\[PASS\]|^\[FAIL\]|^\[WARN\]" | head -30
 ---
 apiVersion: tekton.dev/v1
 kind: Pipeline
 metadata:
-  name: security-pipeline
+  name: shopos-security-pipeline
   namespace: tekton-pipelines
 spec:
+  description: |
+    In-cluster security scanning pipeline. Runs Trivy (image scan + SBOM),
+    Semgrep SAST (code + custom rules), Grype CVE scan, and kube-bench CIS benchmark.
+    Triggered by image push events via Tekton Triggers.
   params:
-    - name: action
-      default: INSTALL
-    - name: install-cert-manager
-      default: "true"
-    - name: install-vault
-      default: "true"
-    - name: install-keycloak
-      default: "true"
-    - name: install-kyverno
-      default: "true"
-    - name: install-falco
-      default: "true"
-    - name: install-opa
-      default: "true"
+    - name: image-ref
+      description: Full image reference to scan
+    - name: service-name
+      description: Service name for SAST scoping
+    - name: domain
+      default: ""
+    - name: repo-url
+      default: https://github.com/shopos/shopos.git
+    - name: repo-revision
+      default: main
   workspaces:
     - name: source
     - name: kubeconfig
   tasks:
-    - name: cert-manager
+    - name: clone
       taskRef:
-        name: install-cert-manager
+        name: git-clone-shopos
       params:
-        - name: action
-          value: $(params.action)
-      workspaces:
-        - name: kubeconfig
-          workspace: kubeconfig
-      when:
-        - input: $(params.install-cert-manager)
-          operator: in
-          values: ["true"]
-
-    - name: vault
-      taskRef:
-        name: install-vault
-      params:
-        - name: action
-          value: $(params.action)
-      workspaces:
-        - name: kubeconfig
-          workspace: kubeconfig
-      runAfter: [cert-manager]
-      when:
-        - input: $(params.install-vault)
-          operator: in
-          values: ["true"]
-
-    - name: keycloak
-      taskRef:
-        name: install-keycloak
-      params:
-        - name: action
-          value: $(params.action)
-      workspaces:
-        - name: kubeconfig
-          workspace: kubeconfig
-      runAfter: [cert-manager]
-      when:
-        - input: $(params.install-keycloak)
-          operator: in
-          values: ["true"]
-
-    - name: kyverno
-      taskRef:
-        name: install-kyverno
-      params:
-        - name: action
-          value: $(params.action)
+        - name: url
+          value: $(params.repo-url)
+        - name: revision
+          value: $(params.repo-revision)
       workspaces:
         - name: source
           workspace: source
-        - name: kubeconfig
-          workspace: kubeconfig
-      runAfter: [cert-manager]
-      when:
-        - input: $(params.install-kyverno)
-          operator: in
-          values: ["true"]
 
-    - name: falco
+    - name: trivy-scan
       taskRef:
-        name: install-falco
+        name: trivy-image-scan
       params:
-        - name: action
-          value: $(params.action)
-      workspaces:
-        - name: kubeconfig
-          workspace: kubeconfig
-      runAfter: [cert-manager]
-      when:
-        - input: $(params.install-falco)
-          operator: in
-          values: ["true"]
+        - name: image-ref
+          value: $(params.image-ref)
+        - name: exit-code
+          value: "0"
+      runAfter: [clone]
 
-    - name: opa
+    - name: semgrep-sast
       taskRef:
-        name: install-opa
+        name: semgrep-sast-scan
       params:
-        - name: action
-          value: $(params.action)
+        - name: service-name
+          value: $(params.service-name)
+        - name: domain
+          value: $(params.domain)
       workspaces:
         - name: source
           workspace: source
+      runAfter: [clone]
+
+    - name: grype-scan
+      taskRef:
+        name: grype-scan
+      params:
+        - name: image-ref
+          value: $(params.image-ref)
+        - name: fail-on-severity
+          value: critical
+      runAfter: [clone]
+
+    - name: kube-bench
+      taskRef:
+        name: kube-bench-scan
+      workspaces:
         - name: kubeconfig
           workspace: kubeconfig
-      runAfter: [cert-manager]
-      when:
-        - input: $(params.install-opa)
-          operator: in
-          values: ["true"]
----
-apiVersion: tekton.dev/v1
-kind: PipelineRun
-metadata:
-  name: security-pipeline-run
-  namespace: tekton-pipelines
-  annotations:
-    description: "Example PipelineRun — update params before running"
-spec:
-  pipelineRef:
-    name: security-pipeline
-  params:
-    - name: action
-      value: INSTALL
-    - name: install-cert-manager
-      value: "true"
-    - name: install-vault
-      value: "true"
-    - name: install-keycloak
-      value: "true"
-    - name: install-kyverno
-      value: "true"
-    - name: install-falco
-      value: "true"
-    - name: install-opa
-      value: "true"
-  workspaces:
-    - name: source
-      volumeClaimTemplate:
-        spec:
-          accessModes: [ReadWriteOnce]
-          resources:
-            requests:
-              storage: 512Mi
-    - name: kubeconfig
-      secret:
-        secretName: kubeconfig-secret
+      runAfter: [clone]

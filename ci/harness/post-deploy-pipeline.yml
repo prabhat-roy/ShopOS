@@ -1,146 +1,221 @@
-# Post-Deploy Validation Pipeline — Harness CI
+# Post-Deploy Pipeline — Harness CI/CD
+# Role: Runs k6 load tests after successful deployments.
+#       Uses Harness failure strategies to abort on SLO breaches.
+#       Sends results to Grafana Cloud via InfluxDB output.
 pipeline:
-  identifier: shopos_post_deploy
-  name: ShopOS Post-Deploy Validation
-  projectIdentifier: shopos
+  name: shopos-post-deploy-validation
+  identifier: shopos_post_deploy_validation
+  projectIdentifier: ShopOS
   orgIdentifier: default
-
-  variables:
-    - name: ENVIRONMENT
-      type: String
-      value: staging
-    - name: BASE_URL
-      type: String
-      value: http://api-gateway.platform.svc:8080
-    - name: RUN_LOAD_TEST
-      type: String
-      value: "false"
-    - name: RUN_DAST
-      type: String
-      value: "false"
+  tags:
+    app: shopos
+    role: testing
 
   stages:
     - stage:
-        identifier: health_check
-        name: Health Check
+        name: Health Verification
+        identifier: Health_Verification
         type: CI
         spec:
           cloneCodebase: false
+          infrastructure:
+            type: KubernetesDirect
+            spec:
+              connectorRef: account.k8s_connector
+              namespace: harness-builds
           execution:
             steps:
               - step:
-                  identifier: check
-                  name: Service Health Check
+                  name: Health Check All Critical Services
+                  identifier: health_check_all
                   type: Run
                   spec:
-                    image: curlimages/curl:latest
+                    image: curlimages/curl:8.10.1
+                    shell: Sh
+                    envVariables:
+                      BASE_URL: <+pipeline.variables.BASE_URL>
                     command: |
                       FAILED=0
-                      for PATH in /healthz /api/v1/products; do
-                        STATUS=$(curl -sf --max-time 10 "<+pipeline.variables.BASE_URL>$PATH" -o /dev/null -w "%{http_code}" || echo "000")
-                        echo "<+pipeline.variables.BASE_URL>$PATH → $STATUS"
-                        [ "$STATUS" = "000" ] && FAILED=1
+                      ENDPOINTS="/healthz /api/v1/products /api/v1/categories"
+                      for ENDPOINT in $ENDPOINTS; do
+                        STATUS=$(curl -sf --max-time 15 "$BASE_URL$ENDPOINT" -o /dev/null -w "%{http_code}" 2>/dev/null || echo "000")
+                        if [ "$STATUS" = "200" ]; then
+                          echo "[PASS] $BASE_URL$ENDPOINT → $STATUS"
+                        else
+                          echo "[FAIL] $BASE_URL$ENDPOINT → $STATUS"
+                          FAILED=1
+                        fi
                       done
-                      [ "$FAILED" = "1" ] && exit 1
-                      echo "All health checks passed"
+                      [ $FAILED -eq 1 ] && exit 1 || echo "All health checks passed"
+                  failureStrategies:
+                    - onFailure:
+                        errors:
+                          - AllErrors
+                        action:
+                          type: Abort
 
     - stage:
-        identifier: load_test
-        name: Load Test (k6)
+        name: k6 Smoke Test
+        identifier: k6_Smoke_Test
         type: CI
+        spec:
+          cloneCodebase: true
+          infrastructure:
+            type: KubernetesDirect
+            spec:
+              connectorRef: account.k8s_connector
+              namespace: harness-builds
+          execution:
+            steps:
+              - step:
+                  name: k6 Smoke Test
+                  identifier: k6_smoke
+                  type: Run
+                  spec:
+                    image: grafana/k6:0.55.0
+                    shell: Sh
+                    envVariables:
+                      BASE_URL: <+pipeline.variables.BASE_URL>
+                      INFLUXDB_URL: <+pipeline.variables.INFLUXDB_URL>
+                    command: |
+                      echo "==> k6 smoke test against $BASE_URL"
+                      k6 run \
+                        --env BASE_URL="$BASE_URL" \
+                        --vus 10 \
+                        --duration 60s \
+                        --out influxdb="$INFLUXDB_URL" \
+                        --summary-trend-stats="avg,min,med,max,p(90),p(95),p(99)" \
+                        --thresholds '{"http_req_duration":["p(99)<1000"],"http_req_failed":["rate<0.01"]}' \
+                        load-testing/k6/smoke.js
+                  failureStrategies:
+                    - onFailure:
+                        errors:
+                          - AllErrors
+                        action:
+                          type: Abort
+
+    - stage:
+        name: k6 Load Test
+        identifier: k6_Load_Test
+        type: CI
+        spec:
+          cloneCodebase: true
+          infrastructure:
+            type: KubernetesDirect
+            spec:
+              connectorRef: account.k8s_connector
+              namespace: harness-builds
+          execution:
+            steps:
+              - step:
+                  name: k6 Load Test Checkout Flow
+                  identifier: k6_load_checkout
+                  type: Run
+                  spec:
+                    image: grafana/k6:0.55.0
+                    shell: Sh
+                    envVariables:
+                      BASE_URL: <+pipeline.variables.BASE_URL>
+                      INFLUXDB_URL: <+pipeline.variables.INFLUXDB_URL>
+                    command: |
+                      echo "==> k6 load test: checkout flow"
+                      k6 run \
+                        --env BASE_URL="$BASE_URL" \
+                        --vus 50 \
+                        --duration 5m \
+                        --out influxdb="$INFLUXDB_URL" \
+                        --summary-trend-stats="avg,min,med,max,p(90),p(95),p(99)" \
+                        --thresholds '{"http_req_duration":["p(95)<2000"],"http_req_failed":["rate<0.05"]}' \
+                        load-testing/k6/checkout-flow.js
+                  failureStrategies:
+                    - onFailure:
+                        errors:
+                          - AllErrors
+                        action:
+                          type: ManualIntervention
+                          spec:
+                            timeout: 30m
+                            onTimeout:
+                              action:
+                                type: Abort
+
+              - step:
+                  name: k6 Browse Load Test
+                  identifier: k6_load_browse
+                  type: Run
+                  spec:
+                    image: grafana/k6:0.55.0
+                    shell: Sh
+                    envVariables:
+                      BASE_URL: <+pipeline.variables.BASE_URL>
+                    command: |
+                      k6 run \
+                        --env BASE_URL="$BASE_URL" \
+                        --vus 100 \
+                        --duration 3m \
+                        --thresholds '{"http_req_duration":["p(99)<3000"],"http_req_failed":["rate<0.02"]}' \
+                        load-testing/k6/browse.js || true
+                      echo "Browse load test complete"
+
+    - stage:
+        name: k6 Spike Test
+        identifier: k6_Spike_Test
+        type: CI
+        spec:
+          cloneCodebase: true
+          infrastructure:
+            type: KubernetesDirect
+            spec:
+              connectorRef: account.k8s_connector
+              namespace: harness-builds
+          execution:
+            steps:
+              - step:
+                  name: k6 Spike Test
+                  identifier: k6_spike
+                  type: Run
+                  spec:
+                    image: grafana/k6:0.55.0
+                    shell: Sh
+                    envVariables:
+                      BASE_URL: <+pipeline.variables.BASE_URL>
+                    command: |
+                      k6 run \
+                        --env BASE_URL="$BASE_URL" \
+                        load-testing/k6/spike.js || true
+                      echo "Spike test complete (non-blocking)"
         when:
-          condition: <+pipeline.variables.RUN_LOAD_TEST> == "true"
-        spec:
-          cloneCodebase: false
-          execution:
-            steps:
-              - step:
-                  identifier: k6
-                  name: k6 Load Test
-                  type: Run
-                  spec:
-                    image: grafana/k6:latest
-                    command: |
-                      cat > /tmp/load.js << 'EOF'
-                      import http from 'k6/http';
-                      import { check, sleep } from 'k6';
-                      export let options = { vus: 10, duration: '60s',
-                        thresholds: { http_req_failed: ['rate<0.05'], http_req_duration: ['p(95)<500'] } };
-                      export default function() {
-                        let res = http.get(`${__ENV.BASE_URL}/healthz`);
-                        check(res, { 'status 200': (r) => r.status === 200 });
-                        sleep(1);
-                      }
-                      EOF
-                      k6 run /tmp/load.js -e BASE_URL="<+pipeline.variables.BASE_URL>"
+          stageStatus: Success
+          condition: <+pipeline.variables.RUN_SPIKE_TEST> == "true"
 
-    - stage:
-        identifier: dast
-        name: DAST (ZAP)
-        type: CI
-        when:
-          condition: <+pipeline.variables.RUN_DAST> == "true"
-        spec:
-          cloneCodebase: false
-          execution:
-            steps:
-              - step:
-                  identifier: zap
-                  name: OWASP ZAP Baseline
-                  type: Run
-                  spec:
-                    image: ghcr.io/zaproxy/zaproxy:stable
-                    command: |
-                      zap-baseline.py -t "<+pipeline.variables.BASE_URL>" || true
+  variables:
+    - name: BASE_URL
+      type: String
+      value: http://api-gateway.default.svc.cluster.local:8080
+    - name: INFLUXDB_URL
+      type: String
+      value: http://influxdb.observability.svc.cluster.local:8086/k6
+    - name: RUN_SPIKE_TEST
+      type: String
+      value: "false"
+    - name: SERVICE_NAME
+      type: String
+      value: api-gateway
 
-    - stage:
-        identifier: kube_audit
-        name: Kubernetes Audit
-        type: CI
+  notificationRules:
+    - name: load-test-failure
+      identifier: load_test_failure_notify
+      pipelineEvents:
+        - type: PipelineFailed
+        - type: PipelineSuccess
+      notificationMethod:
+        type: Slack
         spec:
-          cloneCodebase: false
-          execution:
-            steps:
-              - step:
-                  identifier: kube_bench
-                  name: kube-bench
-                  type: Run
-                  spec:
-                    image: aquasec/kube-bench:latest
-                    envVariables:
-                      KUBECONFIG_CONTENT: <+secrets.getValue("kubeconfig_content")>
-                    command: |
-                      mkdir -p ~/.kube && echo "$KUBECONFIG_CONTENT" | base64 -d > ~/.kube/config
-                      kube-bench run --targets node,policies || true
-              - step:
-                  identifier: kubescape
-                  name: Kubescape
-                  type: Run
-                  spec:
-                    image: kubescape/kubescape:latest
-                    envVariables:
-                      KUBECONFIG_CONTENT: <+secrets.getValue("kubeconfig_content")>
-                    command: |
-                      mkdir -p ~/.kube && echo "$KUBECONFIG_CONTENT" | base64 -d > ~/.kube/config
-                      kubescape scan framework nsa,mitre 2>/dev/null || true
+          webhookUrl: <+secrets.getValue("slack_webhook")>
 
-    - stage:
-        identifier: notify
-        name: Slack Notification
-        type: CI
-        spec:
-          cloneCodebase: false
-          execution:
-            steps:
-              - step:
-                  identifier: slack
-                  name: Notify Slack
-                  type: Run
-                  spec:
-                    image: curlimages/curl:latest
-                    envVariables:
-                      SLACK_WEBHOOK: <+secrets.getValue("slack_webhook")>
-                    command: |
-                      curl -sf -X POST "$SLACK_WEBHOOK" \
-                        -H 'Content-type: application/json' \
-                        --data "{\"text\":\":white_check_mark: Post-deploy validation passed for *<+pipeline.variables.ENVIRONMENT>*\"}"
+  properties:
+    ci:
+      codebase:
+        connectorRef: account.github_connector
+        repoName: shopos/shopos
+        build: <+input>

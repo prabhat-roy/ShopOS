@@ -1,27 +1,45 @@
-# Post-Deploy Validation Pipeline — Tekton
-# Secrets: kubeconfig-secret, slack-webhook
+# Post-Deploy Pipeline — Tekton (In-Cluster k6 Load Test)
+# Role: Runs k6 performance and smoke tests in-cluster after every deployment.
+#       Triggered by the deploy-pipeline completing successfully.
+# Secrets: kubeconfig-secret, influxdb-credentials
 ---
 apiVersion: tekton.dev/v1
 kind: Task
 metadata:
-  name: health-check
+  name: k6-smoke-test
   namespace: tekton-pipelines
 spec:
   params:
     - name: base-url
-      default: http://api-gateway.platform.svc:8080
+      description: Base URL of the deployed service
+    - name: script-path
+      default: load-testing/k6/smoke.js
+    - name: influxdb-url
+      default: http://influxdb.observability.svc.cluster.local:8086/k6
+    - name: vus
+      default: "10"
+    - name: duration
+      default: 30s
+  workspaces:
+    - name: source
+  results:
+    - name: passed
+      description: "true if smoke test passed"
   steps:
-    - name: check
-      image: curlimages/curl:latest
+    - name: run-smoke
+      image: grafana/k6:0.55.0
       script: |
-        FAILED=0
-        for PATH in /healthz /api/v1/products; do
-          STATUS=$(curl -sf --max-time 10 "$(params.base-url)$PATH" -o /dev/null -w "%{http_code}" || echo "000")
-          echo "$(params.base-url)$PATH → $STATUS"
-          [ "$STATUS" = "000" ] && FAILED=1
-        done
-        [ "$FAILED" = "1" ] && echo "Health check FAILED" && exit 1
-        echo "Health checks passed"
+        echo "==> k6 smoke test against $(params.base-url)"
+        k6 run \
+          --env BASE_URL=$(params.base-url) \
+          --vus $(params.vus) \
+          --duration $(params.duration) \
+          --out influxdb=$(params.influxdb-url) \
+          --summary-trend-stats="avg,min,med,max,p(90),p(95),p(99)" \
+          /workspace/source/$(params.script-path) 2>&1
+        EXIT=$?
+        printf '%s' "$([ $EXIT -eq 0 ] && echo true || echo false)" > $(results.passed.path)
+        exit $EXIT
 ---
 apiVersion: tekton.dev/v1
 kind: Task
@@ -31,125 +49,156 @@ metadata:
 spec:
   params:
     - name: base-url
-      default: http://api-gateway.platform.svc:8080
+    - name: script-path
+      default: load-testing/k6/checkout-flow.js
+    - name: influxdb-url
+      default: http://influxdb.observability.svc.cluster.local:8086/k6
     - name: vus
-      default: "10"
+      default: "50"
     - name: duration
-      default: 60s
+      default: 5m
+  workspaces:
+    - name: source
   steps:
-    - name: run
-      image: grafana/k6:latest
+    - name: run-load
+      image: grafana/k6:0.55.0
       script: |
-        cat > /tmp/load.js << 'EOF'
-        import http from 'k6/http';
-        import { check, sleep } from 'k6';
-        export let options = {
-          vus: __ENV.VUS || 10,
-          duration: __ENV.DURATION || '60s',
-          thresholds: {
-            http_req_failed: ['rate<0.05'],
-            http_req_duration: ['p(95)<500'],
-          },
-        };
-        export default function() {
-          let res = http.get(`${__ENV.BASE_URL}/healthz`);
-          check(res, { 'status 200': (r) => r.status === 200 });
-          sleep(1);
-        }
-        EOF
-        k6 run /tmp/load.js \
-          -e BASE_URL="$(params.base-url)" \
-          -e VUS="$(params.vus)" \
-          -e DURATION="$(params.duration)"
+        echo "==> k6 load test: $(params.script-path) @ $(params.base-url)"
+        k6 run \
+          --env BASE_URL=$(params.base-url) \
+          --vus $(params.vus) \
+          --duration $(params.duration) \
+          --out influxdb=$(params.influxdb-url) \
+          --summary-trend-stats="avg,min,med,max,p(90),p(95),p(99)" \
+          --thresholds '{"http_req_duration":["p(99)<2000"],"http_req_failed":["rate<0.01"]}' \
+          /workspace/source/$(params.script-path)
 ---
 apiVersion: tekton.dev/v1
 kind: Task
 metadata:
-  name: zap-dast
+  name: k6-spike-test
   namespace: tekton-pipelines
 spec:
   params:
-    - name: target-url
-      default: http://api-gateway.platform.svc:8080
+    - name: base-url
+    - name: script-path
+      default: load-testing/k6/spike.js
+    - name: influxdb-url
+      default: http://influxdb.observability.svc.cluster.local:8086/k6
+  workspaces:
+    - name: source
   steps:
-    - name: scan
-      image: ghcr.io/zaproxy/zaproxy:stable
+    - name: run-spike
+      image: grafana/k6:0.55.0
       script: |
-        zap-baseline.py -t "$(params.target-url)" -r /tmp/zap-report.html || true
-        echo "ZAP DAST scan complete (non-blocking)"
+        echo "==> k6 spike test: $(params.base-url)"
+        k6 run \
+          --env BASE_URL=$(params.base-url) \
+          --out influxdb=$(params.influxdb-url) \
+          /workspace/source/$(params.script-path) || true
+        echo "Spike test complete (non-blocking)"
 ---
 apiVersion: tekton.dev/v1
 kind: Task
 metadata:
-  name: kube-bench-audit
+  name: healthz-check-all
   namespace: tekton-pipelines
 spec:
+  params:
+    - name: namespace
+      default: default
+    - name: service-name
+      default: ""
+    - name: port
+      default: "8080"
   workspaces:
     - name: kubeconfig
       mountPath: /root/.kube
   steps:
-    - name: bench
-      image: aquasec/kube-bench:latest
+    - name: check-endpoints
+      image: curlimages/curl:8.10.1
       script: |
-        kube-bench run --targets node,policies --json > /tmp/kube-bench.json 2>/dev/null || true
-        echo "kube-bench complete"
-    - name: kubescape
-      image: kubescape/kubescape:latest
-      script: |
-        kubescape scan framework nsa,mitre --format json --output /tmp/kubescape.json 2>/dev/null || true
-        echo "Kubescape scan complete"
----
-apiVersion: tekton.dev/v1
-kind: Task
-metadata:
-  name: notify-slack
-  namespace: tekton-pipelines
-spec:
-  params:
-    - name: environment
-      default: staging
-    - name: status
-      default: success
-  steps:
-    - name: notify
-      image: curlimages/curl:latest
-      env:
-        - name: SLACK_WEBHOOK
-          valueFrom:
-            secretKeyRef:
-              name: slack-webhook
-              key: url
-      script: |
-        ICON=":white_check_mark:"
-        [ "$(params.status)" = "failure" ] && ICON=":x:"
-        curl -sf -X POST "$SLACK_WEBHOOK" \
-          -H 'Content-type: application/json' \
-          --data "{\"text\":\"$ICON Post-deploy validation $(params.status) for *$(params.environment)*\"}" || true
+        SERVICES=$(params.service-name)
+        if [ -z "$SERVICES" ]; then
+          # Check critical platform services
+          SERVICES="api-gateway web-bff graphql-gateway"
+        fi
+        FAILED=0
+        for SVC in $SERVICES; do
+          URL="http://$SVC.$(params.namespace).svc.cluster.local:$(params.port)/healthz"
+          STATUS=$(curl -sf --max-time 10 "$URL" -o /dev/null -w "%{http_code}" 2>/dev/null || echo "000")
+          if [ "$STATUS" = "200" ]; then
+            echo "[PASS] $SVC /healthz → $STATUS"
+          else
+            echo "[FAIL] $SVC /healthz → $STATUS"
+            FAILED=1
+          fi
+        done
+        [ $FAILED -eq 1 ] && exit 1 || echo "All health checks passed"
 ---
 apiVersion: tekton.dev/v1
 kind: Pipeline
 metadata:
-  name: post-deploy-pipeline
+  name: shopos-post-deploy-pipeline
   namespace: tekton-pipelines
 spec:
+  description: |
+    In-cluster post-deployment validation pipeline. Runs k6 smoke, load, and spike
+    tests using Grafana k6 container. Results sent to in-cluster InfluxDB.
+    Triggered automatically after shopos-deploy-pipeline completes.
   params:
-    - name: environment
-      default: staging
+    - name: service-name
+    - name: namespace
+      default: default
     - name: base-url
-      default: http://api-gateway.platform.svc:8080
+      description: Full base URL for load tests
     - name: run-load-test
+      default: "true"
+    - name: run-spike-test
       default: "false"
-    - name: run-dast
-      default: "false"
+    - name: repo-url
+      default: https://github.com/shopos/shopos.git
+    - name: repo-revision
+      default: main
   workspaces:
+    - name: source
     - name: kubeconfig
   tasks:
+    - name: clone
+      taskRef:
+        name: git-clone-shopos
+      params:
+        - name: url
+          value: $(params.repo-url)
+        - name: revision
+          value: $(params.repo-revision)
+      workspaces:
+        - name: source
+          workspace: source
+
     - name: health-check
       taskRef:
-        name: health-check
+        name: healthz-check-all
+      params:
+        - name: service-name
+          value: $(params.service-name)
+        - name: namespace
+          value: $(params.namespace)
+      workspaces:
+        - name: kubeconfig
+          workspace: kubeconfig
+      runAfter: [clone]
+
+    - name: smoke-test
+      taskRef:
+        name: k6-smoke-test
       params:
         - name: base-url
           value: $(params.base-url)
+      workspaces:
+        - name: source
+          workspace: source
+      runAfter: [health-check]
 
     - name: load-test
       taskRef:
@@ -157,58 +206,26 @@ spec:
       params:
         - name: base-url
           value: $(params.base-url)
-      runAfter: [health-check]
+      workspaces:
+        - name: source
+          workspace: source
+      runAfter: [smoke-test]
       when:
         - input: $(params.run-load-test)
           operator: in
           values: ["true"]
 
-    - name: dast
+    - name: spike-test
       taskRef:
-        name: zap-dast
+        name: k6-spike-test
       params:
-        - name: target-url
+        - name: base-url
           value: $(params.base-url)
-      runAfter: [health-check]
+      workspaces:
+        - name: source
+          workspace: source
+      runAfter: [smoke-test]
       when:
-        - input: $(params.run-dast)
+        - input: $(params.run-spike-test)
           operator: in
           values: ["true"]
-
-    - name: kube-audit
-      taskRef:
-        name: kube-bench-audit
-      workspaces:
-        - name: kubeconfig
-          workspace: kubeconfig
-      runAfter: [health-check]
-
-  finally:
-    - name: notify
-      taskRef:
-        name: notify-slack
-      params:
-        - name: environment
-          value: $(params.environment)
-        - name: status
-          value: $(tasks.health-check.status)
----
-apiVersion: tekton.dev/v1
-kind: PipelineRun
-metadata:
-  name: post-deploy-pipeline-run
-  namespace: tekton-pipelines
-  annotations:
-    description: "Example PipelineRun — update params before running"
-spec:
-  pipelineRef:
-    name: post-deploy-pipeline
-  params:
-    - name: environment
-      value: staging
-    - name: run-load-test
-      value: "true"
-  workspaces:
-    - name: kubeconfig
-      secret:
-        secretName: kubeconfig-secret

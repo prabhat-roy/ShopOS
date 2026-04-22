@@ -1,280 +1,199 @@
-# GitOps Tools Pipeline — Tekton
-# Secrets: kubeconfig-secret, argocd-credentials, minio-credentials
+# GitOps Pipeline — Tekton (In-Cluster ArgoCD Sync)
+# Role: Triggers ArgoCD application syncs from within the cluster after deployments.
+#       Uses argocd CLI in a Task to sync apps and wait for health.
+# Secrets: argocd-credentials, kubeconfig-secret
 ---
 apiVersion: tekton.dev/v1
 kind: Task
 metadata:
-  name: install-argocd
+  name: argocd-sync
   namespace: tekton-pipelines
 spec:
   params:
-    - name: action
-      default: INSTALL
-  workspaces:
-    - name: kubeconfig
-      mountPath: /root/.kube
+    - name: app-name
+      description: ArgoCD application name to sync
+    - name: argocd-server
+      default: argocd-server.argocd.svc.cluster.local
+    - name: revision
+      default: HEAD
+    - name: prune
+      default: "true"
+    - name: timeout
+      default: "300"
   steps:
-    - name: helm
-      image: alpine/helm:latest
+    - name: sync
+      image: argoproj/argocd:v2.13.0
       env:
-        - name: ARGOCD_ADMIN_PASSWORD_HASH
+        - name: ARGOCD_USERNAME
           valueFrom:
             secretKeyRef:
               name: argocd-credentials
-              key: admin-password-hash
+              key: username
+        - name: ARGOCD_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: argocd-credentials
+              key: password
       script: |
-        if [ "$(params.action)" = "UNINSTALL" ]; then
-          helm uninstall argocd -n argocd 2>/dev/null || true
-          exit 0
-        fi
-        helm repo add argo https://argoproj.github.io/argo-helm --force-update
-        helm upgrade --install argocd argo/argo-cd \
-          --namespace argocd --create-namespace \
-          --set server.replicas=2 \
-          --set redis-ha.enabled=true \
-          --set controller.replicas=1 \
-          --set repoServer.replicas=2 \
-          --set configs.secret.argocdServerAdminPassword="$ARGOCD_ADMIN_PASSWORD_HASH" \
-          --wait --timeout 10m
+        echo "==> Logging in to ArgoCD at $(params.argocd-server)"
+        argocd login $(params.argocd-server) \
+          --username $ARGOCD_USERNAME \
+          --password $ARGOCD_PASSWORD \
+          --insecure \
+          --grpc-web
+
+        echo "==> Syncing app: $(params.app-name)"
+        PRUNE_FLAG=""
+        [ "$(params.prune)" = "true" ] && PRUNE_FLAG="--prune"
+
+        argocd app sync $(params.app-name) \
+          $PRUNE_FLAG \
+          --revision $(params.revision) \
+          --timeout $(params.timeout)
+
+        echo "==> Waiting for app health: $(params.app-name)"
+        argocd app wait $(params.app-name) \
+          --health \
+          --timeout $(params.timeout)
+
+        echo "==> Sync complete for $(params.app-name)"
+        argocd app get $(params.app-name)
 ---
 apiVersion: tekton.dev/v1
 kind: Task
 metadata:
-  name: install-argo-rollouts
+  name: argocd-sync-all-apps
   namespace: tekton-pipelines
 spec:
   params:
-    - name: action
-      default: INSTALL
-  workspaces:
-    - name: kubeconfig
-      mountPath: /root/.kube
+    - name: argocd-server
+      default: argocd-server.argocd.svc.cluster.local
+    - name: label-selector
+      default: "app.kubernetes.io/part-of=shopos"
+    - name: timeout
+      default: "600"
   steps:
-    - name: helm
-      image: alpine/helm:latest
-      script: |
-        if [ "$(params.action)" = "UNINSTALL" ]; then
-          helm uninstall argo-rollouts -n argo-rollouts 2>/dev/null || true
-          exit 0
-        fi
-        helm repo add argo https://argoproj.github.io/argo-helm --force-update
-        helm upgrade --install argo-rollouts argo/argo-rollouts \
-          --namespace argo-rollouts --create-namespace \
-          --set dashboard.enabled=true \
-          --wait --timeout 5m
----
-apiVersion: tekton.dev/v1
-kind: Task
-metadata:
-  name: install-keda-gitops
-  namespace: tekton-pipelines
-spec:
-  params:
-    - name: action
-      default: INSTALL
-  workspaces:
-    - name: source
-    - name: kubeconfig
-      mountPath: /root/.kube
-  steps:
-    - name: helm
-      image: alpine/helm:latest
-      script: |
-        if [ "$(params.action)" = "UNINSTALL" ]; then
-          helm uninstall keda -n keda 2>/dev/null || true
-          exit 0
-        fi
-        helm repo add kedacore https://kedacore.github.io/charts --force-update
-        helm upgrade --install keda kedacore/keda \
-          --namespace keda --create-namespace \
-          --set metricsServer.replicaCount=2 \
-          --wait --timeout 5m
-    - name: apply-scaledobjects
-      image: bitnami/kubectl:latest
-      script: |
-        kubectl apply -f /workspace/source/kubernetes/keda/ 2>/dev/null || true
----
-apiVersion: tekton.dev/v1
-kind: Task
-metadata:
-  name: install-velero
-  namespace: tekton-pipelines
-spec:
-  params:
-    - name: action
-      default: INSTALL
-  workspaces:
-    - name: kubeconfig
-      mountPath: /root/.kube
-  steps:
-    - name: helm
-      image: alpine/helm:latest
+    - name: sync-all
+      image: argoproj/argocd:v2.13.0
       env:
-        - name: MINIO_ACCESS_KEY
+        - name: ARGOCD_USERNAME
           valueFrom:
             secretKeyRef:
-              name: minio-credentials
-              key: access-key
-        - name: MINIO_SECRET_KEY
+              name: argocd-credentials
+              key: username
+        - name: ARGOCD_PASSWORD
           valueFrom:
             secretKeyRef:
-              name: minio-credentials
-              key: secret-key
+              name: argocd-credentials
+              key: password
       script: |
-        if [ "$(params.action)" = "UNINSTALL" ]; then
-          helm uninstall velero -n velero 2>/dev/null || true
+        argocd login $(params.argocd-server) \
+          --username $ARGOCD_USERNAME \
+          --password $ARGOCD_PASSWORD \
+          --insecure --grpc-web
+
+        echo "==> Syncing all ShopOS ArgoCD applications"
+        APPS=$(argocd app list -l $(params.label-selector) -o name 2>/dev/null || echo "")
+        if [ -z "$APPS" ]; then
+          echo "No apps matched selector: $(params.label-selector)"
           exit 0
         fi
-        helm repo add vmware-tanzu https://vmware-tanzu.github.io/helm-charts --force-update
-        helm upgrade --install velero vmware-tanzu/velero \
-          --namespace velero --create-namespace \
-          --set configuration.backupStorageLocation[0].provider=aws \
-          --set configuration.backupStorageLocation[0].bucket=velero-backups \
-          --set "configuration.backupStorageLocation[0].config.s3Url=http://minio.registry.svc:9000" \
-          --set configuration.backupStorageLocation[0].config.s3ForcePathStyle=true \
-          --set "credentials.secretContents.cloud=[default]\naws_access_key_id=$MINIO_ACCESS_KEY\naws_secret_access_key=$MINIO_SECRET_KEY" \
-          --wait --timeout 5m
+
+        FAILED=0
+        for APP in $APPS; do
+          echo "Syncing: $APP"
+          argocd app sync "$APP" --prune --timeout $(params.timeout) || FAILED=1
+        done
+
+        echo "==> Waiting for all apps to be healthy"
+        for APP in $APPS; do
+          argocd app wait "$APP" --health --timeout $(params.timeout) || FAILED=1
+        done
+
+        [ $FAILED -eq 1 ] && echo "Some apps failed to sync/become healthy" && exit 1
+        echo "All apps synced and healthy"
 ---
 apiVersion: tekton.dev/v1
 kind: Task
 metadata:
-  name: argocd-bootstrap
+  name: flux-reconcile
   namespace: tekton-pipelines
 spec:
+  params:
+    - name: kustomization-name
+      default: shopos
+    - name: namespace
+      default: flux-system
+    - name: timeout
+      default: 5m
   workspaces:
-    - name: source
     - name: kubeconfig
       mountPath: /root/.kube
   steps:
-    - name: wait-for-argocd
-      image: bitnami/kubectl:latest
+    - name: reconcile
+      image: fluxcd/flux-cli:v2.4.0
       script: |
-        kubectl wait --for=condition=available deployment/argocd-server -n argocd --timeout=120s
-    - name: apply-app-of-apps
-      image: bitnami/kubectl:latest
-      script: |
-        kubectl apply -f /workspace/source/gitops/argocd/app-of-apps.yaml
-        kubectl apply -f /workspace/source/gitops/argocd/applicationsets/ 2>/dev/null || true
+        echo "==> Flux reconcile: $(params.kustomization-name)"
+        flux reconcile kustomization $(params.kustomization-name) \
+          --namespace=$(params.namespace) \
+          --timeout=$(params.timeout) \
+          --with-source
+        echo "Reconciliation complete"
 ---
 apiVersion: tekton.dev/v1
 kind: Pipeline
 metadata:
-  name: gitops-pipeline
+  name: shopos-gitops-pipeline
   namespace: tekton-pipelines
 spec:
+  description: |
+    In-cluster GitOps pipeline. After a deploy completes, syncs ArgoCD applications
+    and optionally triggers Flux reconciliation. All operations are cluster-internal.
   params:
-    - name: action
-      default: INSTALL
-    - name: install-argocd
-      default: "true"
-    - name: install-argo-rollouts
-      default: "true"
-    - name: install-keda
-      default: "true"
-    - name: install-velero
-      default: "true"
-    - name: bootstrap
+    - name: app-name
+      description: Specific ArgoCD app to sync (empty = sync all)
+      default: ""
+    - name: argocd-server
+      default: argocd-server.argocd.svc.cluster.local
+    - name: sync-all
+      default: "false"
+    - name: flux-reconcile
       default: "false"
   workspaces:
-    - name: source
     - name: kubeconfig
   tasks:
-    - name: argocd
+    - name: sync-app
       taskRef:
-        name: install-argocd
+        name: argocd-sync
       params:
-        - name: action
-          value: $(params.action)
-      workspaces:
-        - name: kubeconfig
-          workspace: kubeconfig
+        - name: app-name
+          value: $(params.app-name)
+        - name: argocd-server
+          value: $(params.argocd-server)
       when:
-        - input: $(params.install-argocd)
+        - input: $(params.sync-all)
+          operator: in
+          values: ["false"]
+
+    - name: sync-all-apps
+      taskRef:
+        name: argocd-sync-all-apps
+      params:
+        - name: argocd-server
+          value: $(params.argocd-server)
+      when:
+        - input: $(params.sync-all)
           operator: in
           values: ["true"]
 
-    - name: argo-rollouts
+    - name: flux-reconcile
       taskRef:
-        name: install-argo-rollouts
-      params:
-        - name: action
-          value: $(params.action)
+        name: flux-reconcile
       workspaces:
         - name: kubeconfig
           workspace: kubeconfig
-      runAfter: [argocd]
       when:
-        - input: $(params.install-argo-rollouts)
+        - input: $(params.flux-reconcile)
           operator: in
           values: ["true"]
-
-    - name: keda
-      taskRef:
-        name: install-keda-gitops
-      params:
-        - name: action
-          value: $(params.action)
-      workspaces:
-        - name: source
-          workspace: source
-        - name: kubeconfig
-          workspace: kubeconfig
-      runAfter: [argocd]
-      when:
-        - input: $(params.install-keda)
-          operator: in
-          values: ["true"]
-
-    - name: velero
-      taskRef:
-        name: install-velero
-      params:
-        - name: action
-          value: $(params.action)
-      workspaces:
-        - name: kubeconfig
-          workspace: kubeconfig
-      runAfter: [argocd]
-      when:
-        - input: $(params.install-velero)
-          operator: in
-          values: ["true"]
-
-    - name: bootstrap
-      taskRef:
-        name: argocd-bootstrap
-      workspaces:
-        - name: source
-          workspace: source
-        - name: kubeconfig
-          workspace: kubeconfig
-      runAfter: [argocd, keda, velero]
-      when:
-        - input: $(params.bootstrap)
-          operator: in
-          values: ["true"]
----
-apiVersion: tekton.dev/v1
-kind: PipelineRun
-metadata:
-  name: gitops-pipeline-run
-  namespace: tekton-pipelines
-  annotations:
-    description: "Example PipelineRun — update params before running"
-spec:
-  pipelineRef:
-    name: gitops-pipeline
-  params:
-    - name: action
-      value: INSTALL
-  workspaces:
-    - name: source
-      volumeClaimTemplate:
-        spec:
-          accessModes: [ReadWriteOnce]
-          resources:
-            requests:
-              storage: 512Mi
-    - name: kubeconfig
-      secret:
-        secretName: kubeconfig-secret
+      runAfter: [sync-app, sync-all-apps]

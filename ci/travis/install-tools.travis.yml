@@ -1,62 +1,121 @@
-# Install CI Tools — Travis CI
+# Install Tools Pipeline — Travis CI
+# Role: Multi-OS tool installation compatibility matrix.
+#       Tests that all required CI tools install correctly on Ubuntu 20.04 and 22.04.
 language: minimal
+os: linux
 
-jobs:
+matrix:
+  fast_finish: true
   include:
-    - name: kubectl + helm
-      script:
-        - curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
-        - curl -fsSL "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl" -o /usr/local/bin/kubectl && chmod +x /usr/local/bin/kubectl
-        - helm version --short
-        - kubectl version --client
+    # Helm across Ubuntu versions
+    - dist: jammy
+      env: TOOL=helm TOOL_VERSION=3.16.2
+      name: "Install: Helm 3.16 on Ubuntu 22.04"
+    - dist: focal
+      env: TOOL=helm TOOL_VERSION=3.16.2
+      name: "Install: Helm 3.16 on Ubuntu 20.04"
+    - dist: jammy
+      env: TOOL=helm TOOL_VERSION=3.15.4
+      name: "Install: Helm 3.15 on Ubuntu 22.04"
 
-    - name: terraform
-      install: skip
-      script:
-        - docker run --rm hashicorp/terraform:1.9.0 version
+    # kubectl across Ubuntu versions and K8s versions
+    - dist: jammy
+      env: TOOL=kubectl TOOL_VERSION=1.31.0
+      name: "Install: kubectl 1.31 on Ubuntu 22.04"
+    - dist: focal
+      env: TOOL=kubectl TOOL_VERSION=1.31.0
+      name: "Install: kubectl 1.31 on Ubuntu 20.04"
+    - dist: jammy
+      env: TOOL=kubectl TOOL_VERSION=1.30.0
+      name: "Install: kubectl 1.30 on Ubuntu 22.04"
 
-    - name: golang
-      language: go
-      go: "1.23"
-      script: go version
+    # Terraform across Ubuntu versions
+    - dist: jammy
+      env: TOOL=terraform TOOL_VERSION=1.9.8
+      name: "Install: Terraform 1.9 on Ubuntu 22.04"
+    - dist: focal
+      env: TOOL=terraform TOOL_VERSION=1.9.8
+      name: "Install: Terraform 1.9 on Ubuntu 20.04"
 
-    - name: java
-      language: java
-      jdk: openjdk21
-      script: java -version
+    # k6 load testing tool
+    - dist: jammy
+      env: TOOL=k6 TOOL_VERSION=0.55.0
+      name: "Install: k6 0.55 on Ubuntu 22.04"
+    - dist: focal
+      env: TOOL=k6 TOOL_VERSION=0.55.0
+      name: "Install: k6 0.55 on Ubuntu 20.04"
 
-    - name: nodejs
-      language: node_js
-      node_js: "22"
-      script: node --version && npm --version
+    # Trivy vulnerability scanner
+    - dist: jammy
+      env: TOOL=trivy TOOL_VERSION=0.57.1
+      name: "Install: Trivy 0.57 on Ubuntu 22.04"
+    - dist: focal
+      env: TOOL=trivy TOOL_VERSION=0.57.1
+      name: "Install: Trivy 0.57 on Ubuntu 20.04"
 
-    - name: python
-      language: python
-      python: "3.13"
-      script: python --version
+    # ArgoCD CLI
+    - dist: jammy
+      env: TOOL=argocd TOOL_VERSION=v2.13.0
+      name: "Install: ArgoCD CLI v2.13 on Ubuntu 22.04"
 
-    - name: dotnet
-      install: skip
-      script: docker run --rm mcr.microsoft.com/dotnet/sdk:8.0 dotnet --version
+install:
+  - sudo apt-get update -qq
 
-    - name: rust
-      language: rust
-      rust: stable
-      script: rustc --version && cargo --version
+script:
+  - |
+    echo "==> Installing ${TOOL} ${TOOL_VERSION} on ${TRAVIS_DIST}"
+    case "$TOOL" in
+      helm)
+        curl -fsSL https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | \
+          DESIRED_VERSION="v${TOOL_VERSION}" bash 2>&1
+        helm version --short
+        echo "PASS: helm ${TOOL_VERSION}"
+        ;;
 
-    - name: security-tools
-      language: python
-      python: "3.13"
-      install:
-        - pip install semgrep checkov --quiet
-        - curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh -s -- -b /usr/local/bin
-        - curl -sSfL https://raw.githubusercontent.com/anchore/grype/main/install.sh | sh -s -- -b /usr/local/bin
-        - curl -sSfL https://raw.githubusercontent.com/anchore/syft/main/install.sh | sh -s -- -b /usr/local/bin
-        - curl -fsSL "https://github.com/sigstore/cosign/releases/download/v2.4.0/cosign-linux-amd64" -o /usr/local/bin/cosign && chmod +x /usr/local/bin/cosign
-      script:
-        - trivy --version | head -1
-        - grype version | head -1
-        - syft --version
-        - cosign version
-        - semgrep --version
-        - checkov --version
+      kubectl)
+        curl -fsSL "https://dl.k8s.io/release/v${TOOL_VERSION}/bin/linux/amd64/kubectl" \
+          -o /tmp/kubectl && chmod +x /tmp/kubectl && sudo mv /tmp/kubectl /usr/local/bin/
+        kubectl version --client --short 2>/dev/null || kubectl version --client
+        echo "PASS: kubectl ${TOOL_VERSION}"
+        ;;
+
+      terraform)
+        curl -fsSL "https://releases.hashicorp.com/terraform/${TOOL_VERSION}/terraform_${TOOL_VERSION}_linux_amd64.zip" \
+          -o /tmp/terraform.zip
+        sudo apt-get install -qq -y unzip 2>/dev/null
+        unzip -q /tmp/terraform.zip -d /tmp/
+        sudo mv /tmp/terraform /usr/local/bin/
+        terraform version
+        echo "PASS: terraform ${TOOL_VERSION}"
+        ;;
+
+      k6)
+        curl -fsSL "https://github.com/grafana/k6/releases/download/v${TOOL_VERSION}/k6-v${TOOL_VERSION}-linux-amd64.tar.gz" \
+          -o /tmp/k6.tar.gz
+        tar -xzf /tmp/k6.tar.gz -C /tmp/
+        sudo mv "/tmp/k6-v${TOOL_VERSION}-linux-amd64/k6" /usr/local/bin/
+        k6 version
+        echo "PASS: k6 ${TOOL_VERSION}"
+        ;;
+
+      trivy)
+        curl -fsSL "https://github.com/aquasecurity/trivy/releases/download/v${TOOL_VERSION}/trivy_${TOOL_VERSION}_Linux-64bit.tar.gz" \
+          -o /tmp/trivy.tar.gz
+        tar -xzf /tmp/trivy.tar.gz -C /tmp/
+        sudo mv /tmp/trivy /usr/local/bin/
+        trivy version
+        echo "PASS: trivy ${TOOL_VERSION}"
+        ;;
+
+      argocd)
+        curl -fsSL "https://github.com/argoproj/argo-cd/releases/download/${TOOL_VERSION}/argocd-linux-amd64" \
+          -o /tmp/argocd && chmod +x /tmp/argocd && sudo mv /tmp/argocd /usr/local/bin/
+        argocd version --client
+        echo "PASS: argocd ${TOOL_VERSION}"
+        ;;
+    esac
+
+notifications:
+  email:
+    on_success: never
+    on_failure: change

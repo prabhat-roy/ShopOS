@@ -1,221 +1,207 @@
-# Kubernetes Infrastructure (Terraform) Pipeline — Tekton
-# Secrets: kubeconfig-secret, aws-credentials, gcp-sa-key, azure-credentials
+# K8s Infrastructure Pipeline — Tekton (In-Cluster IaC via Terraform)
+# Role: Runs Terraform in-cluster using hashicorp/terraform image to provision
+#       EKS/GKE/AKS clusters, then applies K8s manifests (namespaces, RBAC, quotas).
+#       Triggered by in-cluster EventListener watching GitOps repo changes.
+# Secrets: cloud-credentials, kubeconfig-secret
 ---
 apiVersion: tekton.dev/v1
 kind: Task
 metadata:
-  name: terraform-eks
+  name: terraform-provision
   namespace: tekton-pipelines
 spec:
   params:
-    - name: action
-      default: PLAN
+    - name: cloud-provider
+      description: "aws | gcp | azure"
+      default: gcp
     - name: tf-dir
-      default: infra/terraform/aws/eks
+      description: Terraform module path relative to source root
+      default: infra/terraform/gcp/gke
+    - name: action
+      description: "plan | apply | destroy"
+      default: plan
+    - name: backend-bucket
+      default: shopos-tfstate
   workspaces:
     - name: source
-    - name: terraform-cache
-      mountPath: /root/.terraform.d
+    - name: cloud-credentials
+      mountPath: /etc/cloud-creds
   steps:
-    - name: terraform
-      image: hashicorp/terraform:1.9.0
-      env:
-        - name: AWS_ACCESS_KEY_ID
-          valueFrom:
-            secretKeyRef:
-              name: aws-credentials
-              key: access-key-id
-        - name: AWS_SECRET_ACCESS_KEY
-          valueFrom:
-            secretKeyRef:
-              name: aws-credentials
-              key: secret-access-key
-        - name: AWS_DEFAULT_REGION
-          value: us-east-1
+    - name: configure-credentials
+      image: alpine:3.20
       script: |
-        cd /workspace/source/$(params.tf-dir)
-        terraform init -backend-config="bucket=shopos-tfstate" \
-          -backend-config="key=$(params.tf-dir)/terraform.tfstate" \
-          -backend-config="region=$AWS_DEFAULT_REGION"
-        if [ "$(params.action)" = "PLAN" ]; then
-          terraform plan -out=tfplan
-        elif [ "$(params.action)" = "APPLY" ]; then
-          terraform plan -out=tfplan && terraform apply -auto-approve tfplan
-        elif [ "$(params.action)" = "DESTROY" ]; then
-          terraform destroy -auto-approve
-        fi
----
-apiVersion: tekton.dev/v1
-kind: Task
-metadata:
-  name: terraform-gke
-  namespace: tekton-pipelines
-spec:
-  params:
-    - name: action
-      default: PLAN
-    - name: tf-dir
-      default: infra/opentofu/gcp/gke
-  workspaces:
-    - name: source
-  steps:
+        case "$(params.cloud-provider)" in
+          gcp)
+            export GOOGLE_APPLICATION_CREDENTIALS=/etc/cloud-creds/key.json
+            echo "GCP credentials configured"
+            ;;
+          aws)
+            mkdir -p ~/.aws
+            cp /etc/cloud-creds/credentials ~/.aws/credentials
+            echo "AWS credentials configured"
+            ;;
+          azure)
+            echo "Azure credentials will be picked from env"
+            ;;
+        esac
     - name: terraform
-      image: hashicorp/terraform:1.9.0
+      image: hashicorp/terraform:1.9.8
+      workingDir: /workspace/source/$(params.tf-dir)
       env:
-        - name: GOOGLE_CREDENTIALS
-          valueFrom:
-            secretKeyRef:
-              name: gcp-sa-key
-              key: key.json
-      script: |
-        echo "$GOOGLE_CREDENTIALS" > /tmp/gcp-key.json
-        export GOOGLE_APPLICATION_CREDENTIALS=/tmp/gcp-key.json
-        cd /workspace/source/$(params.tf-dir)
-        terraform init \
-          -backend-config="bucket=shopos-tfstate-gcp" \
-          -backend-config="prefix=$(params.tf-dir)"
-        if [ "$(params.action)" = "PLAN" ]; then
-          terraform plan
-        elif [ "$(params.action)" = "APPLY" ]; then
-          terraform apply -auto-approve
-        elif [ "$(params.action)" = "DESTROY" ]; then
-          terraform destroy -auto-approve
-        fi
-        rm -f /tmp/gcp-key.json
----
-apiVersion: tekton.dev/v1
-kind: Task
-metadata:
-  name: terraform-aks
-  namespace: tekton-pipelines
-spec:
-  params:
-    - name: action
-      default: PLAN
-    - name: tf-dir
-      default: infra/opentofu/azure/aks
-  workspaces:
-    - name: source
-  steps:
-    - name: terraform
-      image: hashicorp/terraform:1.9.0
-      env:
+        - name: TF_IN_AUTOMATION
+          value: "true"
+        - name: TF_CLI_ARGS_init
+          value: "-input=false"
+        - name: TF_CLI_ARGS_plan
+          value: "-input=false -out=tfplan"
+        - name: TF_CLI_ARGS_apply
+          value: "-input=false -auto-approve tfplan"
+        - name: GOOGLE_APPLICATION_CREDENTIALS
+          value: /etc/cloud-creds/key.json
+        - name: AWS_SHARED_CREDENTIALS_FILE
+          value: /etc/cloud-creds/aws-credentials
         - name: ARM_CLIENT_ID
           valueFrom:
             secretKeyRef:
               name: azure-credentials
               key: client-id
+              optional: true
         - name: ARM_CLIENT_SECRET
           valueFrom:
             secretKeyRef:
               name: azure-credentials
               key: client-secret
+              optional: true
         - name: ARM_SUBSCRIPTION_ID
           valueFrom:
             secretKeyRef:
               name: azure-credentials
               key: subscription-id
+              optional: true
         - name: ARM_TENANT_ID
           valueFrom:
             secretKeyRef:
               name: azure-credentials
               key: tenant-id
+              optional: true
       script: |
-        cd /workspace/source/$(params.tf-dir)
-        terraform init \
-          -backend-config="resource_group_name=shopos-tfstate-rg" \
-          -backend-config="storage_account_name=shoposterraform" \
-          -backend-config="container_name=tfstate" \
-          -backend-config="key=$(params.tf-dir)/terraform.tfstate"
-        if [ "$(params.action)" = "PLAN" ]; then
+        echo "==> Terraform $(params.action) in $(params.tf-dir)"
+        terraform init -backend-config="bucket=$(params.backend-bucket)" \
+                       -backend-config="prefix=$(params.tf-dir)"
+        if [ "$(params.action)" = "plan" ]; then
           terraform plan
-        elif [ "$(params.action)" = "APPLY" ]; then
-          terraform apply -auto-approve
-        elif [ "$(params.action)" = "DESTROY" ]; then
+        elif [ "$(params.action)" = "apply" ]; then
+          terraform plan -out=tfplan
+          terraform apply -auto-approve tfplan
+          terraform output -json | tee /tmp/tf-outputs.json
+        elif [ "$(params.action)" = "destroy" ]; then
           terraform destroy -auto-approve
         fi
 ---
 apiVersion: tekton.dev/v1
-kind: Pipeline
+kind: Task
 metadata:
-  name: k8s-infra-pipeline
+  name: apply-k8s-base-manifests
   namespace: tekton-pipelines
 spec:
   params:
-    - name: action
-      default: PLAN
-    - name: cloud
-      default: aws
+    - name: manifests-root
+      default: kubernetes
   workspaces:
     - name: source
-    - name: terraform-cache
-  tasks:
-    - name: eks
-      taskRef:
-        name: terraform-eks
-      params:
-        - name: action
-          value: $(params.action)
-      workspaces:
-        - name: source
-          workspace: source
-        - name: terraform-cache
-          workspace: terraform-cache
-      when:
-        - input: $(params.cloud)
-          operator: in
-          values: ["aws", "all"]
-
-    - name: gke
-      taskRef:
-        name: terraform-gke
-      params:
-        - name: action
-          value: $(params.action)
-      workspaces:
-        - name: source
-          workspace: source
-      when:
-        - input: $(params.cloud)
-          operator: in
-          values: ["gcp", "all"]
-
-    - name: aks
-      taskRef:
-        name: terraform-aks
-      params:
-        - name: action
-          value: $(params.action)
-      workspaces:
-        - name: source
-          workspace: source
-      when:
-        - input: $(params.cloud)
-          operator: in
-          values: ["azure", "all"]
+    - name: kubeconfig
+      mountPath: /root/.kube
+  steps:
+    - name: apply-namespaces
+      image: bitnami/kubectl:1.31.0
+      script: |
+        kubectl apply -f /workspace/source/$(params.manifests-root)/namespaces/ --server-side
+        echo "Namespaces applied"
+    - name: apply-rbac
+      image: bitnami/kubectl:1.31.0
+      script: |
+        kubectl apply -f /workspace/source/$(params.manifests-root)/rbac/ --server-side
+        echo "RBAC applied"
+    - name: apply-network-policies
+      image: bitnami/kubectl:1.31.0
+      script: |
+        kubectl apply -f /workspace/source/$(params.manifests-root)/network-policies/ --server-side
+        echo "Network policies applied"
+    - name: apply-resource-quotas
+      image: bitnami/kubectl:1.31.0
+      script: |
+        kubectl apply -f /workspace/source/$(params.manifests-root)/resource-quotas/ --server-side
+        echo "Resource quotas applied"
+    - name: apply-pdbs
+      image: bitnami/kubectl:1.31.0
+      script: |
+        kubectl apply -f /workspace/source/$(params.manifests-root)/pod-disruption-budgets/ --server-side
+        echo "PodDisruptionBudgets applied"
 ---
 apiVersion: tekton.dev/v1
-kind: PipelineRun
+kind: Pipeline
 metadata:
-  name: k8s-infra-pipeline-run
+  name: shopos-k8s-infra-pipeline
   namespace: tekton-pipelines
-  annotations:
-    description: "Example PipelineRun — update params before running"
 spec:
-  pipelineRef:
-    name: k8s-infra-pipeline
+  description: |
+    In-cluster IaC pipeline. Provisions cloud infrastructure via Terraform
+    (hashicorp/terraform image), then applies all K8s base manifests.
   params:
+    - name: cloud-provider
+      default: gcp
+    - name: tf-dir
+      default: infra/terraform/gcp/gke
     - name: action
-      value: PLAN
-    - name: cloud
-      value: aws
+      default: plan
+    - name: repo-url
+      default: https://github.com/shopos/shopos.git
+    - name: repo-revision
+      default: main
   workspaces:
     - name: source
-      volumeClaimTemplate:
-        spec:
-          accessModes: [ReadWriteOnce]
-          resources:
-            requests:
-              storage: 1Gi
-    - name: terraform-cache
-      emptyDir: {}
+    - name: cloud-credentials
+    - name: kubeconfig
+  tasks:
+    - name: clone
+      taskRef:
+        name: git-clone-shopos
+      params:
+        - name: url
+          value: $(params.repo-url)
+        - name: revision
+          value: $(params.repo-revision)
+      workspaces:
+        - name: source
+          workspace: source
+
+    - name: provision-infra
+      taskRef:
+        name: terraform-provision
+      params:
+        - name: cloud-provider
+          value: $(params.cloud-provider)
+        - name: tf-dir
+          value: $(params.tf-dir)
+        - name: action
+          value: $(params.action)
+      workspaces:
+        - name: source
+          workspace: source
+        - name: cloud-credentials
+          workspace: cloud-credentials
+      runAfter: [clone]
+
+    - name: apply-manifests
+      taskRef:
+        name: apply-k8s-base-manifests
+      workspaces:
+        - name: source
+          workspace: source
+        - name: kubeconfig
+          workspace: kubeconfig
+      runAfter: [provision-infra]
+      when:
+        - input: $(params.action)
+          operator: in
+          values: ["apply"]

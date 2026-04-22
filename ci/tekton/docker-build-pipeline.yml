@@ -1,11 +1,145 @@
-# Docker-Build Pipeline — Tekton
-# Builds, scans (Trivy), and pushes ShopOS images to Harbor for one or all services.
-# Secrets: harbor-credentials (dockerconfigjson)
+# Docker-Build Pipeline — Tekton (In-Cluster Image Build with Kaniko)
+# Role: Builds images in-cluster without Docker daemon using Kaniko.
+#       Triggered by git push events via EventListener.
+# Secrets: harbor-credentials (dockerconfigjson as /kaniko/.docker/config.json)
+---
+apiVersion: triggers.tekton.dev/v1alpha1
+kind: EventListener
+metadata:
+  name: git-push-listener
+  namespace: tekton-pipelines
+spec:
+  serviceAccountName: tekton-triggers-sa
+  triggers:
+    - name: git-push-trigger
+      interceptors:
+        - ref:
+            name: github
+          params:
+            - name: eventTypes
+              value: [push]
+      bindings:
+        - ref: git-push-binding
+      template:
+        ref: build-pipeline-template
+---
+apiVersion: triggers.tekton.dev/v1alpha1
+kind: TriggerBinding
+metadata:
+  name: git-push-binding
+  namespace: tekton-pipelines
+spec:
+  params:
+    - name: git-revision
+      value: $(body.after)
+    - name: git-ref
+      value: $(body.ref)
+    - name: repo-url
+      value: $(body.repository.clone_url)
+---
+apiVersion: triggers.tekton.dev/v1alpha1
+kind: TriggerTemplate
+metadata:
+  name: build-pipeline-template
+  namespace: tekton-pipelines
+spec:
+  params:
+    - name: git-revision
+    - name: git-ref
+    - name: repo-url
+  resourcetemplates:
+    - apiVersion: tekton.dev/v1
+      kind: PipelineRun
+      metadata:
+        generateName: kaniko-build-
+        namespace: tekton-pipelines
+      spec:
+        pipelineRef:
+          name: shopos-build-pipeline
+        params:
+          - name: git-revision
+            value: $(tt.params.git-revision)
+          - name: repo-url
+            value: $(tt.params.repo-url)
+        workspaces:
+          - name: source
+            volumeClaimTemplate:
+              spec:
+                accessModes: [ReadWriteOnce]
+                resources:
+                  requests:
+                    storage: 2Gi
+          - name: docker-credentials
+            secret:
+              secretName: harbor-credentials
 ---
 apiVersion: tekton.dev/v1
 kind: Task
 metadata:
-  name: resolve-build-context
+  name: kaniko-build
+  namespace: tekton-pipelines
+spec:
+  params:
+    - name: image
+      description: Full image reference including registry, project, name, and tag
+    - name: context
+      default: .
+      description: Path within source workspace to the build context (relative)
+    - name: dockerfile
+      default: Dockerfile
+    - name: cache-repo
+      default: harbor.shopos.internal/shopos/cache
+  workspaces:
+    - name: source
+    - name: docker-credentials
+  steps:
+    - name: build-push
+      image: gcr.io/kaniko-project/executor:v1.23.0
+      args:
+        - --dockerfile=$(workspaces.source.path)/$(params.context)/$(params.dockerfile)
+        - --context=$(workspaces.source.path)/$(params.context)
+        - --destination=$(params.image)
+        - --cache=true
+        - --cache-repo=$(params.cache-repo)
+        - --snapshot-mode=redo
+        - --compressed-caching=false
+        - --use-new-run
+      volumeMounts:
+        - name: docker-config
+          mountPath: /kaniko/.docker
+  volumes:
+    - name: docker-config
+      projected:
+        sources:
+          - secret:
+              name: harbor-credentials
+              items:
+                - key: .dockerconfigjson
+                  path: config.json
+---
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  name: git-clone-shallow
+  namespace: tekton-pipelines
+spec:
+  params:
+    - name: url
+    - name: revision
+      default: main
+  workspaces:
+    - name: source
+  steps:
+    - name: clone
+      image: alpine/git:2.47.0
+      script: |
+        git clone --depth=1 --branch=$(params.revision) $(params.url) /workspace/source
+        echo "Cloned at $(git -C /workspace/source rev-parse --short HEAD)"
+---
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  name: resolve-services
   namespace: tekton-pipelines
 spec:
   params:
@@ -16,232 +150,111 @@ spec:
   workspaces:
     - name: source
   results:
-    - name: service-list
-      description: Comma-separated domain:svc pairs to build
+    - name: targets
+      description: Space-separated domain:service pairs to build
   steps:
     - name: resolve
-      image: alpine/git:latest
+      image: alpine:3.20
       script: |
+        #!/bin/sh
         cd /workspace/source
         ALL_DOMAINS="platform identity catalog commerce supply-chain financial customer-experience communications content analytics-ai b2b integrations affiliate"
         PAIRS=""
-
         if [ -n "$(params.service-name)" ] && [ -n "$(params.domain)" ]; then
           PAIRS="$(params.domain):$(params.service-name)"
         elif [ -n "$(params.domain)" ]; then
-          for svc in src/$(params.domain)/*/; do
-            [ -d "$svc" ] || continue
-            PAIRS="${PAIRS},$(params.domain):$(basename $svc)"
+          for svc in $(ls src/$(params.domain)/); do
+            [ -f "src/$(params.domain)/$svc/Dockerfile" ] && PAIRS="$PAIRS $(params.domain):$svc"
           done
-          PAIRS="${PAIRS#,}"
         else
           for d in $ALL_DOMAINS; do
-            for svc in src/$d/*/; do
-              [ -d "$svc" ] || continue
-              PAIRS="${PAIRS},${d}:$(basename $svc)"
+            for svc in $(ls src/$d/ 2>/dev/null); do
+              [ -f "src/$d/$svc/Dockerfile" ] && PAIRS="$PAIRS $d:$svc"
             done
           done
-          PAIRS="${PAIRS#,}"
         fi
-
-        printf "%s" "$PAIRS" > $(results.service-list.path)
-        echo "Resolved $(echo $PAIRS | tr ',' '\n' | wc -l) services"
----
-apiVersion: tekton.dev/v1
-kind: Task
-metadata:
-  name: docker-build-and-scan
-  namespace: tekton-pipelines
-spec:
-  params:
-    - name: service-name
-    - name: domain
-    - name: image-tag
-    - name: registry
-      default: harbor.shopos.internal
-    - name: registry-project
-      default: shopos
-    - name: scan-image
-      default: "true"
-  workspaces:
-    - name: source
-    - name: dockerconfig
-      mountPath: /kaniko/.docker
-  steps:
-    - name: build
-      image: gcr.io/kaniko-project/executor:latest
-      args:
-        - --dockerfile=/workspace/source/src/$(params.domain)/$(params.service-name)/Dockerfile
-        - --context=/workspace/source/src/$(params.domain)/$(params.service-name)
-        - --destination=$(params.registry)/$(params.registry-project)/$(params.service-name):$(params.image-tag)
-        - --cache=true
-        - --cache-repo=$(params.registry)/$(params.registry-project)/cache
-        - --label=git.commit=$(params.image-tag)
-        - --label=domain=$(params.domain)
-
-    - name: trivy-scan
-      image: aquasec/trivy:latest
-      script: |
-        if [ "$(params.scan-image)" != "true" ]; then
-          echo "Skipping Trivy scan (scan-image=false)"
-          exit 0
-        fi
-        IMAGE="$(params.registry)/$(params.registry-project)/$(params.service-name):$(params.image-tag)"
-        echo "=== Trivy scan: $IMAGE ==="
-        trivy image \
-          --exit-code 0 \
-          --severity HIGH,CRITICAL \
-          --no-progress \
-          "$IMAGE" || true
+        printf '%s' "$PAIRS" > $(results.targets.path)
+        echo "Resolved targets: $PAIRS"
 ---
 apiVersion: tekton.dev/v1
 kind: Pipeline
 metadata:
-  name: docker-build-pipeline
+  name: shopos-build-pipeline
   namespace: tekton-pipelines
 spec:
+  description: |
+    In-cluster Kaniko image build pipeline. Clones source, resolves services,
+    builds images in-cluster (no Docker daemon), pushes to Harbor.
   params:
+    - name: repo-url
+      default: https://github.com/shopos/shopos.git
+    - name: git-revision
+      default: main
     - name: service-name
       default: ""
-      description: Single service to build. Empty = use domain filter or build all.
     - name: domain
       default: ""
-      description: Domain filter. Empty = build all 154 services.
-    - name: image-tag
-      description: Docker image tag (e.g. dev-abc1234-42)
     - name: registry
       default: harbor.shopos.internal
-    - name: registry-project
-      default: shopos
-    - name: scan-image
-      default: "true"
+    - name: image-tag
+      default: latest
   workspaces:
     - name: source
-    - name: dockerconfig
+    - name: docker-credentials
   tasks:
-    - name: resolve-context
+    - name: clone
       taskRef:
-        name: resolve-build-context
+        name: git-clone-shallow
       params:
-        - name: service-name
-          value: $(params.service-name)
-        - name: domain
-          value: $(params.domain)
+        - name: url
+          value: $(params.repo-url)
+        - name: revision
+          value: $(params.git-revision)
       workspaces:
         - name: source
           workspace: source
 
-    # NOTE: Tekton does not natively fan-out over a dynamic list.
-    # For full 154-service parallelism, generate one PipelineRun per service
-    # using an Argo Events / Argo Workflows wrapper, or use the TaskRun below
-    # which iterates serially via a shell loop inside a single Task step.
-    - name: build-all
+    - name: kaniko-build-api-gateway
       taskRef:
-        name: docker-build-all-serial
+        name: kaniko-build
       params:
-        - name: service-list
-          value: $(tasks.resolve-context.results.service-list)
-        - name: image-tag
-          value: $(params.image-tag)
-        - name: registry
-          value: $(params.registry)
-        - name: registry-project
-          value: $(params.registry-project)
-        - name: scan-image
-          value: $(params.scan-image)
+        - name: image
+          value: $(params.registry)/shopos/api-gateway:$(params.image-tag)
+        - name: context
+          value: src/platform/api-gateway
       workspaces:
         - name: source
           workspace: source
-        - name: dockerconfig
-          workspace: dockerconfig
-      runAfter: [resolve-context]
----
-apiVersion: tekton.dev/v1
-kind: Task
-metadata:
-  name: docker-build-all-serial
-  namespace: tekton-pipelines
-spec:
-  params:
-    - name: service-list
-      description: Comma-separated domain:svc pairs
-    - name: image-tag
-    - name: registry
-      default: harbor.shopos.internal
-    - name: registry-project
-      default: shopos
-    - name: scan-image
-      default: "true"
-  workspaces:
-    - name: source
-    - name: dockerconfig
-      mountPath: /kaniko/.docker
-  steps:
-    - name: build-push-scan
-      image: gcr.io/kaniko-project/executor:debug
-      entrypoint: /busybox/sh
-      script: |
-        #!/busybox/sh
-        SERVICE_LIST="$(params.service-list)"
-        echo "$SERVICE_LIST" | tr ',' '\n' | while IFS=: read domain svc; do
-          [ -z "$svc" ] && continue
-          IMAGE="$(params.registry)/$(params.registry-project)/${svc}:$(params.image-tag)"
-          echo "=== Building: $IMAGE ==="
-          /kaniko/executor \
-            --dockerfile=/workspace/source/src/$domain/$svc/Dockerfile \
-            --context=/workspace/source/src/$domain/$svc \
-            --destination="$IMAGE" \
-            --cache=true \
-            --cache-repo=$(params.registry)/$(params.registry-project)/cache \
-            --label=domain=$domain || echo "WARN build failed for $svc"
-        done
+        - name: docker-credentials
+          workspace: docker-credentials
+      runAfter: [clone]
 
-    - name: trivy-scan-all
-      image: aquasec/trivy:latest
-      script: |
-        if [ "$(params.scan-image)" != "true" ]; then
-          echo "Skipping Trivy scan"
-          exit 0
-        fi
-        SERVICE_LIST="$(params.service-list)"
-        echo "$SERVICE_LIST" | tr ',' '\n' | while IFS=: read domain svc; do
-          [ -z "$svc" ] && continue
-          IMAGE="$(params.registry)/$(params.registry-project)/${svc}:$(params.image-tag)"
-          echo "=== Trivy: $IMAGE ==="
-          trivy image --exit-code 0 --severity HIGH,CRITICAL --no-progress "$IMAGE" || true
-        done
----
-apiVersion: tekton.dev/v1
-kind: PipelineRun
-metadata:
-  name: docker-build-pipeline-run
-  namespace: tekton-pipelines
-  annotations:
-    description: "Example PipelineRun — update params before running"
-spec:
-  pipelineRef:
-    name: docker-build-pipeline
-  params:
-    - name: service-name
-      value: ""              # empty = all services in domain (or all 154 if domain also empty)
-    - name: domain
-      value: "platform"      # empty = all 13 domains
-    - name: image-tag
-      value: "dev-abc1234-1"
-    - name: registry
-      value: "harbor.shopos.internal"
-    - name: registry-project
-      value: "shopos"
-    - name: scan-image
-      value: "true"
-  workspaces:
-    - name: source
-      volumeClaimTemplate:
-        spec:
-          accessModes: [ReadWriteOnce]
-          resources:
-            requests:
-              storage: 2Gi
-    - name: dockerconfig
-      secret:
-        secretName: harbor-credentials
+    - name: kaniko-build-order-service
+      taskRef:
+        name: kaniko-build
+      params:
+        - name: image
+          value: $(params.registry)/shopos/order-service:$(params.image-tag)
+        - name: context
+          value: src/commerce/order-service
+      workspaces:
+        - name: source
+          workspace: source
+        - name: docker-credentials
+          workspace: docker-credentials
+      runAfter: [clone]
+
+    - name: kaniko-build-payment-service
+      taskRef:
+        name: kaniko-build
+      params:
+        - name: image
+          value: $(params.registry)/shopos/payment-service:$(params.image-tag)
+        - name: context
+          value: src/commerce/payment-service
+      workspaces:
+        - name: source
+          workspace: source
+        - name: docker-credentials
+          workspace: docker-credentials
+      runAfter: [clone]

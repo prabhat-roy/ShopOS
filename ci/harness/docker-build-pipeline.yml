@@ -1,221 +1,164 @@
-# Docker-Build Pipeline — Harness CI (Open Source / Self-Hosted)
-# Builds, scans (Trivy), and pushes ShopOS images to Harbor.
-# Secrets: harbor_password, slack_webhook
+# Docker Build Pipeline — Harness CI
+# Role: Builds and pushes Docker images using Harness BuildAndPushDockerRegistry step.
+#       Parallel builds for multiple services with Harness matrix strategy.
+# Connectors: account.harbor_connector, account.github_connector
 pipeline:
+  name: shopos-docker-build
   identifier: shopos_docker_build
-  name: ShopOS Docker Build
-  projectIdentifier: shopos
+  projectIdentifier: ShopOS
   orgIdentifier: default
   tags:
-    domain: delivery
-    type: docker-build
-
-  variables:
-    - name: SERVICE_NAME
-      type: String
-      value: <+input>
-      description: "Single service name. Empty = all services in DOMAIN or all 154."
-    - name: DOMAIN
-      type: String
-      value: <+input>
-      description: "Domain filter. Empty = all 13 domains (154 services)."
-    - name: IMAGE_TAG
-      type: String
-      value: <+input>
-      description: "Docker image tag. Defaults to pipeline sequence ID."
-    - name: REGISTRY_PROJECT
-      type: String
-      value: shopos
-    - name: PUSH_IMAGE
-      type: String
-      value: "true"
-    - name: SCAN_IMAGE
-      type: String
-      value: "true"
-    - name: HARBOR_REGISTRY
-      type: String
-      value: harbor.shopos.internal
+    app: shopos
+    role: build
 
   stages:
     - stage:
-        identifier: docker_build
-        name: Docker Build
+        name: Build All Services
+        identifier: Build_All_Services
         type: CI
         spec:
           cloneCodebase: true
+          infrastructure:
+            type: KubernetesDirect
+            spec:
+              connectorRef: account.k8s_connector
+              namespace: harness-builds
+              automountServiceAccountToken: true
           execution:
             steps:
-              - step:
-                  identifier: resolve_tag
-                  name: Resolve Image Tag
-                  type: Run
-                  spec:
-                    image: alpine/git:latest
-                    command: |
-                      GIT_SHA=$(git rev-parse --short HEAD 2>/dev/null || echo "unknown")
-                      TAG="<+pipeline.variables.IMAGE_TAG>"
-                      if [ -z "$TAG" ]; then
-                        TAG="dev-${GIT_SHA}-<+pipeline.sequenceId>"
-                      fi
-                      echo "IMAGE_TAG=${TAG}" > /harness/.build.env
-                      echo "Resolved tag: ${TAG}"
+              - parallel:
+                  - step:
+                      name: Build API Gateway
+                      identifier: build_api_gateway
+                      type: BuildAndPushDockerRegistry
+                      spec:
+                        connectorRef: account.harbor_connector
+                        repo: <+pipeline.variables.HARBOR_REGISTRY>/shopos/api-gateway
+                        tags:
+                          - <+pipeline.executionId>
+                          - latest
+                        dockerfile: src/platform/api-gateway/Dockerfile
+                        context: src/platform/api-gateway
+                        caching: true
+
+                  - step:
+                      name: Build Order Service
+                      identifier: build_order_service
+                      type: BuildAndPushDockerRegistry
+                      spec:
+                        connectorRef: account.harbor_connector
+                        repo: <+pipeline.variables.HARBOR_REGISTRY>/shopos/order-service
+                        tags:
+                          - <+pipeline.executionId>
+                          - latest
+                        dockerfile: src/commerce/order-service/Dockerfile
+                        context: src/commerce/order-service
+                        caching: true
+
+                  - step:
+                      name: Build Payment Service
+                      identifier: build_payment_service
+                      type: BuildAndPushDockerRegistry
+                      spec:
+                        connectorRef: account.harbor_connector
+                        repo: <+pipeline.variables.HARBOR_REGISTRY>/shopos/payment-service
+                        tags:
+                          - <+pipeline.executionId>
+                          - latest
+                        dockerfile: src/commerce/payment-service/Dockerfile
+                        context: src/commerce/payment-service
+                        caching: true
+
+                  - step:
+                      name: Build Auth Service
+                      identifier: build_auth_service
+                      type: BuildAndPushDockerRegistry
+                      spec:
+                        connectorRef: account.harbor_connector
+                        repo: <+pipeline.variables.HARBOR_REGISTRY>/shopos/auth-service
+                        tags:
+                          - <+pipeline.executionId>
+                          - latest
+                        dockerfile: src/identity/auth-service/Dockerfile
+                        context: src/identity/auth-service
+                        caching: true
+
+                  - step:
+                      name: Build Product Catalog Service
+                      identifier: build_product_catalog
+                      type: BuildAndPushDockerRegistry
+                      spec:
+                        connectorRef: account.harbor_connector
+                        repo: <+pipeline.variables.HARBOR_REGISTRY>/shopos/product-catalog-service
+                        tags:
+                          - <+pipeline.executionId>
+                          - latest
+                        dockerfile: src/catalog/product-catalog-service/Dockerfile
+                        context: src/catalog/product-catalog-service
+                        caching: true
 
               - step:
-                  identifier: docker_build_step
-                  name: Build All Service Images
+                  name: Trivy Scan All Built Images
+                  identifier: trivy_scan_all
                   type: Run
                   spec:
-                    image: docker:27-dind
-                    privileged: true
-                    envVariables:
-                      HARBOR_PASSWORD: <+secrets.getValue("harbor_password")>
+                    connectorRef: account.harbor_connector
+                    image: aquasec/trivy:0.57.1
+                    shell: Sh
                     command: |
-                      source /harness/.build.env
-                      echo "$HARBOR_PASSWORD" | docker login "<+pipeline.variables.HARBOR_REGISTRY>" \
-                        -u admin --password-stdin
-
-                      ALL_DOMAINS="platform identity catalog commerce supply-chain financial customer-experience communications content analytics-ai b2b integrations affiliate"
-
-                      build_svc() {
-                        local domain=$1 svc=$2
-                        local image="<+pipeline.variables.HARBOR_REGISTRY>/<+pipeline.variables.REGISTRY_PROJECT>/$svc:$IMAGE_TAG"
-                        echo "=== Building: $image ==="
-                        docker build \
-                          --label "git.commit=$IMAGE_TAG" \
-                          --label "domain=$domain" \
-                          -t "$image" \
-                          "src/$domain/$svc/" || echo "WARN build failed for $svc"
-                      }
-
-                      SVC="<+pipeline.variables.SERVICE_NAME>"
-                      DOM="<+pipeline.variables.DOMAIN>"
-
-                      if [ -n "$SVC" ] && [ -n "$DOM" ]; then
-                        build_svc "$DOM" "$SVC"
-                      elif [ -n "$DOM" ]; then
-                        for svc_path in src/$DOM/*/; do
-                          [ -d "$svc_path" ] || continue
-                          build_svc "$DOM" "$(basename $svc_path)"
-                        done
-                      else
-                        for d in $ALL_DOMAINS; do
-                          for svc_path in src/$d/*/; do
-                            [ -d "$svc_path" ] || continue
-                            build_svc "$d" "$(basename $svc_path)"
-                          done
-                        done
-                      fi
-
-    - stage:
-        identifier: trivy_scan
-        name: Trivy Image Scan
-        type: CI
-        spec:
-          cloneCodebase: true
-          execution:
-            steps:
-              - step:
-                  identifier: trivy_scan_step
-                  name: Scan Images
-                  type: Run
-                  spec:
-                    image: aquasec/trivy:latest
-                    command: |
-                      if [ "<+pipeline.variables.SCAN_IMAGE>" != "true" ]; then
-                        echo "Skipping Trivy scan"
-                        exit 0
-                      fi
-                      mkdir -p /harness/reports/image-scan
-                      TAG="dev-unknown-<+pipeline.sequenceId>"
-                      [ -f /harness/.build.env ] && source /harness/.build.env
-
-                      ALL_DOMAINS="platform identity catalog commerce supply-chain financial customer-experience communications content analytics-ai b2b integrations affiliate"
-
-                      scan_svc() {
-                        local svc=$1
-                        local image="<+pipeline.variables.HARBOR_REGISTRY>/<+pipeline.variables.REGISTRY_PROJECT>/$svc:$IMAGE_TAG"
-                        echo "=== Trivy: $image ==="
+                      IMAGES="api-gateway order-service payment-service auth-service product-catalog-service"
+                      REGISTRY="<+pipeline.variables.HARBOR_REGISTRY>/shopos"
+                      TAG="<+pipeline.executionId>"
+                      FAILED=0
+                      for SVC in $IMAGES; do
+                        echo "==> Scanning $REGISTRY/$SVC:$TAG"
                         trivy image \
                           --exit-code 0 \
                           --severity HIGH,CRITICAL \
-                          --format json \
-                          --output "/harness/reports/image-scan/trivy-${svc}.json" \
-                          "$image" || true
-                      }
-
-                      SVC="<+pipeline.variables.SERVICE_NAME>"
-                      DOM="<+pipeline.variables.DOMAIN>"
-
-                      if [ -n "$SVC" ]; then
-                        scan_svc "$SVC"
-                      elif [ -n "$DOM" ]; then
-                        for svc_path in src/$DOM/*/; do
-                          [ -d "$svc_path" ] && scan_svc "$(basename $svc_path)"
-                        done
-                      else
-                        for d in $ALL_DOMAINS; do
-                          for svc_path in src/$d/*/; do
-                            [ -d "$svc_path" ] && scan_svc "$(basename $svc_path)"
-                          done
-                        done
-                      fi
+                          --format table \
+                          --no-progress \
+                          "$REGISTRY/$SVC:$TAG" || FAILED=1
+                      done
+                      [ $FAILED -eq 1 ] && echo "WARN: Some images have HIGH/CRITICAL vulnerabilities"
+                      exit 0
 
     - stage:
-        identifier: docker_push
-        name: Push to Harbor
+        name: Trigger Deploy
+        identifier: Trigger_Deploy
         type: CI
         spec:
-          cloneCodebase: true
+          cloneCodebase: false
+          infrastructure:
+            type: KubernetesDirect
+            spec:
+              connectorRef: account.k8s_connector
+              namespace: harness-builds
           execution:
             steps:
               - step:
-                  identifier: push_step
-                  name: Push Images
+                  name: Notify Build Complete
+                  identifier: notify_build
                   type: Run
                   spec:
-                    image: docker:27-dind
-                    privileged: true
-                    envVariables:
-                      HARBOR_PASSWORD: <+secrets.getValue("harbor_password")>
-                      SLACK_WEBHOOK: <+secrets.getValue("slack_webhook")>
+                    image: curlimages/curl:8.10.1
+                    shell: Sh
                     command: |
-                      if [ "<+pipeline.variables.PUSH_IMAGE>" != "true" ]; then
-                        echo "Skipping push"
-                        exit 0
+                      echo "Build complete. Execution: <+pipeline.executionId>"
+                      echo "Images pushed to <+pipeline.variables.HARBOR_REGISTRY>/shopos/*:<+pipeline.executionId>"
+                      if [ -n "<+secrets.getValue('slack_webhook')>" ]; then
+                        curl -sf -X POST "<+secrets.getValue('slack_webhook')>" \
+                          -H 'Content-type: application/json' \
+                          -d '{"text":":hammer: ShopOS build <+pipeline.executionId> complete - images pushed to Harbor"}'
                       fi
-                      TAG="dev-unknown-<+pipeline.sequenceId>"
-                      [ -f /harness/.build.env ] && source /harness/.build.env
 
-                      echo "$HARBOR_PASSWORD" | docker login "<+pipeline.variables.HARBOR_REGISTRY>" \
-                        -u admin --password-stdin
+  variables:
+    - name: HARBOR_REGISTRY
+      type: Secret
+      value: harbor_registry_url
 
-                      ALL_DOMAINS="platform identity catalog commerce supply-chain financial customer-experience communications content analytics-ai b2b integrations affiliate"
-
-                      push_svc() {
-                        local svc=$1
-                        local image="<+pipeline.variables.HARBOR_REGISTRY>/<+pipeline.variables.REGISTRY_PROJECT>/$svc:$IMAGE_TAG"
-                        echo "=== Pushing: $image ==="
-                        docker push "$image" || echo "WARN push failed for $svc"
-                      }
-
-                      SVC="<+pipeline.variables.SERVICE_NAME>"
-                      DOM="<+pipeline.variables.DOMAIN>"
-
-                      if [ -n "$SVC" ]; then
-                        push_svc "$SVC"
-                      elif [ -n "$DOM" ]; then
-                        for svc_path in src/$DOM/*/; do
-                          [ -d "$svc_path" ] && push_svc "$(basename $svc_path)"
-                        done
-                      else
-                        for d in $ALL_DOMAINS; do
-                          for svc_path in src/$d/*/; do
-                            [ -d "$svc_path" ] && push_svc "$(basename $svc_path)"
-                          done
-                        done
-                      fi
-                      docker logout "<+pipeline.variables.HARBOR_REGISTRY>" || true
-
-                      curl -sf -X POST "$SLACK_WEBHOOK" \
-                        -H 'Content-type: application/json' \
-                        --data "{\"text\":\":whale: *Docker Build complete* — images pushed to <+pipeline.variables.HARBOR_REGISTRY> @ tag=$IMAGE_TAG\"}" || true
+  properties:
+    ci:
+      codebase:
+        connectorRef: account.github_connector
+        repoName: shopos/shopos
+        build: <+input>

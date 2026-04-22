@@ -1,217 +1,150 @@
-# Docker-Build Pipeline — CircleCI
-# Builds, scans (Trivy), and pushes ShopOS Docker images to Harbor.
-# Context: shopos-harbor
-# Env vars: HARBOR_REGISTRY, HARBOR_USERNAME, HARBOR_PASSWORD,
-#            SERVICE_NAME, DOMAIN, IMAGE_TAG, REGISTRY_PROJECT, PUSH_IMAGE, SCAN_IMAGE
+# Docker Build Pipeline — CircleCI
+# Role: Builds and pushes Docker images using the circleci/docker orb.
+#       Runs Trivy scan after build, stores results as artifacts.
+# Context: shopos-harbor (HARBOR_REGISTRY, HARBOR_USERNAME, HARBOR_PASSWORD)
 version: 2.1
 
+orbs:
+  docker: circleci/docker@2.6
+
 executors:
-  docker-executor:
+  build-executor:
     docker:
-      - image: docker:27-dind
+      - image: cimg/base:current
     resource_class: large
-  trivy-executor:
-    docker:
-      - image: aquasec/trivy:latest
-    resource_class: medium
 
 jobs:
-  resolve-build-context:
-    docker:
-      - image: alpine/git:latest
+  build-and-push:
+    executor: build-executor
+    parameters:
+      service:
+        type: string
+        default: api-gateway
+      domain:
+        type: string
+        default: platform
     steps:
       - checkout
-      - run:
-          name: Resolve image tag and service list
-          command: |
-            GIT_SHA=$(git rev-parse --short HEAD)
-            TAG="${IMAGE_TAG:-dev-${GIT_SHA}-${CIRCLE_BUILD_NUM}}"
-            echo "export IMAGE_TAG=${TAG}" >> .build.env
-            echo "export REGISTRY_PROJECT=${REGISTRY_PROJECT:-shopos}" >> .build.env
-            echo "Resolved tag: ${TAG}"
-            cat .build.env
-      - persist_to_workspace:
-          root: .
-          paths: [.build.env]
-
-  docker-build:
-    executor: docker-executor
-    steps:
-      - checkout
-      - attach_workspace:
-          at: .
       - setup_remote_docker:
+          version: docker24
+          docker_layer_caching: true
+      - docker/check:
+          registry: ${HARBOR_REGISTRY:-harbor.shopos.internal}
+          docker-username: HARBOR_USERNAME
+          docker-password: HARBOR_PASSWORD
+      - docker/build:
+          image: ${HARBOR_REGISTRY:-harbor.shopos.internal}/shopos/<< parameters.service >>
+          tag: ${CIRCLE_SHA1:0:8}-${CIRCLE_BUILD_NUM},latest
+          path: src/<< parameters.domain >>/<< parameters.service >>
+          dockerfile: src/<< parameters.domain >>/<< parameters.service >>/Dockerfile
+          extra_build_args: "--label git-commit=${CIRCLE_SHA1} --label build-date=$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+      - run:
+          name: Trivy scan built image
+          command: |
+            docker run --rm \
+              -v /var/run/docker.sock:/var/run/docker.sock \
+              aquasec/trivy:0.57.1 image \
+              --exit-code 0 \
+              --severity HIGH,CRITICAL \
+              --format table \
+              --no-progress \
+              "${HARBOR_REGISTRY:-harbor.shopos.internal}/shopos/<< parameters.service >>:${CIRCLE_SHA1:0:8}-${CIRCLE_BUILD_NUM}" \
+              2>&1 | tee /tmp/trivy-<< parameters.service >>.txt
+      - store_artifacts:
+          path: /tmp/trivy-<< parameters.service >>.txt
+          destination: trivy-<< parameters.service >>
+      - docker/push:
+          image: ${HARBOR_REGISTRY:-harbor.shopos.internal}/shopos/<< parameters.service >>
+          tag: ${CIRCLE_SHA1:0:8}-${CIRCLE_BUILD_NUM}
+
+  build-matrix:
+    executor: build-executor
+    steps:
+      - checkout
+      - setup_remote_docker:
+          version: docker24
           docker_layer_caching: true
       - run:
           name: Login to Harbor
           command: |
-            source .build.env
-            echo "$HARBOR_PASSWORD" | docker login "$HARBOR_REGISTRY" -u "$HARBOR_USERNAME" --password-stdin
+            echo "$HARBOR_PASSWORD" | docker login "$HARBOR_REGISTRY" \
+              -u "$HARBOR_USERNAME" --password-stdin
       - run:
-          name: Build Docker images
+          name: Build all services (parallel within job)
           command: |
-            source .build.env
+            TAG="${CIRCLE_SHA1:0:8}-${CIRCLE_BUILD_NUM}"
+            REGISTRY="${HARBOR_REGISTRY:-harbor.shopos.internal}"
+
             ALL_DOMAINS="platform identity catalog commerce supply-chain financial customer-experience communications content analytics-ai b2b integrations affiliate"
 
-            build_svc() {
+            build_push() {
               local domain=$1 svc=$2
-              local image="$HARBOR_REGISTRY/$REGISTRY_PROJECT/$svc:$IMAGE_TAG"
-              echo "=== Building: $image ==="
+              local image="$REGISTRY/shopos/$svc:$TAG"
+              echo "==> Building $image"
               docker build \
-                --label "git.commit=$IMAGE_TAG" \
-                --label "build.number=$CIRCLE_BUILD_NUM" \
-                --label "domain=$domain" \
                 -t "$image" \
-                "src/$domain/$svc/" || echo "WARN build failed for $svc"
+                "src/$domain/$svc/" 2>&1 | tail -5
+              if [ $? -eq 0 ]; then
+                docker push "$image"
+                echo "PUSHED: $image"
+              else
+                echo "FAILED: $image"
+              fi
             }
 
-            if [ -n "$SERVICE_NAME" ] && [ -n "$DOMAIN" ]; then
-              build_svc "$DOMAIN" "$SERVICE_NAME"
-            elif [ -n "$DOMAIN" ]; then
-              for svc_path in src/$DOMAIN/*/; do
-                [ -d "$svc_path" ] || continue
-                build_svc "$DOMAIN" "$(basename $svc_path)"
+            PIDS=()
+            for domain in $ALL_DOMAINS; do
+              for svc in $(ls "src/$domain/" 2>/dev/null); do
+                [ -f "src/$domain/$svc/Dockerfile" ] && build_push "$domain" "$svc" &
+                PIDS+=($!)
+                # Limit parallelism to 8
+                [ ${#PIDS[@]} -ge 8 ] && { wait "${PIDS[0]}"; PIDS=("${PIDS[@]:1}"); }
               done
-            else
-              for d in $ALL_DOMAINS; do
-                for svc_path in src/$d/*/; do
-                  [ -d "$svc_path" ] || continue
-                  build_svc "$d" "$(basename $svc_path)"
-                done
-              done
-            fi
-      - run:
-          name: Save image list for downstream jobs
-          command: |
-            source .build.env
-            ALL_DOMAINS="platform identity catalog commerce supply-chain financial customer-experience communications content analytics-ai b2b integrations affiliate"
-            LIST=""
-            if [ -n "$SERVICE_NAME" ]; then
-              LIST="$SERVICE_NAME"
-            elif [ -n "$DOMAIN" ]; then
-              for svc_path in src/$DOMAIN/*/; do
-                [ -d "$svc_path" ] && LIST="${LIST} $(basename $svc_path)"
-              done
-            else
-              for d in $ALL_DOMAINS; do
-                for svc_path in src/$d/*/; do
-                  [ -d "$svc_path" ] && LIST="${LIST} $(basename $svc_path)"
-                done
-              done
-            fi
-            echo "$LIST" > /tmp/service-list.txt
-      - persist_to_workspace:
-          root: .
-          paths: [.build.env]
-
-  trivy-scan:
-    executor: trivy-executor
-    steps:
-      - checkout
-      - attach_workspace:
-          at: .
-      - run:
-          name: Trivy image scan
-          command: |
-            source .build.env
-            if [ "${SCAN_IMAGE:-true}" != "true" ]; then
-              echo "Skipping Trivy scan"
-              exit 0
-            fi
-            mkdir -p /tmp/trivy-reports
-            ALL_DOMAINS="platform identity catalog commerce supply-chain financial customer-experience communications content analytics-ai b2b integrations affiliate"
-
-            scan_svc() {
-              local svc=$1
-              local image="$HARBOR_REGISTRY/$REGISTRY_PROJECT/$svc:$IMAGE_TAG"
-              echo "=== Trivy: $image ==="
-              trivy image \
-                --exit-code 0 \
-                --severity HIGH,CRITICAL \
-                --format json \
-                --output "/tmp/trivy-reports/trivy-${svc}.json" \
-                "$image" || true
-            }
-
-            if [ -n "$SERVICE_NAME" ]; then
-              scan_svc "$SERVICE_NAME"
-            elif [ -n "$DOMAIN" ]; then
-              for svc_path in src/$DOMAIN/*/; do
-                [ -d "$svc_path" ] && scan_svc "$(basename $svc_path)"
-              done
-            else
-              for d in $ALL_DOMAINS; do
-                for svc_path in src/$d/*/; do
-                  [ -d "$svc_path" ] && scan_svc "$(basename $svc_path)"
-                done
-              done
-            fi
-      - store_artifacts:
-          path: /tmp/trivy-reports
-          destination: trivy-image-scan
-
-  docker-push:
-    executor: docker-executor
-    steps:
-      - checkout
-      - attach_workspace:
-          at: .
-      - setup_remote_docker
-      - run:
-          name: Push images to Harbor
-          command: |
-            source .build.env
-            if [ "${PUSH_IMAGE:-true}" != "true" ]; then
-              echo "Skipping push"
-              exit 0
-            fi
-            echo "$HARBOR_PASSWORD" | docker login "$HARBOR_REGISTRY" -u "$HARBOR_USERNAME" --password-stdin
-            ALL_DOMAINS="platform identity catalog commerce supply-chain financial customer-experience communications content analytics-ai b2b integrations affiliate"
-
-            push_svc() {
-              local svc=$1
-              local image="$HARBOR_REGISTRY/$REGISTRY_PROJECT/$svc:$IMAGE_TAG"
-              echo "=== Pushing: $image ==="
-              docker push "$image" || echo "WARN push failed for $svc"
-            }
-
-            if [ -n "$SERVICE_NAME" ]; then
-              push_svc "$SERVICE_NAME"
-            elif [ -n "$DOMAIN" ]; then
-              for svc_path in src/$DOMAIN/*/; do
-                [ -d "$svc_path" ] && push_svc "$(basename $svc_path)"
-              done
-            else
-              for d in $ALL_DOMAINS; do
-                for svc_path in src/$d/*/; do
-                  [ -d "$svc_path" ] && push_svc "$(basename $svc_path)"
-                done
-              done
-            fi
-            docker logout "$HARBOR_REGISTRY" || true
-      - run:
-          name: Notify on success
-          command: |
-            source .build.env
-            curl -sf -X POST "$SLACK_WEBHOOK" \
-              -H 'Content-type: application/json' \
-              --data "{\"text\":\":whale: Docker build complete — tag=${IMAGE_TAG} pushed to ${HARBOR_REGISTRY}\"}" || true
-          when: on_success
+            done
+            wait
+            echo "All builds complete"
 
 workflows:
-  docker-build-workflow:
+  build-images:
     jobs:
-      - resolve-build-context:
-          context: shopos-harbor
-      - docker-build:
-          requires: [resolve-build-context]
-          context: shopos-harbor
-      - trivy-scan:
-          requires: [docker-build]
-          context: shopos-harbor
-      - docker-push:
-          requires: [trivy-scan]
+      - build-and-push:
+          name: build-api-gateway
+          service: api-gateway
+          domain: platform
           context: shopos-harbor
           filters:
             branches:
-              only: [main, develop, /release\/.*/]
+              only: [main, develop]
+
+      - build-and-push:
+          name: build-order-service
+          service: order-service
+          domain: commerce
+          context: shopos-harbor
+          filters:
+            branches:
+              only: [main, develop]
+
+      - build-and-push:
+          name: build-payment-service
+          service: payment-service
+          domain: commerce
+          context: shopos-harbor
+          filters:
+            branches:
+              only: [main, develop]
+
+      - build-and-push:
+          name: build-auth-service
+          service: auth-service
+          domain: identity
+          context: shopos-harbor
+          filters:
+            branches:
+              only: [main, develop]
+
+      - build-matrix:
+          context: shopos-harbor
+          filters:
+            branches:
+              only: main

@@ -1,131 +1,95 @@
-# Deploy Pipeline — Tekton
-# Secrets: harbor-credentials, sonarqube-token, kubeconfig
+# Deploy Pipeline — Tekton (In-Cluster CD)
+# Role: Triggered by Harbor image push webhooks via EventListener/TriggerTemplate.
+#       Deploys services using helm Tasks. Verifies rollout and runs smoke tests.
+# Secrets: kubeconfig-secret, harbor-credentials
 ---
-apiVersion: tekton.dev/v1
-kind: Task
+apiVersion: triggers.tekton.dev/v1alpha1
+kind: EventListener
 metadata:
-  name: secret-scan
+  name: shopos-event-listener
+  namespace: tekton-pipelines
+spec:
+  serviceAccountName: tekton-triggers-sa
+  triggers:
+    - name: harbor-push-trigger
+      interceptors:
+        - ref:
+            name: cel
+          params:
+            - name: filter
+              value: "header.match('X-Harbor-Event', 'PUSH_ARTIFACT')"
+      bindings:
+        - ref: harbor-push-binding
+      template:
+        ref: deploy-pipeline-template
+---
+apiVersion: triggers.tekton.dev/v1alpha1
+kind: TriggerBinding
+metadata:
+  name: harbor-push-binding
   namespace: tekton-pipelines
 spec:
   params:
-    - name: source-dir
-      default: /workspace/source
-  workspaces:
-    - name: source
-  steps:
-    - name: gitleaks
-      image: zricethezav/gitleaks:latest
-      script: |
-        gitleaks detect --source $(params.source-dir) --exit-code 1 || true
----
-apiVersion: tekton.dev/v1
-kind: Task
-metadata:
-  name: semgrep-sast
-  namespace: tekton-pipelines
-spec:
-  params:
-    - name: service-name
-  workspaces:
-    - name: source
-  steps:
-    - name: semgrep
-      image: returntocorp/semgrep:latest
-      script: |
-        cd /workspace/source/src
-        semgrep --config=auto --json --output=/tmp/semgrep.json . || true
-        echo "SAST complete for $(params.service-name)"
----
-apiVersion: tekton.dev/v1
-kind: Task
-metadata:
-  name: sonarqube-scan
-  namespace: tekton-pipelines
-spec:
-  params:
-    - name: service-name
-    - name: sonar-host-url
-      default: "http://sonarqube.observability.svc:9000"
-  workspaces:
-    - name: source
-  steps:
-    - name: sonar-scan
-      image: sonarsource/sonar-scanner-cli:latest
-      env:
-        - name: SONAR_TOKEN
-          valueFrom:
-            secretKeyRef:
-              name: sonarqube-credentials
-              key: token
-      script: |
-        cd /workspace/source/src/$(params.service-name)
-        sonar-scanner \
-          -Dsonar.projectKey=$(params.service-name) \
-          -Dsonar.host.url=$(params.sonar-host-url) \
-          -Dsonar.login=$SONAR_TOKEN \
-          -Dsonar.qualitygate.wait=true || true
----
-apiVersion: tekton.dev/v1
-kind: Task
-metadata:
-  name: docker-build-push
-  namespace: tekton-pipelines
-spec:
-  params:
-    - name: service-name
     - name: image-tag
-    - name: registry
-      default: harbor.shopos.internal
-    - name: dockerfile-path
-      default: Dockerfile
+      value: $(body.event_data.resources[0].tag)
+    - name: service-name
+      value: $(body.event_data.repository.name)
+---
+apiVersion: triggers.tekton.dev/v1alpha1
+kind: TriggerTemplate
+metadata:
+  name: deploy-pipeline-template
+  namespace: tekton-pipelines
+spec:
+  params:
+    - name: image-tag
+    - name: service-name
+  resourcetemplates:
+    - apiVersion: tekton.dev/v1
+      kind: PipelineRun
+      metadata:
+        generateName: deploy-$(tt.params.service-name)-
+        namespace: tekton-pipelines
+      spec:
+        pipelineRef:
+          name: shopos-deploy-pipeline
+        params:
+          - name: service-name
+            value: $(tt.params.service-name)
+          - name: image-tag
+            value: $(tt.params.image-tag)
+        workspaces:
+          - name: source
+            volumeClaimTemplate:
+              spec:
+                accessModes: [ReadWriteOnce]
+                resources:
+                  requests:
+                    storage: 1Gi
+          - name: kubeconfig
+            secret:
+              secretName: kubeconfig-secret
+---
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  name: git-clone-shopos
+  namespace: tekton-pipelines
+spec:
+  params:
+    - name: url
+      default: https://github.com/shopos/shopos.git
+    - name: revision
+      default: main
   workspaces:
     - name: source
-    - name: dockerconfig
-      mountPath: /kaniko/.docker
   steps:
-    - name: build-push
-      image: gcr.io/kaniko-project/executor:latest
-      args:
-        - --dockerfile=/workspace/source/src/$(params.service-name)/$(params.dockerfile-path)
-        - --context=/workspace/source/src/$(params.service-name)
-        - --destination=$(params.registry)/shopos/$(params.service-name):$(params.image-tag)
-        - --destination=$(params.registry)/shopos/$(params.service-name):latest
-        - --cache=true
-        - --cache-repo=$(params.registry)/shopos/cache
----
-apiVersion: tekton.dev/v1
-kind: Task
-metadata:
-  name: trivy-scan
-  namespace: tekton-pipelines
-spec:
-  params:
-    - name: image-ref
-  steps:
-    - name: trivy
-      image: aquasec/trivy:latest
+    - name: clone
+      image: alpine/git:2.47.0
       script: |
-        trivy image --exit-code 1 --severity CRITICAL --no-progress $(params.image-ref) || true
-        trivy image --format cyclonedx --output /tmp/sbom.json $(params.image-ref) || true
-        echo "Trivy scan complete"
----
-apiVersion: tekton.dev/v1
-kind: Task
-metadata:
-  name: cosign-sign
-  namespace: tekton-pipelines
-spec:
-  params:
-    - name: image-ref
-  steps:
-    - name: sign
-      image: gcr.io/projectsigstore/cosign:latest
-      env:
-        - name: COSIGN_EXPERIMENTAL
-          value: "1"
-      script: |
-        cosign sign --yes $(params.image-ref)
-        echo "Image signed: $(params.image-ref)"
+        git clone --depth=1 --branch=$(params.revision) $(params.url) /workspace/source
+        echo "Cloned $(params.url)@$(params.revision)"
+        ls /workspace/source
 ---
 apiVersion: tekton.dev/v1
 kind: Task
@@ -139,7 +103,7 @@ spec:
     - name: namespace
       default: default
     - name: environment
-      default: staging
+      default: production
     - name: registry
       default: harbor.shopos.internal
   workspaces:
@@ -148,100 +112,121 @@ spec:
       mountPath: /root/.kube
   steps:
     - name: helm-upgrade
-      image: alpine/helm:latest
+      image: alpine/helm:3.16.2
       script: |
+        cp /root/.kube/config /root/.kube/kubeconfig 2>/dev/null || true
         helm upgrade --install $(params.service-name) \
           /workspace/source/helm/charts/$(params.service-name) \
-          --namespace $(params.namespace) --create-namespace \
+          --namespace $(params.namespace) \
+          --create-namespace \
           --set image.repository=$(params.registry)/shopos/$(params.service-name) \
           --set image.tag=$(params.image-tag) \
           --set environment=$(params.environment) \
-          --wait --timeout 5m
+          --atomic \
+          --timeout 5m \
+          --history-max 5
         echo "Deployed $(params.service-name):$(params.image-tag) to $(params.namespace)"
 ---
 apiVersion: tekton.dev/v1
-kind: Pipeline
+kind: Task
 metadata:
-  name: deploy-pipeline
+  name: verify-rollout
   namespace: tekton-pipelines
 spec:
   params:
     - name: service-name
+    - name: namespace
+      default: default
+    - name: timeout
+      default: "300"
+  workspaces:
+    - name: kubeconfig
+      mountPath: /root/.kube
+  steps:
+    - name: rollout-status
+      image: bitnami/kubectl:1.31.0
+      script: |
+        kubectl rollout status deployment/$(params.service-name) \
+          --namespace $(params.namespace) \
+          --timeout=$(params.timeout)s
+        echo "Rollout verified: $(params.service-name)"
+        kubectl get pods -n $(params.namespace) -l app=$(params.service-name)
+---
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  name: smoke-test
+  namespace: tekton-pipelines
+spec:
+  params:
+    - name: service-name
+    - name: namespace
+      default: default
+    - name: healthz-path
+      default: /healthz
+    - name: port
+      default: "8080"
+  steps:
+    - name: health-check
+      image: curlimages/curl:8.10.1
+      script: |
+        SVC_URL="http://$(params.service-name).$(params.namespace).svc.cluster.local:$(params.port)$(params.healthz-path)"
+        echo "Smoke test: GET $SVC_URL"
+        for i in 1 2 3 4 5; do
+          STATUS=$(curl -sf --max-time 10 "$SVC_URL" -o /dev/null -w "%{http_code}" 2>/dev/null || echo "000")
+          echo "Attempt $i → HTTP $STATUS"
+          if [ "$STATUS" = "200" ]; then
+            echo "Smoke test PASSED for $(params.service-name)"
+            exit 0
+          fi
+          sleep 10
+        done
+        echo "Smoke test FAILED for $(params.service-name)"
+        exit 1
+---
+apiVersion: tekton.dev/v1
+kind: Pipeline
+metadata:
+  name: shopos-deploy-pipeline
+  namespace: tekton-pipelines
+spec:
+  description: |
+    In-cluster CD pipeline triggered by Harbor image push webhooks.
+    Clones the repo, helm deploys, verifies rollout, and runs smoke tests.
+  params:
+    - name: service-name
+      description: Name of the service to deploy
     - name: image-tag
+      description: Docker image tag pushed to Harbor
     - name: namespace
       default: default
     - name: environment
-      default: staging
+      default: production
     - name: registry
       default: harbor.shopos.internal
+    - name: repo-url
+      default: https://github.com/shopos/shopos.git
+    - name: repo-revision
+      default: main
+    - name: healthz-port
+      default: "8080"
   workspaces:
     - name: source
-    - name: dockerconfig
     - name: kubeconfig
   tasks:
-    - name: secret-scan
+    - name: clone
       taskRef:
-        name: secret-scan
+        name: git-clone-shopos
+      params:
+        - name: url
+          value: $(params.repo-url)
+        - name: revision
+          value: $(params.repo-revision)
       workspaces:
         - name: source
           workspace: source
 
-    - name: sast
-      taskRef:
-        name: semgrep-sast
-      params:
-        - name: service-name
-          value: $(params.service-name)
-      workspaces:
-        - name: source
-          workspace: source
-      runAfter: [secret-scan]
-
-    - name: sonarqube
-      taskRef:
-        name: sonarqube-scan
-      params:
-        - name: service-name
-          value: $(params.service-name)
-      workspaces:
-        - name: source
-          workspace: source
-      runAfter: [sast]
-
-    - name: docker-build
-      taskRef:
-        name: docker-build-push
-      params:
-        - name: service-name
-          value: $(params.service-name)
-        - name: image-tag
-          value: $(params.image-tag)
-        - name: registry
-          value: $(params.registry)
-      workspaces:
-        - name: source
-          workspace: source
-        - name: dockerconfig
-          workspace: dockerconfig
-      runAfter: [sonarqube]
-
-    - name: scan-image
-      taskRef:
-        name: trivy-scan
-      params:
-        - name: image-ref
-          value: $(params.registry)/shopos/$(params.service-name):$(params.image-tag)
-      runAfter: [docker-build]
-
-    - name: sign-image
-      taskRef:
-        name: cosign-sign
-      params:
-        - name: image-ref
-          value: $(params.registry)/shopos/$(params.service-name):$(params.image-tag)
-      runAfter: [scan-image]
-
-    - name: deploy
+    - name: helm-deploy
       taskRef:
         name: helm-deploy
       params:
@@ -260,38 +245,49 @@ spec:
           workspace: source
         - name: kubeconfig
           workspace: kubeconfig
-      runAfter: [sign-image]
+      runAfter: [clone]
+
+    - name: verify-rollout
+      taskRef:
+        name: verify-rollout
+      params:
+        - name: service-name
+          value: $(params.service-name)
+        - name: namespace
+          value: $(params.namespace)
+      workspaces:
+        - name: kubeconfig
+          workspace: kubeconfig
+      runAfter: [helm-deploy]
+
+    - name: smoke-test
+      taskRef:
+        name: smoke-test
+      params:
+        - name: service-name
+          value: $(params.service-name)
+        - name: namespace
+          value: $(params.namespace)
+        - name: port
+          value: $(params.healthz-port)
+      runAfter: [verify-rollout]
 ---
-apiVersion: tekton.dev/v1
-kind: PipelineRun
+# RBAC for Tekton Triggers service account
+apiVersion: v1
+kind: ServiceAccount
 metadata:
-  name: deploy-pipeline-run
+  name: tekton-triggers-sa
   namespace: tekton-pipelines
-  annotations:
-    description: "Example PipelineRun — update params before running"
-spec:
-  pipelineRef:
-    name: deploy-pipeline
-  params:
-    - name: service-name
-      value: order-service
-    - name: image-tag
-      value: "v1.0.0"
-    - name: namespace
-      value: commerce
-    - name: environment
-      value: staging
-  workspaces:
-    - name: source
-      volumeClaimTemplate:
-        spec:
-          accessModes: [ReadWriteOnce]
-          resources:
-            requests:
-              storage: 1Gi
-    - name: dockerconfig
-      secret:
-        secretName: harbor-credentials
-    - name: kubeconfig
-      secret:
-        secretName: kubeconfig-secret
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: tekton-triggers-sa-binding
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: tekton-triggers-eventlistener-roles
+subjects:
+  - kind: ServiceAccount
+    name: tekton-triggers-sa
+    namespace: tekton-pipelines
