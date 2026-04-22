@@ -117,26 +117,13 @@ spec:
     // ── PodDisruptionBudget for all workloads ─────────────────────────────────
     for (w in allWorkloads) {
         def kind = deployList.contains(w) ? 'Deployment' : 'StatefulSet'
-        def selector = sh(
-            script: "kubectl get ${kind.toLowerCase()} ${w} -n ${namespace} -o jsonpath='{.spec.selector.matchLabels}' 2>/dev/null || echo '{}'",
-            returnStdout: true
-        ).trim()
-        // Use the first available selector label key=value
-        def labelLine = sh(
-            script: """kubectl get ${kind.toLowerCase()} ${w} -n ${namespace} \
-                -o jsonpath='{range .spec.selector.matchLabels.*}{@}{"\\n"}{end}' 2>/dev/null \
-                | head -1 || echo ''""",
-            returnStdout: true
-        ).trim()
-        // Build matchLabels from raw kubectl output
         def matchLabels = sh(
             script: """kubectl get ${kind.toLowerCase()} ${w} -n ${namespace} \
-                -o jsonpath='{.spec.selector.matchLabels}' 2>/dev/null \
-                | sed 's/map\\[//;s/\\]//' \
-                | tr ' ' '\\n' \
-                | awk -F: '{printf "      %s: %s\\n", \$1, \$2}' || echo '      app: ${w}'""",
+                -o go-template='{{range \$k,\$v := .spec.selector.matchLabels}}      {{\$k}}: {{\$v}}{{"\\n"}}{{end}}' \
+                2>/dev/null || true""",
             returnStdout: true
         ).trim()
+        if (!matchLabels) matchLabels = "      app: ${w}"
 
         writeFile file: "/tmp/pdb-${w}.yaml", text: """\
 apiVersion: policy/v1
