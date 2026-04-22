@@ -1,4 +1,5 @@
 def call() {
+    def sc = load('scripts/groovy/cloud-storage-class.groovy').call()
     sh """
         helm upgrade --install kafka-connect messaging/kafka-connect/charts \
             --namespace kafka-connect \
@@ -18,6 +19,7 @@ def call() {
             --set env.CONNECT_STATUS_STORAGE_REPLICATION_FACTOR=1 \
             --set env.CONNECT_OFFSET_STORAGE_PARTITIONS=1 \
             --set env.CONNECT_STATUS_STORAGE_PARTITIONS=1 \
+            --set persistence.storageClass=${sc} \
             --wait --timeout 15m
     """
     sh "sed -i '/^KAFKA_CONNECT_/d' infra.env || true"

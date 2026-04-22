@@ -1,4 +1,5 @@
 def call() {
+    def sc = load('scripts/groovy/cloud-storage-class.groovy').call()
     sh """
         # Clear any pending/failed helm state before installing
         STATUS=\$(helm status pulsar -n pulsar 2>/dev/null | grep STATUS | awk '{print \$2}')
@@ -13,6 +14,7 @@ def call() {
             --namespace pulsar \
             --create-namespace \
             --set fullnameOverride=pulsar \
+            --set persistence.storageClass=${sc} \
             --wait --timeout 10m
     """
     sh "sed -i '/^PULSAR_/d' infra.env || true"

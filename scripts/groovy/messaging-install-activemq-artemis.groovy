@@ -1,4 +1,5 @@
 def call() {
+    def sc = load('scripts/groovy/cloud-storage-class.groovy').call()
     sh """
         helm upgrade --install activemq-artemis messaging/activemq-artemis/charts \
             --namespace activemq-artemis \
@@ -6,6 +7,7 @@ def call() {
             --set fullnameOverride=activemq-artemis \
             --set env.AMQ_USER=admin \
             --set env.AMQ_PASSWORD=admin \
+            --set persistence.storageClass=${sc} \
             --wait --timeout 5m
     """
     sh "sed -i '/^ACTIVEMQ_/d' infra.env || true"

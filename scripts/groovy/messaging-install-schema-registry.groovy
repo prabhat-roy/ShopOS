@@ -1,4 +1,5 @@
 def call() {
+    def sc = load('scripts/groovy/cloud-storage-class.groovy').call()
     sh """
         helm upgrade --install schema-registry messaging/schema-registry/charts \
             --namespace schema-registry \
@@ -7,6 +8,7 @@ def call() {
             --set env.SCHEMA_REGISTRY_KAFKASTORE_BOOTSTRAP_SERVERS=kafka.kafka.svc.cluster.local:9092 \
             --set env.SCHEMA_REGISTRY_HOST_NAME=schema-registry \
             --set env.SCHEMA_REGISTRY_LISTENERS=http://0.0.0.0:8081 \
+            --set persistence.storageClass=${sc} \
             --wait --timeout 5m
     """
     sh "sed -i '/^SCHEMA_REGISTRY_/d' infra.env || true"

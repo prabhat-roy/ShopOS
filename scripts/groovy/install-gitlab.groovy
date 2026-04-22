@@ -1,8 +1,10 @@
 def call() {
+    def sc = load('scripts/groovy/cloud-storage-class.groovy').call()
     sh """
         helm upgrade --install gitlab registry/charts/gitlab \
             --namespace gitlab \
             --create-namespace \
+            --set persistence.storageClass=${sc} \
             --wait --timeout 15m
     """
 

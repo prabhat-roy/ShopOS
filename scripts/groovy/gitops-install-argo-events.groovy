@@ -1,8 +1,10 @@
 def call() {
+    def sc = load('scripts/groovy/cloud-storage-class.groovy').call()
     sh """
         helm upgrade --install argo-events gitops/charts/argo-events \
             --namespace argo-events \
             --create-namespace \
+            --set persistence.storageClass=${sc} \
             --wait --timeout 5m
     """
     sh "sed -i '/^ARGO_EVENTS_/d' infra.env || true"

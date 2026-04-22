@@ -1,8 +1,10 @@
 def call() {
+    def sc = load('scripts/groovy/cloud-storage-class.groovy').call()
     sh """
         helm upgrade --install gitea registry/charts/gitea \
             --namespace gitea \
             --create-namespace \
+            --set persistence.storageClass=${sc} \
             --wait --timeout 10m
     """
 

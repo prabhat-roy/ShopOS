@@ -1,8 +1,10 @@
 def call() {
+    def sc = load('scripts/groovy/cloud-storage-class.groovy').call()
     sh """
         helm upgrade --install external-secrets gitops/charts/external-secrets \
             --namespace external-secrets \
             --create-namespace \
+            --set persistence.storageClass=${sc} \
             --wait --timeout 5m
     """
     sh "sed -i '/^EXTERNAL_SECRETS_/d' infra.env || true"

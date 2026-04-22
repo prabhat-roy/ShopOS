@@ -1,9 +1,11 @@
 def call() {
+    def sc = load('scripts/groovy/cloud-storage-class.groovy').call()
     sh """
         helm upgrade --install nats messaging/nats/charts \
             --namespace nats \
             --create-namespace \
             --set fullnameOverride=nats \
+            --set persistence.storageClass=${sc} \
             --wait --timeout 5m
     """
     sh "sed -i '/^NATS_/d' infra.env || true"

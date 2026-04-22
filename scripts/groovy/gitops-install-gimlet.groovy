@@ -1,8 +1,10 @@
 def call() {
+    def sc = load('scripts/groovy/cloud-storage-class.groovy').call()
     sh """
         helm upgrade --install gimlet gitops/charts/gimlet \
             --namespace gimlet \
             --create-namespace \
+            --set persistence.storageClass=${sc} \
             --wait --timeout 5m
     """
     sh "sed -i '/^GIMLET_/d' infra.env || true"

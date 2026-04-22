@@ -1,8 +1,10 @@
 def call() {
+    def sc = load('scripts/groovy/cloud-storage-class.groovy').call()
     sh """
         helm upgrade --install weave-gitops gitops/charts/weave-gitops \
             --namespace weave-gitops \
             --create-namespace \
+            --set persistence.storageClass=${sc} \
             --wait --timeout 5m
     """
     sh "sed -i '/^WEAVE_GITOPS_/d' infra.env || true"

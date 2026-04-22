@@ -1,4 +1,5 @@
 def call() {
+    def sc = load('scripts/groovy/cloud-storage-class.groovy').call()
     sh """
         helm upgrade --install rabbitmq messaging/rabbitmq/charts \
             --namespace rabbitmq \
@@ -7,6 +8,7 @@ def call() {
             --set env.RABBITMQ_DEFAULT_USER=admin \
             --set env.RABBITMQ_DEFAULT_PASS=admin \
             --set env.RABBITMQ_DEFAULT_VHOST=shopos \
+            --set persistence.storageClass=${sc} \
             --wait --timeout 5m
     """
     sh "sed -i '/^RABBITMQ_/d' infra.env || true"

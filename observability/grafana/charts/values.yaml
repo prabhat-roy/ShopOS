@@ -12,7 +12,7 @@ service:
 
 persistence:
   enabled: true
-  storageClass: "standard-rwo"
+  storageClass: """"
   size: 10Gi
   accessMode: ReadWriteOnce
   mountPath: /var/lib/grafana

@@ -1,8 +1,10 @@
 def call() {
+    def sc = load('scripts/groovy/cloud-storage-class.groovy').call()
     sh """
         helm upgrade --install sealed-secrets gitops/charts/sealed-secrets \
             --namespace sealed-secrets \
             --create-namespace \
+            --set persistence.storageClass=${sc} \
             --wait --timeout 5m
     """
     sh "sed -i '/^SEALED_SECRETS_/d' infra.env || true"

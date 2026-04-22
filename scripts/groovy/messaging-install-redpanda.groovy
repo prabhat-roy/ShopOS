@@ -1,9 +1,11 @@
 def call() {
+    def sc = load('scripts/groovy/cloud-storage-class.groovy').call()
     sh """
         helm upgrade --install redpanda messaging/redpanda/charts \
             --namespace redpanda \
             --create-namespace \
             --set fullnameOverride=redpanda \
+            --set persistence.storageClass=${sc} \
             --wait --timeout 15m
     """
     sh "sed -i '/^REDPANDA_/d' infra.env || true"

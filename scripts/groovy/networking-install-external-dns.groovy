@@ -1,5 +1,11 @@
 def call() {
-    def provider = sh(script: "grep '^CLOUD_PROVIDER=' infra.env | cut -d= -f2 || echo aws", returnStdout: true).trim()
+    def cloud = sh(script: "grep '^CLOUD_PROVIDER=' infra.env | cut -d= -f2 || echo GCP", returnStdout: true).trim()
+    def provider
+    switch (cloud) {
+        case 'AWS':   provider = 'aws';    break
+        case 'AZURE': provider = 'azure';  break
+        default:      provider = 'google'  // GCP
+    }
     def domainFilter = sh(script: "grep '^DOMAIN_FILTER=' infra.env | cut -d= -f2 || echo ''", returnStdout: true).trim()
 
     sh """

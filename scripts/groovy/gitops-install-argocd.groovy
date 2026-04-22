@@ -1,8 +1,10 @@
 def call() {
+    def sc = load('scripts/groovy/cloud-storage-class.groovy').call()
     sh """
         helm upgrade --install argocd gitops/charts/argocd \
             --namespace argocd \
             --create-namespace \
+            --set persistence.storageClass=${sc} \
             --wait --timeout 10m
     """
     sh "sed -i '/^ARGOCD_/d' infra.env || true"

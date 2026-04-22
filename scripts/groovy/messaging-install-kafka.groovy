@@ -1,4 +1,5 @@
 def call() {
+    def sc = load('scripts/groovy/cloud-storage-class.groovy').call()
     sh """
         helm upgrade --install kafka messaging/kafka/charts \
             --namespace kafka \
@@ -15,6 +16,7 @@ def call() {
             --set env.KAFKA_TRANSACTION_STATE_LOG_MIN_ISR=1 \
             --set env.KAFKA_AUTO_CREATE_TOPICS_ENABLE=true \
             --set env.KAFKA_LOG_DIRS=/var/lib/data \
+            --set persistence.storageClass=${sc} \
             --wait --timeout 15m
     """
     sh "sed -i '/^KAFKA_/d' infra.env || true"

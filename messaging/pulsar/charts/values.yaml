@@ -12,7 +12,7 @@ service:
 
 persistence:
   enabled: true
-  storageClass: "standard-rwo"
+  storageClass: """"
   size: 20Gi
   accessMode: ReadWriteOnce
   mountPath: /pulsar/data

@@ -1,5 +1,6 @@
 def call() {
-    sh '''
+    def sc = load('scripts/groovy/cloud-storage-class.groovy').call()
+    sh """
         helm upgrade --install keycloak security/keycloak/charts \
             --namespace keycloak \
             --create-namespace \
@@ -29,8 +30,9 @@ def call() {
             --set keycloakConfigCli.enabled=true \
             --set extraEnvVars[0].name=KC_FEATURES \
             --set extraEnvVars[0].value=token-exchange \
+            --set persistence.storageClass=${sc} \
             --wait --timeout 15m
-    '''
+    """
     sh "kubectl rollout status statefulset/keycloak -n keycloak --timeout=10m"
     sh "sed -i '/^KEYCLOAK_/d' infra.env || true"
     sh "sed -i '/^KEYCLOAK_URL=/d' infra.env 2>/dev/null || true; echo 'KEYCLOAK_URL=http://keycloak.keycloak.svc.cluster.local:8080' >> infra.env" 

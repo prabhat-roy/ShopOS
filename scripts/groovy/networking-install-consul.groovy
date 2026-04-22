@@ -1,11 +1,12 @@
 def call() {
-    sh '''
+    def sc = load('scripts/groovy/cloud-storage-class.groovy').call()
+    sh """
         helm upgrade --install consul networking/consul/charts \
             --namespace consul \
             --create-namespace \
             --set global.name=consul \
             --set global.datacenter=dc1 \
-            --set global.image="hashicorp/consul:1.19.0" \
+            --set global.image=hashicorp/consul:1.19.0 \
             --set global.enableConsulNamespaces=false \
             --set global.acls.manageSystemACLs=true \
             --set global.tls.enabled=true \
@@ -26,8 +27,9 @@ def call() {
             --set ui.enabled=true \
             --set ui.service.type=ClusterIP \
             --set dns.enabled=true \
+            --set persistence.storageClass=${sc} \
             --wait --timeout 10m
-    '''
+    """
     sh "kubectl rollout status statefulset/consul-server -n consul --timeout=5m"
     sh "sed -i '/^CONSUL_/d' infra.env || true"
     sh "sed -i '/^CONSUL_URL=/d' infra.env 2>/dev/null || true; echo 'CONSUL_URL=http://consul-server.consul.svc.cluster.local:8500' >> infra.env" 

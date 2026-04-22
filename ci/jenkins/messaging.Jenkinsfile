@@ -34,6 +34,8 @@ pipeline {
                     writeFile file: "${env.WORKSPACE}/kubeconfig-b64", text: content
                     sh "base64 -d ${env.WORKSPACE}/kubeconfig-b64 > ${env.WORKSPACE}/kubeconfig && rm -f ${env.WORKSPACE}/kubeconfig-b64"
                     env.KUBECONFIG = "${env.WORKSPACE}/kubeconfig"
+                    env.CLOUD_PROVIDER = readFile('infra.env').trim()
+                        .split('\n').find { it.startsWith('CLOUD_PROVIDER=') }?.split('=', 2)?.last() ?: 'GCP'
                 }
             }
         }
