@@ -17,7 +17,7 @@ pipeline {
         booleanParam(name: 'CLICKHOUSE',  defaultValue: true,  description: 'ClickHouse OLAP database')
         booleanParam(name: 'WEAVIATE',    defaultValue: true,  description: 'Weaviate vector database')
         booleanParam(name: 'NEO4J',       defaultValue: true,  description: 'Neo4j graph database')
-        booleanParam(name: 'SCYLLADB',    defaultValue: true,  description: 'ScyllaDB high-throughput database')
+        booleanParam(name: 'SCYLLADB',    defaultValue: false, description: 'ScyllaDB high-throughput database (disabled by default — heavy operator, enable manually)')
         booleanParam(name: 'TEMPORAL',    defaultValue: true,  description: 'Temporal workflow engine')
     }
 
