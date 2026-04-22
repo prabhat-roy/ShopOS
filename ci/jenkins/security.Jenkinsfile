@@ -11,8 +11,8 @@ pipeline {
     parameters {
         choice(
             name: 'ACTION',
-            choices: ['INSTALL', 'UNINSTALL', 'CONFIGURE'],
-            description: 'INSTALL — deploy all security tools on Kubernetes and pull CLI tool images. CONFIGURE — post-install setup. UNINSTALL — remove all.'
+            choices: ['INSTALL', 'UNINSTALL'],
+            description: 'INSTALL — deploy and configure all security tools + pull CLI images. UNINSTALL — remove all.'
         )
     }
 
@@ -28,227 +28,384 @@ pipeline {
             steps {
                 script {
                     if (!fileExists('infra.env')) {
-                        error "infra.env not found — run the k8s-infra pipeline first to provision a cluster"
+                        error "infra.env not found — run the k8s-infra pipeline first"
                     }
-                    def kubeconfigContent = readFile('infra.env').trim()
+                    def content = readFile('infra.env').trim()
                         .split('\n').find { it.startsWith('KUBECONFIG_CONTENT=') }?.split('=', 2)?.last()
-                    if (!kubeconfigContent) {
-                        error "KUBECONFIG_CONTENT missing from infra.env — run the k8s-infra pipeline first"
-                    }
-                    writeFile file: "${env.WORKSPACE}/kubeconfig-b64", text: kubeconfigContent
+                    if (!content) error "KUBECONFIG_CONTENT missing from infra.env"
+                    writeFile file: "${env.WORKSPACE}/kubeconfig-b64", text: content
                     sh "base64 -d ${env.WORKSPACE}/kubeconfig-b64 > ${env.WORKSPACE}/kubeconfig && rm -f ${env.WORKSPACE}/kubeconfig-b64"
                     env.KUBECONFIG = "${env.WORKSPACE}/kubeconfig"
                 }
             }
         }
 
-        // ── INSTALL — Identity & Access ───────────────────────────────────────
+        // ── Identity & Access ─────────────────────────────────────────────────
 
-        stage('Install Keycloak') {
+        stage('Keycloak') {
             when { expression { params.ACTION == 'INSTALL' } }
-            steps { script { def s = load 'scripts/groovy/security-install-keycloak.groovy'; s() } }
+            steps {
+                script {
+                    def s = load 'scripts/groovy/security-install-keycloak.groovy'; s()
+                    def c = load 'scripts/groovy/security-configure-keycloak.groovy'; c()
+                }
+            }
         }
 
-        stage('Install Dex') {
+        stage('Dex') {
             when { expression { params.ACTION == 'INSTALL' } }
-            steps { script { def s = load 'scripts/groovy/security-install-dex.groovy'; s() } }
+            steps {
+                script {
+                    def s = load 'scripts/groovy/security-install-dex.groovy'; s()
+                }
+            }
         }
 
-        stage('Install Authentik') {
+        stage('Authentik') {
             when { expression { params.ACTION == 'INSTALL' } }
-            steps { script { def s = load 'scripts/groovy/security-install-authentik.groovy'; s() } }
+            steps {
+                script {
+                    def s = load 'scripts/groovy/security-install-authentik.groovy'; s()
+                    def c = load 'scripts/groovy/security-configure-authentik.groovy'; c()
+                }
+            }
         }
 
-        stage('Install ZITADEL') {
+        stage('ZITADEL') {
             when { expression { params.ACTION == 'INSTALL' } }
-            steps { script { def s = load 'scripts/groovy/security-install-zitadel.groovy'; s() } }
+            steps {
+                script {
+                    def s = load 'scripts/groovy/security-install-zitadel.groovy'; s()
+                    def c = load 'scripts/groovy/security-configure-zitadel.groovy'; c()
+                }
+            }
         }
 
-        stage('Install Authelia') {
+        stage('Authelia') {
             when { expression { params.ACTION == 'INSTALL' } }
-            steps { script { def s = load 'scripts/groovy/security-install-authelia.groovy'; s() } }
+            steps {
+                script {
+                    def s = load 'scripts/groovy/security-install-authelia.groovy'; s()
+                    def c = load 'scripts/groovy/security-configure-authelia.groovy'; c()
+                }
+            }
         }
 
-        stage('Install SPIRE') {
+        stage('SPIRE') {
             when { expression { params.ACTION == 'INSTALL' } }
-            steps { script { def s = load 'scripts/groovy/security-install-spire.groovy'; s() } }
+            steps {
+                script {
+                    def s = load 'scripts/groovy/security-install-spire.groovy'; s()
+                }
+            }
         }
 
-        stage('Install Pomerium') {
+        stage('Pomerium') {
             when { expression { params.ACTION == 'INSTALL' } }
-            steps { script { def s = load 'scripts/groovy/security-install-pomerium.groovy'; s() } }
+            steps {
+                script {
+                    def s = load 'scripts/groovy/security-install-pomerium.groovy'; s()
+                    def c = load 'scripts/groovy/security-configure-pomerium.groovy'; c()
+                }
+            }
         }
 
-        // ── INSTALL — Secrets Management ──────────────────────────────────────
+        // ── Secrets Management ────────────────────────────────────────────────
 
-        stage('Install Vault') {
+        stage('Vault') {
             when { expression { params.ACTION == 'INSTALL' } }
-            steps { script { def s = load 'scripts/groovy/security-install-vault.groovy'; s() } }
+            steps {
+                script {
+                    def s = load 'scripts/groovy/security-install-vault.groovy'; s()
+                    def c = load 'scripts/groovy/security-configure-vault.groovy'; c()
+                }
+            }
         }
 
-        stage('Install Infisical') {
+        stage('Infisical') {
             when { expression { params.ACTION == 'INSTALL' } }
-            steps { script { def s = load 'scripts/groovy/security-install-infisical.groovy'; s() } }
+            steps {
+                script {
+                    def s = load 'scripts/groovy/security-install-infisical.groovy'; s()
+                    def c = load 'scripts/groovy/security-configure-infisical.groovy'; c()
+                }
+            }
         }
 
-        // ── INSTALL — Policy Engines ──────────────────────────────────────────
+        // ── Policy Engines ────────────────────────────────────────────────────
 
-        stage('Install OPA Gatekeeper') {
+        stage('OPA Gatekeeper') {
             when { expression { params.ACTION == 'INSTALL' } }
-            steps { script { def s = load 'scripts/groovy/security-install-opa.groovy'; s() } }
+            steps {
+                script {
+                    def s = load 'scripts/groovy/security-install-opa.groovy'; s()
+                }
+            }
         }
 
-        stage('Install Kyverno') {
+        stage('Kyverno') {
             when { expression { params.ACTION == 'INSTALL' } }
-            steps { script { def s = load 'scripts/groovy/security-install-kyverno.groovy'; s() } }
+            steps {
+                script {
+                    def s = load 'scripts/groovy/security-install-kyverno.groovy'; s()
+                }
+            }
         }
 
-        stage('Install Kubewarden') {
+        stage('Kubewarden') {
             when { expression { params.ACTION == 'INSTALL' } }
-            steps { script { def s = load 'scripts/groovy/security-install-kubewarden.groovy'; s() } }
+            steps {
+                script {
+                    def s = load 'scripts/groovy/security-install-kubewarden.groovy'; s()
+                }
+            }
         }
 
-        stage('Install OpenFGA') {
+        stage('OpenFGA') {
             when { expression { params.ACTION == 'INSTALL' } }
-            steps { script { def s = load 'scripts/groovy/security-install-openfga.groovy'; s() } }
+            steps {
+                script {
+                    def s = load 'scripts/groovy/security-install-openfga.groovy'; s()
+                }
+            }
         }
 
-        // ── INSTALL — Runtime Security ────────────────────────────────────────
+        // ── Runtime Security ──────────────────────────────────────────────────
 
-        stage('Install Falco') {
+        stage('Falco') {
             when { expression { params.ACTION == 'INSTALL' } }
-            steps { script { def s = load 'scripts/groovy/security-install-falco.groovy'; s() } }
+            steps {
+                script {
+                    def s = load 'scripts/groovy/security-install-falco.groovy'; s()
+                }
+            }
         }
 
-        stage('Install Tetragon') {
+        stage('Tetragon') {
             when { expression { params.ACTION == 'INSTALL' } }
-            steps { script { def s = load 'scripts/groovy/security-install-tetragon.groovy'; s() } }
+            steps {
+                script {
+                    def s = load 'scripts/groovy/security-install-tetragon.groovy'; s()
+                }
+            }
         }
 
-        stage('Install Tracee') {
+        stage('Tracee') {
             when { expression { params.ACTION == 'INSTALL' } }
-            steps { script { def s = load 'scripts/groovy/security-install-tracee.groovy'; s() } }
+            steps {
+                script {
+                    def s = load 'scripts/groovy/security-install-tracee.groovy'; s()
+                }
+            }
         }
 
-        stage('Install KubeArmor') {
+        stage('KubeArmor') {
             when { expression { params.ACTION == 'INSTALL' } }
-            steps { script { def s = load 'scripts/groovy/security-install-kubearmor.groovy'; s() } }
+            steps {
+                script {
+                    def s = load 'scripts/groovy/security-install-kubearmor.groovy'; s()
+                }
+            }
         }
 
-        // ── INSTALL — WAF & Certificates ─────────────────────────────────────
+        // ── WAF & Certificates ────────────────────────────────────────────────
 
-        stage('Install Coraza WAF') {
+        stage('Coraza WAF') {
             when { expression { params.ACTION == 'INSTALL' } }
-            steps { script { def s = load 'scripts/groovy/security-install-coraza-waf.groovy'; s() } }
+            steps {
+                script {
+                    def s = load 'scripts/groovy/security-install-coraza-waf.groovy'; s()
+                }
+            }
         }
 
-        stage('Install cert-manager') {
+        stage('cert-manager') {
             when { expression { params.ACTION == 'INSTALL' } }
-            steps { script { def s = load 'scripts/groovy/security-install-cert-manager.groovy'; s() } }
+            steps {
+                script {
+                    def s = load 'scripts/groovy/security-install-cert-manager.groovy'; s()
+                }
+            }
         }
 
-        // ── INSTALL — SAST Server ─────────────────────────────────────────────
+        // ── SAST Server ───────────────────────────────────────────────────────
 
-        stage('Install SonarQube') {
+        stage('SonarQube') {
             when { expression { params.ACTION == 'INSTALL' } }
-            steps { script { def s = load 'scripts/groovy/security-install-sonarqube.groovy'; s() } }
+            steps {
+                script {
+                    def s = load 'scripts/groovy/security-install-sonarqube.groovy'; s()
+                    def c = load 'scripts/groovy/security-configure-sonarqube.groovy'; c()
+                }
+            }
         }
 
-        // ── INSTALL — Vulnerability Scanning ──────────────────────────────────
+        // ── Vulnerability Scanning ────────────────────────────────────────────
 
-        stage('Install Trivy Operator') {
+        stage('Trivy Operator') {
             when { expression { params.ACTION == 'INSTALL' } }
-            steps { script { def s = load 'scripts/groovy/security-install-trivy-operator.groovy'; s() } }
+            steps {
+                script {
+                    def s = load 'scripts/groovy/security-install-trivy-operator.groovy'; s()
+                }
+            }
         }
 
-        stage('Install Clair') {
+        stage('Clair') {
             when { expression { params.ACTION == 'INSTALL' } }
-            steps { script { def s = load 'scripts/groovy/security-install-clair.groovy'; s() } }
+            steps {
+                script {
+                    def s = load 'scripts/groovy/security-install-clair.groovy'; s()
+                }
+            }
         }
 
-        stage('Install OpenVAS') {
+        stage('OpenVAS') {
             when { expression { params.ACTION == 'INSTALL' } }
-            steps { script { def s = load 'scripts/groovy/security-install-openvas.groovy'; s() } }
+            steps {
+                script {
+                    def s = load 'scripts/groovy/security-install-openvas.groovy'; s()
+                    def c = load 'scripts/groovy/security-configure-openvas.groovy'; c()
+                }
+            }
         }
 
-        stage('Install Anchore') {
+        stage('Anchore') {
             when { expression { params.ACTION == 'INSTALL' } }
-            steps { script { def s = load 'scripts/groovy/security-install-anchore.groovy'; s() } }
+            steps {
+                script {
+                    def s = load 'scripts/groovy/security-install-anchore.groovy'; s()
+                    def c = load 'scripts/groovy/security-configure-anchore.groovy'; c()
+                }
+            }
         }
 
-        // ── INSTALL — DAST ────────────────────────────────────────────────────
+        // ── DAST ──────────────────────────────────────────────────────────────
 
-        stage('Install OWASP ZAP') {
+        stage('OWASP ZAP') {
             when { expression { params.ACTION == 'INSTALL' } }
-            steps { script { def s = load 'scripts/groovy/security-install-zap.groovy'; s() } }
+            steps {
+                script {
+                    def s = load 'scripts/groovy/security-install-zap.groovy'; s()
+                    def c = load 'scripts/groovy/security-configure-zap.groovy'; c()
+                }
+            }
         }
 
-        stage('Install Nuclei') {
+        stage('Nuclei') {
             when { expression { params.ACTION == 'INSTALL' } }
-            steps { script { def s = load 'scripts/groovy/security-install-nuclei.groovy'; s() } }
+            steps {
+                script {
+                    def s = load 'scripts/groovy/security-install-nuclei.groovy'; s()
+                    def c = load 'scripts/groovy/security-configure-nuclei.groovy'; c()
+                }
+            }
         }
 
-        // ── INSTALL — K8s Compliance ──────────────────────────────────────────
+        // ── K8s Compliance ────────────────────────────────────────────────────
 
-        stage('Install Kubescape') {
+        stage('Kubescape') {
             when { expression { params.ACTION == 'INSTALL' } }
-            steps { script { def s = load 'scripts/groovy/security-install-kubescape.groovy'; s() } }
+            steps {
+                script {
+                    def s = load 'scripts/groovy/security-install-kubescape.groovy'; s()
+                }
+            }
         }
 
-        stage('Install Polaris') {
+        stage('Polaris') {
             when { expression { params.ACTION == 'INSTALL' } }
-            steps { script { def s = load 'scripts/groovy/security-install-polaris.groovy'; s() } }
+            steps {
+                script {
+                    def s = load 'scripts/groovy/security-install-polaris.groovy'; s()
+                }
+            }
         }
 
-        // ── INSTALL — Supply Chain ────────────────────────────────────────────
+        // ── Supply Chain ──────────────────────────────────────────────────────
 
-        stage('Install Rekor') {
+        stage('Rekor') {
             when { expression { params.ACTION == 'INSTALL' } }
-            steps { script { def s = load 'scripts/groovy/security-install-rekor.groovy'; s() } }
+            steps {
+                script {
+                    def s = load 'scripts/groovy/security-install-rekor.groovy'; s()
+                }
+            }
         }
 
-        stage('Install Fulcio') {
+        stage('Fulcio') {
             when { expression { params.ACTION == 'INSTALL' } }
-            steps { script { def s = load 'scripts/groovy/security-install-fulcio.groovy'; s() } }
+            steps {
+                script {
+                    def s = load 'scripts/groovy/security-install-fulcio.groovy'; s()
+                }
+            }
         }
 
-        stage('Install Notary') {
+        stage('Notary') {
             when { expression { params.ACTION == 'INSTALL' } }
-            steps { script { def s = load 'scripts/groovy/security-install-notary.groovy'; s() } }
+            steps {
+                script {
+                    def s = load 'scripts/groovy/security-install-notary.groovy'; s()
+                }
+            }
         }
 
-        // ── INSTALL — Network Security ────────────────────────────────────────
+        // ── Network Security ──────────────────────────────────────────────────
 
-        stage('Install Suricata') {
+        stage('Suricata') {
             when { expression { params.ACTION == 'INSTALL' } }
-            steps { script { def s = load 'scripts/groovy/security-install-suricata.groovy'; s() } }
+            steps {
+                script {
+                    def s = load 'scripts/groovy/security-install-suricata.groovy'; s()
+                }
+            }
         }
 
-        stage('Install Zeek') {
+        stage('Zeek') {
             when { expression { params.ACTION == 'INSTALL' } }
-            steps { script { def s = load 'scripts/groovy/security-install-zeek.groovy'; s() } }
+            steps {
+                script {
+                    def s = load 'scripts/groovy/security-install-zeek.groovy'; s()
+                }
+            }
         }
 
-        // ── INSTALL — SIEM / XDR ──────────────────────────────────────────────
+        // ── SIEM / XDR ────────────────────────────────────────────────────────
 
-        stage('Install Wazuh') {
+        stage('Wazuh') {
             when { expression { params.ACTION == 'INSTALL' } }
-            steps { script { def s = load 'scripts/groovy/security-install-wazuh.groovy'; s() } }
+            steps {
+                script {
+                    def s = load 'scripts/groovy/security-install-wazuh.groovy'; s()
+                    def c = load 'scripts/groovy/security-configure-wazuh.groovy'; c()
+                }
+            }
         }
 
-        // ── INSTALL — Vulnerability Management ───────────────────────────────
+        // ── Vulnerability Management ──────────────────────────────────────────
 
-        stage('Install Dependency Track') {
+        stage('Dependency Track') {
             when { expression { params.ACTION == 'INSTALL' } }
-            steps { script { def s = load 'scripts/groovy/security-install-dependency-track.groovy'; s() } }
+            steps {
+                script {
+                    def s = load 'scripts/groovy/security-install-dependency-track.groovy'; s()
+                    def c = load 'scripts/groovy/security-configure-dependency-track.groovy'; c()
+                }
+            }
         }
 
-        stage('Install DefectDojo') {
+        stage('DefectDojo') {
             when { expression { params.ACTION == 'INSTALL' } }
-            steps { script { def s = load 'scripts/groovy/security-install-defectdojo.groovy'; s() } }
+            steps {
+                script {
+                    def s = load 'scripts/groovy/security-install-defectdojo.groovy'; s()
+                    def c = load 'scripts/groovy/security-configure-defectdojo.groovy'; c()
+                }
+            }
         }
 
-        // ── INSTALL — CLI Tool Images (docker pull) ───────────────────────────
+        // ── CLI Tool Images ───────────────────────────────────────────────────
 
         stage('Pull SAST CLI Images') {
             when { expression { params.ACTION == 'INSTALL' } }
@@ -309,84 +466,7 @@ pipeline {
             }
         }
 
-        // ── CONFIGURE ────────────────────────────────────────────────────────
-
-        stage('Configure Keycloak') {
-            when { expression { params.ACTION == 'CONFIGURE' } }
-            steps { script { def s = load 'scripts/groovy/security-configure-keycloak.groovy'; s() } }
-        }
-
-        stage('Configure Authentik') {
-            when { expression { params.ACTION == 'CONFIGURE' } }
-            steps { script { def s = load 'scripts/groovy/security-configure-authentik.groovy'; s() } }
-        }
-
-        stage('Configure ZITADEL') {
-            when { expression { params.ACTION == 'CONFIGURE' } }
-            steps { script { def s = load 'scripts/groovy/security-configure-zitadel.groovy'; s() } }
-        }
-
-        stage('Configure Authelia') {
-            when { expression { params.ACTION == 'CONFIGURE' } }
-            steps { script { def s = load 'scripts/groovy/security-configure-authelia.groovy'; s() } }
-        }
-
-        stage('Configure Pomerium') {
-            when { expression { params.ACTION == 'CONFIGURE' } }
-            steps { script { def s = load 'scripts/groovy/security-configure-pomerium.groovy'; s() } }
-        }
-
-        stage('Configure Vault') {
-            when { expression { params.ACTION == 'CONFIGURE' } }
-            steps { script { def s = load 'scripts/groovy/security-configure-vault.groovy'; s() } }
-        }
-
-        stage('Configure Infisical') {
-            when { expression { params.ACTION == 'CONFIGURE' } }
-            steps { script { def s = load 'scripts/groovy/security-configure-infisical.groovy'; s() } }
-        }
-
-        stage('Configure SonarQube') {
-            when { expression { params.ACTION == 'CONFIGURE' } }
-            steps { script { def s = load 'scripts/groovy/security-configure-sonarqube.groovy'; s() } }
-        }
-
-        stage('Configure Anchore') {
-            when { expression { params.ACTION == 'CONFIGURE' } }
-            steps { script { def s = load 'scripts/groovy/security-configure-anchore.groovy'; s() } }
-        }
-
-        stage('Configure OpenVAS') {
-            when { expression { params.ACTION == 'CONFIGURE' } }
-            steps { script { def s = load 'scripts/groovy/security-configure-openvas.groovy'; s() } }
-        }
-
-        stage('Configure OWASP ZAP') {
-            when { expression { params.ACTION == 'CONFIGURE' } }
-            steps { script { def s = load 'scripts/groovy/security-configure-zap.groovy'; s() } }
-        }
-
-        stage('Configure Nuclei') {
-            when { expression { params.ACTION == 'CONFIGURE' } }
-            steps { script { def s = load 'scripts/groovy/security-configure-nuclei.groovy'; s() } }
-        }
-
-        stage('Configure Wazuh') {
-            when { expression { params.ACTION == 'CONFIGURE' } }
-            steps { script { def s = load 'scripts/groovy/security-configure-wazuh.groovy'; s() } }
-        }
-
-        stage('Configure Dependency Track') {
-            when { expression { params.ACTION == 'CONFIGURE' } }
-            steps { script { def s = load 'scripts/groovy/security-configure-dependency-track.groovy'; s() } }
-        }
-
-        stage('Configure DefectDojo') {
-            when { expression { params.ACTION == 'CONFIGURE' } }
-            steps { script { def s = load 'scripts/groovy/security-configure-defectdojo.groovy'; s() } }
-        }
-
-        // ── UNINSTALL (reverse install order) ────────────────────────────────
+        // ── UNINSTALL (reverse order) ─────────────────────────────────────────
 
         stage('Uninstall DefectDojo') {
             when { expression { params.ACTION == 'UNINSTALL' } }
@@ -584,12 +664,8 @@ pipeline {
         always {
             sh 'test -f infra.env && cp infra.env /var/lib/jenkins/infra.env || true'
         }
-        success {
-            echo "${params.ACTION} completed successfully."
-        }
-        failure {
-            echo "${params.ACTION} failed — check stage logs above."
-        }
+        success { echo "${params.ACTION} completed successfully." }
+        failure { echo "${params.ACTION} failed — check stage logs above." }
         cleanup {
             sh "rm -f ${env.WORKSPACE}/kubeconfig 2>/dev/null || true"
             sh 'docker image prune -f 2>/dev/null || true'

@@ -11,8 +11,8 @@ pipeline {
     parameters {
         choice(
             name: 'ACTION',
-            choices: ['INSTALL', 'UNINSTALL', 'CONFIGURE'],
-            description: 'INSTALL — deploy all messaging tools on Kubernetes. UNINSTALL — remove all. CONFIGURE — post-install setup (topics, exchanges, streams, connectors).'
+            choices: ['INSTALL', 'UNINSTALL'],
+            description: 'INSTALL — deploy and configure all messaging tools. UNINSTALL — remove all.'
         )
     }
 
@@ -28,130 +28,154 @@ pipeline {
             steps {
                 script {
                     if (!fileExists('infra.env')) {
-                        error "infra.env not found — run the k8s-infra pipeline first to provision a cluster"
+                        error "infra.env not found — run the k8s-infra pipeline first"
                     }
-                    def kubeconfigContent = readFile('infra.env').trim()
+                    def content = readFile('infra.env').trim()
                         .split('\n').find { it.startsWith('KUBECONFIG_CONTENT=') }?.split('=', 2)?.last()
-                    if (!kubeconfigContent) {
-                        error "KUBECONFIG_CONTENT missing from infra.env — run the k8s-infra pipeline first"
-                    }
-                    writeFile file: "${env.WORKSPACE}/kubeconfig-b64", text: kubeconfigContent
+                    if (!content) error "KUBECONFIG_CONTENT missing from infra.env"
+                    writeFile file: "${env.WORKSPACE}/kubeconfig-b64", text: content
                     sh "base64 -d ${env.WORKSPACE}/kubeconfig-b64 > ${env.WORKSPACE}/kubeconfig && rm -f ${env.WORKSPACE}/kubeconfig-b64"
                     env.KUBECONFIG = "${env.WORKSPACE}/kubeconfig"
                 }
             }
         }
 
-        // ── INSTALL ──────────────────────────────────────────────────────────
+        // ── INSTALL + CONFIGURE ───────────────────────────────────────────────
 
-        stage('Install Zookeeper') {
+        stage('Zookeeper') {
             when { expression { params.ACTION == 'INSTALL' } }
-            steps { script { def s = load 'scripts/groovy/messaging-install-zookeeper.groovy'; s() } }
+            steps {
+                script {
+                    def s = load 'scripts/groovy/messaging-install-zookeeper.groovy'; s()
+                }
+            }
         }
 
-        stage('Install Kafka') {
+        stage('Kafka') {
             when { expression { params.ACTION == 'INSTALL' } }
-            steps { script { def s = load 'scripts/groovy/messaging-install-kafka.groovy'; s() } }
+            steps {
+                script {
+                    def s = load 'scripts/groovy/messaging-install-kafka.groovy'; s()
+                    def c = load 'scripts/groovy/messaging-configure-kafka.groovy'; c()
+                }
+            }
         }
 
-        stage('Install Schema Registry') {
+        stage('Schema Registry') {
             when { expression { params.ACTION == 'INSTALL' } }
-            steps { script { def s = load 'scripts/groovy/messaging-install-schema-registry.groovy'; s() } }
+            steps {
+                script {
+                    def s = load 'scripts/groovy/messaging-install-schema-registry.groovy'; s()
+                    def c = load 'scripts/groovy/messaging-configure-schema-registry.groovy'; c()
+                }
+            }
         }
 
-        stage('Install Kafka Connect') {
+        stage('Kafka Connect') {
             when { expression { params.ACTION == 'INSTALL' } }
-            steps { script { def s = load 'scripts/groovy/messaging-install-kafka-connect.groovy'; s() } }
+            steps {
+                script {
+                    def s = load 'scripts/groovy/messaging-install-kafka-connect.groovy'; s()
+                    def c = load 'scripts/groovy/messaging-configure-kafka-connect.groovy'; c()
+                }
+            }
         }
 
-        stage('Install ksqlDB') {
+        stage('ksqlDB') {
             when { expression { params.ACTION == 'INSTALL' } }
-            steps { script { def s = load 'scripts/groovy/messaging-install-ksqldb.groovy'; s() } }
+            steps {
+                script {
+                    def s = load 'scripts/groovy/messaging-install-ksqldb.groovy'; s()
+                }
+            }
         }
 
-        stage('Install Strimzi') {
+        stage('Strimzi') {
             when { expression { params.ACTION == 'INSTALL' } }
-            steps { script { def s = load 'scripts/groovy/messaging-install-strimzi.groovy'; s() } }
+            steps {
+                script {
+                    def s = load 'scripts/groovy/messaging-install-strimzi.groovy'; s()
+                }
+            }
         }
 
-        stage('Install RabbitMQ') {
+        stage('RabbitMQ') {
             when { expression { params.ACTION == 'INSTALL' } }
-            steps { script { def s = load 'scripts/groovy/messaging-install-rabbitmq.groovy'; s() } }
+            steps {
+                script {
+                    def s = load 'scripts/groovy/messaging-install-rabbitmq.groovy'; s()
+                    def c = load 'scripts/groovy/messaging-configure-rabbitmq.groovy'; c()
+                }
+            }
         }
 
-        stage('Install NATS') {
+        stage('NATS') {
             when { expression { params.ACTION == 'INSTALL' } }
-            steps { script { def s = load 'scripts/groovy/messaging-install-nats.groovy'; s() } }
+            steps {
+                script {
+                    def s = load 'scripts/groovy/messaging-install-nats.groovy'; s()
+                    def c = load 'scripts/groovy/messaging-configure-nats.groovy'; c()
+                }
+            }
         }
 
-        stage('Install Pulsar') {
+        stage('Pulsar') {
             when { expression { params.ACTION == 'INSTALL' } }
-            steps { script { def s = load 'scripts/groovy/messaging-install-pulsar.groovy'; s() } }
+            steps {
+                script {
+                    def s = load 'scripts/groovy/messaging-install-pulsar.groovy'; s()
+                }
+            }
         }
 
-        stage('Install ActiveMQ Artemis') {
+        stage('ActiveMQ Artemis') {
             when { expression { params.ACTION == 'INSTALL' } }
-            steps { script { def s = load 'scripts/groovy/messaging-install-activemq-artemis.groovy'; s() } }
+            steps {
+                script {
+                    def s = load 'scripts/groovy/messaging-install-activemq-artemis.groovy'; s()
+                }
+            }
         }
 
-        stage('Install Redpanda') {
+        stage('Redpanda') {
             when { expression { params.ACTION == 'INSTALL' } }
-            steps { script { def s = load 'scripts/groovy/messaging-install-redpanda.groovy'; s() } }
+            steps {
+                script {
+                    def s = load 'scripts/groovy/messaging-install-redpanda.groovy'; s()
+                    def c = load 'scripts/groovy/messaging-configure-redpanda.groovy'; c()
+                }
+            }
         }
 
-        stage('Install Memphis') {
+        stage('Memphis') {
             when { expression { params.ACTION == 'INSTALL' } }
-            steps { script { def s = load 'scripts/groovy/messaging-install-memphis.groovy'; s() } }
+            steps {
+                script {
+                    def s = load 'scripts/groovy/messaging-install-memphis.groovy'; s()
+                    def c = load 'scripts/groovy/messaging-configure-memphis.groovy'; c()
+                }
+            }
         }
 
-        stage('Install Kafka UI') {
+        stage('Kafka UI') {
             when { expression { params.ACTION == 'INSTALL' } }
-            steps { script { def s = load 'scripts/groovy/messaging-install-kafka-ui.groovy'; s() } }
+            steps {
+                script {
+                    def s = load 'scripts/groovy/messaging-install-kafka-ui.groovy'; s()
+                }
+            }
         }
 
-        stage('Install AKHQ') {
+        stage('AKHQ') {
             when { expression { params.ACTION == 'INSTALL' } }
-            steps { script { def s = load 'scripts/groovy/messaging-install-akhq.groovy'; s() } }
+            steps {
+                script {
+                    def s = load 'scripts/groovy/messaging-install-akhq.groovy'; s()
+                }
+            }
         }
 
-        // ── CONFIGURE ────────────────────────────────────────────────────────
-
-        stage('Configure Kafka') {
-            when { expression { params.ACTION == 'CONFIGURE' } }
-            steps { script { def s = load 'scripts/groovy/messaging-configure-kafka.groovy'; s() } }
-        }
-
-        stage('Configure Schema Registry') {
-            when { expression { params.ACTION == 'CONFIGURE' } }
-            steps { script { def s = load 'scripts/groovy/messaging-configure-schema-registry.groovy'; s() } }
-        }
-
-        stage('Configure Kafka Connect') {
-            when { expression { params.ACTION == 'CONFIGURE' } }
-            steps { script { def s = load 'scripts/groovy/messaging-configure-kafka-connect.groovy'; s() } }
-        }
-
-        stage('Configure RabbitMQ') {
-            when { expression { params.ACTION == 'CONFIGURE' } }
-            steps { script { def s = load 'scripts/groovy/messaging-configure-rabbitmq.groovy'; s() } }
-        }
-
-        stage('Configure NATS') {
-            when { expression { params.ACTION == 'CONFIGURE' } }
-            steps { script { def s = load 'scripts/groovy/messaging-configure-nats.groovy'; s() } }
-        }
-
-        stage('Configure Redpanda') {
-            when { expression { params.ACTION == 'CONFIGURE' } }
-            steps { script { def s = load 'scripts/groovy/messaging-configure-redpanda.groovy'; s() } }
-        }
-
-        stage('Configure Memphis') {
-            when { expression { params.ACTION == 'CONFIGURE' } }
-            steps { script { def s = load 'scripts/groovy/messaging-configure-memphis.groovy'; s() } }
-        }
-
-        // ── UNINSTALL (reverse install order) ────────────────────────────────
+        // ── UNINSTALL (reverse order) ─────────────────────────────────────────
 
         stage('Uninstall AKHQ') {
             when { expression { params.ACTION == 'UNINSTALL' } }
@@ -228,14 +252,8 @@ pipeline {
         always {
             sh 'test -f infra.env && cp infra.env /var/lib/jenkins/infra.env || true'
         }
-        success {
-            echo "${params.ACTION} completed successfully."
-        }
-        failure {
-            echo "${params.ACTION} failed — check stage logs above."
-        }
-        cleanup {
-            sh "rm -f ${env.WORKSPACE}/kubeconfig 2>/dev/null || true"
-        }
+        success { echo "${params.ACTION} completed successfully." }
+        failure { echo "${params.ACTION} failed — check stage logs above." }
+        cleanup { sh "rm -f ${env.WORKSPACE}/kubeconfig 2>/dev/null || true" }
     }
 }

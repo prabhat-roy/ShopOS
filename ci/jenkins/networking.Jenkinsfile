@@ -11,8 +11,8 @@ pipeline {
     parameters {
         choice(
             name: 'ACTION',
-            choices: ['INSTALL', 'UNINSTALL', 'CONFIGURE'],
-            description: 'INSTALL — deploy all networking tools on Kubernetes. UNINSTALL — remove all. CONFIGURE — post-install setup (mTLS policies, service entries, ingress routes, intentions).'
+            choices: ['INSTALL', 'UNINSTALL'],
+            description: 'INSTALL — deploy and configure all networking tools. UNINSTALL — remove all.'
         )
     }
 
@@ -28,130 +28,154 @@ pipeline {
             steps {
                 script {
                     if (!fileExists('infra.env')) {
-                        error "infra.env not found — run the k8s-infra pipeline first to provision a cluster"
+                        error "infra.env not found — run the k8s-infra pipeline first"
                     }
-                    def kubeconfigContent = readFile('infra.env').trim()
+                    def content = readFile('infra.env').trim()
                         .split('\n').find { it.startsWith('KUBECONFIG_CONTENT=') }?.split('=', 2)?.last()
-                    if (!kubeconfigContent) {
-                        error "KUBECONFIG_CONTENT missing from infra.env — run the k8s-infra pipeline first"
-                    }
-                    writeFile file: "${env.WORKSPACE}/kubeconfig-b64", text: kubeconfigContent
+                    if (!content) error "KUBECONFIG_CONTENT missing from infra.env"
+                    writeFile file: "${env.WORKSPACE}/kubeconfig-b64", text: content
                     sh "base64 -d ${env.WORKSPACE}/kubeconfig-b64 > ${env.WORKSPACE}/kubeconfig && rm -f ${env.WORKSPACE}/kubeconfig-b64"
                     env.KUBECONFIG = "${env.WORKSPACE}/kubeconfig"
                 }
             }
         }
 
-        // ── INSTALL ──────────────────────────────────────────────────────────
+        // ── INSTALL + CONFIGURE ───────────────────────────────────────────────
 
-        stage('Install Cilium') {
+        stage('Cilium') {
             when { expression { params.ACTION == 'INSTALL' } }
-            steps { script { def s = load 'scripts/groovy/networking-install-cilium.groovy'; s() } }
+            steps {
+                script {
+                    def s = load 'scripts/groovy/networking-install-cilium.groovy'; s()
+                }
+            }
         }
 
-        stage('Install Calico') {
+        stage('Calico') {
             when { expression { params.ACTION == 'INSTALL' } }
-            steps { script { def s = load 'scripts/groovy/networking-install-calico.groovy'; s() } }
+            steps {
+                script {
+                    def s = load 'scripts/groovy/networking-install-calico.groovy'; s()
+                }
+            }
         }
 
-        stage('Install Flannel') {
+        stage('Flannel') {
             when { expression { params.ACTION == 'INSTALL' } }
-            steps { script { def s = load 'scripts/groovy/networking-install-flannel.groovy'; s() } }
+            steps {
+                script {
+                    def s = load 'scripts/groovy/networking-install-flannel.groovy'; s()
+                }
+            }
         }
 
-        stage('Install Weave Net') {
+        stage('Weave Net') {
             when { expression { params.ACTION == 'INSTALL' } }
-            steps { script { def s = load 'scripts/groovy/networking-install-weave-net.groovy'; s() } }
+            steps {
+                script {
+                    def s = load 'scripts/groovy/networking-install-weave-net.groovy'; s()
+                }
+            }
         }
 
-        stage('Install Antrea') {
+        stage('Antrea') {
             when { expression { params.ACTION == 'INSTALL' } }
-            steps { script { def s = load 'scripts/groovy/networking-install-antrea.groovy'; s() } }
+            steps {
+                script {
+                    def s = load 'scripts/groovy/networking-install-antrea.groovy'; s()
+                }
+            }
         }
 
-        stage('Install Nginx Ingress') {
+        stage('Nginx Ingress') {
             when { expression { params.ACTION == 'INSTALL' } }
-            steps { script { def s = load 'scripts/groovy/networking-install-nginx-ingress.groovy'; s() } }
+            steps {
+                script {
+                    def s = load 'scripts/groovy/networking-install-nginx-ingress.groovy'; s()
+                    def c = load 'scripts/groovy/networking-configure-nginx-ingress.groovy'; c()
+                }
+            }
         }
 
-        stage('Install Traefik') {
+        stage('Traefik') {
             when { expression { params.ACTION == 'INSTALL' } }
-            steps { script { def s = load 'scripts/groovy/networking-install-traefik.groovy'; s() } }
+            steps {
+                script {
+                    def s = load 'scripts/groovy/networking-install-traefik.groovy'; s()
+                    def c = load 'scripts/groovy/networking-configure-traefik.groovy'; c()
+                }
+            }
         }
 
-        stage('Install HAProxy Ingress') {
+        stage('HAProxy Ingress') {
             when { expression { params.ACTION == 'INSTALL' } }
-            steps { script { def s = load 'scripts/groovy/networking-install-haproxy-ingress.groovy'; s() } }
+            steps {
+                script {
+                    def s = load 'scripts/groovy/networking-install-haproxy-ingress.groovy'; s()
+                }
+            }
         }
 
-        stage('Install Contour') {
+        stage('Contour') {
             when { expression { params.ACTION == 'INSTALL' } }
-            steps { script { def s = load 'scripts/groovy/networking-install-contour.groovy'; s() } }
+            steps {
+                script {
+                    def s = load 'scripts/groovy/networking-install-contour.groovy'; s()
+                }
+            }
         }
 
-        stage('Install Kong') {
+        stage('Kong') {
             when { expression { params.ACTION == 'INSTALL' } }
-            steps { script { def s = load 'scripts/groovy/networking-install-kong.groovy'; s() } }
+            steps {
+                script {
+                    def s = load 'scripts/groovy/networking-install-kong.groovy'; s()
+                    def c = load 'scripts/groovy/networking-configure-kong.groovy'; c()
+                }
+            }
         }
 
-        stage('Install Istio') {
+        stage('Istio') {
             when { expression { params.ACTION == 'INSTALL' } }
-            steps { script { def s = load 'scripts/groovy/networking-install-istio.groovy'; s() } }
+            steps {
+                script {
+                    def s = load 'scripts/groovy/networking-install-istio.groovy'; s()
+                    def c = load 'scripts/groovy/networking-configure-istio.groovy'; c()
+                }
+            }
         }
 
-        stage('Install Linkerd') {
+        stage('Linkerd') {
             when { expression { params.ACTION == 'INSTALL' } }
-            steps { script { def s = load 'scripts/groovy/networking-install-linkerd.groovy'; s() } }
+            steps {
+                script {
+                    def s = load 'scripts/groovy/networking-install-linkerd.groovy'; s()
+                    def c = load 'scripts/groovy/networking-configure-linkerd.groovy'; c()
+                }
+            }
         }
 
-        stage('Install Consul') {
+        stage('Consul') {
             when { expression { params.ACTION == 'INSTALL' } }
-            steps { script { def s = load 'scripts/groovy/networking-install-consul.groovy'; s() } }
+            steps {
+                script {
+                    def s = load 'scripts/groovy/networking-install-consul.groovy'; s()
+                    def c = load 'scripts/groovy/networking-configure-consul.groovy'; c()
+                }
+            }
         }
 
-        stage('Install External DNS') {
+        stage('External DNS') {
             when { expression { params.ACTION == 'INSTALL' } }
-            steps { script { def s = load 'scripts/groovy/networking-install-external-dns.groovy'; s() } }
+            steps {
+                script {
+                    def s = load 'scripts/groovy/networking-install-external-dns.groovy'; s()
+                    def c = load 'scripts/groovy/networking-configure-external-dns.groovy'; c()
+                }
+            }
         }
 
-        // ── CONFIGURE ────────────────────────────────────────────────────────
-
-        stage('Configure Istio') {
-            when { expression { params.ACTION == 'CONFIGURE' } }
-            steps { script { def s = load 'scripts/groovy/networking-configure-istio.groovy'; s() } }
-        }
-
-        stage('Configure Linkerd') {
-            when { expression { params.ACTION == 'CONFIGURE' } }
-            steps { script { def s = load 'scripts/groovy/networking-configure-linkerd.groovy'; s() } }
-        }
-
-        stage('Configure Consul') {
-            when { expression { params.ACTION == 'CONFIGURE' } }
-            steps { script { def s = load 'scripts/groovy/networking-configure-consul.groovy'; s() } }
-        }
-
-        stage('Configure Traefik') {
-            when { expression { params.ACTION == 'CONFIGURE' } }
-            steps { script { def s = load 'scripts/groovy/networking-configure-traefik.groovy'; s() } }
-        }
-
-        stage('Configure Nginx Ingress') {
-            when { expression { params.ACTION == 'CONFIGURE' } }
-            steps { script { def s = load 'scripts/groovy/networking-configure-nginx-ingress.groovy'; s() } }
-        }
-
-        stage('Configure Kong') {
-            when { expression { params.ACTION == 'CONFIGURE' } }
-            steps { script { def s = load 'scripts/groovy/networking-configure-kong.groovy'; s() } }
-        }
-
-        stage('Configure External DNS') {
-            when { expression { params.ACTION == 'CONFIGURE' } }
-            steps { script { def s = load 'scripts/groovy/networking-configure-external-dns.groovy'; s() } }
-        }
-
-        // ── UNINSTALL (reverse install order) ────────────────────────────────
+        // ── UNINSTALL (reverse order) ─────────────────────────────────────────
 
         stage('Uninstall External DNS') {
             when { expression { params.ACTION == 'UNINSTALL' } }
@@ -228,14 +252,8 @@ pipeline {
         always {
             sh 'test -f infra.env && cp infra.env /var/lib/jenkins/infra.env || true'
         }
-        success {
-            echo "${params.ACTION} completed successfully."
-        }
-        failure {
-            echo "${params.ACTION} failed — check stage logs above."
-        }
-        cleanup {
-            sh "rm -f ${env.WORKSPACE}/kubeconfig 2>/dev/null || true"
-        }
+        success { echo "${params.ACTION} completed successfully." }
+        failure { echo "${params.ACTION} failed — check stage logs above." }
+        cleanup { sh "rm -f ${env.WORKSPACE}/kubeconfig 2>/dev/null || true" }
     }
 }
