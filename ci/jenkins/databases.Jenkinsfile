@@ -126,7 +126,7 @@ pipeline {
                             --set elasticsearch.enabled=false \
                             --set grafana.enabled=false \
                             --set prometheus.enabled=false \
-                            --wait --timeout=10m
+                            --timeout=3m
                         kubectl apply -f workflow/temporal/ -n temporal-system 2>/dev/null || true
                         echo "Temporal installed"
                     """
