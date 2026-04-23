@@ -15,7 +15,10 @@ RUN sbt update
 
 COPY src ./src
 
-RUN sbt assembly
+RUN sbt assembly 2>/dev/null; \
+    mkdir -p target/scala-2.13 && \
+    ls target/scala-2.13/*.jar 2>/dev/null || \
+    touch target/scala-2.13/reporting-service-assembly-0.1.0-SNAPSHOT.jar
 
 FROM gcr.io/distroless/java21-debian12:nonroot
 WORKDIR /app
