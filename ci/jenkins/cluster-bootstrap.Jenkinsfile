@@ -210,23 +210,68 @@ pipeline {
 
         stage('Bootstrap Complete') {
             steps {
-                echo """
-==========================================================
-  Cluster bootstrap complete for environment: ${params.ENVIRONMENT}
+                script {
+                    def envMap = [:]
+                    if (fileExists('infra.env')) {
+                        readFile('infra.env').trim().split('\n').each { line ->
+                            def idx = line.indexOf('=')
+                            if (idx > 0) envMap[line[0..<idx].trim()] = line[(idx+1)..-1].trim()
+                        }
+                    }
+                    def grafana  = envMap['GRAFANA_URL']   ?: 'http://grafana-grafana.grafana.svc.cluster.local:3000'
+                    def argocd   = envMap['ARGOCD_URL']    ?: 'http://argocd-server.argocd.svc.cluster.local:80'
+                    def harbor   = envMap['HARBOR_URL']    ?: 'harbor.shopos.local'
+                    def prom     = envMap['PROMETHEUS_URL'] ?: 'http://prometheus-prometheus.prometheus.svc.cluster.local:9090'
+                    def slack    = envMap['SLACK_WEBHOOK_URL'] ?: ''
+                    def emails   = envMap['EMAIL_RECIPIENTS'] ?: ''
 
-  Infrastructure ready:
-    Networking   : Cilium + Traefik + Istio + ExternalDNS
-    Security     : cert-manager + Vault + Keycloak + Kyverno + OPA + Falco
-    Observability: Prometheus + Grafana + Loki + Jaeger + OTel Collector
-    Messaging    : Kafka + Schema Registry + RabbitMQ + NATS
-    GitOps       : ArgoCD + Flux + Argo Workflows + Argo Events
-    Registry     : Harbor + Nexus + Gitea + ChartMuseum
-    Databases    : ClickHouse + Weaviate + Neo4j + ScyllaDB + Temporal
-    Streaming    : Flink + Debezium (Postgres + MongoDB CDC)
+                    echo """
+╔══════════════════════════════════════════════════════════════════════════╗
+║           SHOPOS — CLUSTER BOOTSTRAP COMPLETE                            ║
+╠══════════════════════════════════════════════════════════════════════════╣
+║  Environment : ${params.ENVIRONMENT}
+║  Build       : #${env.BUILD_NUMBER}
+╠══════════════════════════════════════════════════════════════════════════╣
+║  INFRASTRUCTURE READY                                                    ║
+║  Networking   : Cilium + Traefik + Istio + ExternalDNS + Linkerd
+║  Security     : cert-manager + Vault + Keycloak + Kyverno + OPA + Falco
+║  Observability: Prometheus + Grafana + Loki + Jaeger + OTel Collector
+║  Messaging    : Kafka + Schema Registry + RabbitMQ + NATS JetStream
+║  GitOps       : ArgoCD + Flux + Argo Workflows + Argo Events
+║  Registry     : Harbor + Nexus + Gitea + ChartMuseum
+║  Databases    : ClickHouse + Weaviate + Neo4j + ScyllaDB + Temporal
+║  Streaming    : Flink + Debezium (Postgres + MongoDB CDC)
+╠══════════════════════════════════════════════════════════════════════════╣
+║  DASHBOARD LINKS                                                         ║
+║  ArgoCD        : ${argocd}/applications
+║  Grafana       : ${grafana}/dashboards
+║  Prometheus    : ${prom}
+║  Harbor        : https://${harbor}/harbor/projects
+║  Flux UI       : http://weave-gitops.gitops.svc.cluster.local:9001
+║  Kiali         : http://kiali.istio-system.svc.cluster.local:20001/kiali
+║  Alertmanager  : http://alertmanager.prometheus.svc.cluster.local:9093
+║  Backstage     : http://backstage.backstage.svc.cluster.local:7007
+╠══════════════════════════════════════════════════════════════════════════╣
+║  NEXT STEPS (262 services, 22 domains)                                   ║
+║  1. pre-deploy.Jenkinsfile  → CI (scan + build + sign + push + GitOps)   ║
+║  2. deploy.Jenkinsfile      → GitOps (ArgoCD sync per domain)             ║
+║  3. post-deploy.Jenkinsfile → Validation (smoke + DAST + load + chaos)   ║
+╚══════════════════════════════════════════════════════════════════════════╝
+                    """
 
-  Next step: trigger deploy.Jenkinsfile to deploy all 230 services.
-==========================================================
-                """
+                    if (slack?.trim()) {
+                        sh """
+                            curl -s -X POST '${slack}' \
+                                -H 'Content-Type: application/json' \
+                                -d '{"text":"CLUSTER BOOTSTRAP COMPLETE — ShopOS #${env.BUILD_NUMBER} env=${params.ENVIRONMENT}\\nArgoCD: ${argocd}\\nGrafana: ${grafana}\\nBuild: ${env.BUILD_URL}"}' || true
+                        """
+                    }
+                    if (emails?.trim()) {
+                        mail to:      emails,
+                             subject: "Cluster Bootstrap Complete — ShopOS ${params.ENVIRONMENT} #${env.BUILD_NUMBER}",
+                             body:    "Cluster bootstrap complete for ${params.ENVIRONMENT}. ArgoCD: ${argocd}. Grafana: ${grafana}. Build: ${env.BUILD_URL}"
+                    }
+                }
             }
         }
     }
@@ -236,7 +281,20 @@ pipeline {
             sh 'test -f infra.env && cp infra.env /var/lib/jenkins/infra.env || true'
         }
         failure {
-            echo 'Bootstrap failed — check the failed stage above. Fix the issue and re-run with SKIP_* flags to resume from where it stopped.'
+            script {
+                def envMap = [:]
+                if (fileExists('infra.env')) {
+                    readFile('infra.env').trim().split('\n').each { line ->
+                        def idx = line.indexOf('=')
+                        if (idx > 0) envMap[line[0..<idx].trim()] = line[(idx+1)..-1].trim()
+                    }
+                }
+                def slack = envMap['SLACK_WEBHOOK_URL'] ?: ''
+                if (slack?.trim()) {
+                    sh "curl -s -X POST '${slack}' -H 'Content-Type: application/json' -d '{\"text\":\"BOOTSTRAP FAILED — ShopOS #${env.BUILD_NUMBER} env=${params.ENVIRONMENT} — re-run with SKIP_* flags. Build: ${env.BUILD_URL}\"}' || true"
+                }
+                echo 'Bootstrap failed — check the failed stage above. Fix the issue and re-run with SKIP_* flags to resume from where it stopped.'
+            }
         }
         cleanup {
             sh "rm -f ${env.WORKSPACE}/kubeconfig 2>/dev/null || true"

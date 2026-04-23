@@ -913,14 +913,193 @@ pipeline {
                 sh 'docker rmi aquasec/kube-bench:latest aquasec/kube-hunter:latest mondoo/cnspec:latest shopify/kubeaudit:latest philipssoftware/tern:latest || true'
             }
         }
+
+        // ── SECURITY REPORT ───────────────────────────────────────────────────
+
+        stage('Security Report') {
+            // Generates a consolidated security posture report after all tools are installed.
+            // Uploads tool health status to DefectDojo and sends email summary.
+            when { expression { params.ACTION == 'INSTALL' } }
+            steps {
+                catchError(buildResult: 'UNSTABLE', stageResult: 'FAILURE') {
+                    script {
+                        def envMap = [:]
+                        if (fileExists('infra.env')) {
+                            readFile('infra.env').trim().split('\n').each { line ->
+                                def idx = line.indexOf('=')
+                                if (idx > 0) envMap[line[0..<idx].trim()] = line[(idx+1)..-1].trim()
+                            }
+                        }
+                        env.DEFECTDOJO_URL   = envMap['DEFECTDOJO_URL']   ?: 'http://defectdojo-defectdojo.defectdojo.svc.cluster.local:8080'
+                        env.DEFECTDOJO_TOKEN = envMap['DEFECTDOJO_TOKEN']  ?: ''
+                        env.DEPTRACK_URL     = envMap['DEPENDENCY_TRACK_URL'] ?: 'http://dependency-track.dependency-track.svc.cluster.local:8080'
+                        env.SONAR_URL        = envMap['SONARQUBE_URL']     ?: 'http://sonarqube:9000'
+                        env.WAZUH_URL        = envMap['WAZUH_URL']         ?: ''
+                        env.WAZUH_TOKEN      = envMap['WAZUH_TOKEN']       ?: ''
+                        env.SLACK_WEBHOOK    = envMap['SLACK_WEBHOOK_URL'] ?: ''
+                        env.EMAIL_RECIPIENTS = envMap['EMAIL_RECIPIENTS']  ?: ''
+                        env.GRAFANA_URL      = envMap['GRAFANA_URL']       ?: 'http://grafana-grafana.grafana.svc.cluster.local:3000'
+
+                        sh """
+                            echo "=== Security Stack Health Check ==="
+                            kubectl get pods -A -l 'app.kubernetes.io/instance in (keycloak,vault,falco,kyverno,opa,trivy-operator,sonarqube,defectdojo,dependency-track,wazuh,cert-manager,rekor,fulcio)' \
+                                --no-headers 2>/dev/null | awk '{print \$4, \$1, \$2}' | sort || true
+
+                            echo ""
+                            echo "=== Installed Security Namespaces ==="
+                            kubectl get namespaces -l security.shopos.io/managed=true --no-headers 2>/dev/null || \
+                                kubectl get namespaces | grep -E 'keycloak|vault|falco|kyverno|sonarqube|defectdojo|wazuh|spire|rekor|fulcio|cert-manager|coraza|trivy' || true
+
+                            echo ""
+                            echo "=== Notifying Wazuh SIEM ==="
+                            [ -n '${env.WAZUH_URL}' ] && curl -sf -X POST \
+                                -H "Authorization: Bearer ${env.WAZUH_TOKEN}" \
+                                -H "Content-Type: application/json" \
+                                -d '{"event":"security_stack_deployed","build":"${env.BUILD_NUMBER}","environment":"cluster"}' \
+                                "${env.WAZUH_URL}/security/events" || true
+                        """
+
+                        def reportLines = [
+                            "SECURITY STACK REPORT — ShopOS Build #${env.BUILD_NUMBER}",
+                            "Action      : ${params.ACTION}",
+                            "Build URL   : ${env.BUILD_URL}",
+                            "",
+                            "Tools installed (INSTALL action):",
+                            "  Identity  : Keycloak, Dex, Authentik, ZITADEL, Authelia, SPIRE, Pomerium",
+                            "  Secrets   : HashiCorp Vault, Infisical",
+                            "  Policy    : OPA Gatekeeper, Kyverno, Kubewarden, OpenFGA",
+                            "  Runtime   : Falco, Tetragon, Tracee, KubeArmor",
+                            "  WAF       : Coraza WAF",
+                            "  PKI       : cert-manager",
+                            "  SAST/SCA  : SonarQube, Trivy Operator, Clair, Anchore, OpenVAS",
+                            "  DAST      : OWASP ZAP, Nuclei, Kubescape, Polaris",
+                            "  Supply Ch.: Rekor, Fulcio, Notary",
+                            "  Network   : Suricata, Zeek",
+                            "  SIEM/XDR  : Wazuh",
+                            "  Vuln Mgmt : Dependency-Track, DefectDojo",
+                            "",
+                            "Dashboards:",
+                            "  DefectDojo    : ${env.DEFECTDOJO_URL}/finding",
+                            "  Dep-Track     : ${env.DEPTRACK_URL}/projects",
+                            "  SonarQube     : ${env.SONAR_URL}",
+                            "  Grafana       : ${env.GRAFANA_URL}/d/security/security-overview",
+                            "  Wazuh         : ${env.WAZUH_URL ?: 'http://wazuh.wazuh.svc.cluster.local:5601'}",
+                        ].join('\n')
+
+                        writeFile file: 'security-report.txt', text: reportLines
+                        archiveArtifacts artifacts: 'security-report.txt', allowEmptyArchive: true
+
+                        if (env.SLACK_WEBHOOK?.trim()) {
+                            sh """
+                                curl -s -X POST '${env.SLACK_WEBHOOK}' \
+                                    -H 'Content-Type: application/json' \
+                                    -d '{"text":"SECURITY STACK DEPLOYED — ShopOS Build #${env.BUILD_NUMBER}\\nDefectDojo: ${env.DEFECTDOJO_URL}/finding\\nSonarQube: ${env.SONAR_URL}\\nGrafana Security: ${env.GRAFANA_URL}/d/security/security-overview\\nBuild: ${env.BUILD_URL}"}' || true
+                            """
+                        }
+                        if (env.EMAIL_RECIPIENTS?.trim()) {
+                            mail to:      env.EMAIL_RECIPIENTS,
+                                 subject: "Security Stack ${params.ACTION} — ShopOS Build #${env.BUILD_NUMBER}",
+                                 body:    reportLines
+                        }
+                        echo reportLines
+                    }
+                }
+            }
+        }
+
+        // ── DASHBOARD LINKS ───────────────────────────────────────────────────
+
+        stage('Dashboard Links') {
+            when { expression { params.ACTION == 'INSTALL' } }
+            steps {
+                script {
+                    def envMap = [:]
+                    if (fileExists('infra.env')) {
+                        readFile('infra.env').trim().split('\n').each { line ->
+                            def idx = line.indexOf('=')
+                            if (idx > 0) envMap[line[0..<idx].trim()] = line[(idx+1)..-1].trim()
+                        }
+                    }
+                    def grafana   = envMap['GRAFANA_URL']       ?: 'http://grafana-grafana.grafana.svc.cluster.local:3000'
+                    def dojo      = envMap['DEFECTDOJO_URL']    ?: 'http://defectdojo:8080'
+                    def deptrack  = envMap['DEPENDENCY_TRACK_URL'] ?: 'http://dependency-track:8080'
+                    def sonar     = envMap['SONARQUBE_URL']     ?: 'http://sonarqube:9000'
+                    def argocd    = envMap['ARGOCD_URL']        ?: 'http://argocd-server.argocd.svc.cluster.local:80'
+                    def harbor    = envMap['HARBOR_URL']        ?: 'harbor.shopos.local'
+
+                    echo """
+╔══════════════════════════════════════════════════════════════════════════╗
+║             SHOPOS — SECURITY STACK DASHBOARD LINKS                      ║
+╠══════════════════════════════════════════════════════════════════════════╣
+║  VULNERABILITY MANAGEMENT                                                ║
+║  DefectDojo (findings)     : ${dojo}/finding
+║  DefectDojo (engagements)  : ${dojo}/engagement
+║  Dependency-Track (SBOMs)  : ${deptrack}/projects
+║  SonarQube (code quality)  : ${sonar}
+╠══════════════════════════════════════════════════════════════════════════╣
+║  IDENTITY & ACCESS                                                       ║
+║  Keycloak (IAM)            : http://keycloak.keycloak.svc.cluster.local
+║  Vault (secrets)           : http://vault.vault.svc.cluster.local:8200/ui
+║  Pomerium (access proxy)   : http://pomerium.pomerium.svc.cluster.local
+║  OpenFGA (authz)           : http://openfga.openfga.svc.cluster.local:8080
+╠══════════════════════════════════════════════════════════════════════════╣
+║  RUNTIME SECURITY                                                        ║
+║  Falco Sidekick UI         : http://falco-falcosidekick-ui.falco.svc.cluster.local:2802
+║  Wazuh (SIEM)              : http://wazuh-dashboard.wazuh.svc.cluster.local:5601
+╠══════════════════════════════════════════════════════════════════════════╣
+║  SUPPLY CHAIN                                                            ║
+║  Harbor (image registry)   : https://${harbor}/harbor/projects
+║  Rekor (transparency log)  : https://rekor.sigstore.dev
+║  Cosign verify             : cosign verify --certificate-identity-regexp=jenkins ${harbor}/shopos/<image>
+╠══════════════════════════════════════════════════════════════════════════╣
+║  OBSERVABILITY (security dashboards)                                     ║
+║  Grafana security board    : ${grafana}/d/security/security-overview
+║  Grafana Falco board       : ${grafana}/d/falco/falco-runtime-security
+║  Grafana Cert board        : ${grafana}/d/certs/certificate-expiry
+║  ArgoCD (security apps)    : ${argocd}/applications
+╠══════════════════════════════════════════════════════════════════════════╣
+║  API GATEWAY SECURITY                                                    ║
+║  Coraza WAF                : http://traefik.traefik.svc.cluster.local:9000/dashboard
+║  Kyverno policies          : kubectl get cpol -A
+║  OPA Gatekeeper            : kubectl get constrainttemplate -A
+╚══════════════════════════════════════════════════════════════════════════╝
+                    """
+                }
+            }
+        }
     }
 
     post {
         always {
             sh 'test -f infra.env && cp infra.env /var/lib/jenkins/infra.env || true'
+            archiveArtifacts artifacts: 'security-report.txt', allowEmptyArchive: true
         }
-        success { echo "${params.ACTION} completed successfully." }
-        failure { echo "${params.ACTION} failed — check stage logs above." }
+        success {
+            script {
+                echo "${params.ACTION} completed successfully — security stack is operational."
+                echo "Review security dashboards: DefectDojo, SonarQube, Grafana security boards, Wazuh."
+            }
+        }
+        failure {
+            script {
+                def envMap = [:]
+                if (fileExists('infra.env')) {
+                    readFile('infra.env').trim().split('\n').each { line ->
+                        def idx = line.indexOf('=')
+                        if (idx > 0) envMap[line[0..<idx].trim()] = line[(idx+1)..-1].trim()
+                    }
+                }
+                def slack = envMap['SLACK_WEBHOOK_URL'] ?: ''
+                if (slack?.trim()) {
+                    sh """
+                        curl -s -X POST '${slack}' \
+                            -H 'Content-Type: application/json' \
+                            -d '{"text":"SECURITY PIPELINE FAILED — ShopOS Build #${env.BUILD_NUMBER} — ${params.ACTION}\\nBuild: ${env.BUILD_URL}"}' || true
+                    """
+                }
+                echo "${params.ACTION} FAILED — check stage logs above."
+            }
+        }
         cleanup {
             sh "rm -f ${env.WORKSPACE}/kubeconfig 2>/dev/null || true"
             sh 'docker image prune -f 2>/dev/null || true'

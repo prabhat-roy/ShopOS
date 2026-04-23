@@ -1,3 +1,15 @@
+// ── GITOPS DEPLOY ─────────────────────────────────────────────────────────────
+// This pipeline is a pure GitOps trigger. It does NOT build images.
+// Images are built, scanned, signed, and pushed by pre-deploy.Jenkinsfile.
+// Deployment is managed by ArgoCD (or Flux). This pipeline:
+//   1. Confirms the image exists in Harbor
+//   2. Updates Helm values with the target image tag (if not already done)
+//   3. Triggers ArgoCD sync and waits for health
+//   4. Verifies rollout in Kubernetes
+//   5. Prints dashboard links
+//   6. Sends deployment notification
+// ─────────────────────────────────────────────────────────────────────────────
+
 pipeline {
     agent any
 
@@ -5,53 +17,54 @@ pipeline {
         timestamps()
         ansiColor('xterm')
         buildDiscarder(logRotator(numToKeepStr: '20'))
-        timeout(time: 180, unit: 'MINUTES')
+        timeout(time: 30, unit: 'MINUTES')
     }
 
     parameters {
         string(
             name: 'SERVICE_NAME',
             defaultValue: '',
-            description: 'Service to build (e.g. order-service). Leave blank to build ALL services in DOMAIN.'
+            description: 'Service(s) to deploy (comma-separated, e.g. order-service,payment-service). Blank = all in DOMAIN.'
         )
         choice(
             name: 'DOMAIN',
             choices: ['platform','identity','catalog','commerce','supply-chain','financial',
                       'customer-experience','communications','content','analytics-ai','b2b',
                       'integrations','affiliate','marketplace','gamification','developer-platform',
-                      'compliance','sustainability','web'],
-            description: 'Business domain containing the service(s)'
+                      'compliance','sustainability','events-ticketing','auction','rental','web'],
+            description: 'Business domain / Kubernetes namespace'
         )
         choice(
             name: 'ENVIRONMENT',
             choices: ['dev','staging','prod'],
-            description: 'Target Kubernetes environment'
+            description: 'Target environment'
         )
         string(
             name: 'IMAGE_TAG',
             defaultValue: '',
-            description: 'Docker image tag. Defaults to <env>-<git-sha> if blank.'
+            description: 'Image tag to deploy (e.g. dev-a1b2c3d-42). Must already be pushed to Harbor.'
         )
         string(
             name: 'REGISTRY_PROJECT',
             defaultValue: 'shopos',
             description: 'Harbor project / namespace'
         )
-
-        booleanParam(name: 'SKIP_SECRETS',    defaultValue: false, description: 'Skip secret scanning  (Gitleaks, TruffleHog, GitGuardian)')
-        booleanParam(name: 'SKIP_SAST',       defaultValue: false, description: 'Skip SAST             (Semgrep, SonarQube, language linters, Snyk code)')
-        booleanParam(name: 'SKIP_SCA',        defaultValue: false, description: 'Skip SCA & SBOM       (Trivy FS, Grype, Syft, OWASP DC, Docker Scout, Snyk OSS)')
-        booleanParam(name: 'SKIP_IAC',        defaultValue: false, description: 'Skip IaC scanning     (Checkov, KICS, tfsec, Terrascan, Polaris, Kubeaudit, cnspec)')
-        booleanParam(name: 'SKIP_LICENSE',    defaultValue: false, description: 'Skip license checks   (FOSSA, Tern, license-checker, go-licenses, pip-licenses)')
-        booleanParam(name: 'SKIP_IMAGE_SCAN', defaultValue: false, description: 'Skip image scanning   (Trivy, Grype, Anchore, Clair, Docker Scout, Syft)')
-        booleanParam(name: 'SKIP_K8S_AUDIT',  defaultValue: false, description: 'Skip K8s audit        (kube-bench, kube-hunter, Kubescape, Kubeaudit, cnspec)')
-        booleanParam(name: 'SKIP_DAST',       defaultValue: true,  description: 'Skip DAST             (OWASP ZAP, Nuclei) — requires running services')
-        booleanParam(name: 'SKIP_DEPLOY',     defaultValue: false, description: 'Build & scan only — skip Kubernetes deployment')
+        booleanParam(
+            name: 'FORCE_SYNC',
+            defaultValue: false,
+            description: 'Force ArgoCD sync even if app is already in-sync'
+        )
+        booleanParam(
+            name: 'SKIP_IMAGE_VERIFY',
+            defaultValue: false,
+            description: 'Skip Harbor image existence check (useful for first deploy)'
+        )
     }
 
     stages {
 
-        // ──────────────────────────────────────────────────────────────────────
+        // ── GIT FETCH ─────────────────────────────────────────────────────────
+
         stage('Git Fetch') {
             steps {
                 checkout scm
@@ -59,447 +72,336 @@ pipeline {
             }
         }
 
-        // ──────────────────────────────────────────────────────────────────────
+        // ── ENVIRONMENT ───────────────────────────────────────────────────────
+
         stage('Load Environment') {
             steps {
                 script {
                     if (!fileExists('infra.env')) {
-                        error "infra.env not found — run k8s-infra and registry pipelines first to provision the cluster"
+                        error "infra.env not found — run k8s-infra pipeline first"
                     }
 
-                    // Parse infra.env once
                     def envMap = [:]
                     readFile('infra.env').trim().split('\n').each { line ->
                         def idx = line.indexOf('=')
                         if (idx > 0) envMap[line[0..<idx].trim()] = line[(idx+1)..-1].trim()
                     }
 
-                    // Registry
-                    env.HARBOR_URL          = envMap['HARBOR_URL']                ?: 'harbor.shopos.local'
-                    env.HARBOR_USER         = envMap['HARBOR_USER']                ?: 'admin'
-                    env.HARBOR_PASSWORD     = envMap['HARBOR_PASSWORD']            ?: ''
+                    env.HARBOR_URL       = envMap['HARBOR_URL']        ?: 'harbor.shopos.local'
+                    env.HARBOR_USER      = envMap['HARBOR_USER']        ?: 'admin'
+                    env.HARBOR_PASSWORD  = envMap['HARBOR_PASSWORD']    ?: ''
+                    env.ARGOCD_URL       = envMap['ARGOCD_URL']         ?: 'http://argocd-server.argocd.svc.cluster.local:80'
+                    env.ARGOCD_TOKEN     = envMap['ARGOCD_TOKEN']       ?: ''
+                    env.GRAFANA_URL      = envMap['GRAFANA_URL']        ?: 'http://grafana-grafana.grafana.svc.cluster.local:3000'
+                    env.PROMETHEUS_URL   = envMap['PROMETHEUS_URL']     ?: 'http://prometheus-prometheus.prometheus.svc.cluster.local:9090'
+                    env.SLACK_WEBHOOK    = envMap['SLACK_WEBHOOK_URL']  ?: ''
+                    env.EMAIL_RECIPIENTS = envMap['EMAIL_RECIPIENTS']   ?: ''
+                    env.DEFECTDOJO_URL   = envMap['DEFECTDOJO_URL']     ?: 'http://defectdojo:8080'
+                    env.SONAR_URL        = envMap['SONARQUBE_URL']      ?: 'http://sonarqube:9000'
+                    env.JAEGER_URL       = envMap['JAEGER_URL']         ?: 'http://jaeger-query.tracing.svc.cluster.local:16686'
+                    env.LOKI_URL         = envMap['LOKI_URL']           ?: 'http://loki.loki.svc.cluster.local:3100'
+                    env.KIALI_URL        = envMap['KIALI_URL']          ?: 'http://kiali.istio-system.svc.cluster.local:20001'
+                    env.UPTIME_KUMA_URL  = envMap['UPTIME_KUMA_URL']    ?: 'http://uptime-kuma.monitoring.svc.cluster.local:3001'
 
-                    // SAST / analysis servers
-                    env.SONAR_URL           = envMap['SONARQUBE_URL']              ?: 'http://sonarqube-sonarqube.sonarqube.svc.cluster.local:9000'
-                    env.SONAR_TOKEN         = envMap['SONARQUBE_TOKEN']            ?: ''
-                    env.SNYK_TOKEN          = envMap['SNYK_TOKEN']                 ?: ''
-                    env.FOSSA_API_KEY       = envMap['FOSSA_API_KEY']              ?: ''
-                    env.GITGUARDIAN_API_KEY = envMap['GITGUARDIAN_API_KEY']        ?: ''
-
-                    // Image scanning servers
-                    env.ANCHORE_URL         = envMap['ANCHORE_URL']                ?: ''
-                    env.ANCHORE_PASSWORD    = envMap['ANCHORE_PASSWORD']           ?: 'foobar'
-                    env.CLAIR_URL           = envMap['CLAIR_URL']                  ?: ''
-
-                    // DAST servers
-                    env.ZAP_URL             = envMap['ZAP_URL']                    ?: ''
-                    env.NUCLEI_URL          = envMap['NUCLEI_URL']                 ?: ''
-
-                    // Vulnerability management
-                    env.DEFECTDOJO_URL      = envMap['DEFECTDOJO_URL']             ?: 'http://defectdojo-defectdojo.defectdojo.svc.cluster.local:8080'
-                    env.DEFECTDOJO_TOKEN    = envMap['DEFECTDOJO_TOKEN']           ?: ''
-                    env.DEPTRACK_URL        = envMap['DEPENDENCY_TRACK_URL']       ?: 'http://dependency-track-dependency-track.dependency-track.svc.cluster.local:8080'
-                    env.DEPTRACK_KEY        = envMap['DEPTRACK_API_KEY']           ?: ''
-
-                    // SIEM
-                    env.WAZUH_URL           = envMap['WAZUH_URL']                  ?: ''
-                    env.WAZUH_TOKEN         = envMap['WAZUH_TOKEN']                ?: ''
-
-                    // Cloud provider
-                    env.CLOUD_PROVIDER = readFile('infra.env').trim()
-                        .split('\n').find { it.startsWith('CLOUD_PROVIDER=') }?.split('=', 2)?.last() ?: 'GCP'
-
-                    // Kubeconfig
-                    def kubeconfigContent = envMap['KUBECONFIG_CONTENT'] ?: ''
-                    if (kubeconfigContent) {
-                        writeFile file: "${env.WORKSPACE}/kubeconfig-b64", text: kubeconfigContent
+                    def kc = envMap['KUBECONFIG_CONTENT'] ?: ''
+                    if (kc) {
+                        writeFile file: "${env.WORKSPACE}/kubeconfig-b64", text: kc
                         sh "base64 -d ${env.WORKSPACE}/kubeconfig-b64 > ${env.WORKSPACE}/kubeconfig && rm -f ${env.WORKSPACE}/kubeconfig-b64"
                         env.KUBECONFIG = "${env.WORKSPACE}/kubeconfig"
                     }
+                }
+            }
+        }
 
-                    sh 'mkdir -p reports/sast reports/sca reports/secrets reports/iac reports/image-scan reports/license reports/k8s-audit reports/dast'
+        // ── RESOLVE DEPLOYMENT TARGET ─────────────────────────────────────────
 
-                    // Login to container registry early — session persists for all subsequent docker calls
+        stage('Resolve Deployment Target') {
+            steps {
+                script {
+                    if (!params.IMAGE_TAG?.trim()) {
+                        error "IMAGE_TAG is required — provide the tag built by pre-deploy pipeline"
+                    }
+
+                    env.IMAGE_TAG        = params.IMAGE_TAG.trim()
+                    env.BUILD_DOMAIN     = params.DOMAIN
+                    env.BUILD_ENV        = params.ENVIRONMENT
+                    env.REGISTRY_PROJECT = params.REGISTRY_PROJECT
+                    env.GIT_BRANCH_NAME  = sh(script: 'git rev-parse --abbrev-ref HEAD', returnStdout: true).trim()
+
+                    if (params.SERVICE_NAME?.trim()) {
+                        env.SERVICES = params.SERVICE_NAME.trim()
+                    } else {
+                        def srcPath = params.DOMAIN == 'web' ? 'src/web' : "src/${params.DOMAIN}"
+                        env.SERVICES = sh(
+                            script: "ls ${srcPath}/ 2>/dev/null | tr '\\n' ','",
+                            returnStdout: true
+                        ).trim().replaceAll(/,$/, '')
+                    }
+
+                    echo "────────────────────────────────────────────────────"
+                    echo "Pipeline    : GITOPS DEPLOY"
+                    echo "Services    : ${env.SERVICES}"
+                    echo "Domain      : ${env.BUILD_DOMAIN}"
+                    echo "Image Tag   : ${env.IMAGE_TAG}"
+                    echo "Environment : ${env.BUILD_ENV}"
+                    echo "ArgoCD URL  : ${env.ARGOCD_URL}"
+                    echo "────────────────────────────────────────────────────"
+                }
+            }
+        }
+
+        // ── VERIFY IMAGE IN REGISTRY ──────────────────────────────────────────
+
+        stage('Verify Image in Harbor') {
+            when { expression { !params.SKIP_IMAGE_VERIFY } }
+            steps {
+                catchError(buildResult: 'UNSTABLE', stageResult: 'FAILURE') {
+                    script {
+                        sh "echo '${env.HARBOR_PASSWORD}' | docker login ${env.HARBOR_URL} -u ${env.HARBOR_USER} --password-stdin"
+                        env.SERVICES.split(',').each { svc ->
+                            svc = svc.trim()
+                            def image = "${env.HARBOR_URL}/${env.REGISTRY_PROJECT}/${svc}:${env.IMAGE_TAG}"
+                            def exists = sh(
+                                script: "docker manifest inspect ${image} > /dev/null 2>&1 && echo 'yes' || echo 'no'",
+                                returnStdout: true
+                            ).trim()
+                            if (exists == 'yes') {
+                                echo "PASS — Image exists in Harbor: ${image}"
+                            } else {
+                                echo "WARN — Image not found in Harbor: ${image} — ensure pre-deploy pipeline ran successfully"
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        // ── UPDATE GITOPS VALUES ──────────────────────────────────────────────
+
+        stage('Update GitOps Manifests') {
+            // Ensures Helm values files have the correct image tag.
+            // Skipped if pre-deploy already committed the update.
+            steps {
+                script {
+                    env.SERVICES.split(',').each { svc ->
+                        svc = svc.trim()
+                        def image      = "${env.HARBOR_URL}/${env.REGISTRY_PROJECT}/${svc}"
+                        def valuesFile = "helm/charts/${svc}/values-${params.ENVIRONMENT}.yaml"
+                        sh """
+                            echo "=== Ensuring GitOps tag: ${svc} → ${env.IMAGE_TAG} ==="
+                            if [ -f ${valuesFile} ]; then
+                                sed -i "s|tag:.*|tag: \"${env.IMAGE_TAG}\"|g" ${valuesFile} || true
+                                sed -i "s|repository:.*${svc}.*|repository: ${image}|g" ${valuesFile} || true
+                            fi
+                            if [ -f gitops/argocd/apps/${svc}/values.yaml ]; then
+                                sed -i "s|tag:.*|tag: \"${env.IMAGE_TAG}\"|g" gitops/argocd/apps/${svc}/values.yaml || true
+                            fi
+                        """
+                    }
                     sh """
-                        echo "=== Registry login: ${envMap['HARBOR_URL'] ?: 'harbor.shopos.local'} ==="
-                        echo '${envMap['HARBOR_PASSWORD'] ?: ''}' | \
-                            docker login ${envMap['HARBOR_URL'] ?: 'harbor.shopos.local'} \
-                            -u ${envMap['HARBOR_USER'] ?: 'admin'} \
-                            --password-stdin || true
+                        git config user.email "jenkins@shopos.local"
+                        git config user.name  "Jenkins CI"
+                        git add helm/charts/ gitops/ 2>/dev/null || true
+                        git diff --staged --quiet || \
+                            git commit -m "deploy: ${params.DOMAIN} → ${env.IMAGE_TAG} (${params.ENVIRONMENT}) [skip ci]"
+                        git push origin ${env.GIT_BRANCH_NAME} 2>/dev/null || true
                     """
                 }
             }
         }
 
-        // ──────────────────────────────────────────────────────────────────────
-        stage('Resolve Build Context') {
+        // ── ARGOCD SYNC ───────────────────────────────────────────────────────
+
+        stage('ArgoCD Sync') {
             steps {
-                script {
-                    def gitSha = sh(script: 'git rev-parse --short HEAD', returnStdout: true).trim()
-                    // Tag format: <env>-<gitsha>-<buildnumber>  e.g. dev-a1b2c3d-42
-                    env.IMAGE_TAG        = params.IMAGE_TAG?.trim() ?: "${params.ENVIRONMENT}-${gitSha}-${env.BUILD_NUMBER}"
-                    env.BUILD_DOMAIN     = params.DOMAIN
-                    env.BUILD_ENV        = params.ENVIRONMENT
-                    env.REGISTRY_PROJECT = params.REGISTRY_PROJECT
+                catchError(buildResult: 'UNSTABLE', stageResult: 'FAILURE') {
+                    script {
+                        env.SERVICES.split(',').each { svc ->
+                            svc = svc.trim()
+                            sh """
+                                echo "=== ArgoCD sync: ${svc} ==="
+                                if command -v argocd &>/dev/null; then
+                                    argocd app sync ${svc} \
+                                        --server     ${env.ARGOCD_URL} \
+                                        --auth-token ${env.ARGOCD_TOKEN} \
+                                        ${params.FORCE_SYNC ? '--force' : ''} \
+                                        --prune \
+                                        --timeout 300 || true
 
-                    if (params.SERVICE_NAME?.trim()) {
-                        env.SERVICES = params.SERVICE_NAME.trim()
-                    } else {
-                        def srcPath = params.DOMAIN == 'web' ? "src/web" : "src/${params.DOMAIN}"
-                        def svcList = sh(
-                            script: "ls ${srcPath}/ 2>/dev/null | tr '\\n' ','",
-                            returnStdout: true
-                        ).trim().replaceAll(/,$/, '')
-                        env.SERVICES = svcList
-                    }
+                                    echo "=== Waiting for ${svc} to be Healthy ==="
+                                    argocd app wait ${svc} \
+                                        --server     ${env.ARGOCD_URL} \
+                                        --auth-token ${env.ARGOCD_TOKEN} \
+                                        --health \
+                                        --timeout 300 || true
 
-                    def primarySvc = env.SERVICES.split(',')[0].trim()
-                    def detector   = load 'scripts/groovy/deploy-language-detect.groovy'
-                    env.LANGUAGE   = detector.call(primarySvc)
-
-                    echo "────────────────────────────────────────────────"
-                    echo "Services   : ${env.SERVICES}"
-                    echo "Domain     : ${env.BUILD_DOMAIN}"
-                    echo "Language   : ${env.LANGUAGE}"
-                    echo "Tag        : ${env.IMAGE_TAG}"
-                    echo "Environment: ${env.BUILD_ENV}"
-                    echo "Registry   : ${env.HARBOR_URL}/${env.REGISTRY_PROJECT}"
-                    echo "────────────────────────────────────────────────"
-                }
-            }
-        }
-
-        // ──────────────────────────────────────────────────────────────────────
-        stage('Pre-flight Checks') {
-            // Verify all cluster infrastructure is ready before deploying services.
-            // Blocking: Cilium, Traefik, Istio, cert-manager, Vault (unsealed), ESO, Kafka, Schema Registry, Harbor.
-            // Non-blocking warnings: Keycloak, Kyverno, Prometheus.
-            when { expression { !params.SKIP_DEPLOY } }
-            steps {
-                script {
-                    def preflight = load 'scripts/groovy/deploy-preflight.groovy'
-                    preflight.call()
-                }
-            }
-        }
-
-        // ──────────────────────────────────────────────────────────────────────
-        stage('Secret Scanning') {
-            // Tools: Gitleaks · TruffleHog · GitGuardian ggshield · detect-secrets
-            when { expression { !params.SKIP_SECRETS } }
-            steps {
-                script {
-                    def s = load 'scripts/groovy/deploy-secrets.groovy'
-                    s()
-                }
-            }
-        }
-
-        // ──────────────────────────────────────────────────────────────────────
-        stage('SAST') {
-            // Tools: Semgrep · ShellCheck · Spectral · SonarQube · Snyk Code
-            //        GoSec · GolangCI · SpotBugs · PMD · Detekt
-            //        Bandit · Pylint · Flake8 · Pyflakes
-            //        ESLint · retire.js · Roslyn · cargo clippy · Scalastyle · Brakeman
-            when { expression { !params.SKIP_SAST } }
-            steps {
-                script {
-                    def s = load 'scripts/groovy/deploy-sast.groovy'
-                    s()
-                }
-            }
-        }
-
-        // ──────────────────────────────────────────────────────────────────────
-        stage('SCA & SBOM') {
-            // Tools: Trivy FS · Grype FS · Syft (SPDX+CycloneDX) · OWASP DC
-            //        Snyk OSS · Docker Scout FS · Vuls · OpenSCAP
-            //        govulncheck · npm audit · pip-audit · cargo audit · Maven OWASP DC
-            when { expression { !params.SKIP_SCA } }
-            steps {
-                script {
-                    def s = load 'scripts/groovy/deploy-sca.groovy'
-                    s()
-                }
-            }
-        }
-
-        // ──────────────────────────────────────────────────────────────────────
-        stage('IaC & Manifest Scanning') {
-            // Tools: Checkov · KICS · tfsec · Terrascan · Polaris · Kubeaudit · cnspec
-            when { expression { !params.SKIP_IAC } }
-            steps {
-                script {
-                    def s = load 'scripts/groovy/deploy-iac.groovy'
-                    s()
-                }
-            }
-        }
-
-        // ──────────────────────────────────────────────────────────────────────
-        stage('License Compliance') {
-            // Tools: FOSSA · Tern · license-checker · go-licenses · pip-licenses
-            when { expression { !params.SKIP_LICENSE } }
-            steps {
-                script {
-                    def s = load 'scripts/groovy/deploy-license.groovy'
-                    s()
-                }
-            }
-        }
-
-        // ──────────────────────────────────────────────────────────────────────
-        stage('Compile & Test') {
-            // go build · mvn package · gradle build · pip install · npm ci
-            // dotnet build · cargo build · sbt assembly
-            steps {
-                script {
-                    def s = load 'scripts/groovy/deploy-compile.groovy'
-                    s()
-                }
-            }
-        }
-
-        // ──────────────────────────────────────────────────────────────────────
-        stage('Docker Build') {
-            steps {
-                script {
-                    env.SERVICES.split(',').each { svc ->
-                        svc = svc.trim()
-                        def image = "${env.HARBOR_URL}/${env.REGISTRY_PROJECT}/${svc}:${env.IMAGE_TAG}"
-                        def ctxDir = env.BUILD_DOMAIN == 'web' ? "src/web/${svc}/" : "src/${env.BUILD_DOMAIN}/${svc}/"
-                        sh """
-                            echo "=== Building: ${image} ==="
-                            docker build \
-                                --label "git.commit=${env.IMAGE_TAG}" \
-                                --label "build.number=${env.BUILD_NUMBER}" \
-                                --label "domain=${env.BUILD_DOMAIN}" \
-                                --label "environment=${env.BUILD_ENV}" \
-                                -t ${image} \
-                                ${ctxDir}
-                        """
+                                    argocd app get ${svc} \
+                                        --server ${env.ARGOCD_URL} \
+                                        --auth-token ${env.ARGOCD_TOKEN} || true
+                                else
+                                    echo "argocd CLI not found — triggering sync via REST API"
+                                    curl -sfk -X POST \
+                                        -H "Authorization: Bearer ${env.ARGOCD_TOKEN}" \
+                                        "${env.ARGOCD_URL}/api/v1/applications/${svc}/sync" || true
+                                fi
+                            """
+                        }
                     }
                 }
             }
         }
 
-        // ──────────────────────────────────────────────────────────────────────
-        stage('Container Image Scan') {
-            // Tools: Trivy image · Trivy secrets · Grype · Anchore Engine (K8s)
-            //        Clair (K8s) · Docker Scout · Syft image SBOM
-            when { expression { !params.SKIP_IMAGE_SCAN } }
+        // ── KUBERNETES ROLLOUT VERIFY ─────────────────────────────────────────
+
+        stage('Verify Kubernetes Rollout') {
             steps {
-                script {
-                    def s = load 'scripts/groovy/deploy-image-scan.groovy'
-                    s()
-                }
-            }
-        }
+                catchError(buildResult: 'UNSTABLE', stageResult: 'FAILURE') {
+                    script {
+                        env.SERVICES.split(',').each { svc ->
+                            svc = svc.trim()
+                            def ns = params.DOMAIN
+                            sh """
+                                echo "=== Rollout status: ${svc} (ns=${ns}) ==="
+                                kubectl rollout status deployment/${svc} -n ${ns} --timeout=120s || \
+                                kubectl rollout status statefulset/${svc} -n ${ns} --timeout=120s || true
 
-        // ──────────────────────────────────────────────────────────────────────
-        stage('Tag & Push to Registry') {
-            steps {
-                script {
-                    // Re-login before push to ensure token hasn't expired during long scan stages
-                    sh "echo '${env.HARBOR_PASSWORD}' | docker login ${env.HARBOR_URL} -u ${env.HARBOR_USER} --password-stdin"
+                                echo "=== Pod health: ${svc} ==="
+                                kubectl get pods -n ${ns} -l app=${svc} --no-headers 2>/dev/null | head -10 || true
 
-                    env.SERVICES.split(',').each { svc ->
-                        svc = svc.trim()
-                        // Image name includes build number: <env>-<gitsha>-<buildnumber>
-                        def image = "${env.HARBOR_URL}/${env.REGISTRY_PROJECT}/${svc}:${env.IMAGE_TAG}"
-                        sh """
-                            echo "=== Pushing: ${image} ==="
-                            docker push ${image}
-                        """
-                        echo "Pushed ${image}"
-                    }
-                    echo "All images pushed to ${env.HARBOR_URL}/${env.REGISTRY_PROJECT}"
-                }
-            }
-        }
-
-        // ──────────────────────────────────────────────────────────────────────
-        stage('Supply Chain Signing') {
-            // Tools: Cosign (keyless) · Notary/notation · Rekor transparency log
-            steps {
-                script {
-                    env.SERVICES.split(',').each { svc ->
-                        svc = svc.trim()
-                        def image = "${env.HARBOR_URL}/${env.REGISTRY_PROJECT}/${svc}:${env.IMAGE_TAG}"
-
-                        // Cosign — keyless signing via OIDC
-                        sh """
-                            if command -v cosign &>/dev/null; then
-                                echo "=== Signing: cosign — ${svc} ==="
-                                cosign sign --yes ${image} || true
-                            else
-                                docker run --rm \
-                                    -v /var/run/docker.sock:/var/run/docker.sock \
-                                    gcr.io/projectsigstore/cosign:latest sign --yes ${image} || true
-                            fi
-                        """
-
-                        // Notation (Notary v2)
-                        sh """
-                            if command -v notation &>/dev/null; then
-                                echo "=== Signing: notation — ${svc} ==="
-                                notation sign ${image} || true
-                            fi
-                        """
+                                echo "=== Health check: ${svc} /healthz ==="
+                                kubectl port-forward svc/${svc} 19091:80 -n ${ns} &
+                                PF_PID=\$!
+                                sleep 5
+                                HTTP_CODE=\$(curl -sf -o /dev/null -w "%{http_code}" \
+                                    http://localhost:19091/healthz 2>/dev/null || echo "000")
+                                kill \$PF_PID 2>/dev/null || true
+                                wait \$PF_PID 2>/dev/null || true
+                                if [ "\$HTTP_CODE" = "200" ]; then
+                                    echo "PASS — ${svc} /healthz returned 200"
+                                else
+                                    echo "WARN — ${svc} /healthz returned \$HTTP_CODE"
+                                fi
+                            """
+                        }
                     }
                 }
             }
         }
 
-        // ──────────────────────────────────────────────────────────────────────
-        stage('Kubernetes Security Audit') {
-            // Tools: kube-bench (CIS) · kube-hunter · Kubescape (NSA/MITRE)
-            //        Kubeaudit (live) · cnspec
-            when { expression { !params.SKIP_K8S_AUDIT } }
+        // ── DASHBOARD LINKS ───────────────────────────────────────────────────
+
+        stage('Dashboard Links') {
             steps {
                 script {
-                    def s = load 'scripts/groovy/deploy-k8s-audit.groovy'
-                    s()
-                }
-            }
-        }
-
-        // ──────────────────────────────────────────────────────────────────────
-        stage('Deploy to Kubernetes') {
-            when { expression { !params.SKIP_DEPLOY } }
-            steps {
-                script {
-                    def sc = load('scripts/groovy/cloud-storage-class.groovy').call()
-                    env.STORAGE_CLASS = sc
-
-                    env.SERVICES.split(',').each { svc ->
-                        svc = svc.trim()
-                        def ns         = params.DOMAIN
-                        def imageRepo  = "${env.HARBOR_URL}/${env.REGISTRY_PROJECT}/${svc}"
-                        def valuesFile = "helm/charts/${svc}/values-${params.ENVIRONMENT}.yaml"
-
-                        sh """
-                            echo "=== Deploying: ${svc} → namespace=${ns} (${params.ENVIRONMENT}) ==="
-                            helm upgrade --install ${svc} helm/charts/${svc} \
-                                --namespace ${ns} \
-                                --create-namespace \
-                                --set image.repository=${imageRepo} \
-                                --set image.tag=${env.IMAGE_TAG} \
-                                --set environment=${params.ENVIRONMENT} \
-                                --set persistence.storageClass=\${STORAGE_CLASS} \
-                                \$([ -f ${valuesFile} ] && echo "-f ${valuesFile}" || true) \
-                                --wait \
-                                --timeout 5m
-                        """
-                    }
-                }
-            }
-        }
-
-        // ──────────────────────────────────────────────────────────────────────
-        stage('Post-Deploy Health Check') {
-            when { expression { !params.SKIP_DEPLOY } }
-            steps {
-                script {
-                    env.SERVICES.split(',').each { svc ->
-                        svc = svc.trim()
-                        def ns = params.DOMAIN
-
-                        sh """
-                            echo "=== Health check: ${svc} (namespace=${ns}) ==="
-                            kubectl rollout status deployment/${svc} -n ${ns} --timeout=120s || true
-
-                            kubectl port-forward svc/${svc} 19090:80 -n ${ns} &
-                            PF_PID=\$!
-                            sleep 5
-                            HTTP_CODE=\$(curl -sf -o /dev/null -w "%{http_code}" \
-                                http://localhost:19090/healthz 2>/dev/null || echo "000")
-                            kill \$PF_PID 2>/dev/null || true
-                            wait \$PF_PID 2>/dev/null || true
-
-                            if [ "\$HTTP_CODE" = "200" ]; then
-                                echo "PASS — ${svc} /healthz returned 200"
-                            else
-                                echo "WARN — ${svc} /healthz returned \$HTTP_CODE"
-                            fi
-                        """
-                    }
-                }
-            }
-        }
-
-        // ──────────────────────────────────────────────────────────────────────
-        stage('DAST') {
-            // Tools: OWASP ZAP (spider + active scan) · Nuclei (template-based)
-            // Runs AFTER deploy so services are reachable inside the cluster.
-            when { expression { !params.SKIP_DAST && !params.SKIP_DEPLOY } }
-            steps {
-                script {
-                    def s = load 'scripts/groovy/deploy-dast.groovy'
-                    s()
-                }
-            }
-        }
-
-        // ──────────────────────────────────────────────────────────────────────
-        stage('Security Report Upload') {
-            // DefectDojo — all scan types
-            // Dependency Track — CycloneDX SBOMs (source + image)
-            // Wazuh — pipeline completion event
-            steps {
-                script {
-                    def s = load 'scripts/groovy/deploy-report.groovy'
-                    s()
+                    def primarySvc = env.SERVICES?.split(',')?.getAt(0)?.trim() ?: 'unknown'
+                    echo """
+╔══════════════════════════════════════════════════════════════════════════╗
+║              SHOPOS — DEPLOYMENT DASHBOARD LINKS                         ║
+╠══════════════════════════════════════════════════════════════════════════╣
+║  Domain    : ${env.BUILD_DOMAIN}
+║  Env       : ${env.BUILD_ENV}
+║  Tag       : ${env.IMAGE_TAG}
+║  Services  : ${env.SERVICES}
+╠══════════════════════════════════════════════════════════════════════════╣
+║  GITOPS & DEPLOYMENT                                                     ║
+║  ArgoCD (all apps)         : ${env.ARGOCD_URL}/applications
+║  ArgoCD (this service)     : ${env.ARGOCD_URL}/applications/${primarySvc}
+║  Flux UI                   : http://weave-gitops.gitops.svc.cluster.local:9001
+╠══════════════════════════════════════════════════════════════════════════╣
+║  REGISTRY                                                                ║
+║  Harbor (registry)         : https://${env.HARBOR_URL}/harbor/projects
+║  Image                     : https://${env.HARBOR_URL}/harbor/projects/${env.REGISTRY_PROJECT}/repositories/${primarySvc}
+╠══════════════════════════════════════════════════════════════════════════╣
+║  SERVICE HEALTH & OBSERVABILITY                                          ║
+║  Grafana (dashboards)      : ${env.GRAFANA_URL}/dashboards
+║  Grafana (service board)   : ${env.GRAFANA_URL}/d/services/service-overview?var-service=${primarySvc}
+║  Jaeger (traces)           : ${env.JAEGER_URL}/search?service=${primarySvc}
+║  Loki (logs)               : ${env.GRAFANA_URL}/explore (datasource=Loki)
+║  Kiali (service mesh)      : ${env.KIALI_URL}/kiali/graph
+║  Prometheus (metrics)      : ${env.PROMETHEUS_URL}/graph?g0.expr=up{job="${primarySvc}"}
+║  Alertmanager              : http://alertmanager.prometheus.svc.cluster.local:9093
+║  Uptime Kuma               : ${env.UPTIME_KUMA_URL}
+╠══════════════════════════════════════════════════════════════════════════╣
+║  SUPPLY CHAIN & SECURITY                                                 ║
+║  DefectDojo (findings)     : ${env.DEFECTDOJO_URL}/finding
+║  Backstage (service info)  : http://backstage.backstage.svc.cluster.local:7007/catalog/default/component/${primarySvc}
+╠══════════════════════════════════════════════════════════════════════════╣
+║  NEXT STEP: Trigger post-deploy.Jenkinsfile for validation tests         ║
+╚══════════════════════════════════════════════════════════════════════════╝
+                    """
                 }
             }
         }
     }
 
-    // ──────────────────────────────────────────────────────────────────────────
+    // ── POST ──────────────────────────────────────────────────────────────────
+
     post {
         always {
             sh 'test -f infra.env && cp infra.env /var/lib/jenkins/infra.env || true'
-            // Archive all security reports
-            archiveArtifacts artifacts: 'reports/**', allowEmptyArchive: true
-
-            echo "Build #${env.BUILD_NUMBER} done — reports archived."
         }
 
         success {
-            echo "SUCCESS — ${env.SERVICES} → ${params.ENVIRONMENT} @ ${env.IMAGE_TAG}"
+            script {
+                def summary = """DEPLOYMENT SUCCESS — ShopOS Build #${env.BUILD_NUMBER}
+Services   : ${env.SERVICES}
+Domain     : ${env.BUILD_DOMAIN}
+Environment: ${env.BUILD_ENV}
+Image Tag  : ${env.IMAGE_TAG}
+ArgoCD     : ${env.ARGOCD_URL}/applications
+Grafana    : ${env.GRAFANA_URL}/dashboards
+Jaeger     : ${env.JAEGER_URL}
+Build URL  : ${env.BUILD_URL}
+Next step  : Run post-deploy pipeline for smoke, load, and chaos tests."""
+
+                if (env.SLACK_WEBHOOK?.trim()) {
+                    sh """
+                        curl -s -X POST '${env.SLACK_WEBHOOK}' \
+                            -H 'Content-Type: application/json' \
+                            -d '{"text":"DEPLOYED: ShopOS #${env.BUILD_NUMBER} — ${env.SERVICES} → ${env.BUILD_ENV} @ ${env.IMAGE_TAG}\\nArgoCD: ${env.ARGOCD_URL}/applications\\nGrafana: ${env.GRAFANA_URL}\\nBuild: ${env.BUILD_URL}"}' || true
+                    """
+                }
+                if (env.EMAIL_RECIPIENTS?.trim()) {
+                    mail to:      env.EMAIL_RECIPIENTS,
+                         subject: "DEPLOYED: ShopOS ${env.BUILD_DOMAIN}/${env.BUILD_ENV} — ${env.IMAGE_TAG}",
+                         body:    summary
+                }
+                echo "=== DEPLOYMENT NOTIFICATION SENT ==="
+                echo summary
+            }
         }
 
         failure {
-            echo "FAILED — check stage logs. All partial reports archived for triage."
+            script {
+                def summary = """DEPLOYMENT FAILED — ShopOS Build #${env.BUILD_NUMBER}
+Services   : ${env.SERVICES ?: 'unknown'}
+Domain     : ${params.DOMAIN}
+Environment: ${params.ENVIRONMENT}
+Image Tag  : ${params.IMAGE_TAG}
+ArgoCD     : ${env.ARGOCD_URL}/applications
+Build URL  : ${env.BUILD_URL}
+Action     : Check ArgoCD events and kubectl describe pod for failure reason."""
+
+                if (env.SLACK_WEBHOOK?.trim()) {
+                    sh """
+                        curl -s -X POST '${env.SLACK_WEBHOOK}' \
+                            -H 'Content-Type: application/json' \
+                            -d '{"text":"DEPLOY FAILED: ShopOS #${env.BUILD_NUMBER} — ${env.SERVICES ?: params.DOMAIN} → ${params.ENVIRONMENT}\\nArgoCD: ${env.ARGOCD_URL}/applications\\nBuild: ${env.BUILD_URL}"}' || true
+                    """
+                }
+                if (env.EMAIL_RECIPIENTS?.trim()) {
+                    mail to:      env.EMAIL_RECIPIENTS,
+                         subject: "DEPLOY FAILED: ShopOS ${params.DOMAIN}/${params.ENVIRONMENT} — Build #${env.BUILD_NUMBER}",
+                         body:    summary
+                }
+                echo "=== FAILURE NOTIFICATION SENT ==="
+                echo summary
+            }
         }
 
         cleanup {
-            script {
-                echo "=== Cleanup ==="
-
-                // Remove built images from Jenkins agent to free disk
-                env.SERVICES?.split(',')?.each { svc ->
-                    svc = svc?.trim()
-                    if (svc && env.HARBOR_URL && env.REGISTRY_PROJECT && env.IMAGE_TAG) {
-                        // Remove only the versioned image (no latest tag is used)
-                        sh "docker rmi ${env.HARBOR_URL}/${env.REGISTRY_PROJECT}/${svc}:${env.IMAGE_TAG} 2>/dev/null || true"
-                    }
-                }
-
-                // Docker logout
-                sh "docker logout ${env.HARBOR_URL} 2>/dev/null || true"
-
-                // Remove dangling layers left by scanner containers
-                sh 'docker image prune -f 2>/dev/null || true'
-
-                // Remove scanner tool temp files
-                sh 'rm -f /tmp/trivy-*.json /tmp/trivy-secret-*.json /tmp/sbom-img-*.json /tmp/nuclei-*.json /tmp/kubescape.json 2>/dev/null || true'
-
-                // Remove kubeconfig written to workspace
-                sh "rm -f ${env.WORKSPACE}/kubeconfig 2>/dev/null || true"
-
-                echo "Cleanup complete."
-            }
+            sh "rm -f ${env.WORKSPACE}/kubeconfig 2>/dev/null || true"
+            sh "docker logout ${env.HARBOR_URL} 2>/dev/null || true"
         }
     }
 }
