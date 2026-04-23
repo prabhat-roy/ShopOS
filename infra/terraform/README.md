@@ -1,9 +1,10 @@
-# Terraform — AWS Production Infrastructure
+# Terraform — All Cloud Infrastructure (AWS + GCP + Azure in Parallel)
 
-**Scope: AWS production environment only.**
+**Scope: All three clouds — AWS, GCP, and Azure — run in parallel, not sequentially.**
 
-Terraform manages all AWS production cloud resources. Non-production environments (dev, staging)
-and non-AWS clouds (GCP, Azure) are managed by OpenTofu — see `infra/opentofu/`.
+Terraform manages all cloud infrastructure. AWS, GCP, and Azure workspaces are planned and applied
+concurrently using Atlantis. Jenkins server (master + agents) is provisioned by Terraform — it is
+never created manually or from a laptop. All infrastructure changes go through Git → Atlantis.
 
 ## Why Terraform (not OpenTofu) for AWS Production?
 

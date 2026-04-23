@@ -1,0 +1,225 @@
+# Atlantis — GitOps for Terraform
+# All three clouds (AWS, GCP, Azure) plan and apply in parallel.
+# Jenkins server is provisioned by Terraform (aws/jenkins) — never created manually.
+# No terraform commands are run from a laptop in any environment.
+
+version: 3
+
+automerge: false
+delete_source_branch_on_merge: false
+parallel_plan: true    # AWS + GCP + Azure plan simultaneously
+parallel_apply: true   # Apply all three in parallel after approval
+
+projects:
+
+  # ─── AWS ─────────────────────────────────────────────────────────────────
+  - name: aws-eks
+    dir: infra/terraform/aws/eks
+    workspace: production
+    terraform_version: v1.9.8
+    autoplan:
+      when_modified:
+        - "*.tf"
+        - "*.tfvars"
+        - "../modules/**/*.tf"
+      enabled: true
+    apply_requirements:
+      - approved
+      - mergeable
+    workflow: aws-production
+
+  - name: aws-jenkins
+    dir: infra/terraform/aws/jenkins
+    workspace: production
+    terraform_version: v1.9.8
+    autoplan:
+      when_modified:
+        - "*.tf"
+      enabled: true
+    apply_requirements:
+      - approved
+      - mergeable
+    workflow: aws-production
+
+  # ─── GCP ─────────────────────────────────────────────────────────────────
+  - name: gcp-gke
+    dir: infra/terraform/gcp/gke
+    workspace: production
+    terraform_version: v1.9.8
+    autoplan:
+      when_modified:
+        - "*.tf"
+        - "*.tfvars"
+        - "../modules/**/*.tf"
+      enabled: true
+    apply_requirements:
+      - approved
+      - mergeable
+    workflow: gcp-production
+
+  - name: gcp-jenkins
+    dir: infra/terraform/gcp/jenkins
+    workspace: production
+    terraform_version: v1.9.8
+    autoplan:
+      when_modified:
+        - "*.tf"
+      enabled: true
+    apply_requirements:
+      - approved
+      - mergeable
+    workflow: gcp-production
+
+  # ─── Azure ───────────────────────────────────────────────────────────────
+  - name: azure-aks
+    dir: infra/terraform/azure/aks
+    workspace: production
+    terraform_version: v1.9.8
+    autoplan:
+      when_modified:
+        - "*.tf"
+        - "*.tfvars"
+        - "../modules/**/*.tf"
+      enabled: true
+    apply_requirements:
+      - approved
+      - mergeable
+    workflow: azure-production
+
+  - name: azure-jenkins
+    dir: infra/terraform/azure/jenkins
+    workspace: production
+    terraform_version: v1.9.8
+    autoplan:
+      when_modified:
+        - "*.tf"
+      enabled: true
+    apply_requirements:
+      - approved
+      - mergeable
+    workflow: azure-production
+
+  # ─── OpenTofu — Dev/Staging (all clouds) ─────────────────────────────────
+  - name: aws-dev
+    dir: infra/opentofu/aws/dev
+    workspace: dev
+    terraform_version: v1.8.5   # OpenTofu version
+    autoplan:
+      when_modified:
+        - "*.tofu"
+        - "*.tfvars"
+      enabled: true
+    apply_requirements:
+      - mergeable   # No approval needed for dev
+    workflow: opentofu-dev
+
+  - name: aws-staging
+    dir: infra/opentofu/aws/staging
+    workspace: staging
+    terraform_version: v1.8.5
+    autoplan:
+      when_modified:
+        - "*.tofu"
+      enabled: true
+    apply_requirements:
+      - approved
+    workflow: opentofu-staging
+
+  - name: gcp-dev
+    dir: infra/opentofu/gcp/dev
+    workspace: dev
+    terraform_version: v1.8.5
+    autoplan:
+      when_modified:
+        - "*.tofu"
+      enabled: true
+    apply_requirements:
+      - mergeable
+    workflow: opentofu-dev
+
+  - name: azure-dev
+    dir: infra/opentofu/azure/dev
+    workspace: dev
+    terraform_version: v1.8.5
+    autoplan:
+      when_modified:
+        - "*.tofu"
+      enabled: true
+    apply_requirements:
+      - mergeable
+    workflow: opentofu-dev
+
+workflows:
+
+  aws-production:
+    plan:
+      steps:
+        - env:
+            name: AWS_REGION
+            value: us-east-1
+        - run: infracost breakdown --path . --format json --out-file /tmp/infracost.json
+        - run: infracost comment github --path /tmp/infracost.json --repo $BASE_REPO_OWNER/$BASE_REPO_NAME --pull-request $PULL_NUM --github-token $GITHUB_TOKEN --behavior update
+        - run: checkov -d . --framework terraform --quiet --compact
+        - run: tfsec . --minimum-severity HIGH
+        - init:
+            extra_args: ["-backend-config=../../backend-aws.hcl", "-reconfigure"]
+        - plan:
+            extra_args: ["-var-file=../../prod.tfvars", "-detailed-exitcode"]
+    apply:
+      steps:
+        - run: echo "Applying AWS production infrastructure..."
+        - apply
+
+  gcp-production:
+    plan:
+      steps:
+        - env:
+            name: GOOGLE_PROJECT
+            value: shopos-prod
+        - run: infracost breakdown --path . --format json --out-file /tmp/infracost-gcp.json
+        - run: checkov -d . --framework terraform --quiet
+        - init:
+            extra_args: ["-backend-config=../../backend-gcs.hcl", "-reconfigure"]
+        - plan:
+            extra_args: ["-var-file=../../gcp-prod.tfvars", "-detailed-exitcode"]
+    apply:
+      steps:
+        - run: echo "Applying GCP production infrastructure..."
+        - apply
+
+  azure-production:
+    plan:
+      steps:
+        - run: infracost breakdown --path . --format json --out-file /tmp/infracost-azure.json
+        - run: checkov -d . --framework terraform --quiet
+        - init:
+            extra_args: ["-backend-config=../../backend-azurerm.hcl", "-reconfigure"]
+        - plan:
+            extra_args: ["-var-file=../../azure-prod.tfvars", "-detailed-exitcode"]
+    apply:
+      steps:
+        - run: echo "Applying Azure production infrastructure..."
+        - apply
+
+  opentofu-dev:
+    plan:
+      steps:
+        - run: echo "Planning dev environment (no cost check required)"
+        - init
+        - plan:
+            extra_args: ["-var-file=dev.tfvars"]
+    apply:
+      steps:
+        - apply:
+            extra_args: ["-auto-approve"]
+
+  opentofu-staging:
+    plan:
+      steps:
+        - run: infracost breakdown --path . --format json --out-file /tmp/infracost-staging.json
+        - init
+        - plan:
+            extra_args: ["-var-file=staging.tfvars"]
+    apply:
+      steps:
+        - apply
