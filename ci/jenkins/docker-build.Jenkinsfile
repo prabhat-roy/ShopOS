@@ -12,14 +12,15 @@ pipeline {
         string(
             name: 'SERVICE_NAME',
             defaultValue: '',
-            description: 'Single service to build (e.g. order-service). Leave blank to build all in DOMAIN (or all 154 if DOMAIN also blank).'
+            description: 'Single service to build (e.g. order-service). Leave blank to build all in DOMAIN (or all 230 if DOMAIN also blank).'
         )
         choice(
             name: 'DOMAIN',
             choices: ['','platform','identity','catalog','commerce','supply-chain','financial',
                       'customer-experience','communications','content','analytics-ai','b2b',
-                      'integrations','affiliate'],
-            description: 'Domain filter — empty = build ALL 154 services across every domain'
+                      'integrations','affiliate','marketplace','gamification','developer-platform',
+                      'compliance','sustainability','web'],
+            description: 'Domain filter — empty = build ALL 230 services across every domain'
         )
         string(
             name: 'IMAGE_TAG',
@@ -93,7 +94,9 @@ pipeline {
 
                     def allDomains = ['platform','identity','catalog','commerce','supply-chain',
                                       'financial','customer-experience','communications','content',
-                                      'analytics-ai','b2b','integrations','affiliate']
+                                      'analytics-ai','b2b','integrations','affiliate','marketplace',
+                                      'gamification','developer-platform','compliance','sustainability',
+                                      'web']
 
                     if (params.SERVICE_NAME?.trim()) {
                         // Single service — domain must be set
@@ -108,7 +111,7 @@ pipeline {
                         env.SERVICE_LIST = svcs
                         env.DOMAIN_LIST  = params.DOMAIN
                     } else {
-                        // All 154 services — build domain:service pairs
+                        // All 230 services — build domain:service pairs
                         def pairs = []
                         allDomains.each { d ->
                             def svcs = sh(
@@ -158,6 +161,7 @@ pipeline {
 
                     buildPairs.each { entry ->
                         def image = "${env.HARBOR_URL}/${env.REGISTRY_PROJECT}/${entry.svc}:${env.IMAGE_TAG}"
+                        def ctxDir = entry.domain == 'web' ? "src/web/${entry.svc}/" : "src/${entry.domain}/${entry.svc}/"
                         sh """
                             echo "=== Building: ${image} ==="
                             docker build \
@@ -165,7 +169,7 @@ pipeline {
                                 --label "build.number=${env.BUILD_NUMBER}" \
                                 --label "domain=${entry.domain}" \
                                 -t ${image} \
-                                src/${entry.domain}/${entry.svc}/
+                                ${ctxDir}
                         """
                     }
                     // store for later stages
