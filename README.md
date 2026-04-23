@@ -1,6 +1,6 @@
 # ShopOS — Enterprise Commerce Platform
 
-An enterprise-grade, cloud-native commerce platform — 230 services (224 microservices + 6 frontend apps), 19 domains, 13 languages, full open source stack.
+An enterprise-grade, cloud-native commerce platform — 230 services, 19 domains, 13 languages, full open source stack.
 
 ---
 
@@ -683,16 +683,16 @@ Jenkins pipelines: `build.Jenkinsfile`, `test.Jenkinsfile`, `security.Jenkinsfil
 
 ---
 
-### 19. Web Frontend (6 apps)
+### 19. Web (6 services)
 
-| App | Framework | Responsibility |
+| Service | Framework | Responsibility |
 |---|---|---|
-| storefront | Next.js 14 (React/TS) | Customer-facing shopping experience — SSR for SEO |
-| admin-dashboard | React + Vite (TS) | Admin and merchant management portal |
-| seller-portal | Vue.js 3 (TS) | Marketplace seller portal — listings, analytics, payouts |
-| partner-portal | Angular 18 (TS) | B2B partner portal — contracts, orders, invoices |
-| mobile-app | React Native / Expo (TS) | iOS + Android customer app |
-| developer-portal-ui | React + Vite (TS) | Developer portal — API docs, sandbox, OAuth apps |
+| storefront-service | Next.js 14 (React/TS) | Customer-facing shopping experience — SSR for SEO |
+| admin-dashboard-service | React + Vite (TS) | Admin and merchant management portal |
+| seller-portal-service | Vue.js 3 (TS) | Marketplace seller portal — listings, analytics, payouts |
+| partner-portal-service | Angular 18 (TS) | B2B partner portal — contracts, orders, invoices |
+| mobile-app-service | React Native / Expo (TS) | iOS + Android customer app |
+| developer-portal-service | React + Vite (TS) | Developer portal — API docs, sandbox, OAuth apps |
 
 ---
 
