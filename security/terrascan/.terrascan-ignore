@@ -1,0 +1,41 @@
+# =============================================================================
+# Terrascan rule skip list for ShopOS development environment
+#
+# Format: one Rule ID per line (comments with #)
+# These rules are suppressed because they represent acceptable trade-offs
+# in a development/staging environment and are addressed at the platform level.
+#
+# Review and remove these before production hardening.
+# =============================================================================
+
+# AWS.CloudWatch.Logging.Medium.0019
+# Reason: CloudWatch detailed monitoring is not enabled on dev EC2 instances.
+#         Monitoring is handled by Prometheus + Grafana at the application layer.
+#         Acceptable for dev; enforce in prod via Terraform workspace condition.
+AWS.CloudWatch.Logging.Medium.0019
+
+# AC-K8-NS-PO-H-0002
+# Reason: Pod Security Admission (PSA) 'restricted' profile blocks some
+#         infrastructure pods (Vault agent injector, Falco DaemonSet) that
+#         require elevated capabilities. These are reviewed manually and
+#         controlled via Kyverno namespace-level exemptions.
+AC-K8-NS-PO-H-0002
+
+# AC-K8-NS-PO-M-0308
+# Reason: Default service account tokens are auto-mounted in some namespaces
+#         for internal tooling (Argo Workflows, Backstage). Addressed by
+#         setting automountServiceAccountToken: false per-pod in production.
+AC-K8-NS-PO-M-0308
+
+# AC-HLM-NS-IR-M-0004
+# Reason: Some Helm charts lack resource limits on init containers (e.g., DB
+#         migration init containers). These are short-lived and adding limits
+#         introduces migration timeout risk. Will be addressed in Helm chart v2.
+AC-HLM-NS-IR-M-0004
+
+# AC-TRF-MON-CERT-M-0144
+# Reason: Traefik TLS certificate expiry monitoring is handled by cert-manager
+#         with automatic renewal (Let's Encrypt / Vault PKI). Terrascan flags
+#         the absence of an explicit monitoring annotation, but the cert-manager
+#         CertificateRequest controller handles rotation proactively.
+AC-TRF-MON-CERT-M-0144

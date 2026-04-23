@@ -1,0 +1,48 @@
+replicaCount: 1
+
+image:
+  repository: marquezproject/marquez-web
+  tag: "0.47.0"
+  pullPolicy: IfNotPresent
+
+service:
+  type: ClusterIP
+  port: 3000
+
+ingress:
+  enabled: false
+  className: ""
+  annotations: {}
+  host: marquez-web.shopos.local
+  path: /
+  pathType: Prefix
+  tls: []
+
+resources:
+  requests:
+    cpu: 50m
+    memory: 128Mi
+  limits:
+    cpu: 200m
+    memory: 256Mi
+
+# Marquez API backend connection
+marquez:
+  host: "marquez"
+  port: 5000
+
+podAnnotations: {}
+
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 1000
+
+containerSecurityContext:
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: true
+  capabilities:
+    drop:
+      - ALL
+
+nameOverride: ""
+fullnameOverride: ""

@@ -31,7 +31,8 @@ Database technology is chosen per service based on data shape and access pattern
 | ClickHouse 24.8 | OLAP database | Reporting aggregations, analytics queries |
 | Weaviate 1.26 | Vector database | Semantic search, ML embeddings |
 | Neo4j 5.23 | Graph database | Product recommendations, relationship traversal |
-| ScyllaDB 6.1 | Cassandra-compatible | High-performance event storage |
+| TimescaleDB 2.15 | Time-series (PostgreSQL extension) | Service metrics, inventory events, page views |
+| Memcached 1.6 | High-throughput key-value cache | Hot read paths requiring maximum throughput, no persistence |
 
 ---
 
@@ -49,6 +50,6 @@ Database technology is chosen per service based on data shape and access pattern
 
 **Positive:** Full service autonomy; independent scaling and migration; failure isolation; schema changes are local.
 
-**Negative:** No JOIN across service data; eventual consistency for aggregated views; increased operational complexity (11 different database technologies in production).
+**Negative:** No JOIN across service data; eventual consistency for aggregated views; increased operational complexity (11 different database technologies in production — Postgres, MongoDB, Redis, Memcached, Cassandra, Elasticsearch, OpenSearch, ClickHouse, Weaviate, Neo4j, TimescaleDB, MinIO).
 
 **Mitigations:** The reporting-service and analytics-service use a read replica / data warehouse pattern to aggregate cross-domain data for reporting. Kafka CDC (Debezium) synchronises data between services when a denormalised read model is needed. Each service manages its own migrations (golang-migrate for Go, Flyway for Java/Kotlin).

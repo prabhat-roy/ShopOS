@@ -1,0 +1,19 @@
+{
+  "name": "shopos-spectral",
+  "version": "1.0.0",
+  "description": "Spectral OpenAPI linting for ShopOS API definitions",
+  "scripts": {
+    "lint": "spectral lint ../../proto/**/*.yaml ../../docs/openapi/*.yaml --format=junit --output=results.xml",
+    "lint:pretty": "spectral lint ../../proto/**/*.yaml ../../docs/openapi/*.yaml --format=pretty",
+    "lint:sarif": "spectral lint ../../proto/**/*.yaml ../../docs/openapi/*.yaml --format=sarif --output=results.sarif",
+    "lint:gateway": "spectral lint ../../docs/openapi/api-gateway.yaml --format=pretty",
+    "lint:admin": "spectral lint ../../docs/openapi/admin-api.yaml --format=pretty",
+    "lint:developer": "spectral lint ../../docs/openapi/developer-platform-api.yaml --format=pretty",
+    "lint:ci": "spectral lint ../../docs/openapi/*.yaml --format=junit --output=results.xml --fail-severity=error"
+  },
+  "devDependencies": {
+    "@stoplight/spectral-cli": "^6.11.0",
+    "@stoplight/spectral-formats": "^1.6.0",
+    "@stoplight/spectral-rulesets": "^1.19.0"
+  }
+}

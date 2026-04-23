@@ -1,0 +1,16 @@
+apiVersion: v2
+name: redis-commander
+description: Redis Commander — web UI for inspecting ShopOS Redis cache and session stores
+type: application
+version: 0.1.0
+appVersion: "0.8.0"
+keywords:
+  - redis-commander
+  - redis
+  - cache
+  - admin
+home: https://github.com/joeferner/redis-commander
+sources:
+  - https://github.com/joeferner/redis-commander
+maintainers:
+  - name: ShopOS Platform Team

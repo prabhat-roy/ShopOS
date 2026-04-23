@@ -1,0 +1,63 @@
+replicaCount: 1
+
+image:
+  repository: pactfoundation/pact-broker
+  tag: "2.111.0"
+  pullPolicy: IfNotPresent
+
+service:
+  type: ClusterIP
+  port: 9292
+
+ingress:
+  enabled: false
+  className: ""
+  annotations: {}
+  host: pact-broker.shopos.local
+  path: /
+  pathType: Prefix
+  tls: []
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 256Mi
+  limits:
+    cpu: 500m
+    memory: 512Mi
+
+# Pact Broker database configuration
+database:
+  # Full postgres URL (preferred) — if set, overrides individual fields
+  url: ""
+  # Individual fields used when url is not set
+  host: "postgres"
+  port: 5432
+  name: "pact_broker"
+  username: "pact_broker"
+  password: "pact_broker"
+
+# Pact Broker basic auth (optional)
+basicAuth:
+  enabled: false
+  username: "admin"
+  password: "changeme"
+
+# Logging
+logLevel: "INFO"
+
+podAnnotations: {}
+
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 1000
+
+containerSecurityContext:
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: false
+  capabilities:
+    drop:
+      - ALL
+
+nameOverride: ""
+fullnameOverride: ""

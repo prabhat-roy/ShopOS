@@ -1,0 +1,168 @@
+# =============================================================================
+# ShopOS — DevPod Workspace Configuration
+# https://devpod.sh/docs/configuration/devpod-yaml
+#
+# Usage:
+#   devpod up . --ide vscode
+#   devpod up . --ide cursor
+#   devpod up . --ide goland
+#   devpod up github.com/enterprise/shopos --ide vscode
+# =============================================================================
+
+version: v1alpha1
+
+# Use the existing .devcontainer configuration
+# DevPod will read .devcontainer/devcontainer.json automatically
+devcontainer: {}
+
+# IDE integrations
+ide:
+  # Default IDE when none is specified
+  name: vscode
+  options:
+    # Install extensions defined in devcontainer.json
+    installExtensions: true
+
+# Port forwarding — forward all BFF, gateway, and key service ports to localhost
+# Format: localPort:remotePort
+ports:
+  # ── API Gateways & BFFs ──────────────────────────────────────────────────────
+  - port: "8080"
+    name: "api-gateway"
+    onOpen: "notify"
+  - port: "8081"
+    name: "web-bff"
+    onOpen: "notify"
+  - port: "8082"
+    name: "mobile-bff"
+    onOpen: "notify"
+  - port: "8083"
+    name: "partner-bff"
+    onOpen: "notify"
+  - port: "8085"
+    name: "admin-portal"
+    onOpen: "notify"
+  - port: "8086"
+    name: "graphql-gateway"
+    onOpen: "notify"
+  - port: "8087"
+    name: "tenant-service"
+    onOpen: "silent"
+  - port: "8088"
+    name: "supplier-portal-service"
+    onOpen: "silent"
+  - port: "8089"
+    name: "load-generator"
+    onOpen: "silent"
+  - port: "8090"
+    name: "health-check-service"
+    onOpen: "silent"
+  - port: "8091"
+    name: "webhook-service"
+    onOpen: "silent"
+
+  # ── Frontend apps (dev servers) ──────────────────────────────────────────────
+  - port: "3000"
+    name: "storefront"
+    onOpen: "openBrowser"
+  - port: "3001"
+    name: "admin-dashboard"
+    onOpen: "notify"
+  - port: "3002"
+    name: "seller-portal"
+    onOpen: "notify"
+  - port: "3003"
+    name: "partner-portal"
+    onOpen: "notify"
+  - port: "3004"
+    name: "developer-portal-ui"
+    onOpen: "notify"
+
+  # ── Infrastructure UIs ───────────────────────────────────────────────────────
+  - port: "9090"
+    name: "prometheus"
+    onOpen: "silent"
+  - port: "3100"
+    name: "grafana"
+    onOpen: "notify"
+  - port: "16686"
+    name: "jaeger"
+    onOpen: "silent"
+  - port: "5601"
+    name: "kibana"
+    onOpen: "silent"
+  - port: "8888"
+    name: "kafka-ui"
+    onOpen: "silent"
+  - port: "8200"
+    name: "vault"
+    onOpen: "silent"
+  - port: "8180"
+    name: "keycloak"
+    onOpen: "silent"
+  - port: "9292"
+    name: "pact-broker"
+    onOpen: "silent"
+
+  # ── Databases ────────────────────────────────────────────────────────────────
+  - port: "5432"
+    name: "postgres"
+    onOpen: "silent"
+  - port: "27017"
+    name: "mongodb"
+    onOpen: "silent"
+  - port: "6379"
+    name: "redis"
+    onOpen: "silent"
+  - port: "9200"
+    name: "elasticsearch"
+    onOpen: "silent"
+  - port: "9042"
+    name: "cassandra"
+    onOpen: "silent"
+
+# Lifecycle hooks
+hooks:
+  # Run after the workspace is created for the first time
+  onCreate:
+    - name: "Install tools"
+      command: |
+        set -e
+        # Install Go tools
+        go install github.com/google/ko@latest
+        go install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.62.0
+        go install golang.org/x/tools/cmd/goimports@latest
+        go install google.golang.org/protobuf/cmd/protoc-gen-go@latest
+        go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@latest
+        # Install Buf CLI for proto generation
+        BUF_VERSION=1.47.2
+        curl -sSL "https://github.com/bufbuild/buf/releases/download/v${BUF_VERSION}/buf-Linux-x86_64" \
+          -o /usr/local/bin/buf && chmod +x /usr/local/bin/buf
+        # Install Hurl for API tests
+        HURL_VERSION=5.0.1
+        curl -sSL "https://github.com/Orange-OpenSource/hurl/releases/download/${HURL_VERSION}/hurl-${HURL_VERSION}-x86_64-unknown-linux-gnu.tar.gz" \
+          | tar -xz -C /usr/local/bin/ --strip-components=1 "hurl-${HURL_VERSION}-x86_64-unknown-linux-gnu/hurl"
+        echo "All tools installed successfully."
+
+    - name: "Generate proto bindings"
+      command: |
+        cd proto && buf generate || echo "Proto generation skipped (buf not configured yet)"
+
+    - name: "Copy env example"
+      command: |
+        if [ ! -f .env ]; then
+          cp .env.example .env
+          echo "Copied .env.example → .env. Fill in secrets before starting services."
+        fi
+
+  # Run every time the workspace starts
+  onStart:
+    - name: "Pull latest infra images"
+      command: |
+        docker compose pull --quiet 2>/dev/null || echo "Docker Compose pull skipped"
+
+    - name: "Start core infrastructure"
+      command: |
+        docker compose up -d \
+          postgres mongodb redis elasticsearch kafka zookeeper \
+          2>/dev/null || echo "Core infra startup skipped"

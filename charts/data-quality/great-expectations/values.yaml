@@ -1,0 +1,52 @@
+replicaCount: 1
+
+image:
+  repository: greatexpectations/great_expectations
+  tag: "0.18.19"
+  pullPolicy: IfNotPresent
+
+service:
+  type: ClusterIP
+  # Data Docs HTTP server port
+  port: 4000
+
+ingress:
+  enabled: false
+  className: ""
+  annotations: {}
+  host: great-expectations.shopos.local
+  path: /
+  pathType: Prefix
+  tls: []
+
+resources:
+  requests:
+    cpu: 200m
+    memory: 512Mi
+  limits:
+    cpu: 1000m
+    memory: 1Gi
+
+# GX project directory persistence
+persistence:
+  enabled: true
+  storageClass: ""
+  accessMode: ReadWriteOnce
+  size: 5Gi
+  mountPath: /gx
+
+podAnnotations: {}
+
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 1000
+
+containerSecurityContext:
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: false
+  capabilities:
+    drop:
+      - ALL
+
+nameOverride: ""
+fullnameOverride: ""

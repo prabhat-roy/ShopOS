@@ -1,0 +1,110 @@
+version: v3
+teleport:
+  nodename: shopos-auth
+  data_dir: /var/lib/teleport
+  log:
+    output: stderr
+    severity: INFO
+    format:
+      output: json
+  ca_pin: ""
+  diag_addr: "0.0.0.0:3000"
+
+auth_service:
+  enabled: true
+  listen_addr: "0.0.0.0:3025"
+  cluster_name: shopos.internal
+  tokens:
+    - "node:REPLACE_WITH_NODE_TOKEN"
+    - "kube:REPLACE_WITH_KUBE_TOKEN"
+    - "app:REPLACE_WITH_APP_TOKEN"
+  authentication:
+    type: local
+    second_factor: otp
+    webauthn:
+      rp_id: shopos.internal
+  session_recording: node
+  client_idle_timeout: 30m
+  disconnect_expired_cert: true
+  proxy_protocol: on
+  public_addr: "shopos.internal:3025"
+
+proxy_service:
+  enabled: true
+  listen_addr: "0.0.0.0:3023"
+  web_listen_addr: "0.0.0.0:443"
+  public_addr: "shopos.internal:443"
+  https_cert_file: /etc/teleport/tls.crt
+  https_key_file: /etc/teleport/tls.key
+  kube_listen_addr: "0.0.0.0:3026"
+  kube_public_addr: "shopos.internal:3026"
+  tunnel_listen_addr: "0.0.0.0:3024"
+  mysql_listen_addr: "0.0.0.0:3036"
+  postgres_listen_addr: "0.0.0.0:5432"
+  listener_mode: multiplex
+
+ssh_service:
+  enabled: true
+  listen_addr: "0.0.0.0:3022"
+  labels:
+    env: production
+    cluster: shopos
+  enhanced_recording:
+    enabled: true
+    command_buffer_size: 8
+    disk_buffer_size: 300
+    network_buffer_size: 8
+    cgroup_path: /cgroup2
+  commands:
+    - name: hostname
+      command: [/bin/hostname]
+      period: 1m0s
+    - name: kernel
+      command: [uname, -r]
+      period: 1h0m0s
+
+kubernetes_service:
+  enabled: true
+  listen_addr: "0.0.0.0:3027"
+  kubeconfig_file: /var/lib/teleport/kube/config
+  public_addr: "shopos.internal:3026"
+  kube_cluster_name: shopos-cluster
+  labels:
+    env: production
+    cloud: gcp
+    region: us-east1
+
+app_service:
+  enabled: true
+  apps:
+    - name: jenkins
+      description: "ShopOS Jenkins CI/CD"
+      uri: http://jenkins:8080
+      public_addr: jenkins.shopos.internal
+      labels:
+        env: production
+        team: platform
+    - name: argocd
+      description: "ShopOS ArgoCD GitOps"
+      uri: http://argocd-server:80
+      public_addr: argocd.shopos.internal
+      labels:
+        env: production
+        team: platform
+    - name: grafana
+      description: "ShopOS Grafana Observability"
+      uri: http://grafana:80
+      public_addr: grafana.shopos.internal
+      labels:
+        env: production
+        team: platform
+    - name: jaeger
+      description: "ShopOS Jaeger Distributed Tracing"
+      uri: http://jaeger-query:16686
+      public_addr: jaeger.shopos.internal
+      labels:
+        env: production
+        team: platform
+
+db_service:
+  enabled: false

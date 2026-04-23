@@ -1,0 +1,209 @@
+{
+  "expectation_suite_name": "catalog_products_suite",
+  "data_asset_type": null,
+  "meta": {
+    "great_expectations_version": "0.18.x",
+    "created_by": "ShopOS Data Quality",
+    "description": "Expectation suite for the catalog.products MongoDB collection. Validates required fields, value constraints, and referential integrity for all product documents.",
+    "datasource": "shopos_mongodb",
+    "collection": "products",
+    "domain": "catalog"
+  },
+  "expectations": [
+    {
+      "expectation_type": "expect_column_to_exist",
+      "kwargs": { "column": "_id" },
+      "meta": { "notes": "MongoDB primary key — ObjectId or UUID string" }
+    },
+    {
+      "expectation_type": "expect_column_to_exist",
+      "kwargs": { "column": "sku" },
+      "meta": { "notes": "Stock Keeping Unit — unique product identifier" }
+    },
+    {
+      "expectation_type": "expect_column_to_exist",
+      "kwargs": { "column": "name" },
+      "meta": { "notes": "Product display name" }
+    },
+    {
+      "expectation_type": "expect_column_to_exist",
+      "kwargs": { "column": "status" },
+      "meta": { "notes": "Publish/visibility status" }
+    },
+    {
+      "expectation_type": "expect_column_to_exist",
+      "kwargs": { "column": "price" },
+      "meta": { "notes": "Embedded price object {amount, currency}" }
+    },
+    {
+      "expectation_type": "expect_column_to_exist",
+      "kwargs": { "column": "categoryId" },
+      "meta": { "notes": "Reference to category-service category" }
+    },
+    {
+      "expectation_type": "expect_column_to_exist",
+      "kwargs": { "column": "brandId" },
+      "meta": { "notes": "Reference to brand-service brand" }
+    },
+    {
+      "expectation_type": "expect_column_to_exist",
+      "kwargs": { "column": "createdAt" },
+      "meta": { "notes": "Document creation timestamp" }
+    },
+    {
+      "expectation_type": "expect_column_to_exist",
+      "kwargs": { "column": "updatedAt" },
+      "meta": { "notes": "Last modification timestamp" }
+    },
+
+    {
+      "expectation_type": "expect_column_values_to_not_be_null",
+      "kwargs": { "column": "_id" },
+      "meta": {}
+    },
+    {
+      "expectation_type": "expect_column_values_to_not_be_null",
+      "kwargs": { "column": "sku" },
+      "meta": { "notes": "SKU is mandatory for inventory tracking" }
+    },
+    {
+      "expectation_type": "expect_column_values_to_not_be_null",
+      "kwargs": { "column": "name" },
+      "meta": { "notes": "Every product must have a display name" }
+    },
+    {
+      "expectation_type": "expect_column_values_to_not_be_null",
+      "kwargs": { "column": "status" },
+      "meta": {}
+    },
+    {
+      "expectation_type": "expect_column_values_to_not_be_null",
+      "kwargs": { "column": "categoryId" },
+      "meta": { "notes": "Every product must belong to a category" }
+    },
+    {
+      "expectation_type": "expect_column_values_to_not_be_null",
+      "kwargs": { "column": "createdAt" },
+      "meta": {}
+    },
+
+    {
+      "expectation_type": "expect_column_values_to_be_unique",
+      "kwargs": { "column": "sku" },
+      "meta": { "notes": "SKUs must be globally unique across the entire product catalog" }
+    },
+    {
+      "expectation_type": "expect_column_values_to_be_unique",
+      "kwargs": { "column": "_id" },
+      "meta": {}
+    },
+
+    {
+      "expectation_type": "expect_column_values_to_be_in_set",
+      "kwargs": {
+        "column": "status",
+        "value_set": ["draft", "active", "inactive", "discontinued", "archived", "out_of_stock"]
+      },
+      "meta": {
+        "notes": "Only recognized product statuses. 'active' products are visible in the storefront. Update when product-catalog-service adds new states."
+      }
+    },
+
+    {
+      "expectation_type": "expect_column_value_lengths_to_be_between",
+      "kwargs": {
+        "column": "name",
+        "min_value": 2,
+        "max_value": 255
+      },
+      "meta": {
+        "notes": "Product names must be between 2 and 255 characters for SEO and display purposes"
+      }
+    },
+
+    {
+      "expectation_type": "expect_column_value_lengths_to_be_between",
+      "kwargs": {
+        "column": "sku",
+        "min_value": 3,
+        "max_value": 64
+      },
+      "meta": { "notes": "SKUs are between 3 and 64 characters per the catalog-service schema" }
+    },
+
+    {
+      "expectation_type": "expect_column_values_to_match_regex",
+      "kwargs": {
+        "column": "sku",
+        "regex": "^[A-Z0-9][A-Z0-9\\-_]{2,63}$"
+      },
+      "meta": {
+        "notes": "SKUs must be uppercase alphanumeric with optional hyphens/underscores, minimum 3 chars"
+      }
+    },
+
+    {
+      "expectation_type": "expect_column_values_to_be_of_type",
+      "kwargs": {
+        "column": "createdAt",
+        "type_": "str"
+      },
+      "meta": {
+        "notes": "createdAt is stored as ISO 8601 string in MongoDB (BSON Date converted to string on export)"
+      }
+    },
+
+    {
+      "expectation_type": "expect_table_row_count_to_be_between",
+      "kwargs": {
+        "min_value": 1,
+        "max_value": null
+      },
+      "meta": { "notes": "Products collection should never be empty" }
+    },
+
+    {
+      "expectation_type": "expect_column_proportion_of_unique_values_to_be_between",
+      "kwargs": {
+        "column": "sku",
+        "min_value": 1.0,
+        "max_value": 1.0
+      },
+      "meta": { "notes": "100% of SKUs must be unique (zero duplicates)" }
+    },
+
+    {
+      "expectation_type": "expect_column_most_common_value_to_be_in_set",
+      "kwargs": {
+        "column": "status",
+        "value_set": ["active", "draft"],
+        "ties_okay": true
+      },
+      "meta": {
+        "notes": "The dominant product statuses should be active or draft. High counts of discontinued/archived may indicate a data issue."
+      }
+    },
+
+    {
+      "expectation_type": "expect_column_values_to_not_match_regex",
+      "kwargs": {
+        "column": "name",
+        "regex": "^\\s+|\\s+$"
+      },
+      "meta": { "notes": "Product names must not have leading or trailing whitespace" }
+    },
+
+    {
+      "expectation_type": "expect_column_values_to_be_in_set",
+      "kwargs": {
+        "column": "type",
+        "value_set": ["simple", "configurable", "bundle", "digital", "subscription", "gift_card"],
+        "mostly": 0.99
+      },
+      "meta": {
+        "notes": "Product type must be a recognized catalog type. 1% allowance for legacy/migrated records."
+      }
+    }
+  ],
+  "ge_cloud_id": null
+}

@@ -99,7 +99,7 @@ ShopOS organises 230 services (224 microservices + 6 frontend apps) into 19 boun
 ### 10. Analytics & AI Domain
 **Owns:** Event tracking, ML models, recommendations, reporting, attribution  
 **Services:** analytics-service, reporting-service, recommendation-service, sentiment-analysis-service, price-optimization-service, ml-feature-store, personalization-service, data-pipeline-service, ad-service, event-tracking-service, attribution-service, clv-service, search-analytics-service  
-**Databases:** Cassandra/ScyllaDB (events), Postgres (features, CLV), MongoDB (personalisation), ClickHouse (OLAP reporting), Weaviate (vectors), Neo4j (product graph)  
+**Databases:** Cassandra (events), Postgres (features, CLV), MongoDB (personalisation), ClickHouse (OLAP reporting), Weaviate (vectors), Neo4j (product graph), TimescaleDB (metrics)  
 **Stream processing:** Apache Flink — `order-analytics` job (revenue aggregations to ClickHouse) + `fraud-detection` job (velocity checks across order and login streams)  
 **ML platform:** MLflow — experiment tracking and model registry for recommendation and price-optimization models  
 **Consumes:** All domain events for analytics aggregation

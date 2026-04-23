@@ -1,0 +1,57 @@
+replicaCount: 1
+
+image:
+  repository: conduktor/conduktor-gateway
+  tag: "3.3.0"
+  pullPolicy: IfNotPresent
+
+service:
+  type: ClusterIP
+  # Admin REST API port
+  adminPort: 8888
+  # Kafka protocol proxy port (clients connect here)
+  kafkaPort: 9099
+
+ingress:
+  enabled: false
+  className: ""
+  annotations: {}
+  host: conduktor-gateway.shopos.local
+  path: /
+  pathType: Prefix
+  tls: []
+
+resources:
+  requests:
+    cpu: 200m
+    memory: 512Mi
+  limits:
+    cpu: 1000m
+    memory: 1Gi
+
+# Kafka backend configuration
+kafka:
+  bootstrapServers: "kafka:9092"
+
+# Host that Kafka clients will use to connect to the gateway
+gateway:
+  advertisedHost: "conduktor-gateway"
+  # Admin credentials
+  adminUsername: "admin"
+  adminPassword: "changeme"
+
+podAnnotations: {}
+
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 1000
+
+containerSecurityContext:
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: false
+  capabilities:
+    drop:
+      - ALL
+
+nameOverride: ""
+fullnameOverride: ""

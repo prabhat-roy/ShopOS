@@ -1,0 +1,102 @@
+# =============================================================================
+# ShopOS — Airflow OpenLineage lineage backend configuration
+#
+# Reference:
+#   https://airflow.apache.org/docs/apache-airflow-providers-openlineage/stable/guides/user.html
+#
+# Place this in the Airflow config or set equivalent env vars in the
+# Airflow webserver/scheduler/worker pods.
+# =============================================================================
+
+# Airflow configuration (maps to airflow.cfg sections)
+airflow:
+  openlineage:
+    # Enable the OpenLineage integration
+    disabled: false
+
+    # Namespace for all ShopOS Airflow DAGs
+    namespace: shopos
+
+    # HTTP transport pointing at Marquez
+    transport: |
+      {
+        "type": "http",
+        "url": "http://marquez:5000",
+        "endpoint": "api/v1/lineage",
+        "timeout": 5,
+        "verify": false,
+        "auth": {
+          "type": "api_key",
+          "apiKey": "${OPENLINEAGE_API_KEY}"
+        }
+      }
+
+    # Extract dataset-level lineage from SQL operators
+    extractors:
+      # postgres operators
+      PostgresOperator: "openlineage.providers.postgres.extractors.postgres_extractor.PostgresExtractor"
+      # Python operators (best-effort)
+      PythonOperator: "openlineage.providers.python.extractors.python_extractor.PythonExtractor"
+
+# ── DAG-level lineage configuration ──────────────────────────────────────────
+# ShopOS Airflow DAGs that emit lineage events to Marquez
+
+dags:
+  # Daily ETL: raw event data → ClickHouse analytics tables
+  - id: shopos_daily_etl
+    description: "Ingests commerce and catalog events into ClickHouse for analytics"
+    schedule: "0 2 * * *"
+    datasets:
+      inputs:
+        - namespace: shopos
+          name: postgres.commerce.orders
+          facets:
+            schema:
+              fields:
+                - name: id
+                  type: UUID
+                - name: user_id
+                  type: UUID
+                - name: status
+                  type: VARCHAR
+                - name: total
+                  type: NUMERIC
+                - name: created_at
+                  type: TIMESTAMPTZ
+        - namespace: shopos
+          name: postgres.catalog.products
+      outputs:
+        - namespace: shopos
+          name: clickhouse.analytics.orders_daily
+        - namespace: shopos
+          name: clickhouse.analytics.revenue_daily_mv
+
+  # Product performance reporting DAG
+  - id: shopos_product_performance
+    description: "Aggregates product view, click, and conversion metrics"
+    schedule: "0 3 * * *"
+    datasets:
+      inputs:
+        - namespace: shopos
+          name: cassandra.analytics.page_views
+        - namespace: shopos
+          name: cassandra.analytics.product_clicks
+        - namespace: shopos
+          name: postgres.commerce.orders
+      outputs:
+        - namespace: shopos
+          name: clickhouse.analytics.product_performance
+
+  # Fraud model retraining DAG
+  - id: shopos_fraud_model_retrain
+    description: "Retrains fraud detection model weekly on recent transaction data"
+    schedule: "0 1 * * 0"
+    datasets:
+      inputs:
+        - namespace: shopos
+          name: postgres.commerce.transactions
+        - namespace: shopos
+          name: postgres.commerce.fraud_labels
+      outputs:
+        - namespace: shopos
+          name: mlflow.models.fraud_detection_v2

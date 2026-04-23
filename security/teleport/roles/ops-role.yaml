@@ -1,0 +1,172 @@
+kind: role
+version: v7
+metadata:
+  name: shopos-ops
+  description: >
+    Full kubectl access to all namespaces across all environments plus SSH
+    access to Kubernetes worker nodes. Intended for SREs and platform engineers.
+spec:
+  # ──────────────────────────────────────────────
+  # Allow block
+  # ──────────────────────────────────────────────
+  allow:
+    # SSH access to all nodes tagged with role=worker or role=control-plane
+    node_labels:
+      cluster: shopos-cluster
+      role:
+        - worker
+        - control-plane
+      env:
+        - production
+        - staging
+        - dev
+        - qa
+
+    # OS-level logins on worker nodes
+    logins:
+      - ubuntu
+      - ec2-user
+      - root
+      - "{{internal.username}}"
+
+    # Kubernetes — full access to all clusters/namespaces
+    kubernetes_labels:
+      "*": "*"
+
+    kubernetes_resources:
+      - kind: "*"
+        namespace: "*"
+        name: "*"
+        verbs:
+          - get
+          - list
+          - watch
+          - create
+          - update
+          - patch
+          - delete
+          - deletecollection
+          - exec
+          - portforward
+
+    kubernetes_groups:
+      - system:masters
+      - shopos:ops
+    kubernetes_users:
+      - "{{internal.username}}"
+      - admin
+
+    # Full application access — all apps in all environments
+    app_labels:
+      "*": "*"
+
+    # Database access (if db_service is enabled in future)
+    db_labels:
+      "*": "*"
+    db_names:
+      - "*"
+    db_users:
+      - "*"
+
+    # Full audit log access
+    rules:
+      - resources:
+          - session
+          - event
+          - audit_query
+          - security_report
+        verbs:
+          - list
+          - read
+          - use
+      - resources:
+          - role
+          - user
+          - token
+          - trusted_cluster
+          - auth_connector
+          - lock
+        verbs:
+          - list
+          - read
+          - create
+          - update
+          - delete
+      - resources:
+          - cluster_auth_preference
+          - cluster_networking_config
+          - session_recording_config
+        verbs:
+          - list
+          - read
+          - update
+
+    # Allow requesting access (for break-glass scenarios)
+    request:
+      search_as_roles:
+        - shopos-ops
+        - shopos-developer
+      max_duration: 4h
+      thresholds:
+        - approve: 1
+          deny: 1
+
+    # Host certificate principals
+    host_groups:
+      - docker
+      - sudo
+      - adm
+
+    # Allow sudo
+    host_sudoers:
+      - "ALL=(ALL) NOPASSWD: ALL"
+
+  # ──────────────────────────────────────────────
+  # Deny block
+  # ──────────────────────────────────────────────
+  deny:
+    # No explicit denials — ops has full access
+    logins: []
+
+  # ──────────────────────────────────────────────
+  # Options
+  # ──────────────────────────────────────────────
+  options:
+    # Longer TTL for ops engineers
+    max_session_ttl: 12h
+    client_idle_timeout: 1h
+    disconnect_expired_cert: true
+
+    # MFA required for production access (per-session MFA)
+    require_session_mfa: hardware_key_touch
+
+    # Allow agent forwarding for ops workflows
+    forward_agent: true
+
+    # SSH port forwarding allowed for tunnels/debugging
+    port_forwarding: true
+
+    # Full session recording
+    record_session:
+      desktop: true
+      default: best_effort
+      ssh: best_effort
+
+    # Enhanced session recording — capture all commands + network
+    enhanced_recording:
+      - command
+      - network
+
+    # Lock strictness
+    lock: best_effort
+
+    # Allow X11 forwarding for GUI tools if needed
+    desktop_clipboard: true
+    desktop_directory_sharing: false
+
+    # Certificate extensions
+    cert_extensions:
+      - type: ssh
+        mode: extension
+        name: login@github.com
+        value: "{{external.github_login}}"

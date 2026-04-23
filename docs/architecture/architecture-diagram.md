@@ -183,7 +183,7 @@ graph TB
         MG["MongoDB 8.0\nCatalog · CMS\nReviews"]:::data
         RD["Redis 7\n+ Dragonfly\nCache · Sessions"]:::data
         EL["Elasticsearch 8\nFull-text Search\nFaceted Filtering"]:::data
-        CA["Cassandra 5\n+ ScyllaDB 6\nAnalytics Events"]:::data
+        CA["Cassandra 5\nAnalytics Events"]:::data
         MI["MinIO\nObject Storage\nImages · Videos"]:::data
         NJ["Neo4j 5\nGraph DB\nRecommendations"]:::data
         WV["Weaviate 1.26\nVector DB\nSemantic Search"]:::data
@@ -449,7 +449,7 @@ graph TB
     subgraph OLAP["🟣  Analytics (OLAP)"]
         CH["ClickHouse 24\norder analytics\nrevenue reports\nMaterialized views"]:::olap
         CASS["Cassandra 5\nanalytics events\npage views · clicks"]:::olap
-        SCYLLA["ScyllaDB 6\nHigh-throughput\nCassandra-compatible"]:::olap
+        TSDB["TimescaleDB 2.15\nservice metrics\ninventory events"]:::olap
     end
 
     subgraph OBJ["🟡  Object Storage"]

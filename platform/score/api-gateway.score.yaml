@@ -1,0 +1,100 @@
+apiVersion: score.dev/v1b1
+
+metadata:
+  name: api-gateway
+  annotations:
+    score.dev/description: "Edge API gateway — routes all inbound HTTP and gRPC traffic to downstream services"
+    score.dev/domain: "platform"
+    score.dev/language: "go"
+
+service:
+  ports:
+    http:
+      port: 8080
+      targetPort: 8080
+      protocol: TCP
+
+containers:
+  api-gateway:
+    image: shopos/api-gateway:latest
+    command: ["/api-gateway"]
+    args: []
+
+    env:
+      - name: PORT
+        value: "8080"
+      - name: LOG_LEVEL
+        value: "info"
+      - name: ENVIRONMENT
+        value: "production"
+      - name: KAFKA_BROKERS
+        valueFrom:
+          secretKeyRef:
+            name: kafka-credentials
+            key: brokers
+      - name: RATE_LIMITER_SERVICE_ADDR
+        value: "rate-limiter-service:50053"
+      - name: AUTH_SERVICE_ADDR
+        value: "auth-service:50060"
+      - name: FEATURE_FLAG_SERVICE_ADDR
+        value: "feature-flag-service:50052"
+      - name: OTEL_EXPORTER_OTLP_ENDPOINT
+        value: "http://otel-collector:4317"
+      - name: OTEL_SERVICE_NAME
+        value: "api-gateway"
+
+    resources:
+      limits:
+        memory: "512Mi"
+        cpu: "1000m"
+      requests:
+        memory: "128Mi"
+        cpu: "100m"
+
+    livenessProbe:
+      httpGet:
+        path: /healthz
+        port: 8080
+      initialDelaySeconds: 10
+      periodSeconds: 15
+      failureThreshold: 3
+
+    readinessProbe:
+      httpGet:
+        path: /healthz
+        port: 8080
+      initialDelaySeconds: 5
+      periodSeconds: 10
+      failureThreshold: 3
+
+    startupProbe:
+      httpGet:
+        path: /healthz
+        port: 8080
+      failureThreshold: 30
+      periodSeconds: 2
+
+    volumes:
+      - name: tls-certs
+        target: /etc/tls
+        source: "${resources.tls.name}"
+
+resources:
+  cache:
+    type: redis
+    class: default
+    metadata:
+      annotations:
+        score.dev/purpose: "Rate limiting and response caching"
+
+  config:
+    type: environment
+    metadata:
+      annotations:
+        score.dev/purpose: "Runtime configuration values"
+
+  tls:
+    type: secret
+    metadata:
+      annotations:
+        score.dev/purpose: "TLS certificates for HTTPS termination"

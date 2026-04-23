@@ -1,0 +1,15 @@
+apiVersion: v2
+name: memcached
+description: Memcached — high-throughput in-memory key-value cache for ShopOS hot read paths
+type: application
+version: 0.1.0
+appVersion: "1.6"
+keywords:
+  - memcached
+  - cache
+  - in-memory
+home: https://memcached.org
+sources:
+  - https://github.com/memcached/memcached
+maintainers:
+  - name: ShopOS Platform Team

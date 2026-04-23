@@ -1,0 +1,99 @@
+## k8sGPT Operator Helm Chart Values
+## Chart: k8sgpt/k8sgpt-operator
+## Docs: https://docs.k8sgpt.ai/reference/operator/operator/
+
+# -- Operator image
+image:
+  repository: ghcr.io/k8sgpt-ai/k8sgpt-operator
+  pullPolicy: IfNotPresent
+  # renovate: datasource=docker depName=ghcr.io/k8sgpt-ai/k8sgpt-operator
+  tag: "v0.1.8"
+
+# -- Number of operator replicas
+replicaCount: 1
+
+# -- Operator log level
+logLevel: info
+
+# -- Metrics server for operator health/readiness
+metrics:
+  enabled: true
+  port: 8080
+
+# -- Webhook server for validating K8sGPT CRs
+webhook:
+  enabled: true
+  port: 9443
+  certDir: /tmp/k8s-webhook-server/serving-certs
+
+# -- Resource requests and limits
+resources:
+  requests:
+    cpu: 50m
+    memory: 64Mi
+  limits:
+    cpu: 500m
+    memory: 256Mi
+
+# -- Service account
+serviceAccount:
+  create: true
+  name: k8sgpt-operator
+  annotations: {}
+
+# -- RBAC — operator needs cluster-wide read + status patch
+rbac:
+  create: true
+
+# -- Leader election for HA operator instances
+leaderElection:
+  enabled: true
+  leaseDuration: 15s
+  renewDeadline: 10s
+  retryPeriod: 2s
+
+# -- Namespace to watch (empty = cluster-wide)
+watchNamespace: ""
+
+# -- Pod labels
+podLabels:
+  app.kubernetes.io/part-of: shopos
+  team: platform
+
+# -- Pod annotations for Prometheus scraping
+podAnnotations:
+  prometheus.io/scrape: "true"
+  prometheus.io/port: "8080"
+  prometheus.io/path: /metrics
+
+# -- Node selector
+nodeSelector: {}
+
+# -- Tolerations
+tolerations: []
+
+# -- Affinity
+affinity:
+  podAntiAffinity:
+    preferredDuringSchedulingIgnoredDuringExecution:
+      - weight: 100
+        podAffinityTerm:
+          labelSelector:
+            matchLabels:
+              app.kubernetes.io/name: k8sgpt-operator
+          topologyKey: kubernetes.io/hostname
+
+# -- Secret for OpenAI API key (referenced by K8sGPT CR)
+## Create separately:
+##   kubectl create secret generic k8sgpt-openai \
+##     --from-literal=openai-api-key=<KEY> \
+##     -n k8sgpt
+openapiSecret:
+  create: false
+  name: k8sgpt-openai
+  key: openai-api-key
+
+# -- Common labels
+commonLabels:
+  app.kubernetes.io/part-of: shopos
+  env: production

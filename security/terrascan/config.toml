@@ -1,0 +1,57 @@
+# =============================================================================
+# Terrascan configuration for ShopOS
+# https://runterrascan.io/docs/usage/config_options/
+#
+# Run:
+#   terrascan scan --config-path security/terrascan/config.toml
+#   ./security/terrascan/run-scan.sh
+# =============================================================================
+
+[severity]
+# Minimum severity level to report (LOW, MEDIUM, HIGH, CRITICAL)
+level = "MEDIUM"
+
+[rules]
+# Rule IDs to skip — see .terrascan-ignore for rationale
+skip_rules = [
+  "AWS.CloudWatch.Logging.Medium.0019",
+  "AC-K8-NS-PO-H-0002",
+  "AC-K8-NS-PO-M-0308",
+  "AC-HLM-NS-IR-M-0004",
+  "AC-TRF-MON-CERT-M-0144"
+]
+
+[notifications]
+# Webhook to POST results (optional — leave empty to disable)
+webhook_url = ""
+webhook_token = ""
+
+[k8s]
+# Kubernetes-specific settings
+skip_namespaces = [
+  "kube-system",
+  "kube-public",
+  "kube-node-lease",
+  "monitoring",
+  "observability"
+]
+
+[iac_scan]
+# Directories scanned by default when running ./run-scan.sh
+scan_paths = [
+  "infra/terraform",
+  "infra/opentofu",
+  "infra/crossplane",
+  "helm/charts",
+  "gitops/charts",
+  "kubernetes"
+]
+
+[output]
+# Default output format when not specified on CLI
+format = "sarif"
+# Output file (set to "" to print to stdout)
+output_file = "security/terrascan/results.sarif"
+# Also write human-readable summary
+show_passed = false
+use_colors = true

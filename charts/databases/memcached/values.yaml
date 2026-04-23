@@ -1,0 +1,75 @@
+replicaCount: 3
+
+image:
+  repository: memcached
+  tag: "1.6-alpine"
+  pullPolicy: IfNotPresent
+
+service:
+  type: ClusterIP
+  port: 11211
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 256Mi
+  limits:
+    cpu: 500m
+    memory: 512Mi
+
+# Max memory per Memcached instance (MB)
+maxMemoryMb: 256
+
+# Max simultaneous connections
+maxConnections: 1024
+
+# Extra flags passed to memcached binary
+extraArgs: []
+
+podAnnotations:
+  prometheus.io/scrape: "true"
+  prometheus.io/port: "9150"
+
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 11211
+
+containerSecurityContext:
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: true
+  capabilities:
+    drop:
+      - ALL
+
+autoscaling:
+  enabled: true
+  minReplicas: 3
+  maxReplicas: 10
+  targetCPUUtilizationPercentage: 70
+
+podDisruptionBudget:
+  enabled: true
+  minAvailable: 2
+
+metrics:
+  enabled: true
+  image:
+    repository: prom/memcached-exporter
+    tag: "v0.14.4"
+  resources:
+    requests:
+      cpu: 50m
+      memory: 32Mi
+    limits:
+      cpu: 100m
+      memory: 64Mi
+
+affinity:
+  podAntiAffinity:
+    preferredDuringSchedulingIgnoredDuringExecution:
+      - weight: 100
+        podAffinityTerm:
+          labelSelector:
+            matchLabels:
+              app.kubernetes.io/name: memcached
+          topologyKey: kubernetes.io/hostname

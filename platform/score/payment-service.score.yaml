@@ -1,0 +1,143 @@
+apiVersion: score.dev/v1b1
+
+metadata:
+  name: payment-service
+  annotations:
+    score.dev/description: "Payment processing service — integrates with payment gateways, manages transactions and refunds"
+    score.dev/domain: "commerce"
+    score.dev/language: "java"
+
+service:
+  ports:
+    grpc:
+      port: 50083
+      targetPort: 50083
+      protocol: TCP
+
+containers:
+  payment-service:
+    image: shopos/payment-service:latest
+    command: ["java", "-jar", "/app/payment-service.jar"]
+    args:
+      - "--spring.profiles.active=production"
+
+    env:
+      - name: GRPC_PORT
+        value: "50083"
+      - name: SPRING_PROFILES_ACTIVE
+        value: "production"
+      - name: SPRING_DATASOURCE_URL
+        valueFrom:
+          secretKeyRef:
+            name: payment-db-credentials
+            key: url
+      - name: SPRING_DATASOURCE_USERNAME
+        valueFrom:
+          secretKeyRef:
+            name: payment-db-credentials
+            key: username
+      - name: SPRING_DATASOURCE_PASSWORD
+        valueFrom:
+          secretKeyRef:
+            name: payment-db-credentials
+            key: password
+      - name: STRIPE_SECRET_KEY
+        valueFrom:
+          secretKeyRef:
+            name: stripe-credentials
+            key: secretKey
+      - name: STRIPE_WEBHOOK_SECRET
+        valueFrom:
+          secretKeyRef:
+            name: stripe-credentials
+            key: webhookSecret
+      - name: PAYPAL_CLIENT_ID
+        valueFrom:
+          secretKeyRef:
+            name: paypal-credentials
+            key: clientId
+      - name: PAYPAL_CLIENT_SECRET
+        valueFrom:
+          secretKeyRef:
+            name: paypal-credentials
+            key: clientSecret
+      - name: KAFKA_BOOTSTRAP_SERVERS
+        valueFrom:
+          secretKeyRef:
+            name: kafka-credentials
+            key: brokers
+      - name: FRAUD_DETECTION_SERVICE_ADDR
+        value: "fraud-detection-service:50091"
+      - name: WALLET_SERVICE_ADDR
+        value: "wallet-service:50092"
+      - name: KYC_AML_SERVICE_ADDR
+        value: "kyc-aml-service:50116"
+      - name: VAULT_ADDR
+        value: "http://vault:8200"
+      - name: VAULT_ROLE
+        value: "payment-service"
+      - name: OTEL_EXPORTER_OTLP_ENDPOINT
+        value: "http://otel-collector:4317"
+      - name: OTEL_SERVICE_NAME
+        value: "payment-service"
+      - name: JAVA_OPTS
+        value: "-Xms256m -Xmx512m -XX:+UseG1GC -Djava.security.egd=file:/dev/./urandom"
+
+    resources:
+      limits:
+        memory: "768Mi"
+        cpu: "1000m"
+      requests:
+        memory: "256Mi"
+        cpu: "200m"
+
+    livenessProbe:
+      httpGet:
+        path: /healthz
+        port: 50083
+      initialDelaySeconds: 30
+      periodSeconds: 15
+      failureThreshold: 3
+
+    readinessProbe:
+      httpGet:
+        path: /healthz
+        port: 50083
+      initialDelaySeconds: 20
+      periodSeconds: 10
+      failureThreshold: 3
+
+    startupProbe:
+      httpGet:
+        path: /healthz
+        port: 50083
+      failureThreshold: 45
+      periodSeconds: 3
+
+    volumes:
+      - name: vault-token
+        target: /var/run/vault
+        source: "${resources.vault-token.name}"
+
+resources:
+  db:
+    type: postgres
+    class: default
+    metadata:
+      annotations:
+        score.dev/purpose: "Payment transactions, refunds, and audit records — PCI-DSS scope"
+        score.dev/migrations: "flyway"
+        score.dev/encryption: "column-level encryption for card tokens"
+
+  messaging:
+    type: kafka
+    metadata:
+      annotations:
+        score.dev/topics: "commerce.payment.processed,commerce.payment.failed"
+        score.dev/purpose: "Publishes payment outcome events to order and notification domains"
+
+  vault-token:
+    type: secret
+    metadata:
+      annotations:
+        score.dev/purpose: "HashiCorp Vault token for dynamic DB credentials and card encryption keys"

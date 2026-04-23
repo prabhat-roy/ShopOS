@@ -1,0 +1,16 @@
+apiVersion: v2
+name: superset
+description: Apache Superset — data exploration and visualization platform for ShopOS analytics
+type: application
+version: 0.1.0
+appVersion: "4.0.2"
+keywords:
+  - superset
+  - analytics
+  - visualization
+  - dashboards
+home: https://superset.apache.org
+sources:
+  - https://github.com/apache/superset
+maintainers:
+  - name: ShopOS Platform Team

@@ -1,0 +1,161 @@
+## DefectDojo Helm Chart Values
+## Chart: DefectDojo/defectdojo
+## Docs: https://github.com/DefectDojo/django-DefectDojo/blob/master/helm/defectdojo/README.md
+
+# -- Tag for all DefectDojo images
+tag: "2.37.3"
+
+# -- Host/domain for ingress and Django ALLOWED_HOSTS
+host: defectdojo.shopos.internal
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Django application
+# ──────────────────────────────────────────────────────────────────────────────
+django:
+  ingress:
+    enabled: true
+    activateTLS: true
+    secretName: defectdojo-tls
+    annotations:
+      kubernetes.io/ingress.class: traefik
+      traefik.ingress.kubernetes.io/router.entrypoints: websecure
+      traefik.ingress.kubernetes.io/router.tls: "true"
+      cert-manager.io/cluster-issuer: shopos-ca
+
+  uwsgi:
+    replicas: 2
+    resources:
+      requests:
+        cpu: 200m
+        memory: 256Mi
+      limits:
+        cpu: 1000m
+        memory: 1Gi
+
+  celery:
+    broker: redis
+    worker:
+      replicas: 2
+      resources:
+        requests:
+          cpu: 100m
+          memory: 256Mi
+        limits:
+          cpu: 500m
+          memory: 512Mi
+    beat:
+      replicas: 1
+      resources:
+        requests:
+          cpu: 50m
+          memory: 128Mi
+        limits:
+          cpu: 200m
+          memory: 256Mi
+
+  mediaPersistentVolume:
+    enabled: true
+    storageClassName: standard-rwo
+    accessModes:
+      - ReadWriteOnce
+    size: 20Gi
+
+  # Django settings
+  extraEnv:
+    - name: DD_ALLOWED_HOSTS
+      value: "defectdojo.shopos.internal,defectdojo,localhost"
+    - name: DD_TIME_ZONE
+      value: "UTC"
+    - name: DD_TRACK_MUTATIONS
+      value: "True"
+    - name: DD_CREDENTIAL_AES_256_KEY
+      valueFrom:
+        secretKeyRef:
+          name: defectdojo-secret
+          key: DD_CREDENTIAL_AES_256_KEY
+    - name: DD_SECRET_KEY
+      valueFrom:
+        secretKeyRef:
+          name: defectdojo-secret
+          key: DD_SECRET_KEY
+
+# ──────────────────────────────────────────────────────────────────────────────
+# PostgreSQL (built-in subchart)
+# ──────────────────────────────────────────────────────────────────────────────
+postgresql:
+  enabled: true
+  auth:
+    username: defectdojo
+    database: defectdojo
+    existingSecret: defectdojo-postgresql-secret
+    secretKeys:
+      adminPasswordKey: postgresql-postgres-password
+      userPasswordKey: postgresql-password
+  primary:
+    persistence:
+      enabled: true
+      storageClass: standard-rwo
+      size: 20Gi
+    resources:
+      requests:
+        cpu: 100m
+        memory: 256Mi
+      limits:
+        cpu: 500m
+        memory: 1Gi
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Redis (built-in subchart — Celery broker)
+# ──────────────────────────────────────────────────────────────────────────────
+redis:
+  enabled: true
+  auth:
+    enabled: true
+    existingSecret: defectdojo-redis-secret
+    existingSecretPasswordKey: redis-password
+  master:
+    persistence:
+      enabled: true
+      storageClass: standard-rwo
+      size: 8Gi
+    resources:
+      requests:
+        cpu: 50m
+        memory: 64Mi
+      limits:
+        cpu: 200m
+        memory: 256Mi
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Initial admin credentials — change immediately after first login
+# ──────────────────────────────────────────────────────────────────────────────
+createSecret: true
+adminUser: admin
+adminPassword: "REPLACE_WITH_STRONG_PASSWORD"
+adminEmail: "prabhatkumar.roy@outlook.com"
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Resource limits (top-level — applies to init containers)
+# ──────────────────────────────────────────────────────────────────────────────
+resources:
+  requests:
+    cpu: 100m
+    memory: 128Mi
+  limits:
+    cpu: 500m
+    memory: 512Mi
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Service account
+# ──────────────────────────────────────────────────────────────────────────────
+serviceAccount:
+  create: true
+  name: defectdojo
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Common labels
+# ──────────────────────────────────────────────────────────────────────────────
+commonLabels:
+  app.kubernetes.io/part-of: shopos
+  team: security
+  env: production

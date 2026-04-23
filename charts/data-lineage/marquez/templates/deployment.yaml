@@ -1,0 +1,72 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "marquez.fullname" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "marquez.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "marquez.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "marquez.selectorLabels" . | nindent 8 }}
+      {{- with .Values.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+    spec:
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      containers:
+        - name: marquez
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          securityContext:
+            {{- toYaml .Values.containerSecurityContext | nindent 12 }}
+          ports:
+            - name: api
+              containerPort: 5000
+              protocol: TCP
+            - name: admin
+              containerPort: 5001
+              protocol: TCP
+          env:
+            - name: MARQUEZ_PORT
+              value: "5000"
+            - name: MARQUEZ_ADMIN_PORT
+              value: "5001"
+            - name: POSTGRES_HOST
+              value: {{ .Values.database.host | quote }}
+            - name: POSTGRES_PORT
+              value: {{ .Values.database.port | quote }}
+            - name: POSTGRES_DB
+              value: {{ .Values.database.name | quote }}
+            - name: POSTGRES_USER
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "marquez.fullname" . }}-secret
+                  key: db-username
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "marquez.fullname" . }}-secret
+                  key: db-password
+          livenessProbe:
+            httpGet:
+              path: /api/v1/namespaces
+              port: api
+            initialDelaySeconds: 40
+            periodSeconds: 20
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /api/v1/namespaces
+              port: api
+            initialDelaySeconds: 20
+            periodSeconds: 10
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}

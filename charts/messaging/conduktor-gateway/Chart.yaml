@@ -1,0 +1,17 @@
+apiVersion: v2
+name: conduktor-gateway
+description: Conduktor Gateway — Kafka proxy with governance, encryption, and multi-tenancy for ShopOS
+type: application
+version: 0.1.0
+appVersion: "3.3.0"
+keywords:
+  - conduktor
+  - kafka
+  - gateway
+  - proxy
+  - messaging
+home: https://www.conduktor.io/gateway
+sources:
+  - https://github.com/conduktor/conduktor-gateway
+maintainers:
+  - name: ShopOS Platform Team

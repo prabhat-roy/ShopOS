@@ -1,0 +1,76 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "defectdojo.fullname" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "defectdojo.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "defectdojo.selectorLabels" . | nindent 6 }}
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        {{- include "defectdojo.selectorLabels" . | nindent 8 }}
+      {{- with .Values.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+    spec:
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      containers:
+        - name: defectdojo
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          securityContext:
+            {{- toYaml .Values.containerSecurityContext | nindent 12 }}
+          ports:
+            - name: http
+              containerPort: 8080
+              protocol: TCP
+          env:
+            - name: DD_DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "defectdojo.fullname" . }}-secret
+                  key: database-url
+            - name: DD_SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "defectdojo.fullname" . }}-secret
+                  key: secret-key
+            - name: DD_ALLOWED_HOSTS
+              value: {{ .Values.app.allowedHosts | quote }}
+            - name: DD_DEBUG
+              value: "False"
+          volumeMounts:
+            {{- if .Values.persistence.enabled }}
+            - name: defectdojo-media
+              mountPath: {{ .Values.persistence.mountPath }}
+            {{- end }}
+          livenessProbe:
+            httpGet:
+              path: /login?next=/
+              port: http
+            initialDelaySeconds: 60
+            periodSeconds: 20
+            failureThreshold: 5
+          readinessProbe:
+            httpGet:
+              path: /login?next=/
+              port: http
+            initialDelaySeconds: 30
+            periodSeconds: 15
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+      volumes:
+        {{- if .Values.persistence.enabled }}
+        - name: defectdojo-media
+          persistentVolumeClaim:
+            claimName: {{ include "defectdojo.fullname" . }}-pvc
+        {{- end }}

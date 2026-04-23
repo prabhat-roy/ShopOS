@@ -1,0 +1,175 @@
+{
+  "consumer": {
+    "name": "order-service"
+  },
+  "provider": {
+    "name": "cart-service"
+  },
+  "interactions": [
+    {
+      "description": "order-service requests cart contents for a valid user",
+      "providerState": "a cart exists for user user-001 with two items",
+      "request": {
+        "method": "GET",
+        "path": "/cart/user-001",
+        "headers": {
+          "Accept": "application/json",
+          "Authorization": "Bearer <token>",
+          "X-Correlation-ID": "corr-abc-123"
+        }
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "cartId": "cart-uuid-001",
+          "userId": "user-001",
+          "currency": "USD",
+          "items": [
+            {
+              "lineItemId": "li-001",
+              "productId": "prod-001",
+              "variantId": "var-001-blue-M",
+              "quantity": 2,
+              "unitPrice": 74.99,
+              "subtotal": 149.98,
+              "attributes": {
+                "color": "blue",
+                "size": "M"
+              }
+            },
+            {
+              "lineItemId": "li-002",
+              "productId": "prod-002",
+              "variantId": "var-002-default",
+              "quantity": 1,
+              "unitPrice": 99.99,
+              "subtotal": 99.99,
+              "attributes": {}
+            }
+          ],
+          "totals": {
+            "subtotal": 249.97,
+            "discount": 0.00,
+            "tax": 22.50,
+            "shipping": 0.00,
+            "total": 272.47
+          },
+          "appliedCoupons": [],
+          "createdAt": "2026-04-23T09:00:00Z",
+          "updatedAt": "2026-04-23T09:30:00Z"
+        },
+        "matchingRules": {
+          "body": {
+            "$.cartId": { "match": "type" },
+            "$.userId": { "match": "equality" },
+            "$.currency": { "match": "type" },
+            "$.items": { "match": "type", "min": 1 },
+            "$.items[*].lineItemId": { "match": "type" },
+            "$.items[*].productId": { "match": "type" },
+            "$.items[*].quantity": { "match": "integer" },
+            "$.items[*].unitPrice": { "match": "decimal" },
+            "$.items[*].subtotal": { "match": "decimal" },
+            "$.totals.subtotal": { "match": "decimal" },
+            "$.totals.total": { "match": "decimal" },
+            "$.createdAt": { "match": "type" },
+            "$.updatedAt": { "match": "type" }
+          }
+        }
+      }
+    },
+    {
+      "description": "order-service requests cart for a user with no cart",
+      "providerState": "no cart exists for user user-999",
+      "request": {
+        "method": "GET",
+        "path": "/cart/user-999",
+        "headers": {
+          "Accept": "application/json",
+          "Authorization": "Bearer <token>"
+        }
+      },
+      "response": {
+        "status": 404,
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "error": "Cart not found",
+          "code": "CART_NOT_FOUND",
+          "userId": "user-999"
+        },
+        "matchingRules": {
+          "body": {
+            "$.error": { "match": "type" },
+            "$.code": { "match": "type" }
+          }
+        }
+      }
+    },
+    {
+      "description": "order-service clears cart after order is placed",
+      "providerState": "a cart exists for user user-001 with two items",
+      "request": {
+        "method": "DELETE",
+        "path": "/cart/user-001",
+        "headers": {
+          "Authorization": "Bearer <token>",
+          "X-Order-ID": "order-uuid-001",
+          "X-Correlation-ID": "corr-abc-456"
+        }
+      },
+      "response": {
+        "status": 204,
+        "headers": {}
+      }
+    },
+    {
+      "description": "order-service requests cart totals for price verification before payment",
+      "providerState": "a cart exists for user user-001 with two items",
+      "request": {
+        "method": "GET",
+        "path": "/cart/user-001/totals",
+        "headers": {
+          "Accept": "application/json",
+          "Authorization": "Bearer <token>"
+        }
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "subtotal": 249.97,
+          "discount": 0.00,
+          "tax": 22.50,
+          "shipping": 0.00,
+          "total": 272.47,
+          "currency": "USD",
+          "itemCount": 3
+        },
+        "matchingRules": {
+          "body": {
+            "$.subtotal": { "match": "decimal" },
+            "$.tax": { "match": "decimal" },
+            "$.total": { "match": "decimal" },
+            "$.currency": { "match": "type" },
+            "$.itemCount": { "match": "integer" }
+          }
+        }
+      }
+    }
+  ],
+  "metadata": {
+    "pactSpecification": {
+      "version": "3.0.0"
+    },
+    "client": {
+      "name": "pact-go",
+      "version": "2.x"
+    }
+  }
+}

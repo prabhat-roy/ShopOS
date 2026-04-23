@@ -1,0 +1,16 @@
+apiVersion: v2
+name: mongo-express
+description: Mongo Express — web-based MongoDB admin interface for ShopOS document stores
+type: application
+version: 0.1.0
+appVersion: "1.0.2"
+keywords:
+  - mongo-express
+  - mongodb
+  - database
+  - admin
+home: https://github.com/mongo-express/mongo-express
+sources:
+  - https://github.com/mongo-express/mongo-express
+maintainers:
+  - name: ShopOS Platform Team

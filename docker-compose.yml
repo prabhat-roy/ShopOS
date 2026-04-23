@@ -4671,6 +4671,268 @@ networks:
     networks:
       - shopos
 
+  # ===========================================================================
+  # NEW TOOLING
+  # ===========================================================================
+
+  pact-broker:
+    image: pactfoundation/pact-broker:latest
+    container_name: shopos-pact-broker
+    ports:
+      - "9292:9292"
+    environment:
+      - PACT_BROKER_DATABASE_URL=postgres://postgres:postgres@postgres/pact_broker
+      - PACT_BROKER_BASIC_AUTH_USERNAME=admin
+      - PACT_BROKER_BASIC_AUTH_PASSWORD=admin
+      - PACT_BROKER_BASE_URL=http://pact-broker:9292
+      - PACT_BROKER_LOG_LEVEL=INFO
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - shopos
+
+  toxiproxy:
+    image: ghcr.io/shopify/toxiproxy:latest
+    container_name: shopos-toxiproxy
+    ports:
+      - "8474:8474"
+      - "22222:22222"
+    restart: unless-stopped
+    networks:
+      - shopos
+
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: shopos-pgadmin
+    ports:
+      - "5050:80"
+    environment:
+      - PGADMIN_DEFAULT_EMAIL=admin@shopos.dev
+      - PGADMIN_DEFAULT_PASSWORD=admin
+      - PGADMIN_CONFIG_SERVER_MODE=False
+    volumes:
+      - pgadmin_data:/var/lib/pgadmin
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - shopos
+
+  mongo-express:
+    image: mongo-express:latest
+    container_name: shopos-mongo-express
+    ports:
+      - "8081:8081"
+    environment:
+      - ME_CONFIG_MONGODB_SERVER=mongodb
+      - ME_CONFIG_MONGODB_PORT=27017
+      - ME_CONFIG_BASICAUTH_USERNAME=admin
+      - ME_CONFIG_BASICAUTH_PASSWORD=admin
+      - ME_CONFIG_SITE_BASEURL=/
+    depends_on:
+      mongodb:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - shopos
+
+  redis-commander:
+    image: rediscommander/redis-commander:latest
+    container_name: shopos-redis-commander
+    ports:
+      - "8087:8081"
+    environment:
+      - REDIS_HOSTS=local:redis:6379
+    depends_on:
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - shopos
+
+  bytebase:
+    image: bytebase/bytebase:latest
+    container_name: shopos-bytebase
+    ports:
+      - "5678:8080"
+    environment:
+      - PG_URL=postgresql://postgres:postgres@postgres/bytebase?sslmode=disable
+    volumes:
+      - bytebase_data:/var/opt/bytebase
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - shopos
+
+  superset:
+    image: apache/superset:latest
+    container_name: shopos-superset
+    ports:
+      - "8088:8088"
+    environment:
+      - SUPERSET_SECRET_KEY=shopos-superset-secret-key-change-in-prod
+      - DATABASE_URL=postgresql+psycopg2://postgres:postgres@postgres/superset
+      - REDIS_URL=redis://redis:6379/1
+    volumes:
+      - superset_data:/app/superset_home
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    command: >
+      sh -c "superset db upgrade &&
+             superset fab create-admin --username admin --firstname Admin --lastname Admin --email admin@shopos.dev --password admin &&
+             superset init &&
+             superset run -h 0.0.0.0 -p 8088"
+    restart: unless-stopped
+    networks:
+      - shopos
+
+  marquez:
+    image: marquezproject/marquez:latest
+    container_name: shopos-marquez
+    ports:
+      - "5000:5000"
+      - "5001:5001"
+    environment:
+      - MARQUEZ_CONFIG=/usr/src/app/marquez.yaml
+      - POSTGRES_HOST=postgres
+      - POSTGRES_PORT=5432
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=marquez
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - shopos
+
+  marquez-web:
+    image: marquezproject/marquez-web:latest
+    container_name: shopos-marquez-web
+    ports:
+      - "3010:3000"
+    environment:
+      - MARQUEZ_HOST=marquez
+      - MARQUEZ_PORT=5000
+    depends_on:
+      - marquez
+    restart: unless-stopped
+    networks:
+      - shopos
+
+  dependency-track:
+    image: dependencytrack/bundled:latest
+    container_name: shopos-dependency-track
+    ports:
+      - "8090:8080"
+    environment:
+      - ALPINE_DATABASE_MODE=external
+      - ALPINE_DATABASE_URL=jdbc:postgresql://postgres:5432/dependencytrack
+      - ALPINE_DATABASE_DRIVER=org.postgresql.Driver
+      - ALPINE_DATABASE_USERNAME=postgres
+      - ALPINE_DATABASE_PASSWORD=postgres
+    volumes:
+      - dependency_track_data:/data
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - shopos
+
+  defectdojo:
+    image: defectdojo/defectdojo-django:latest
+    container_name: shopos-defectdojo
+    ports:
+      - "8383:8080"
+    environment:
+      - DD_DATABASE_URL=postgresql://postgres:postgres@postgres:5432/defectdojo
+      - DD_SECRET_KEY=shopos-defectdojo-secret-key
+      - DD_CREDENTIAL_AES_256_KEY=shopos-defectdojo-aes-key!
+      - DD_ADMIN_USER=admin
+      - DD_ADMIN_PASSWORD=admin
+      - DD_ADMIN_MAIL=admin@shopos.dev
+      - DD_ALLOWED_HOSTS=*
+      - DD_CELERY_BROKER_URL=redis://redis:6379/2
+    volumes:
+      - defectdojo_data:/app/media
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - shopos
+
+  conduktor-gateway:
+    image: conduktor/conduktor-gateway:3.3.0
+    container_name: shopos-conduktor-gateway
+    ports:
+      - "8888:8888"
+      - "9099:9099"
+    environment:
+      - KAFKA_BOOTSTRAP_SERVERS=kafka:29092
+      - GATEWAY_ADVERTISED_HOST=conduktor-gateway
+      - GATEWAY_PORT=9099
+      - GATEWAY_ADMIN_PORT=8888
+    depends_on:
+      - kafka
+    restart: unless-stopped
+    networks:
+      - shopos
+
+  kafka-monitor:
+    image: hperez8a/kafka-monitor:latest
+    container_name: shopos-kafka-monitor
+    ports:
+      - "8000:8000"
+    environment:
+      - KAFKA_BOOTSTRAP_SERVERS=kafka:29092
+      - ZOOKEEPER_CONNECT=zookeeper:2181
+    depends_on:
+      - kafka
+      - zookeeper
+    restart: unless-stopped
+    networks:
+      - shopos
+
+  great-expectations:
+    image: greatexpectations/great_expectations:latest
+    container_name: shopos-great-expectations
+    ports:
+      - "4000:4000"
+    volumes:
+      - ./data-quality/great-expectations:/gx
+      - great_expectations_data:/gx/uncommitted
+    environment:
+      - GX_ANALYTICS_ENABLED=false
+    command: ["python", "-m", "http.server", "4000", "--directory", "/gx/uncommitted/data_docs/local_site"]
+    restart: unless-stopped
+    networks:
+      - shopos
+
+  atlas:
+    image: sburn/apache-atlas:2.3.0
+    container_name: shopos-atlas
+    ports:
+      - "21000:21000"
+    environment:
+      - JAVA_TOOL_OPTIONS=-Xms1g -Xmx2g
+    volumes:
+      - atlas_data:/apache-atlas/data
+    restart: unless-stopped
+    networks:
+      - shopos
+
 # VOLUMES
 # =============================================================================
 
@@ -4701,3 +4963,12 @@ volumes:
   uptime_kuma_data:
   scylladb_data:
   mlflow_data:
+  pgadmin_data:
+  bytebase_data:
+  superset_data:
+  dependency_track_data:
+  defectdojo_data:
+  great_expectations_data:
+  atlas_data:
+  timescaledb_data:
+  memcached_data:

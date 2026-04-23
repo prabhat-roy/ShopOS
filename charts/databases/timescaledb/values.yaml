@@ -1,0 +1,69 @@
+replicaCount: 1
+
+image:
+  repository: timescale/timescaledb
+  tag: "2.15-pg16-alpine"
+  pullPolicy: IfNotPresent
+
+service:
+  type: ClusterIP
+  port: 5432
+
+auth:
+  postgresPassword: "shopos-timescaledb-password"
+  database: "shopos_timeseries"
+
+persistence:
+  enabled: true
+  size: 20Gi
+  storageClass: ""
+
+resources:
+  requests:
+    cpu: 250m
+    memory: 512Mi
+  limits:
+    cpu: 1000m
+    memory: 2Gi
+
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 70
+  fsGroup: 70
+
+containerSecurityContext:
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: false
+  capabilities:
+    drop:
+      - ALL
+
+podAnnotations:
+  prometheus.io/scrape: "true"
+  prometheus.io/port: "9187"
+
+metrics:
+  enabled: true
+  image:
+    repository: prometheuscommunity/postgres-exporter
+    tag: "v0.15.0"
+  resources:
+    requests:
+      cpu: 50m
+      memory: 32Mi
+    limits:
+      cpu: 100m
+      memory: 64Mi
+
+podDisruptionBudget:
+  enabled: true
+  minAvailable: 1
+
+config:
+  # TimescaleDB-specific tuning
+  sharedBuffers: "256MB"
+  maxConnections: "200"
+  workMem: "4MB"
+  maintenanceWorkMem: "64MB"
+  effectiveCacheSize: "768MB"
+  timescaledbMaxBackground: "4"

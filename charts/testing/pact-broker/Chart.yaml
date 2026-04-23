@@ -1,0 +1,15 @@
+apiVersion: v2
+name: pact-broker
+description: Pact Broker — contract testing repository for ShopOS consumer-driven contract tests
+type: application
+version: 0.1.0
+appVersion: "2.111.0"
+keywords:
+  - pact
+  - contract-testing
+  - testing
+home: https://docs.pact.io/pact_broker
+sources:
+  - https://github.com/pact-foundation/pact_broker
+maintainers:
+  - name: ShopOS Platform Team

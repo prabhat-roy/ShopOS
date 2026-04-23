@@ -1,0 +1,89 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "pact-broker.fullname" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "pact-broker.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "pact-broker.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "pact-broker.selectorLabels" . | nindent 8 }}
+      {{- with .Values.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+    spec:
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      containers:
+        - name: pact-broker
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          securityContext:
+            {{- toYaml .Values.containerSecurityContext | nindent 12 }}
+          ports:
+            - name: http
+              containerPort: 9292
+              protocol: TCP
+          env:
+            - name: PACT_BROKER_LOG_LEVEL
+              value: {{ .Values.logLevel | quote }}
+            {{- if .Values.database.url }}
+            - name: PACT_BROKER_DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "pact-broker.fullname" . }}-secret
+                  key: database-url
+            {{- else }}
+            - name: PACT_BROKER_DATABASE_ADAPTER
+              value: "postgres"
+            - name: PACT_BROKER_DATABASE_HOST
+              value: {{ .Values.database.host | quote }}
+            - name: PACT_BROKER_DATABASE_PORT
+              value: {{ .Values.database.port | quote }}
+            - name: PACT_BROKER_DATABASE_NAME
+              value: {{ .Values.database.name | quote }}
+            - name: PACT_BROKER_DATABASE_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "pact-broker.fullname" . }}-secret
+                  key: database-username
+            - name: PACT_BROKER_DATABASE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "pact-broker.fullname" . }}-secret
+                  key: database-password
+            {{- end }}
+            {{- if .Values.basicAuth.enabled }}
+            - name: PACT_BROKER_BASIC_AUTH_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "pact-broker.fullname" . }}-secret
+                  key: basic-auth-username
+            - name: PACT_BROKER_BASIC_AUTH_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "pact-broker.fullname" . }}-secret
+                  key: basic-auth-password
+            {{- end }}
+          livenessProbe:
+            httpGet:
+              path: /diagnostic/status/heartbeat
+              port: http
+            initialDelaySeconds: 30
+            periodSeconds: 15
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /diagnostic/status/heartbeat
+              port: http
+            initialDelaySeconds: 15
+            periodSeconds: 10
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}

@@ -1,0 +1,203 @@
+kind: role
+version: v7
+metadata:
+  name: shopos-developer
+  description: >
+    Read-only access to non-production Kubernetes namespaces and Teleport-proxied
+    developer applications (Grafana, Jaeger). No SSH access to production nodes.
+spec:
+  # ──────────────────────────────────────────────
+  # Allow block — what this role permits
+  # ──────────────────────────────────────────────
+  allow:
+    # Kubernetes access — read-only, non-prod namespaces only
+    kubernetes_labels:
+      env:
+        - dev
+        - staging
+        - qa
+      cluster:
+        - shopos-cluster
+
+    kubernetes_resources:
+      - kind: pod
+        namespace: "{{internal.kubernetes_namespace}}"
+        name: "*"
+        verbs:
+          - get
+          - list
+          - watch
+      - kind: deployment
+        namespace: "{{internal.kubernetes_namespace}}"
+        name: "*"
+        verbs:
+          - get
+          - list
+          - watch
+      - kind: statefulset
+        namespace: "{{internal.kubernetes_namespace}}"
+        name: "*"
+        verbs:
+          - get
+          - list
+          - watch
+      - kind: service
+        namespace: "{{internal.kubernetes_namespace}}"
+        name: "*"
+        verbs:
+          - get
+          - list
+          - watch
+      - kind: configmap
+        namespace: "{{internal.kubernetes_namespace}}"
+        name: "*"
+        verbs:
+          - get
+          - list
+          - watch
+      - kind: event
+        namespace: "{{internal.kubernetes_namespace}}"
+        name: "*"
+        verbs:
+          - get
+          - list
+          - watch
+      - kind: replicaset
+        namespace: "{{internal.kubernetes_namespace}}"
+        name: "*"
+        verbs:
+          - get
+          - list
+          - watch
+      - kind: job
+        namespace: "{{internal.kubernetes_namespace}}"
+        name: "*"
+        verbs:
+          - get
+          - list
+          - watch
+      - kind: cronjob
+        namespace: "{{internal.kubernetes_namespace}}"
+        name: "*"
+        verbs:
+          - get
+          - list
+          - watch
+      - kind: horizontalpodautoscaler
+        namespace: "{{internal.kubernetes_namespace}}"
+        name: "*"
+        verbs:
+          - get
+          - list
+          - watch
+      - kind: persistentvolumeclaim
+        namespace: "{{internal.kubernetes_namespace}}"
+        name: "*"
+        verbs:
+          - get
+          - list
+          - watch
+      - kind: ingress
+        namespace: "{{internal.kubernetes_namespace}}"
+        name: "*"
+        verbs:
+          - get
+          - list
+          - watch
+      - kind: namespace
+        name: "*"
+        verbs:
+          - get
+          - list
+          - watch
+
+    # Kubernetes groups/users passed through to the cluster
+    kubernetes_groups:
+      - shopos:developers
+    kubernetes_users:
+      - "{{internal.username}}"
+
+    # Non-prod namespaces developers are allowed to inspect
+    request:
+      search_as_roles:
+        - shopos-developer
+
+    # Application access — non-sensitive developer tools only
+    app_labels:
+      env:
+        - production
+        - staging
+    app_groups:
+      - shopos-apps
+
+    # No node/SSH access
+    node_labels: {}
+
+    # Allowed login traits (app UI only — no shell)
+    logins: []
+
+    # Audit log — read own sessions
+    rules:
+      - resources:
+          - session
+        verbs:
+          - list
+          - read
+      - resources:
+          - event
+        verbs:
+          - list
+
+  # ──────────────────────────────────────────────
+  # Deny block — explicit denials override allow
+  # ──────────────────────────────────────────────
+  deny:
+    # Deny access to production Kubernetes namespaces
+    kubernetes_labels:
+      env:
+        - production
+
+    # Deny all SSH login
+    logins:
+      - "*"
+
+    # Deny access to secrets (even in non-prod)
+    kubernetes_resources:
+      - kind: secret
+        namespace: "*"
+        name: "*"
+        verbs:
+          - get
+          - list
+          - watch
+
+  # ──────────────────────────────────────────────
+  # Options
+  # ──────────────────────────────────────────────
+  options:
+    # Certificate TTL
+    max_session_ttl: 8h
+    # Require re-login after this idle time
+    client_idle_timeout: 30m
+    disconnect_expired_cert: true
+    # MFA required for elevated actions
+    require_session_mfa: no
+    # Forward agent not permitted
+    forward_agent: false
+    # Session locking
+    lock: best_effort
+    # Record sessions
+    record_session:
+      desktop: true
+      default: best_effort
+    # SSH port forwarding not permitted
+    port_forwarding: false
+    # Enhanced session recording
+    enhanced_recording:
+      - command
+      - network
+    # BPF access
+    bpf: []
+    # Kubernetes session recording
+    desktop_clipboard: false
+    desktop_directory_sharing: false

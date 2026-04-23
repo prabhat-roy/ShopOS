@@ -1,0 +1,97 @@
+apiVersion: score.dev/v1b1
+
+metadata:
+  name: cart-service
+  annotations:
+    score.dev/description: "Shopping cart service — manages cart lifecycle, items, and pricing calculations"
+    score.dev/domain: "commerce"
+    score.dev/language: "csharp"
+
+service:
+  ports:
+    grpc:
+      port: 50080
+      targetPort: 50080
+      protocol: TCP
+
+containers:
+  cart-service:
+    image: shopos/cart-service:latest
+    command: ["dotnet", "CartService.dll"]
+
+    env:
+      - name: ASPNETCORE_ENVIRONMENT
+        value: "Production"
+      - name: GRPC_PORT
+        value: "50080"
+      - name: REDIS_CONNECTION_STRING
+        valueFrom:
+          secretKeyRef:
+            name: cart-redis-credentials
+            key: connectionString
+      - name: PRICING_SERVICE_ADDR
+        value: "pricing-service:50073"
+      - name: PROMOTIONS_SERVICE_ADDR
+        value: "promotions-service:50087"
+      - name: INVENTORY_SERVICE_ADDR
+        value: "inventory-service:50074"
+      - name: TAX_SERVICE_ADDR
+        value: "tax-service:50086"
+      - name: KAFKA_BOOTSTRAP_SERVERS
+        valueFrom:
+          secretKeyRef:
+            name: kafka-credentials
+            key: brokers
+      - name: CART_TTL_HOURS
+        value: "72"
+      - name: OTEL_EXPORTER_OTLP_ENDPOINT
+        value: "http://otel-collector:4317"
+      - name: OTEL_SERVICE_NAME
+        value: "cart-service"
+
+    resources:
+      limits:
+        memory: "256Mi"
+        cpu: "500m"
+      requests:
+        memory: "128Mi"
+        cpu: "100m"
+
+    livenessProbe:
+      httpGet:
+        path: /healthz
+        port: 50080
+      initialDelaySeconds: 15
+      periodSeconds: 15
+      failureThreshold: 3
+
+    readinessProbe:
+      httpGet:
+        path: /healthz
+        port: 50080
+      initialDelaySeconds: 10
+      periodSeconds: 10
+      failureThreshold: 3
+
+    startupProbe:
+      httpGet:
+        path: /healthz
+        port: 50080
+      failureThreshold: 20
+      periodSeconds: 2
+
+resources:
+  cache:
+    type: redis
+    class: default
+    metadata:
+      annotations:
+        score.dev/purpose: "Primary cart storage — cart data is ephemeral (TTL 72h)"
+        score.dev/key-pattern: "cart:{userId} → CartDocument (JSON)"
+
+  messaging:
+    type: kafka
+    metadata:
+      annotations:
+        score.dev/topics: "commerce.cart.abandoned"
+        score.dev/purpose: "Publishes cart.abandoned events for marketing automation"

@@ -1,0 +1,50 @@
+replicaCount: 1
+
+image:
+  repository: ghcr.io/shopify/toxiproxy
+  tag: "2.9.0"
+  pullPolicy: IfNotPresent
+
+service:
+  type: ClusterIP
+  # Management API port
+  apiPort: 8474
+  # Default proxy listen port (additional proxies configured via API)
+  proxyPort: 22222
+
+ingress:
+  enabled: false
+  className: ""
+  annotations: {}
+  host: toxiproxy.shopos.local
+  path: /
+  pathType: Prefix
+  tls: []
+
+resources:
+  requests:
+    cpu: 50m
+    memory: 64Mi
+  limits:
+    cpu: 200m
+    memory: 128Mi
+
+# Toxiproxy is stateless — no PVC needed
+persistence:
+  enabled: false
+
+podAnnotations: {}
+
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 1000
+
+containerSecurityContext:
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: true
+  capabilities:
+    drop:
+      - ALL
+
+nameOverride: ""
+fullnameOverride: ""

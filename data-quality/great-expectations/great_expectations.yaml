@@ -1,0 +1,125 @@
+# =============================================================================
+# ShopOS — Great Expectations project configuration
+#
+# Reference: https://docs.greatexpectations.io/docs/guides/setup/configuring_data_contexts/
+#
+# Run:
+#   cd data-quality/great-expectations
+#   great_expectations suite run --suite commerce_orders_suite
+#   great_expectations checkpoint run orders_checkpoint
+# =============================================================================
+
+config_version: 3.0
+
+# ── Datasources ───────────────────────────────────────────────────────────────
+datasources:
+  shopos_postgres:
+    class_name: Datasource
+    module_name: great_expectations.datasource
+    execution_engine:
+      class_name: SqlAlchemyExecutionEngine
+      module_name: great_expectations.execution_engine
+      connection_string: "postgresql+psycopg2://${POSTGRES_USER}:${POSTGRES_PASSWORD}@${POSTGRES_HOST}:${POSTGRES_PORT:-5432}/${POSTGRES_DB:-shopos}"
+      credentials:
+        username: "${POSTGRES_USER}"
+        password: "${POSTGRES_PASSWORD}"
+        host: "${POSTGRES_HOST}"
+        port: "${POSTGRES_PORT:-5432}"
+        database: "${POSTGRES_DB:-shopos}"
+    data_connectors:
+      # Runtime connector — use a full SQL query as the batch
+      default_runtime_data_connector_name:
+        class_name: RuntimeDataConnector
+        module_name: great_expectations.datasource.data_connector
+        batch_identifiers:
+          - run_date
+          - run_id
+
+      # Inferred connector — auto-discovers all tables in schema
+      default_inferred_data_connector_name:
+        class_name: InferredAssetSqlDataConnector
+        module_name: great_expectations.datasource.data_connector
+        include_schema_name: true
+        introspection_directives:
+          schema_name: public
+
+  shopos_mongodb:
+    class_name: Datasource
+    module_name: great_expectations.datasource
+    execution_engine:
+      class_name: PandasExecutionEngine
+      module_name: great_expectations.execution_engine
+    data_connectors:
+      default_runtime_data_connector_name:
+        class_name: RuntimeDataConnector
+        module_name: great_expectations.datasource.data_connector
+        batch_identifiers:
+          - run_date
+          - collection_name
+
+# ── Stores ────────────────────────────────────────────────────────────────────
+stores:
+  expectations_store:
+    class_name: ExpectationsStore
+    store_backend:
+      class_name: TupleFilesystemStoreBackend
+      base_directory: expectations/
+
+  validations_store:
+    class_name: ValidationsStore
+    store_backend:
+      class_name: TupleFilesystemStoreBackend
+      base_directory: uncommitted/validations/
+
+  evaluation_parameter_store:
+    class_name: EvaluationParameterStore
+
+  checkpoint_store:
+    class_name: CheckpointStore
+    store_backend:
+      class_name: TupleFilesystemStoreBackend
+      suppress_store_backend_id: true
+      base_directory: checkpoints/
+
+  profiler_store:
+    class_name: ProfilerStore
+    store_backend:
+      class_name: TupleFilesystemStoreBackend
+      suppress_store_backend_id: true
+      base_directory: profilers/
+
+expectations_store_name: expectations_store
+validations_store_name: validations_store
+evaluation_parameter_store_name: evaluation_parameter_store
+checkpoint_store_name: checkpoint_store
+
+# ── Data Docs ─────────────────────────────────────────────────────────────────
+data_docs_sites:
+  local_site:
+    class_name: SiteBuilder
+    show_how_to_buttons: false
+    store_backend:
+      class_name: TupleFilesystemStoreBackend
+      base_directory: uncommitted/data_docs/local_site/
+    site_index_builder:
+      class_name: DefaultSiteIndexBuilder
+
+  # S3 site for shared team access (uncomment for production)
+  # s3_site:
+  #   class_name: SiteBuilder
+  #   store_backend:
+  #     class_name: TupleS3StoreBackend
+  #     bucket: shopos-data-docs
+  #     prefix: great-expectations/
+  #     region_name: us-east-1
+  #   site_index_builder:
+  #     class_name: DefaultSiteIndexBuilder
+
+# ── Notebooks ─────────────────────────────────────────────────────────────────
+notebooks:
+
+# ── Plugins ───────────────────────────────────────────────────────────────────
+plugins_directory: plugins/
+
+# ── Fluent datasource (GX 0.17+) ────────────────────────────────────────────
+fluent_datasources: {}

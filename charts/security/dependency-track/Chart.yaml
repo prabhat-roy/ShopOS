@@ -1,0 +1,17 @@
+apiVersion: v2
+name: dependency-track
+description: Dependency-Track — SBOM-based supply chain risk analysis for ShopOS service dependencies
+type: application
+version: 0.1.0
+appVersion: "4.11.4"
+keywords:
+  - dependency-track
+  - sbom
+  - supply-chain
+  - security
+  - vulnerabilities
+home: https://dependencytrack.org
+sources:
+  - https://github.com/DependencyTrack/dependency-track
+maintainers:
+  - name: ShopOS Platform Team

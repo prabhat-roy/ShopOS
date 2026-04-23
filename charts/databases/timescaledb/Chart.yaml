@@ -1,0 +1,16 @@
+apiVersion: v2
+name: timescaledb
+description: TimescaleDB — PostgreSQL extension for time-series data in ShopOS (service metrics, inventory events, page views)
+type: application
+version: 0.1.0
+appVersion: "2.15"
+keywords:
+  - timescaledb
+  - postgresql
+  - time-series
+  - metrics
+home: https://www.timescale.com
+sources:
+  - https://github.com/timescale/timescaledb
+maintainers:
+  - name: ShopOS Platform Team

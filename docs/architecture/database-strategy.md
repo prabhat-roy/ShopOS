@@ -13,7 +13,6 @@ ShopOS uses **database-per-service** with technology chosen per access pattern. 
 | **Redis** | 7 | Sub-millisecond reads, ephemeral data, pub/sub, sorted sets | cart, sessions, rate-limiter, waitlist, flash-sale, live-chat |
 | **Memcached** | 1.6 | High-throughput simple key-value cache (no persistence needed) | Hot read paths requiring maximum throughput with minimal overhead |
 | **Cassandra** | 5.0 | High-write time-series, wide rows, no single point of failure | analytics-service, event-tracking, data-pipeline, reporting |
-| **ScyllaDB** | 6.1 | Cassandra-compatible, 10× throughput for hot event streams | High-frequency event storage paths exceeding Cassandra capacity |
 | **Elasticsearch** | 8.15 | Full-text search, faceted filtering, relevance ranking | search-service |
 | **OpenSearch** | 2.17 | Log analytics, audit log search, alternative product search | Log pipeline, audit search, OpenSearch-based deployments |
 | **ClickHouse** | 24.8 | OLAP, columnar storage, aggregations over billions of rows | reporting-service, analytics aggregations, revenue dashboards |
@@ -49,12 +48,11 @@ ShopOS uses **database-per-service** with technology chosen per access pattern. 
 - Horizontal scalability via consistent hashing is needed across many nodes
 - Maximum raw throughput matters and Redis features (TTL per key, pub/sub, Lua) are not needed
 
-### Use Cassandra / ScyllaDB when:
+### Use Cassandra when:
 - Write throughput is >10k/sec sustained
 - Data is time-series or append-only (events, logs, metrics, click streams)
 - Queries are always by partition key (no ad-hoc queries or JOINs needed)
 - Multi-region replication with tunable consistency is required
-- Use **ScyllaDB** specifically for paths exceeding Cassandra's throughput ceiling
 
 ### Use Elasticsearch when:
 - Full-text search with relevance ranking is a core use case
@@ -135,7 +133,7 @@ This ensures:
 | PostgreSQL | Velero + WAL archiving to MinIO/S3 | 1h | 30m |
 | MongoDB | Velero + mongodump to MinIO/S3 | 1h | 30m |
 | Redis | AOF persistence + Velero snapshot | 15m | 5m |
-| Cassandra/ScyllaDB | nodetool snapshot → MinIO/S3 | 4h | 1h |
+| Cassandra | nodetool snapshot → MinIO/S3 | 4h | 1h |
 | Elasticsearch | snapshot API → MinIO/S3 | 1h | 30m |
 | ClickHouse | BACKUP TO S3 (native) | 4h | 1h |
 | MinIO | bucket replication to secondary MinIO | 5m | 5m |
@@ -152,5 +150,5 @@ Velero runs a daily cluster-wide backup at 02:00 UTC (`kubernetes/velero/`). Ind
 - [ClickHouse schema](../../databases/clickhouse/)
 - [Weaviate schema](../../databases/weaviate/)
 - [Neo4j schema](../../databases/neo4j/)
-- [ScyllaDB schema](../../databases/scylladb/)
+- [TimescaleDB schema](../../databases/timescaledb/)
 - [OpenSearch schema](../../databases/opensearch/)

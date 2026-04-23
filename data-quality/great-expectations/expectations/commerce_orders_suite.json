@@ -1,0 +1,208 @@
+{
+  "expectation_suite_name": "commerce_orders_suite",
+  "data_asset_type": null,
+  "meta": {
+    "great_expectations_version": "0.18.x",
+    "created_by": "ShopOS Data Quality",
+    "description": "Expectation suite for the commerce.orders table. Validates structural integrity, non-null constraints, enum values, and business rules for all order records.",
+    "datasource": "shopos_postgres",
+    "table": "orders",
+    "domain": "commerce"
+  },
+  "expectations": [
+    {
+      "expectation_type": "expect_table_to_exist",
+      "kwargs": {},
+      "meta": {
+        "notes": "Ensure the orders table exists in the postgres commerce schema"
+      }
+    },
+    {
+      "expectation_type": "expect_table_row_count_to_be_between",
+      "kwargs": {
+        "min_value": 1,
+        "max_value": null
+      },
+      "meta": {
+        "notes": "Orders table should never be empty in production"
+      }
+    },
+
+    {
+      "expectation_type": "expect_column_to_exist",
+      "kwargs": { "column": "id" },
+      "meta": { "notes": "Primary key — UUID" }
+    },
+    {
+      "expectation_type": "expect_column_to_exist",
+      "kwargs": { "column": "user_id" },
+      "meta": { "notes": "Foreign key to users table" }
+    },
+    {
+      "expectation_type": "expect_column_to_exist",
+      "kwargs": { "column": "status" },
+      "meta": { "notes": "Order lifecycle status" }
+    },
+    {
+      "expectation_type": "expect_column_to_exist",
+      "kwargs": { "column": "total" },
+      "meta": { "notes": "Order total amount (NUMERIC 12,2)" }
+    },
+    {
+      "expectation_type": "expect_column_to_exist",
+      "kwargs": { "column": "currency" },
+      "meta": { "notes": "ISO 4217 currency code" }
+    },
+    {
+      "expectation_type": "expect_column_to_exist",
+      "kwargs": { "column": "created_at" },
+      "meta": { "notes": "Order creation timestamp with timezone" }
+    },
+    {
+      "expectation_type": "expect_column_to_exist",
+      "kwargs": { "column": "updated_at" },
+      "meta": { "notes": "Last modification timestamp" }
+    },
+
+    {
+      "expectation_type": "expect_column_values_to_not_be_null",
+      "kwargs": { "column": "id" },
+      "meta": { "notes": "id must never be null" }
+    },
+    {
+      "expectation_type": "expect_column_values_to_not_be_null",
+      "kwargs": { "column": "user_id" },
+      "meta": { "notes": "Every order must be associated with a user" }
+    },
+    {
+      "expectation_type": "expect_column_values_to_not_be_null",
+      "kwargs": { "column": "status" },
+      "meta": { "notes": "Status must always be set" }
+    },
+    {
+      "expectation_type": "expect_column_values_to_not_be_null",
+      "kwargs": { "column": "total" },
+      "meta": { "notes": "Total must always be set" }
+    },
+    {
+      "expectation_type": "expect_column_values_to_not_be_null",
+      "kwargs": { "column": "currency" },
+      "meta": { "notes": "Currency must always be set" }
+    },
+    {
+      "expectation_type": "expect_column_values_to_not_be_null",
+      "kwargs": { "column": "created_at" },
+      "meta": { "notes": "Timestamp must always be present" }
+    },
+
+    {
+      "expectation_type": "expect_column_values_to_be_unique",
+      "kwargs": { "column": "id" },
+      "meta": { "notes": "Order IDs must be globally unique (UUID PK)" }
+    },
+
+    {
+      "expectation_type": "expect_column_values_to_be_in_set",
+      "kwargs": {
+        "column": "status",
+        "value_set": ["pending", "confirmed", "processing", "shipped", "delivered", "cancelled", "refunded", "partially_refunded"]
+      },
+      "meta": {
+        "notes": "Only valid order lifecycle states are permitted. Expand this set when new states are added to order-service."
+      }
+    },
+
+    {
+      "expectation_type": "expect_column_values_to_be_in_set",
+      "kwargs": {
+        "column": "currency",
+        "value_set": ["USD", "EUR", "GBP", "CAD", "AUD", "JPY", "CNY", "INR", "BRL", "MXN", "SGD", "HKD", "CHF", "SEK", "NOK", "DKK", "NZD", "ZAR", "AED", "SAR"]
+      },
+      "meta": {
+        "notes": "Only supported ISO 4217 currency codes. Extend list when new currencies are onboarded via forex-service."
+      }
+    },
+
+    {
+      "expectation_type": "expect_column_values_to_be_between",
+      "kwargs": {
+        "column": "total",
+        "min_value": 0.00,
+        "max_value": 1000000.00
+      },
+      "meta": {
+        "notes": "Order total must be non-negative and below the $1M single-order cap enforced by checkout-service"
+      }
+    },
+
+    {
+      "expectation_type": "expect_column_value_lengths_to_equal",
+      "kwargs": {
+        "column": "currency",
+        "value": 3
+      },
+      "meta": { "notes": "ISO 4217 codes are always exactly 3 characters" }
+    },
+
+    {
+      "expectation_type": "expect_column_values_to_match_regex",
+      "kwargs": {
+        "column": "id",
+        "regex": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+      },
+      "meta": { "notes": "id must be a valid lowercase UUID v4" }
+    },
+
+    {
+      "expectation_type": "expect_column_values_to_match_regex",
+      "kwargs": {
+        "column": "user_id",
+        "regex": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+      },
+      "meta": { "notes": "user_id must reference a valid UUID from the identity domain" }
+    },
+
+    {
+      "expectation_type": "expect_column_pair_values_to_be_in_set",
+      "kwargs": {
+        "column_A": "status",
+        "column_B": "updated_at",
+        "value_pairs_set": null,
+        "ignore_row_if": "either_value_is_missing"
+      },
+      "meta": {
+        "notes": "updated_at should always be >= created_at (validated separately via custom SQL)"
+      }
+    },
+
+    {
+      "expectation_type": "expect_table_columns_to_match_ordered_list",
+      "kwargs": {
+        "column_list": [
+          "id",
+          "user_id",
+          "status",
+          "total",
+          "currency",
+          "subtotal",
+          "tax",
+          "shipping",
+          "discount",
+          "shipping_address_id",
+          "billing_address_id",
+          "payment_id",
+          "checkout_id",
+          "notes",
+          "metadata",
+          "created_at",
+          "updated_at"
+        ]
+      },
+      "meta": {
+        "notes": "Validates schema does not drift from the Flyway migration V1__create_commerce_schema.sql. Update this list when adding columns.",
+        "strict": false
+      }
+    }
+  ],
+  "ge_cloud_id": null
+}

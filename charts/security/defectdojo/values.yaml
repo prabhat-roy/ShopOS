@@ -1,0 +1,60 @@
+replicaCount: 1
+
+image:
+  repository: defectdojo/defectdojo-django
+  tag: "2.38.0"
+  pullPolicy: IfNotPresent
+
+service:
+  type: ClusterIP
+  port: 8080
+
+ingress:
+  enabled: false
+  className: ""
+  annotations: {}
+  host: defectdojo.shopos.local
+  path: /
+  pathType: Prefix
+  tls: []
+
+resources:
+  requests:
+    cpu: 500m
+    memory: 512Mi
+  limits:
+    cpu: 1000m
+    memory: 1Gi
+
+# DefectDojo Django configuration
+app:
+  # Django database URL
+  databaseUrl: "postgresql://defectdojo:defectdojo@postgres:5432/defectdojo"
+  # Django secret key — must be changed in production
+  secretKey: "changeme-secret-key"
+  # Comma-separated list of allowed hostnames
+  allowedHosts: "defectdojo.shopos.local,localhost"
+
+# Media file persistence
+persistence:
+  enabled: true
+  storageClass: ""
+  accessMode: ReadWriteOnce
+  size: 5Gi
+  mountPath: /app/media
+
+podAnnotations: {}
+
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 1000
+
+containerSecurityContext:
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: false
+  capabilities:
+    drop:
+      - ALL
+
+nameOverride: ""
+fullnameOverride: ""

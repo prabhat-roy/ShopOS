@@ -1,0 +1,68 @@
+replicaCount: 1
+
+image:
+  repository: apache/superset
+  tag: "4.0.2"
+  pullPolicy: IfNotPresent
+
+service:
+  type: ClusterIP
+  port: 8088
+
+ingress:
+  enabled: false
+  className: ""
+  annotations: {}
+  host: superset.shopos.local
+  path: /
+  pathType: Prefix
+  tls: []
+
+resources:
+  requests:
+    cpu: 500m
+    memory: 1Gi
+  limits:
+    cpu: 2000m
+    memory: 2Gi
+
+# Superset configuration
+superset:
+  # Flask secret key — must be changed in production
+  secretKey: "thisISaSECRET_1234"
+  # SQLAlchemy metadata database URL
+  databaseUrl: "postgresql+psycopg2://superset:superset@postgres:5432/superset"
+  # Redis URL for caching and celery broker
+  redisUrl: "redis://redis:6379/0"
+
+# Home directory persistence
+persistence:
+  enabled: true
+  storageClass: ""
+  accessMode: ReadWriteOnce
+  size: 5Gi
+  mountPath: /app/superset_home
+
+# Admin user bootstrapped on first run
+adminUser:
+  username: "admin"
+  password: "admin"
+  firstName: "Admin"
+  lastName: "User"
+  email: "admin@shopos.local"
+
+podAnnotations: {}
+
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 1000
+
+containerSecurityContext:
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: false
+  capabilities:
+    drop:
+      - ALL
+
+nameOverride: ""
+fullnameOverride: ""

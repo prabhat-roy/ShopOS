@@ -1,0 +1,261 @@
+{
+  "consumer": {
+    "name": "checkout-service"
+  },
+  "provider": {
+    "name": "payment-service"
+  },
+  "interactions": [
+    {
+      "description": "checkout-service initiates a payment for a confirmed order",
+      "providerState": "payment service is available and Stripe gateway is reachable",
+      "request": {
+        "method": "POST",
+        "path": "/api/v1/payments",
+        "headers": {
+          "Content-Type": "application/json",
+          "Accept": "application/json",
+          "Authorization": "Bearer <token>",
+          "X-Correlation-ID": "corr-checkout-001",
+          "X-Idempotency-Key": "idempotency-key-checkout-001"
+        },
+        "body": {
+          "checkoutId": "checkout-uuid-001",
+          "orderId": "order-uuid-001",
+          "userId": "user-001",
+          "amount": {
+            "value": 272.47,
+            "currency": "USD"
+          },
+          "paymentMethod": {
+            "type": "card",
+            "token": "tok_visa_test_4242"
+          },
+          "billingAddress": {
+            "firstName": "Test",
+            "lastName": "User",
+            "addressLine1": "123 Commerce St",
+            "city": "San Francisco",
+            "state": "CA",
+            "postalCode": "94102",
+            "country": "US"
+          },
+          "metadata": {
+            "orderTotal": 272.47,
+            "itemCount": 3,
+            "channel": "web"
+          }
+        },
+        "matchingRules": {
+          "body": {
+            "$.checkoutId": { "match": "type" },
+            "$.orderId": { "match": "type" },
+            "$.userId": { "match": "type" },
+            "$.amount.value": { "match": "decimal" },
+            "$.amount.currency": { "match": "type" },
+            "$.paymentMethod.type": { "match": "type" },
+            "$.paymentMethod.token": { "match": "type" }
+          }
+        }
+      },
+      "response": {
+        "status": 201,
+        "headers": {
+          "Content-Type": "application/json",
+          "Location": "/api/v1/payments/pmt-uuid-001"
+        },
+        "body": {
+          "paymentId": "pmt-uuid-001",
+          "checkoutId": "checkout-uuid-001",
+          "orderId": "order-uuid-001",
+          "status": "succeeded",
+          "amount": {
+            "value": 272.47,
+            "currency": "USD"
+          },
+          "gatewayTransactionId": "pi_test_1234567890",
+          "gatewayName": "stripe",
+          "processedAt": "2026-04-23T10:05:00Z",
+          "receiptUrl": "https://receipt.stripe.com/pi_test_1234567890"
+        },
+        "matchingRules": {
+          "body": {
+            "$.paymentId": { "match": "type" },
+            "$.checkoutId": { "match": "equality" },
+            "$.orderId": { "match": "equality" },
+            "$.status": {
+              "match": "regex",
+              "regex": "^(succeeded|pending|failed)$"
+            },
+            "$.amount.value": { "match": "decimal" },
+            "$.amount.currency": { "match": "type" },
+            "$.gatewayTransactionId": { "match": "type" },
+            "$.processedAt": { "match": "type" }
+          }
+        }
+      }
+    },
+    {
+      "description": "checkout-service handles payment failure from gateway",
+      "providerState": "Stripe gateway returns card declined for test card tok_chargeDeclined",
+      "request": {
+        "method": "POST",
+        "path": "/api/v1/payments",
+        "headers": {
+          "Content-Type": "application/json",
+          "Accept": "application/json",
+          "Authorization": "Bearer <token>",
+          "X-Idempotency-Key": "idempotency-key-declined-001"
+        },
+        "body": {
+          "checkoutId": "checkout-uuid-002",
+          "orderId": "order-uuid-002",
+          "userId": "user-002",
+          "amount": {
+            "value": 99.99,
+            "currency": "USD"
+          },
+          "paymentMethod": {
+            "type": "card",
+            "token": "tok_chargeDeclined"
+          },
+          "billingAddress": {
+            "firstName": "Test",
+            "lastName": "Declined",
+            "addressLine1": "456 Fail St",
+            "city": "San Francisco",
+            "state": "CA",
+            "postalCode": "94102",
+            "country": "US"
+          }
+        }
+      },
+      "response": {
+        "status": 402,
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "paymentId": "pmt-uuid-002",
+          "checkoutId": "checkout-uuid-002",
+          "orderId": "order-uuid-002",
+          "status": "failed",
+          "failureReason": "card_declined",
+          "failureMessage": "Your card was declined.",
+          "gatewayName": "stripe",
+          "amount": {
+            "value": 99.99,
+            "currency": "USD"
+          }
+        },
+        "matchingRules": {
+          "body": {
+            "$.paymentId": { "match": "type" },
+            "$.status": { "match": "equality" },
+            "$.failureReason": { "match": "type" },
+            "$.failureMessage": { "match": "type" }
+          }
+        }
+      }
+    },
+    {
+      "description": "checkout-service retrieves payment status",
+      "providerState": "payment pmt-uuid-001 exists with status succeeded",
+      "request": {
+        "method": "GET",
+        "path": "/api/v1/payments/pmt-uuid-001",
+        "headers": {
+          "Accept": "application/json",
+          "Authorization": "Bearer <token>"
+        }
+      },
+      "response": {
+        "status": 200,
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "paymentId": "pmt-uuid-001",
+          "orderId": "order-uuid-001",
+          "status": "succeeded",
+          "amount": {
+            "value": 272.47,
+            "currency": "USD"
+          },
+          "gatewayTransactionId": "pi_test_1234567890",
+          "processedAt": "2026-04-23T10:05:00Z"
+        },
+        "matchingRules": {
+          "body": {
+            "$.paymentId": { "match": "equality" },
+            "$.orderId": { "match": "type" },
+            "$.status": { "match": "type" },
+            "$.amount.value": { "match": "decimal" },
+            "$.processedAt": { "match": "type" }
+          }
+        }
+      }
+    },
+    {
+      "description": "checkout-service initiates a refund for a cancelled order",
+      "providerState": "payment pmt-uuid-001 exists with status succeeded",
+      "request": {
+        "method": "POST",
+        "path": "/api/v1/payments/pmt-uuid-001/refunds",
+        "headers": {
+          "Content-Type": "application/json",
+          "Accept": "application/json",
+          "Authorization": "Bearer <token>",
+          "X-Idempotency-Key": "refund-idempotency-001"
+        },
+        "body": {
+          "reason": "customer_request",
+          "amount": {
+            "value": 272.47,
+            "currency": "USD"
+          },
+          "orderId": "order-uuid-001",
+          "requestedBy": "checkout-service"
+        }
+      },
+      "response": {
+        "status": 201,
+        "headers": {
+          "Content-Type": "application/json"
+        },
+        "body": {
+          "refundId": "ref-uuid-001",
+          "paymentId": "pmt-uuid-001",
+          "status": "pending",
+          "amount": {
+            "value": 272.47,
+            "currency": "USD"
+          },
+          "reason": "customer_request",
+          "createdAt": "2026-04-23T11:00:00Z"
+        },
+        "matchingRules": {
+          "body": {
+            "$.refundId": { "match": "type" },
+            "$.paymentId": { "match": "equality" },
+            "$.status": {
+              "match": "regex",
+              "regex": "^(pending|succeeded|failed)$"
+            },
+            "$.amount.value": { "match": "decimal" },
+            "$.createdAt": { "match": "type" }
+          }
+        }
+      }
+    }
+  ],
+  "metadata": {
+    "pactSpecification": {
+      "version": "3.0.0"
+    },
+    "client": {
+      "name": "pact-go",
+      "version": "2.x"
+    }
+  }
+}

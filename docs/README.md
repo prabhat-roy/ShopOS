@@ -57,7 +57,9 @@ Explains why each database is assigned to each domain:
 | PostgreSQL | Identity, Commerce, Financial, B2B, Affiliate | ACID, complex joins |
 | MongoDB | Catalog, Content, Customer-Experience | Flexible nested documents |
 | Redis | Platform, Identity, Commerce (cart/session) | Sub-millisecond, ephemeral |
-| Cassandra / ScyllaDB | Analytics & AI | Write-heavy time-series |
+| Cassandra | Analytics & AI | Write-heavy time-series |
+| TimescaleDB | Analytics & AI, Platform | Time-series metrics, inventory events |
+| Memcached | Commerce, Platform | High-throughput hot read cache |
 | Elasticsearch | Catalog (search) | Full-text + faceted filtering |
 | ClickHouse | Analytics & AI | OLAP aggregations |
 | Weaviate | Analytics & AI | Semantic vector search + RAG |

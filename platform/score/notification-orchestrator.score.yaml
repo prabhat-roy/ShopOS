@@ -1,0 +1,104 @@
+apiVersion: score.dev/v1b1
+
+metadata:
+  name: notification-orchestrator
+  annotations:
+    score.dev/description: "Notification orchestrator — consumes domain events from Kafka and fans out to email/SMS/push/in-app channels"
+    score.dev/domain: "communications"
+    score.dev/language: "nodejs"
+
+service:
+  ports:
+    http:
+      port: 3030
+      targetPort: 3030
+      protocol: TCP
+
+containers:
+  notification-orchestrator:
+    image: shopos/notification-orchestrator:latest
+    command: ["node", "index.js"]
+
+    env:
+      - name: NODE_ENV
+        value: "production"
+      - name: PORT
+        value: "3030"
+      - name: KAFKA_BROKERS
+        valueFrom:
+          secretKeyRef:
+            name: kafka-credentials
+            key: brokers
+      - name: KAFKA_GROUP_ID
+        value: "notification-orchestrator"
+      - name: KAFKA_TOPICS
+        value: "commerce.order.placed,commerce.order.cancelled,commerce.order.fulfilled,commerce.payment.processed,commerce.payment.failed,identity.user.registered,supplychain.shipment.created,supplychain.shipment.updated"
+      - name: EMAIL_SERVICE_ADDR
+        value: "email-service:50130"
+      - name: SMS_SERVICE_ADDR
+        value: "sms-service:50133"
+      - name: PUSH_SERVICE_ADDR
+        value: "push-notification-service:50134"
+      - name: IN_APP_SERVICE_ADDR
+        value: "in-app-notification-service:50132"
+      - name: TEMPLATE_SERVICE_ADDR
+        value: "template-service:50131"
+      - name: NOTIFICATION_PREFERENCES_SERVICE_ADDR
+        value: "notification-preferences-service:50210"
+      - name: DEAD_LETTER_TOPIC
+        value: "notifications.dlq"
+      - name: MAX_RETRY_ATTEMPTS
+        value: "3"
+      - name: RETRY_BACKOFF_MS
+        value: "1000"
+      - name: OTEL_EXPORTER_OTLP_ENDPOINT
+        value: "http://otel-collector:4317"
+      - name: OTEL_SERVICE_NAME
+        value: "notification-orchestrator"
+
+    resources:
+      limits:
+        memory: "256Mi"
+        cpu: "500m"
+      requests:
+        memory: "128Mi"
+        cpu: "100m"
+
+    livenessProbe:
+      httpGet:
+        path: /healthz
+        port: 3030
+      initialDelaySeconds: 15
+      periodSeconds: 15
+      failureThreshold: 3
+
+    readinessProbe:
+      httpGet:
+        path: /healthz
+        port: 3030
+      initialDelaySeconds: 10
+      periodSeconds: 10
+      failureThreshold: 3
+
+    startupProbe:
+      httpGet:
+        path: /healthz
+        port: 3030
+      failureThreshold: 20
+      periodSeconds: 2
+
+resources:
+  messaging:
+    type: kafka
+    metadata:
+      annotations:
+        score.dev/role: "consumer"
+        score.dev/consumer-group: "notification-orchestrator"
+        score.dev/topics: "commerce.order.placed,commerce.order.cancelled,commerce.order.fulfilled,commerce.payment.processed,commerce.payment.failed,identity.user.registered,supplychain.shipment.created,supplychain.shipment.updated"
+        score.dev/purpose: "Consumes all domain events that trigger user notifications"
+
+  config:
+    type: environment
+    metadata:
+      annotations:
+        score.dev/purpose: "Feature flags for channel routing (e.g. disable SMS for region)"

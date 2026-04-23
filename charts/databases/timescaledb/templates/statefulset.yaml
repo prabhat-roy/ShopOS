@@ -1,0 +1,100 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ include "timescaledb.fullname" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "timescaledb.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  serviceName: {{ include "timescaledb.fullname" . }}-headless
+  selector:
+    matchLabels:
+      {{- include "timescaledb.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "timescaledb.selectorLabels" . | nindent 8 }}
+      annotations:
+        {{- toYaml .Values.podAnnotations | nindent 8 }}
+    spec:
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      containers:
+        - name: timescaledb
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          securityContext:
+            {{- toYaml .Values.containerSecurityContext | nindent 12 }}
+          env:
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "timescaledb.fullname" . }}-credentials
+                  key: POSTGRES_PASSWORD
+            - name: POSTGRES_DB
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "timescaledb.fullname" . }}-credentials
+                  key: POSTGRES_DB
+          args:
+            - postgres
+            - -c
+            - shared_buffers={{ .Values.config.sharedBuffers }}
+            - -c
+            - max_connections={{ .Values.config.maxConnections }}
+            - -c
+            - work_mem={{ .Values.config.workMem }}
+            - -c
+            - maintenance_work_mem={{ .Values.config.maintenanceWorkMem }}
+            - -c
+            - effective_cache_size={{ .Values.config.effectiveCacheSize }}
+            - -c
+            - timescaledb.max_background_workers={{ .Values.config.timescaledbMaxBackground }}
+          ports:
+            - name: postgresql
+              containerPort: 5432
+              protocol: TCP
+          livenessProbe:
+            exec:
+              command: [pg_isready, -U, postgres]
+            initialDelaySeconds: 30
+            periodSeconds: 10
+          readinessProbe:
+            exec:
+              command: [pg_isready, -U, postgres]
+            initialDelaySeconds: 5
+            periodSeconds: 5
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+          volumeMounts:
+            - name: data
+              mountPath: /var/lib/postgresql/data
+        {{- if .Values.metrics.enabled }}
+        - name: metrics
+          image: "{{ .Values.metrics.image.repository }}:{{ .Values.metrics.image.tag }}"
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: DATA_SOURCE_NAME
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "timescaledb.fullname" . }}-credentials
+                  key: DATA_SOURCE_NAME
+          ports:
+            - name: metrics
+              containerPort: 9187
+              protocol: TCP
+          resources:
+            {{- toYaml .Values.metrics.resources | nindent 12 }}
+        {{- end }}
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+      spec:
+        accessModes: [ReadWriteOnce]
+        {{- if .Values.persistence.storageClass }}
+        storageClassName: {{ .Values.persistence.storageClass }}
+        {{- end }}
+        resources:
+          requests:
+            storage: {{ .Values.persistence.size }}

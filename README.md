@@ -8,19 +8,25 @@ An enterprise-grade, cloud-native commerce platform — 230 services (224 micros
 
 | # | Domain | Services |
 |---|---|---|
-| 1 | Platform | 22 |
-| 2 | Identity | 8 |
-| 3 | Catalog | 12 |
-| 4 | Commerce | 23 |
-| 5 | Supply Chain | 13 |
-| 6 | Financial | 11 |
-| 7 | Customer Experience | 14 |
-| 8 | Communications | 9 |
-| 9 | Content | 8 |
+| 1 | Platform | 27 |
+| 2 | Identity | 11 |
+| 3 | Catalog | 15 |
+| 4 | Commerce | 28 |
+| 5 | Supply Chain | 17 |
+| 6 | Financial | 15 |
+| 7 | Customer Experience | 17 |
+| 8 | Communications | 12 |
+| 9 | Content | 9 |
 | 10 | Analytics & AI | 13 |
-| 11 | B2B | 7 |
-| 12 | Integrations | 10 |
-| 13 | Affiliate | 4 |
+| 11 | B2B | 10 |
+| 12 | Integrations | 14 |
+| 13 | Affiliate | 6 |
+| 14 | Marketplace | 8 |
+| 15 | Gamification | 6 |
+| 16 | Developer Platform | 6 |
+| 17 | Compliance | 5 |
+| 18 | Sustainability | 5 |
+| 19 | Web | 6 |
 | | **Total** | **230** |
 
 ---
@@ -48,7 +54,7 @@ An enterprise-grade, cloud-native commerce platform — 230 services (224 micros
 | MongoDB | 8.0 | Document store — catalog, CMS, reviews, tracking |
 | Redis | 7 | Cache, sessions, pub/sub, ephemeral data |
 | Cassandra | 5.0 | Time-series analytics events |
-| ScyllaDB | 6.1 | High-throughput Cassandra-compatible analytics |
+| TimescaleDB | 2.15 | Time-series metrics — service metrics, inventory events, page views |
 | Elasticsearch | 8.15.3 | Full-text search, faceted filtering |
 | OpenSearch | 2.17 | Log analytics, audit trail, security events |
 | ClickHouse | 24.8 | OLAP — orders, events, revenue aggregation |
@@ -67,6 +73,7 @@ An enterprise-grade, cloud-native commerce platform — 230 services (224 micros
 | Schema Registry (Confluent) | 7.7.1 | Avro schema enforcement |
 | RabbitMQ | 3.13 | Task queues, delayed messages, RPC |
 | NATS JetStream | 2.10 | Low-latency pub/sub — chat, real-time notifications |
+| Conduktor Gateway | 3.3.0 | Kafka policy proxy — schema enforcement, PII masking, rate limiting |
 | Debezium | 2.7 | Change Data Capture from Postgres + MongoDB → Kafka |
 | Apache Flink | 1.20 | Real-time stream processing — order analytics, fraud detection |
 | ksqlDB | latest | Streaming SQL on Kafka |
@@ -85,6 +92,9 @@ An enterprise-grade, cloud-native commerce platform — 230 services (224 micros
 | GraphQL | Unified query API via graphql-gateway |
 | WebSocket | Real-time — live chat, in-app notifications |
 | Avro | Kafka event schema format — 20 event schemas |
+| OpenAPI 3.1 | API specification — api-gateway, admin-api, developer-platform-api |
+| Spectral | OpenAPI linting with custom ruleset |
+| Hurl | HTTP integration testing (health, auth, catalog, checkout flows) |
 
 ### Container & Kubernetes
 
@@ -92,34 +102,36 @@ An enterprise-grade, cloud-native commerce platform — 230 services (224 micros
 |---|---|---|
 | Docker | latest | Container runtime, multi-stage builds |
 | Kubernetes | 1.31 | Container orchestration |
-| Helm | 3.x | 230 per-service charts + 30 tool charts |
+| Helm | 3.x | 230 per-service charts + 30+ tool charts |
 | KEDA | 2.15 | Kafka/Redis-driven autoscaling (alongside HPA) |
 | Velero | 7.x | Kubernetes backup and restore |
 | Skaffold | latest | Local dev hot-reload |
 | Tilt | latest | Local dev hot-reload (alternative) |
+| Kaniko | latest | Rootless container builds inside Kubernetes pods |
 
 ### Infrastructure as Code
 
 | Tool | Version | Role |
 |---|---|---|
-| Terraform | 1.9 | EKS, GKE, AKS cluster provisioning + Jenkins VM |
+| Terraform | 1.9 | EKS, GKE, AKS cluster provisioning |
 | OpenTofu | 1.8 | Open source Terraform alternative (same targets) |
 | Crossplane | 1.17 | Kubernetes-native IaC — database and cloud resource claims |
 | Ansible | 2.17 | Kubernetes node bootstrapping |
+| Terrascan | latest | IaC security scanning — Terraform + Helm |
 | Docker Compose | v2 | Full local stack (230 services + infra) |
 
 ### CI/CD
 
 | Tool | Pipelines | Role |
 |---|---|---|
-| Jenkins | 12 | Primary CI server — full declarative pipeline suite |
+| Jenkins | 14 | Primary CI server — build, test, security, quality, tooling pipelines |
 | Drone CI | 12 | Mirror of Jenkins — same stages, Drone syntax |
 | Woodpecker CI | 12 | Drone-compatible fork — drop-in replacement |
 | Dagger | 12 | Portable Go SDK pipelines — run anywhere |
 | Tekton | 12 | Kubernetes-native CRD-based pipelines |
 | Concourse CI | 12 | DAG resource/job pipelines |
 | GitLab CI | 12 | `.gitlab-ci.yml` pipelines for GitLab SCM |
-| GitHub Actions | 12 | `.github/workflows/` — native GitHub integration |
+| GitHub Actions | 12 | `ci/github-actions/` — auto-trigger disabled |
 | CircleCI | 12 | `version: 2.1` orb-based pipelines |
 | GoCD | 12 | Stage/job pipelines with manual approval gates |
 | Travis CI | 12 | Stage-based pipelines with branch filters |
@@ -129,6 +141,8 @@ An enterprise-grade, cloud-native commerce platform — 230 services (224 micros
 | GCP Cloud Build | 12 | `cloudbuild.yaml` — native GCP integration |
 | Argo Workflows | — | Kubernetes-native CI + ML training DAGs |
 | Argo Events | — | GitHub webhook → pipeline triggers |
+
+Jenkins pipelines: `build.Jenkinsfile`, `test.Jenkinsfile`, `security.Jenkinsfile`, `gitops.Jenkinsfile`, `databases.Jenkinsfile`, `messaging.Jenkinsfile`, `observability.Jenkinsfile`, `registry.Jenkinsfile`, `infra.Jenkinsfile`, `install-tools.Jenkinsfile`, `deploy.Jenkinsfile`, `teardown.Jenkinsfile`, `tooling.Jenkinsfile`, `api-quality.Jenkinsfile`
 
 ### GitOps
 
@@ -167,12 +181,13 @@ An enterprise-grade, cloud-native commerce platform — 230 services (224 micros
 | Pyrra | latest | SLO management |
 | Sloth | latest | SLO/SLI generation from Prometheus rules |
 | OpenCost | 1.43 | Kubernetes cost visibility per namespace/service |
+| Botkube | 1.13 | Kubernetes event alerts to Slack |
+| k8sGPT | latest | AI-powered Kubernetes diagnostics |
+| Plausible | latest | Privacy-friendly web analytics (GDPR, no cookies) |
+| OpenReplay | latest | Self-hosted session replay |
 | Goldilocks | 9.x | VPA-based resource right-sizing recommendations |
-| Robusta | 0.13 | Kubernetes alerting enricher (Slack integration) |
 | kube-state-metrics | latest | Kubernetes object metrics |
 | node-exporter | latest | Node-level hardware metrics |
-| Pushgateway | latest | Batch job metrics |
-| Blackbox Exporter | latest | Endpoint probing |
 
 ### Security
 
@@ -202,6 +217,7 @@ An enterprise-grade, cloud-native commerce platform — 230 services (224 micros
 | SonarQube | Static code analysis and quality gates |
 | Checkov | IaC security scanning (Terraform/Helm/K8s) |
 | KICS | IaC scanning — extended rule set |
+| Terrascan | IaC security scanning with SARIF output |
 | OWASP ZAP | DAST — dynamic application security testing |
 | Nuclei | CVE template-based scanning |
 | kube-bench | CIS Kubernetes benchmark |
@@ -211,6 +227,9 @@ An enterprise-grade, cloud-native commerce platform — 230 services (224 micros
 | Fulcio (Sigstore) | Certificate authority for Sigstore |
 | Syft | SBOM (Software Bill of Materials) generation |
 | CycloneDX | SBOM format standard |
+| Dependency-Track | SBOM analysis and CVE tracking |
+| DefectDojo | Vulnerability management and finding aggregation |
+| Teleport | Zero-trust SSH and Kubernetes access |
 
 ### Networking & Service Mesh
 
@@ -242,24 +261,61 @@ An enterprise-grade, cloud-native commerce platform — 230 services (224 micros
 | Temporal | 1.24 | Durable workflow engine — checkout sagas, billing cycles, KYC |
 | Argo Workflows | 3.x | DAG-based workflow execution on Kubernetes |
 
-### ML Platform
+### Analytics Data Stack
 
-| Tool | Version | Role |
-|---|---|---|
-| MLflow | 2.16 | Experiment tracking, model registry, model serving |
-| Apache Flink | 1.20 | Real-time feature computation and stream ML |
-| Weaviate | 1.26 | Vector store for RAG and semantic search |
-| Neo4j | 5.23 | Graph-based recommendation engine |
+| Tool | Role |
+|---|---|
+| Apache Airflow | DAG-based workflow orchestration — daily ETL, fraud retrain |
+| Apache Spark | Batch processing — order aggregation, user RFM segmentation |
+| dbt | SQL transformations — staging, commerce, catalog models |
+| Apache Superset | Data exploration and BI dashboards |
+| Apache Atlas | Data catalog and governance |
+| Marquez | OpenLineage data lineage tracking |
+| Great Expectations | Data quality assertion suites |
+| MLflow | 2.16 — Experiment tracking, model registry |
+| Apache Flink | 1.20 — Real-time feature computation and stream ML |
+| Weaviate | 1.26 — Vector store for RAG and semantic search |
+| Neo4j | 5.23 — Graph-based recommendation engine |
+
+### Database Management
+
+| Tool | Role |
+|---|---|
+| pgAdmin | PostgreSQL web UI |
+| Mongo Express | MongoDB web UI |
+| Redis Commander | Redis web UI |
+| Bytebase | Database schema change management and version control |
+
+### Contract & Integration Testing
+
+| Tool | Role |
+|---|---|
+| Pact | Consumer-driven contract testing — order↔cart, checkout↔payment |
+| Testcontainers | Ephemeral database/broker containers for integration tests |
+| Toxiproxy | Network fault injection for resilience testing |
+
+### Build Tooling
+
+| Tool | Role |
+|---|---|
+| Earthly | Reproducible polyglot builds — all 13 languages |
+| Ko | Direct Go → OCI image builder for 100+ Go services |
+| Kaniko | Rootless Docker builds inside Kubernetes pods |
+| Score | Cloud-agnostic workload specification |
+| DevPod | Cloud development environments (alternative to Codespaces) |
 
 ### Developer Experience
 
 | Tool | Role |
 |---|---|
-| Devcontainer | VS Code / GitHub Codespaces — all 8 languages pre-installed |
+| Devcontainer | VS Code / GitHub Codespaces — all languages pre-installed |
 | Skaffold | Local Kubernetes dev hot-reload |
 | Tilt | Local Kubernetes dev with live_update (alternative) |
 | Backstage | Internal developer portal — service catalog, API docs |
 | Buf CLI | Protobuf workflow — lint, format, codegen, breaking detection |
+| Teleport | Zero-trust SSH + Kubernetes access for developers and ops |
+| Botkube | Kubernetes alerts to Slack — pod failures, deployments |
+| k8sGPT | AI-powered Kubernetes diagnostics operator |
 | k9s | Terminal-based Kubernetes UI |
 | grpcurl | gRPC API testing |
 
@@ -277,7 +333,7 @@ An enterprise-grade, cloud-native commerce platform — 230 services (224 micros
 
 ## Services
 
-### 1. Platform (22 services)
+### 1. Platform (27 services)
 
 | Service | Language | Responsibility |
 |---|---|---|
@@ -303,10 +359,15 @@ An enterprise-grade, cloud-native commerce platform — 230 services (224 micros
 | geolocation-service | Go | IP-to-location and address geolocation |
 | event-replay-service | Go | Replays historical events for projections and recovery |
 | tenant-service | Go | Multi-tenancy management and tenant isolation |
+| notification-preferences-service | Go | User notification channel and frequency preferences |
+| circuit-breaker-service | Go | Circuit breaker state management via Redis |
+| idempotency-service | Go | Idempotency key storage and deduplication |
+| correlation-id-service | Go | Request correlation ID propagation across services |
+| data-masking-service | Go | PII masking and tokenisation for logs and events |
 
 ---
 
-### 2. Identity (8 services)
+### 2. Identity (11 services)
 
 | Service | Language | Responsibility |
 |---|---|---|
@@ -318,10 +379,13 @@ An enterprise-grade, cloud-native commerce platform — 230 services (224 micros
 | gdpr-service | Go | Data subject requests — access, erasure, portability |
 | api-key-service | Go | API key issuance, rotation, and scoping |
 | device-fingerprint-service | Go | Device recognition and trust scoring |
+| sso-service | Go | Single sign-on federation and session bridging |
+| password-policy-service | Go | Password complexity rules and breach detection |
+| bot-detection-service | Go | Bot and credential-stuffing attack detection |
 
 ---
 
-### 3. Catalog (12 services)
+### 3. Catalog (15 services)
 
 | Service | Language | Responsibility |
 |---|---|---|
@@ -337,10 +401,13 @@ An enterprise-grade, cloud-native commerce platform — 230 services (224 micros
 | seo-service | Node.js | Meta tags, canonical URLs, and structured data |
 | product-import-service | Go | Bulk product import via CSV/XLSX/API |
 | price-list-service | Java | Customer-group and channel-specific price lists |
+| product-label-service | Go | Product labels, badges, and promotional tags |
+| variant-service | Go | Product variant matrix management |
+| stock-reservation-service | Go | Atomic stock reservations via Redis |
 
 ---
 
-### 4. Commerce (23 services)
+### 4. Commerce (28 services)
 
 | Service | Language | Responsibility |
 |---|---|---|
@@ -367,10 +434,15 @@ An enterprise-grade, cloud-native commerce platform — 230 services (224 micros
 | waitlist-service | Go | Customer waitlists for out-of-stock items |
 | flash-sale-service | Go | Time-limited flash sale events and inventory locks |
 | bnpl-service | Go | Buy-now-pay-later instalment plan management |
+| split-payment-service | Go | Multi-method payment splitting at checkout |
+| installment-service | Go | Fixed-term instalment payment plans |
+| dynamic-pricing-service | Go | Real-time demand-based price adjustment |
+| coupon-service | Go | Coupon lifecycle management and validation |
+| order-amendment-service | Go | Post-placement order modification and repricing |
 
 ---
 
-### 5. Supply Chain (13 services)
+### 5. Supply Chain (17 services)
 
 | Service | Language | Responsibility |
 |---|---|---|
@@ -387,10 +459,14 @@ An enterprise-grade, cloud-native commerce platform — 230 services (224 micros
 | supplier-portal-service | Java | Self-service portal for vendor onboarding and PO management |
 | cold-chain-service | Go | Cold-chain temperature monitoring and compliance tracking |
 | supplier-rating-service | Go | Supplier performance scoring and rating aggregation |
+| route-optimization-service | Go | Delivery route optimisation across carriers |
+| packaging-service | Go | Packaging material selection and cost optimisation |
+| cross-dock-service | Go | Cross-docking flow management — inbound to outbound |
+| duty-drawback-service | Go | Import duty drawback claim management |
 
 ---
 
-### 6. Financial (11 services)
+### 6. Financial (15 services)
 
 | Service | Language | Responsibility |
 |---|---|---|
@@ -405,10 +481,14 @@ An enterprise-grade, cloud-native commerce platform — 230 services (224 micros
 | budget-service | Go | Departmental budget tracking and alerts |
 | chargeback-service | Java | Payment chargeback intake and dispute resolution |
 | revenue-recognition-service | Kotlin | ASC 606/IFRS 15 compliant revenue recognition |
+| escrow-service | Go | Marketplace escrow — fund holding and release |
+| forex-service | Go | Foreign exchange rate management and hedging |
+| audit-trail-service | Java | Immutable financial audit trail |
+| dunning-service | Go | Failed payment retry and dunning communication |
 
 ---
 
-### 7. Customer Experience (14 services)
+### 7. Customer Experience (17 services)
 
 | Service | Language | Responsibility |
 |---|---|---|
@@ -426,10 +506,13 @@ An enterprise-grade, cloud-native commerce platform — 230 services (224 micros
 | price-alert-service | Go | Customer price drop alerts |
 | back-in-stock-service | Go | Back-in-stock notifications |
 | gift-registry-service | Go | Gift registry creation, sharing, and purchase tracking |
+| loyalty-tier-service | Go | Loyalty tier evaluation and benefit management |
+| accessibility-service | Node.js | WCAG accessibility audit and remediation guidance |
+| return-portal-service | Go | Self-service customer return initiation |
 
 ---
 
-### 8. Communications (9 services)
+### 8. Communications (12 services)
 
 | Service | Language | Responsibility |
 |---|---|---|
@@ -442,10 +525,13 @@ An enterprise-grade, cloud-native commerce platform — 230 services (224 micros
 | digest-service | Go | Batches and schedules notification digests |
 | whatsapp-service | Node.js | WhatsApp Business API messaging |
 | chatbot-service | Python | Conversational chatbot engine |
+| telegram-service | Node.js | Telegram Bot API messaging |
+| voice-service | Go | Voice call notifications via Twilio-compatible API |
+| webhook-delivery-service | Go | Reliable outbound webhook delivery with retries |
 
 ---
 
-### 9. Content (8 services)
+### 9. Content (9 services)
 
 | Service | Language | Responsibility |
 |---|---|---|
@@ -457,6 +543,7 @@ An enterprise-grade, cloud-native commerce platform — 230 services (224 micros
 | sitemap-service | Go | XML sitemap generation for SEO |
 | i18n-l10n-service | Go | Translation strings and locale management |
 | data-export-service | Python | CSV/Excel data exports for merchants |
+| ab-content-service | Go | A/B content variant management and assignment |
 
 ---
 
@@ -480,7 +567,7 @@ An enterprise-grade, cloud-native commerce platform — 230 services (224 micros
 
 ---
 
-### 11. B2B (7 services)
+### 11. B2B (10 services)
 
 | Service | Language | Responsibility |
 |---|---|---|
@@ -491,10 +578,13 @@ An enterprise-grade, cloud-native commerce platform — 230 services (224 micros
 | b2b-credit-limit-service | Go | Credit limit management for business accounts |
 | edi-service | Java | Electronic Data Interchange (EDI 850/856/810) |
 | marketplace-seller-service | Java | Marketplace seller onboarding and commission management |
+| rfp-service | Go | Request for proposal (RFP) management |
+| vendor-onboarding-service | Java | Structured vendor onboarding workflow |
+| purchase-requisition-service | Kotlin | Internal purchase requisition and approval |
 
 ---
 
-### 12. Integrations (10 services)
+### 12. Integrations (14 services)
 
 | Service | Language | Responsibility |
 |---|---|---|
@@ -508,10 +598,14 @@ An enterprise-grade, cloud-native commerce platform — 230 services (224 micros
 | pim-integration-service | Go | Bi-directional sync with external PIM systems |
 | cdp-integration-service | Go | Streams customer events to Customer Data Platform |
 | accounting-integration-service | Java | Pushes financial transactions to external accounting systems |
+| webhook-ingestion-service | Go | Receives and validates inbound partner webhooks |
+| etl-service | Python | Extract-transform-load for third-party data sources |
+| data-sync-service | Go | Near-real-time bidirectional data synchronisation |
+| ipaas-connector-service | Go | iPaaS integration connector (Zapier/Make-compatible) |
 
 ---
 
-### 13. Affiliate (4 services)
+### 13. Affiliate (6 services)
 
 | Service | Language | Responsibility |
 |---|---|---|
@@ -519,10 +613,75 @@ An enterprise-grade, cloud-native commerce platform — 230 services (224 micros
 | referral-service | Go | Customer referral codes, conversion tracking, reward triggers |
 | influencer-service | Go | Influencer campaign management and UTM attribution |
 | commission-payout-service | Go | Commission aggregation, tax rules, and payout batching |
+| click-tracking-service | Go | High-throughput affiliate click recording via Redis |
+| fraud-prevention-affiliate-service | Go | Affiliate fraud detection — click stuffing, cookie dropping |
 
-### 14–18. New Domains (marketplace, gamification, developer-platform, compliance, sustainability)
+---
 
-See [CLAUDE.md](CLAUDE.md) for full service registry of all 224 microservices.
+### 14. Marketplace (8 services)
+
+| Service | Language | Responsibility |
+|---|---|---|
+| seller-registration-service | Go | Marketplace seller account creation and KYC |
+| listing-approval-service | Go | Product listing review and approval workflow |
+| marketplace-commission-service | Go | Commission rate management per seller and category |
+| dispute-resolution-service | Java | Buyer-seller dispute intake and resolution |
+| seller-analytics-service | Go | Seller performance metrics and dashboards |
+| product-syndication-service | Go | Seller product syndication to multiple channels |
+| storefront-service | Node.js | Per-seller branded storefront rendering |
+| seller-payout-service | Go | Marketplace seller payout calculation and disbursement |
+
+---
+
+### 15. Gamification (6 services)
+
+| Service | Language | Responsibility |
+|---|---|---|
+| points-service | Go | Points accrual and balance management via Redis |
+| badge-service | Go | Badge definitions, award triggers, and display |
+| leaderboard-service | Go | Real-time leaderboards via Redis sorted sets |
+| challenge-service | Go | Timed challenges and progress tracking |
+| reward-redemption-service | Go | Reward catalogue and redemption workflow |
+| streak-service | Go | Daily/weekly streak tracking and incentives |
+
+---
+
+### 16. Developer Platform (6 services)
+
+| Service | Language | Responsibility |
+|---|---|---|
+| api-management-service | Go | API product management — plans, versions, quotas |
+| sandbox-service | Go | Isolated sandbox environments for API testing |
+| developer-portal-backend | Node.js | Developer portal API — apps, credentials, docs |
+| oauth-client-service | Go | OAuth2 client registration and credential management |
+| api-analytics-service | Go | Per-developer API usage analytics |
+| webhook-management-service | Go | Developer webhook subscription management |
+
+---
+
+### 17. Compliance (5 services)
+
+| Service | Language | Responsibility |
+|---|---|---|
+| data-retention-service | Go | Data retention policy enforcement and deletion |
+| consent-audit-service | Go | Consent record keeping and audit trail |
+| privacy-request-service | Go | GDPR/CCPA data subject request orchestration |
+| compliance-reporting-service | Java | Regulatory report generation (GDPR, PCI, SOC2) |
+| data-lineage-service | Go | Data flow tracking across services |
+
+---
+
+### 18. Sustainability (5 services)
+
+| Service | Language | Responsibility |
+|---|---|---|
+| carbon-tracker-service | Go | Carbon footprint calculation per order and shipment |
+| eco-score-service | Go | Product environmental impact scoring |
+| green-shipping-service | Go | Low-carbon carrier selection and routing |
+| sustainability-reporting-service | Go | ESG metrics aggregation and reporting |
+| offset-service | Go | Carbon offset purchase and certification tracking |
+
+---
 
 ### 19. Web Frontend (6 apps)
 
@@ -551,7 +710,7 @@ See [CLAUDE.md](CLAUDE.md) for full service registry of all 224 microservices.
 - [Kubernetes](kubernetes/README.md) — namespaces, RBAC, network policies, KEDA, Velero
 - [Messaging](messaging/README.md) — Kafka, RabbitMQ, NATS, Debezium, Flink
 - [Networking](networking/README.md) — Istio, Cilium, Traefik, Consul
-- [Databases](databases/README.md) — ClickHouse, Weaviate, Neo4j, ScyllaDB, OpenSearch
+- [Databases](databases/README.md) — ClickHouse, Weaviate, Neo4j, TimescaleDB, Memcached, OpenSearch
 - [Streaming](streaming/README.md) — Debezium CDC + Apache Flink
 - [Registry](registry/README.md) — Harbor, Nexus, MinIO, ChartMuseum
 - [ML Platform](ml/README.md) — MLflow

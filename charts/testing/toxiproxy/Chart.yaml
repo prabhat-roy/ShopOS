@@ -1,0 +1,16 @@
+apiVersion: v2
+name: toxiproxy
+description: Toxiproxy — TCP proxy for simulating network conditions in ShopOS integration tests
+type: application
+version: 0.1.0
+appVersion: "2.9.0"
+keywords:
+  - toxiproxy
+  - chaos
+  - network
+  - testing
+home: https://github.com/Shopify/toxiproxy
+sources:
+  - https://github.com/Shopify/toxiproxy
+maintainers:
+  - name: ShopOS Platform Team

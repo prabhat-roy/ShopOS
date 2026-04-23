@@ -1,0 +1,71 @@
+{
+  "single-cluster-monitor": {
+    "class.name": "com.linkedin.kmf.apps.SingleClusterMonitor",
+
+    "zookeeper.connect": "zookeeper:2181",
+    "bootstrap.servers": "kafka:9092",
+
+    "topic": "kafka-monitor-topic",
+    "topic.creation.enabled": "true",
+    "topic.replication.factor": "3",
+    "topic.num.partitions": "1",
+
+    "produce.record.delay.ms": "100",
+    "produce.thread.num": "1",
+
+    "latency.percentile.max.ms": "5000",
+    "latency.percentile.granularity.ms": "1",
+
+    "consume.latency.sla.ms": "1000",
+
+    "record.size": "100",
+
+    "producer.props": {
+      "acks": "all",
+      "linger.ms": "0",
+      "retries": "3",
+      "compression.type": "none",
+      "client.id": "kafka-monitor-producer"
+    },
+
+    "consumer.props": {
+      "group.id": "kafka-monitor-consumer",
+      "auto.offset.reset": "latest",
+      "client.id": "kafka-monitor-consumer"
+    },
+
+    "ProduceService.class.name": "com.linkedin.kmf.services.ProduceService",
+    "ProduceService.produce.record.delay.ms": "100",
+    "ProduceService.produce.thread.num": "1",
+    "ProduceService.producer.props.request.timeout.ms": "10000",
+
+    "ConsumeService.class.name": "com.linkedin.kmf.services.ConsumeService",
+    "ConsumeService.latency.percentile.max.ms": "5000",
+    "ConsumeService.latency.percentile.granularity.ms": "1",
+
+    "TopicManagementService.class.name": "com.linkedin.kmf.services.TopicManagementService",
+    "TopicManagementService.topic.replication.factor": "3",
+    "TopicManagementService.topic.creation.enabled": "true",
+    "TopicManagementService.rebalance.interval.ms": "300000",
+
+    "JettyService.class.name": "com.linkedin.kmf.services.JettyService",
+    "JettyService.jetty.port": "8778",
+
+    "DefaultMetricsReporterService.class.name": "com.linkedin.kmf.services.DefaultMetricsReporterService",
+    "DefaultMetricsReporterService.report.interval.sec": "5"
+  },
+
+  "multi-cluster-monitor": {
+    "class.name": "com.linkedin.kmf.apps.MultiClusterMonitor",
+
+    "zookeeper.connect": "zookeeper:2181",
+    "bootstrap.servers": "kafka:9092",
+
+    "topic": "kafka-monitor-topic-multi",
+    "topic.creation.enabled": "true",
+    "topic.replication.factor": "3",
+
+    "produce.record.delay.ms": "100",
+    "consume.latency.sla.ms": "2000"
+  }
+}

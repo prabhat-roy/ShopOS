@@ -1,0 +1,184 @@
+## Conduktor Gateway — Interceptor Configuration
+## Conduktor Gateway sits between all Kafka producers/consumers and the broker cluster.
+## Producers and consumers connect to the gateway on port 9099 (instead of Kafka on 9092).
+## The gateway applies the interceptor chain below transparently — no client code changes needed.
+##
+## Docs: https://docs.conduktor.io/gateway/
+
+gateway:
+  ## Connection details
+  host: conduktor-gateway
+  port: 9099
+  adminPort: 8888
+
+  ## Upstream Kafka cluster
+  upstreamBrokers:
+    - kafka:9092
+
+  ## Schema Registry for schema validation interceptor
+  schemaRegistry:
+    url: http://schema-registry:8081
+    security:
+      enabled: false
+
+  ## Authentication — mirror the upstream Kafka SASL if configured
+  authentication:
+    enabled: false
+    ## Enable when Kafka SASL/SCRAM is active:
+    # saslMechanism: SCRAM-SHA-512
+    # username: conduktor-gateway
+    # password: "${GATEWAY_KAFKA_PASSWORD}"
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Interceptors — applied in order for every produce/fetch request
+# ──────────────────────────────────────────────────────────────────────────────
+interceptors:
+
+  # ── 1. Schema Validation ───────────────────────────────────────────────────
+  # Validates every produced record against its Avro schema in the Schema Registry.
+  # Records that fail schema validation are rejected with a POLICY_VIOLATION error
+  # before they reach the broker — producers receive an immediate error.
+  - name: schema-validation
+    pluginClass: io.conduktor.gateway.interceptor.safeguard.SchemaValidationPolicyPlugin
+    priority: 1
+    config:
+      schemaRegistryConfig:
+        host: http://schema-registry:8081
+      # Apply to all topics — override per-topic below if needed
+      topic: ".*"
+      # Schema validation mode: BLOCK (reject) | LOG (warn only)
+      action: BLOCK
+      # Validate both key and value schemas
+      validateValue: true
+      validateKey: false
+
+  # ── 2. Rate Limiting ───────────────────────────────────────────────────────
+  # Limits the produce throughput per client-id to prevent any single service
+  # from saturating the cluster. Excess messages are rejected (not buffered).
+  - name: rate-limiter
+    pluginClass: io.conduktor.gateway.interceptor.safeguard.ProducerRateLimitingPolicyPlugin
+    priority: 2
+    config:
+      # Maximum messages per second per client-id
+      messagesPerSecond: 100
+      # Window size for rate calculation (milliseconds)
+      windowMs: 1000
+      # Topics this interceptor applies to — all topics
+      topic: ".*"
+      # Action when limit is exceeded: BLOCK | LOG
+      action: BLOCK
+      # HTTP status code equivalent returned to producer: POLICY_VIOLATION (87)
+      responseCode: POLICY_VIOLATION
+
+  # ── 3. Data Masking — PII fields in customer-facing topics ────────────────
+  # Masks personally identifiable information in topic values at the gateway
+  # level — downstream consumers that lack explicit data access never see raw PII.
+  # Fields are masked in-flight; the broker stores only masked data.
+  - name: pii-data-masking
+    pluginClass: io.conduktor.gateway.interceptor.safeguard.DataMaskingPlugin
+    priority: 3
+    config:
+      # Apply only to customer-facing topics containing user data
+      topic: "identity\\.user\\..*|commerce\\.order\\..*|customer-experience\\..*"
+      # Field masking rules — Avro field paths (dot-separated)
+      # Consumers in the "data-team" group receive unmasked data (allowlist below)
+      policies:
+        - field: "email"
+          maskingType: MASK_LAST_DIGITS
+          numberOfCharsToMask: 10
+          maskingChar: "*"
+        - field: "phone"
+          maskingType: MASK_LAST_DIGITS
+          numberOfCharsToMask: 7
+          maskingChar: "*"
+        - field: "firstName"
+          maskingType: MASK_FIRST_CHARS
+          numberOfCharsToMask: 3
+          maskingChar: "*"
+        - field: "lastName"
+          maskingType: MASK_ALL
+          maskingChar: "*"
+        - field: "dateOfBirth"
+          maskingType: MASK_ALL
+          maskingChar: "0000-00-00"
+        - field: "ipAddress"
+          maskingType: MASK_LAST_DIGITS
+          numberOfCharsToMask: 6
+          maskingChar: "*"
+        - field: "creditCardNumber"
+          maskingType: MASK_LAST_DIGITS
+          numberOfCharsToMask: 12
+          maskingChar: "*"
+        - field: "address.street"
+          maskingType: MASK_ALL
+          maskingChar: "*"
+        - field: "taxId"
+          maskingType: MASK_ALL
+          maskingChar: "*"
+      # Consumer groups that receive unmasked data (compliance / analytics teams)
+      allowedGroups:
+        - compliance-consumer
+        - kyc-aml-consumer
+        - gdpr-consumer
+
+  # ── 4. Audit Logging ───────────────────────────────────────────────────────
+  # Writes a structured audit event to the `gateway-audit` internal topic for
+  # every produce and consume operation passing through the gateway.
+  # The audit events capture: client-id, consumer-group, topic, partition,
+  # offset, timestamp, operation type, and gateway decision (ALLOW / BLOCK).
+  - name: audit-logging
+    pluginClass: io.conduktor.gateway.interceptor.AuditLogPlugin
+    priority: 4
+    config:
+      # Internal topic where audit events are written
+      topic: gateway-audit
+      # Include fetch (consume) events as well as produce events
+      logFetch: true
+      logProduce: true
+      # Log all gateway decisions — set to BLOCKED_ONLY to reduce volume
+      logLevel: ALL
+      # Audit event format: JSON
+      format: JSON
+      # Audit topic retention
+      topicConfig:
+        retention.ms: "604800000"    # 7 days
+        replication.factor: "3"
+        num.partitions: "3"
+        cleanup.policy: delete
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Virtual clusters — namespace isolation for tenant services
+# ──────────────────────────────────────────────────────────────────────────────
+virtualClusters:
+  - name: commerce
+    bootstrapServers: conduktor-gateway:9099
+    prefix: "commerce."
+    securityProtocol: PLAINTEXT
+
+  - name: identity
+    bootstrapServers: conduktor-gateway:9099
+    prefix: "identity."
+    securityProtocol: PLAINTEXT
+
+  - name: analytics
+    bootstrapServers: conduktor-gateway:9099
+    prefix: "analytics."
+    securityProtocol: PLAINTEXT
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Internal topics created by the gateway
+# ──────────────────────────────────────────────────────────────────────────────
+internalTopics:
+  - name: gateway-audit
+    partitions: 3
+    replicationFactor: 3
+    config:
+      retention.ms: "604800000"
+      cleanup.policy: delete
+
+  - name: gateway-rate-limit-state
+    partitions: 1
+    replicationFactor: 3
+    config:
+      retention.ms: "3600000"
+      cleanup.policy: compact

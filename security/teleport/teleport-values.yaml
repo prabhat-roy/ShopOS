@@ -1,0 +1,130 @@
+## Teleport Helm Chart Values
+## Chart: teleport-cluster
+## Version: 16.x
+## Docs: https://goteleport.com/docs/deploy-a-cluster/helm-deployments/kubernetes-cluster/
+
+# -- Teleport cluster name
+clusterName: shopos.internal
+
+# -- Proxy listener mode — multiplex SSH, gRPC, HTTPS on a single port
+proxyListenerMode: multiplex
+
+# -- Number of replicas for auth and proxy pods
+highAvailability:
+  replicaCount: 2
+  requireAntiAffinity: true
+  certManager:
+    enabled: false
+    issuerName: ""
+    issuerKind: ClusterIssuer
+
+# -- Teleport image
+image:
+  repository: public.ecr.aws/gravitational/teleport
+  pullPolicy: IfNotPresent
+
+# -- Kubernetes service type for proxy
+service:
+  type: LoadBalancer
+  annotations:
+    service.beta.kubernetes.io/aws-load-balancer-type: external
+    service.beta.kubernetes.io/aws-load-balancer-nlb-target-type: ip
+
+# -- Persistence for Teleport auth server state
+persistence:
+  enabled: true
+  storageClassName: standard-rwo
+  size: 10Gi
+
+# -- Auth service configuration (inlined teleport.yaml auth block)
+auth:
+  teleportConfig:
+    auth_service:
+      enabled: true
+      cluster_name: shopos.internal
+      authentication:
+        type: local
+        second_factor: otp
+        webauthn:
+          rp_id: shopos.internal
+      session_recording: node
+      client_idle_timeout: 30m
+      disconnect_expired_cert: true
+      tokens:
+        - "node:REPLACE_WITH_NODE_TOKEN"
+        - "kube:REPLACE_WITH_KUBE_TOKEN"
+        - "app:REPLACE_WITH_APP_TOKEN"
+
+# -- Proxy service configuration
+proxy:
+  teleportConfig:
+    proxy_service:
+      enabled: true
+      public_addr: "shopos.internal:443"
+      kube_public_addr: "shopos.internal:3026"
+      listener_mode: multiplex
+
+# -- TLS configuration — cert-manager or manual secret
+tls:
+  existingSecretName: teleport-tls
+  existingCASecretName: ""
+
+# -- Resource limits
+resources:
+  requests:
+    cpu: 250m
+    memory: 256Mi
+  limits:
+    cpu: 1000m
+    memory: 1Gi
+
+# -- Pod affinity
+affinity:
+  podAntiAffinity:
+    preferredDuringSchedulingIgnoredDuringExecution:
+      - weight: 100
+        podAffinityTerm:
+          labelSelector:
+            matchLabels:
+              app.kubernetes.io/name: teleport-cluster
+          topologyKey: kubernetes.io/hostname
+
+# -- Extra volumes for kubeconfig injection
+extraVolumes:
+  - name: kube-config
+    secret:
+      secretName: teleport-kube-config
+
+extraVolumeMounts:
+  - name: kube-config
+    mountPath: /var/lib/teleport/kube
+    readOnly: true
+
+# -- Kubernetes service account
+serviceAccount:
+  create: true
+  name: teleport
+  annotations: {}
+
+# -- RBAC for in-cluster access
+rbac:
+  create: true
+
+# -- Extra labels applied to all resources
+commonLabels:
+  app.kubernetes.io/part-of: shopos
+  team: platform
+  env: production
+
+# -- Teleport namespace
+namespace: teleport
+
+# -- Pod disruption budget
+podDisruptionBudget:
+  enabled: true
+  minAvailable: 1
+
+# -- Log level
+log:
+  level: INFO
+  format: json

@@ -1,0 +1,15 @@
+apiVersion: v2
+name: marquez-web
+description: Marquez Web — frontend UI for browsing ShopOS data lineage graphs in Marquez
+type: application
+version: 0.1.0
+appVersion: "0.47.0"
+keywords:
+  - marquez
+  - data-lineage
+  - web-ui
+home: https://marquezproject.ai
+sources:
+  - https://github.com/MarquezProject/marquez
+maintainers:
+  - name: ShopOS Platform Team

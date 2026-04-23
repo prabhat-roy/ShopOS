@@ -1,0 +1,62 @@
+replicaCount: 1
+
+image:
+  repository: dpage/pgadmin4
+  tag: "8.11"
+  pullPolicy: IfNotPresent
+
+service:
+  type: ClusterIP
+  port: 80
+
+ingress:
+  enabled: false
+  className: ""
+  annotations: {}
+  host: pgadmin.shopos.local
+  path: /
+  pathType: Prefix
+  tls: []
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 256Mi
+  limits:
+    cpu: 500m
+    memory: 512Mi
+
+# pgAdmin credentials (stored in a Secret)
+auth:
+  email: "admin@shopos.local"
+  password: "changeme"
+
+# pgAdmin data persistence
+persistence:
+  enabled: true
+  storageClass: ""
+  accessMode: ReadWriteOnce
+  size: 2Gi
+  mountPath: /var/lib/pgadmin
+
+# Additional pgAdmin environment variables
+extraEnv: {}
+# PGADMIN_CONFIG_SERVER_MODE: "True"
+# PGADMIN_CONFIG_ENHANCED_COOKIE_PROTECTION: "True"
+
+podAnnotations: {}
+
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 5050
+  fsGroup: 5050
+
+containerSecurityContext:
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: false
+  capabilities:
+    drop:
+      - ALL
+
+nameOverride: ""
+fullnameOverride: ""

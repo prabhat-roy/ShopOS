@@ -1,0 +1,117 @@
+apiVersion: score.dev/v1b1
+
+metadata:
+  name: order-service
+  annotations:
+    score.dev/description: "Order management service — creates, tracks, and manages the full order lifecycle"
+    score.dev/domain: "commerce"
+    score.dev/language: "kotlin"
+
+service:
+  ports:
+    grpc:
+      port: 50082
+      targetPort: 50082
+      protocol: TCP
+
+containers:
+  order-service:
+    image: shopos/order-service:latest
+    command: ["java", "-jar", "/app/order-service.jar"]
+    args:
+      - "--spring.profiles.active=production"
+
+    env:
+      - name: GRPC_PORT
+        value: "50082"
+      - name: SPRING_PROFILES_ACTIVE
+        value: "production"
+      - name: SPRING_DATASOURCE_URL
+        valueFrom:
+          secretKeyRef:
+            name: order-db-credentials
+            key: url
+      - name: SPRING_DATASOURCE_USERNAME
+        valueFrom:
+          secretKeyRef:
+            name: order-db-credentials
+            key: username
+      - name: SPRING_DATASOURCE_PASSWORD
+        valueFrom:
+          secretKeyRef:
+            name: order-db-credentials
+            key: password
+      - name: KAFKA_BOOTSTRAP_SERVERS
+        valueFrom:
+          secretKeyRef:
+            name: kafka-credentials
+            key: brokers
+      - name: KAFKA_TOPIC_ORDER_PLACED
+        value: "commerce.order.placed"
+      - name: KAFKA_TOPIC_ORDER_CANCELLED
+        value: "commerce.order.cancelled"
+      - name: PAYMENT_SERVICE_ADDR
+        value: "payment-service:50083"
+      - name: INVENTORY_SERVICE_ADDR
+        value: "inventory-service:50074"
+      - name: SHIPPING_SERVICE_ADDR
+        value: "shipping-service:50084"
+      - name: OTEL_EXPORTER_OTLP_ENDPOINT
+        value: "http://otel-collector:4317"
+      - name: OTEL_SERVICE_NAME
+        value: "order-service"
+      - name: JAVA_OPTS
+        value: "-Xms256m -Xmx512m -XX:+UseG1GC"
+
+    resources:
+      limits:
+        memory: "768Mi"
+        cpu: "1000m"
+      requests:
+        memory: "256Mi"
+        cpu: "200m"
+
+    livenessProbe:
+      httpGet:
+        path: /healthz
+        port: 50082
+      initialDelaySeconds: 30
+      periodSeconds: 15
+      failureThreshold: 3
+
+    readinessProbe:
+      httpGet:
+        path: /healthz
+        port: 50082
+      initialDelaySeconds: 20
+      periodSeconds: 10
+      failureThreshold: 3
+
+    startupProbe:
+      httpGet:
+        path: /healthz
+        port: 50082
+      failureThreshold: 45
+      periodSeconds: 3
+
+resources:
+  db:
+    type: postgres
+    class: default
+    metadata:
+      annotations:
+        score.dev/purpose: "Persistent order and order-item storage"
+        score.dev/migrations: "flyway"
+
+  cache:
+    type: redis
+    class: default
+    metadata:
+      annotations:
+        score.dev/purpose: "Order state caching and idempotency keys"
+
+  messaging:
+    type: kafka
+    metadata:
+      annotations:
+        score.dev/topics: "commerce.order.placed,commerce.order.cancelled,commerce.order.fulfilled"

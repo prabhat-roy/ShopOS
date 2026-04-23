@@ -1,0 +1,16 @@
+apiVersion: v2
+name: marquez
+description: Marquez — open source metadata service for data lineage tracking in ShopOS pipelines
+type: application
+version: 0.1.0
+appVersion: "0.47.0"
+keywords:
+  - marquez
+  - data-lineage
+  - metadata
+  - openlineage
+home: https://marquezproject.ai
+sources:
+  - https://github.com/MarquezProject/marquez
+maintainers:
+  - name: ShopOS Platform Team

@@ -1,0 +1,16 @@
+apiVersion: v2
+name: apache-atlas
+description: Apache Atlas — data governance and metadata management for ShopOS data catalog
+type: application
+version: 0.1.0
+appVersion: "2.3.0"
+keywords:
+  - apache-atlas
+  - data-catalog
+  - governance
+  - metadata
+home: https://atlas.apache.org
+sources:
+  - https://github.com/apache/atlas
+maintainers:
+  - name: ShopOS Platform Team

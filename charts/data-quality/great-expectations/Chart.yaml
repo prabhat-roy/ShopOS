@@ -1,0 +1,16 @@
+apiVersion: v2
+name: great-expectations
+description: Great Expectations — data quality validation and profiling for ShopOS data pipelines
+type: application
+version: 0.1.0
+appVersion: "0.18.19"
+keywords:
+  - great-expectations
+  - data-quality
+  - validation
+  - testing
+home: https://greatexpectations.io
+sources:
+  - https://github.com/great-expectations/great_expectations
+maintainers:
+  - name: ShopOS Platform Team

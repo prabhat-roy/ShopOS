@@ -125,6 +125,44 @@ pipeline {
             }
         }
 
+        stage('Memcached') {
+            when { expression { params.ACTION == 'INSTALL' } }
+            steps {
+                catchError(buildResult: 'UNSTABLE', stageResult: 'FAILURE') {
+                    sh """
+                        helm upgrade --install memcached charts/databases/memcached \
+                            --namespace databases \
+                            --set replicaCount=3 \
+                            --set resources.requests.memory=256Mi \
+                            --set resources.requests.cpu=100m \
+                            --set maxMemoryMb=256 \
+                            --wait --timeout=5m
+                        echo "Memcached installed"
+                    """
+                }
+            }
+        }
+
+        stage('TimescaleDB') {
+            when { expression { params.ACTION == 'INSTALL' } }
+            steps {
+                catchError(buildResult: 'UNSTABLE', stageResult: 'FAILURE') {
+                    sh """
+                        helm upgrade --install timescaledb charts/databases/timescaledb \
+                            --namespace databases \
+                            --set image.tag=2.15-pg16-alpine \
+                            --set persistence.size=20Gi \
+                            --set resources.requests.memory=512Mi \
+                            --set resources.requests.cpu=250m \
+                            --wait --timeout=8m
+                        echo "Applying TimescaleDB schemas..."
+                        kubectl apply -f databases/timescaledb/ -n databases 2>/dev/null || true
+                        echo "TimescaleDB installed"
+                    """
+                }
+            }
+        }
+
         stage('Apply OpenSearch Schemas') {
             when { expression { params.ACTION == 'INSTALL' } }
             steps {
@@ -146,6 +184,8 @@ pipeline {
                     kubectl get svc -n databases
                     echo "=== Temporal ==="
                     kubectl get pods -n temporal-system 2>/dev/null || true
+                    echo "=== Installed Helm releases ==="
+                    helm list -n databases
                 """
             }
         }
@@ -189,6 +229,25 @@ pipeline {
                 sh """
                     helm uninstall clickhouse -n databases --ignore-not-found || true
                     kubectl delete pvc -l app.kubernetes.io/instance=clickhouse -n databases --ignore-not-found || true
+                """
+            }
+        }
+
+        stage('Uninstall Memcached') {
+            when { expression { params.ACTION == 'UNINSTALL' } }
+            steps {
+                sh """
+                    helm uninstall memcached -n databases --ignore-not-found || true
+                """
+            }
+        }
+
+        stage('Uninstall TimescaleDB') {
+            when { expression { params.ACTION == 'UNINSTALL' } }
+            steps {
+                sh """
+                    helm uninstall timescaledb -n databases --ignore-not-found || true
+                    kubectl delete pvc -l app.kubernetes.io/instance=timescaledb -n databases --ignore-not-found || true
                 """
             }
         }

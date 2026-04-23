@@ -1,0 +1,16 @@
+apiVersion: v2
+name: defectdojo
+description: DefectDojo — vulnerability management and security orchestration for ShopOS DevSecOps
+type: application
+version: 0.1.0
+appVersion: "2.38.0"
+keywords:
+  - defectdojo
+  - vulnerability-management
+  - devsecops
+  - security
+home: https://www.defectdojo.org
+sources:
+  - https://github.com/DefectDojo/django-DefectDojo
+maintainers:
+  - name: ShopOS Platform Team

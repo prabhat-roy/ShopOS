@@ -1,0 +1,123 @@
+# =============================================================================
+# ShopOS — dbt OpenLineage integration configuration
+#
+# Reference:
+#   https://openlineage.io/docs/integrations/dbt
+#
+# Usage:
+#   # Install the integration
+#   pip install openlineage-dbt
+#
+#   # Run dbt with lineage emission
+#   openlineage-dbt dbt run --profiles-dir . --project-dir .
+#
+#   # Or use the environment variable approach (no wrapper needed with newer dbt-ol):
+#   OPENLINEAGE_URL=http://marquez:5000 \
+#   OPENLINEAGE_NAMESPACE=shopos \
+#   dbt run --profiles-dir . --project-dir .
+# =============================================================================
+
+# ── OpenLineage transport ─────────────────────────────────────────────────────
+openlineage:
+  url: http://marquez:5000
+  namespace: shopos
+  timeout: 5
+
+  # HTTP transport configuration
+  transport:
+    type: http
+    url: http://marquez:5000
+    endpoint: /api/v1/lineage
+    timeout: 5000
+    # Uncomment for authenticated deployments:
+    # auth:
+    #   type: api_key
+    #   apiKey: "${OPENLINEAGE_API_KEY}"
+
+# ── dbt project additions ─────────────────────────────────────────────────────
+# Merge these into your dbt_project.yml to enrich lineage metadata.
+
+project_name: shopos_dbt
+profile: shopos
+
+# Model-level lineage tags — helps Marquez group assets by ShopOS domain
+models:
+  shopos_dbt:
+    # Staging layer
+    staging:
+      +tags:
+        - "openlineage:layer=staging"
+        - "openlineage:domain=raw"
+
+    # Commerce domain models
+    commerce:
+      +tags:
+        - "openlineage:layer=mart"
+        - "openlineage:domain=commerce"
+      orders_daily:
+        +description: "Daily order aggregation — inputs: raw orders, payments"
+        +meta:
+          openlineage:
+            inputs:
+              - namespace: shopos
+                name: postgres.commerce.orders
+              - namespace: shopos
+                name: postgres.commerce.payments
+            outputs:
+              - namespace: shopos
+                name: clickhouse.analytics.orders_daily
+      revenue_daily:
+        +description: "Daily revenue materialized view"
+        +meta:
+          openlineage:
+            inputs:
+              - namespace: shopos
+                name: clickhouse.analytics.orders_daily
+            outputs:
+              - namespace: shopos
+                name: clickhouse.analytics.revenue_daily_mv
+
+    # Catalog domain models
+    catalog:
+      +tags:
+        - "openlineage:layer=mart"
+        - "openlineage:domain=catalog"
+      product_performance:
+        +description: "Product view, click, and conversion metrics"
+        +meta:
+          openlineage:
+            inputs:
+              - namespace: shopos
+                name: cassandra.analytics.page_views
+              - namespace: shopos
+                name: cassandra.analytics.product_clicks
+              - namespace: shopos
+                name: postgres.catalog.products
+            outputs:
+              - namespace: shopos
+                name: clickhouse.analytics.product_performance
+
+# ── Profiles reference (profiles.yml additions) ───────────────────────────────
+# Ensure your profiles.yml includes the Postgres datasource for lineage tracking:
+#
+# shopos:
+#   target: dev
+#   outputs:
+#     dev:
+#       type: postgres
+#       host: "{{ env_var('POSTGRES_HOST', 'localhost') }}"
+#       port: 5432
+#       user: "{{ env_var('POSTGRES_USER', 'shopos') }}"
+#       pass: "{{ env_var('POSTGRES_PASSWORD') }}"
+#       dbname: shopos
+#       schema: analytics
+#       threads: 4
+#     prod:
+#       type: postgres
+#       host: "{{ env_var('POSTGRES_HOST_PROD') }}"
+#       port: 5432
+#       user: "{{ env_var('POSTGRES_USER') }}"
+#       pass: "{{ env_var('POSTGRES_PASSWORD') }}"
+#       dbname: shopos
+#       schema: analytics
+#       threads: 8

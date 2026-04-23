@@ -1,0 +1,59 @@
+replicaCount: 1
+
+image:
+  repository: bytebase/bytebase
+  tag: "3.1.0"
+  pullPolicy: IfNotPresent
+
+service:
+  type: ClusterIP
+  port: 8080
+
+ingress:
+  enabled: false
+  className: ""
+  annotations: {}
+  host: bytebase.shopos.local
+  path: /
+  pathType: Prefix
+  tls: []
+
+resources:
+  requests:
+    cpu: 200m
+    memory: 512Mi
+  limits:
+    cpu: 1000m
+    memory: 1Gi
+
+# External PostgreSQL for Bytebase metadata store
+database:
+  # Full postgres URL — postgres://user:password@host:port/dbname
+  url: "postgresql://bytebase:bytebase@postgres:5432/bytebase"
+
+# Data persistence for Bytebase working directory
+persistence:
+  enabled: true
+  storageClass: ""
+  accessMode: ReadWriteOnce
+  size: 5Gi
+  mountPath: /var/opt/bytebase
+
+# External URL Bytebase will use for callbacks and redirects
+externalUrl: "http://bytebase.shopos.local"
+
+podAnnotations: {}
+
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 1000
+
+containerSecurityContext:
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: false
+  capabilities:
+    drop:
+      - ALL
+
+nameOverride: ""
+fullnameOverride: ""

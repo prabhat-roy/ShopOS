@@ -1,0 +1,103 @@
+apiVersion: core.k8sgpt.ai/v1alpha1
+kind: K8sGPT
+metadata:
+  name: shopos-k8sgpt
+  namespace: k8sgpt
+  labels:
+    app.kubernetes.io/name: k8sgpt
+    app.kubernetes.io/part-of: shopos
+    team: platform
+    env: production
+spec:
+  # ──────────────────────────────────────────────────────────────────────────
+  # AI backend — set enabled: true and populate the secret when you have
+  # a valid API key. Supports openai, localai, azureopenai, amazonsagemaker.
+  # ──────────────────────────────────────────────────────────────────────────
+  ai:
+    enabled: false
+    model: gpt-4
+    backend: openai
+    # Secret must contain key "openai-api-key"
+    secret:
+      name: k8sgpt-openai
+      key: openai-api-key
+    # Optional: proxy for air-gapped environments
+    # proxyEndpoint: http://squid-proxy:3128
+    maxTokens: 2048
+    temperature: 0.7
+
+  # ──────────────────────────────────────────────────────────────────────────
+  # Analysis settings
+  # ──────────────────────────────────────────────────────────────────────────
+  # Skip the in-memory result cache so every reconcile is a fresh analysis
+  noCache: false
+
+  # Interval between analysis runs (cron expression)
+  # Runs every 15 minutes
+  schedule: "*/15 * * * *"
+
+  # Kubernetes resource types to analyse
+  filters:
+    - Pod
+    - Deployment
+    - Service
+    - StatefulSet
+    - PersistentVolumeClaim
+    - ReplicaSet
+    - Node
+    - Ingress
+    - HorizontalPodAutoscaler
+    - CronJob
+
+  # ──────────────────────────────────────────────────────────────────────────
+  # Namespaces — analyse every namespace except system namespaces
+  # ──────────────────────────────────────────────────────────────────────────
+  namespaceList:
+    - platform
+    - identity
+    - catalog
+    - commerce
+    - supply-chain
+    - financial
+    - customer-experience
+    - communications
+    - content
+    - analytics-ai
+    - b2b
+    - integrations
+    - affiliate
+    - marketplace
+    - gamification
+    - developer-platform
+    - compliance
+    - sustainability
+    - monitoring
+    - default
+
+  # ──────────────────────────────────────────────────────────────────────────
+  # Sink — forward findings to Slack webhook
+  # ──────────────────────────────────────────────────────────────────────────
+  sink:
+    type: slack
+    endpoint: "${SLACK_WEBHOOK_URL}"
+    # Only send findings with severity >= this level: critical | warning | info
+    minSeverity: warning
+
+  # ──────────────────────────────────────────────────────────────────────────
+  # Privacy — anonymise resource names before sending to AI backend
+  # ──────────────────────────────────────────────────────────────────────────
+  anonymizeEnabled: true
+
+  # ──────────────────────────────────────────────────────────────────────────
+  # Back-off — exponential retry when analysis or sink fails
+  # ──────────────────────────────────────────────────────────────────────────
+  backOff:
+    enabled: true
+    maxRetries: 5
+
+  # ──────────────────────────────────────────────────────────────────────────
+  # Extra analysers — custom rules on top of built-in checks
+  # ──────────────────────────────────────────────────────────────────────────
+  extraOptions:
+    backstageLabel: true            # add Backstage service labels to findings
+    serviceExtractionEnabled: true  # extract service names from pod labels

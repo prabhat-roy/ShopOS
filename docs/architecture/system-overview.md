@@ -83,7 +83,7 @@ ShopOS is an enterprise-grade, cloud-native commerce platform comprising **224 m
                                                            │ │  fraud-detection │   │
                                                            │ └──────────────────┘   │
                                                            │   ClickHouse · Weaviate │
-                                                           │   Neo4j · ScyllaDB      │
+                                                           │   Neo4j · TimescaleDB   │
                                                            └────────────────────────┘
 
        ┌────────────────────────────────────────────────────────────────┐
@@ -139,7 +139,7 @@ ShopOS is an enterprise-grade, cloud-native commerce platform comprising **224 m
 ║  │  NATS JetStream 2.10 (real-time pub/sub)                           │ ║
 ║  │                                                                      │ ║
 ║  │  PostgreSQL 16  ·  MongoDB 8.0  ·  Redis 7  ·  Memcached 1.6      │ ║
-║  │  Cassandra 5.0  ·  ScyllaDB 6.1  ·  Elasticsearch 8.15            │ ║
+║  │  Cassandra 5.0  ·  TimescaleDB 2.15  ·  Elasticsearch 8.15        │ ║
 ║  │  ClickHouse 24.8  ·  Weaviate 1.26  ·  Neo4j 5.23                 │ ║
 ║  │  OpenSearch 2.17  ·  MinIO  ·  etcd 3.5                           │ ║
 ║  │                                                                      │ ║
@@ -274,11 +274,11 @@ ShopOS is an enterprise-grade, cloud-native commerce platform comprising **224 m
 │  └──────────────────────────────────────────────────────────┘          │
 │                                                                          │
 │  SPECIALIST STORES                                                       │
-│  ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────┐                  │
-│  │ Weaviate │ │  Neo4j   │ │ScyllaDB  │ │Memcached │                  │
-│  │(vectors  │ │(product  │ │(high-tput│ │(hot read │                  │
-│  │ ANN)     │ │ graph)   │ │ events)  │ │ cache)   │                  │
-│  └──────────┘ └──────────┘ └──────────┘ └──────────┘                  │
+│  ┌──────────┐ ┌──────────┐ ┌───────────┐ ┌──────────┐                 │
+│  │ Weaviate │ │  Neo4j   │ │TimescaleDB│ │Memcached │                 │
+│  │(vectors  │ │(product  │ │(time-series│ │(hot read │                 │
+│  │ ANN)     │ │ graph)   │ │ metrics)  │ │ cache)   │                 │
+│  └──────────┘ └──────────┘ └───────────┘ └──────────┘                 │
 └─────────────────────────────────────────────────────────────────────────┘
 ```
 

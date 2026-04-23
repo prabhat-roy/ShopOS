@@ -1,0 +1,167 @@
+## Dependency-Track Helm Chart Values
+## Chart: dependency-track/dependency-track
+## Docs: https://github.com/dependency-track/helm-charts
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Common settings
+# ──────────────────────────────────────────────────────────────────────────────
+# renovate: datasource=docker depName=dependencytrack/apiserver
+appVersion: "4.11.4"
+
+nameOverride: ""
+fullnameOverride: dependency-track
+
+commonLabels:
+  app.kubernetes.io/part-of: shopos
+  team: security
+  env: production
+
+# ──────────────────────────────────────────────────────────────────────────────
+# API Server
+# ──────────────────────────────────────────────────────────────────────────────
+apiServer:
+  image:
+    repository: dependencytrack/apiserver
+    pullPolicy: IfNotPresent
+    tag: "4.11.4"
+
+  replicaCount: 1
+
+  resources:
+    requests:
+      cpu: 500m
+      memory: 2Gi
+    limits:
+      cpu: 2000m
+      memory: 6Gi
+
+  # JVM heap — DT recommends 4–6 GB for production
+  env:
+    - name: ALPINE_DATABASE_MODE
+      value: "internal"
+    - name: ALPINE_DATA_DIRECTORY
+      value: "/data"
+    - name: JAVA_OPTIONS
+      value: "-Xmx4g -Xms512m -XX:+UseG1GC -XX:MaxGCPauseMillis=200"
+    # Kafka integration for event publishing (optional)
+    # - name: ALPINE_KAFKA_BOOTSTRAP_SERVERS
+    #   value: "kafka:9092"
+    # - name: ALPINE_KAFKA_TOPIC_PREFIX
+    #   value: "shopos.dependency-track"
+
+  # Persistent volume for DT data directory (embedded H2 DB + data)
+  persistentVolume:
+    enabled: true
+    storageClass: standard-rwo
+    size: 50Gi
+    accessModes:
+      - ReadWriteOnce
+
+  service:
+    type: ClusterIP
+    port: 8080
+
+  ingress:
+    enabled: true
+    className: traefik
+    annotations:
+      traefik.ingress.kubernetes.io/router.entrypoints: websecure
+      traefik.ingress.kubernetes.io/router.tls: "true"
+      cert-manager.io/cluster-issuer: shopos-ca
+    hosts:
+      - host: dependency-track.shopos.internal
+        paths:
+          - path: /api
+            pathType: Prefix
+    tls:
+      - secretName: dependency-track-api-tls
+        hosts:
+          - dependency-track.shopos.internal
+
+  # Liveness and readiness probes
+  livenessProbe:
+    httpGet:
+      path: /health
+      port: 8080
+    initialDelaySeconds: 120
+    periodSeconds: 10
+    failureThreshold: 5
+
+  readinessProbe:
+    httpGet:
+      path: /health
+      port: 8080
+    initialDelaySeconds: 60
+    periodSeconds: 10
+    failureThreshold: 3
+
+  serviceAccount:
+    create: true
+    name: dependency-track-api
+
+  podAnnotations:
+    prometheus.io/scrape: "true"
+    prometheus.io/port: "8080"
+    prometheus.io/path: /metrics
+
+  podLabels:
+    app.kubernetes.io/part-of: shopos
+    team: security
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Frontend (Dependency-Track UI)
+# ──────────────────────────────────────────────────────────────────────────────
+frontend:
+  image:
+    repository: dependencytrack/frontend
+    pullPolicy: IfNotPresent
+    tag: "4.11.4"
+
+  replicaCount: 1
+
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      cpu: 200m
+      memory: 128Mi
+
+  service:
+    type: ClusterIP
+    port: 8080
+
+  ingress:
+    enabled: true
+    className: traefik
+    annotations:
+      traefik.ingress.kubernetes.io/router.entrypoints: websecure
+      traefik.ingress.kubernetes.io/router.tls: "true"
+      cert-manager.io/cluster-issuer: shopos-ca
+    hosts:
+      - host: dependency-track.shopos.internal
+        paths:
+          - path: /
+            pathType: Prefix
+    tls:
+      - secretName: dependency-track-ui-tls
+        hosts:
+          - dependency-track.shopos.internal
+
+  # Point frontend at the API server
+  apiBaseUrl: "https://dependency-track.shopos.internal"
+
+  podLabels:
+    app.kubernetes.io/part-of: shopos
+    team: security
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Service monitor for Prometheus Operator
+# ──────────────────────────────────────────────────────────────────────────────
+serviceMonitor:
+  enabled: true
+  namespace: monitoring
+  interval: 60s
+  scrapeTimeout: 10s
+  labels:
+    release: prometheus

@@ -1,0 +1,59 @@
+replicaCount: 1
+
+image:
+  repository: mongo-express
+  tag: "1.0.2"
+  pullPolicy: IfNotPresent
+
+service:
+  type: ClusterIP
+  port: 8081
+
+ingress:
+  enabled: false
+  className: ""
+  annotations: {}
+  host: mongo-express.shopos.local
+  path: /
+  pathType: Prefix
+  tls: []
+
+resources:
+  requests:
+    cpu: 50m
+    memory: 128Mi
+  limits:
+    cpu: 250m
+    memory: 256Mi
+
+# MongoDB connection settings
+mongodb:
+  server: "mongodb"
+  port: 27017
+  # Leave empty if MongoDB has no auth
+  username: ""
+  password: ""
+
+# Basic auth for the Mongo Express web UI
+basicAuth:
+  username: "admin"
+  password: "changeme"
+
+# Extra env vars (e.g. ME_CONFIG_OPTIONS_EDITTHEME)
+extraEnv: {}
+
+podAnnotations: {}
+
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 1000
+
+containerSecurityContext:
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: true
+  capabilities:
+    drop:
+      - ALL
+
+nameOverride: ""
+fullnameOverride: ""

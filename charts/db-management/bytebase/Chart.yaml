@@ -1,0 +1,16 @@
+apiVersion: v2
+name: bytebase
+description: Bytebase — database schema change and version control for ShopOS service databases
+type: application
+version: 0.1.0
+appVersion: "3.1.0"
+keywords:
+  - bytebase
+  - database
+  - schema
+  - migrations
+home: https://www.bytebase.com
+sources:
+  - https://github.com/bytebase/bytebase
+maintainers:
+  - name: ShopOS Platform Team

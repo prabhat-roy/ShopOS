@@ -1,0 +1,57 @@
+replicaCount: 1
+
+image:
+  repository: sburn/apache-atlas
+  tag: "2.3.0"
+  pullPolicy: IfNotPresent
+
+service:
+  type: ClusterIP
+  port: 21000
+
+ingress:
+  enabled: false
+  className: ""
+  annotations: {}
+  host: atlas.shopos.local
+  path: /
+  pathType: Prefix
+  tls: []
+
+resources:
+  requests:
+    cpu: 500m
+    memory: 2Gi
+  limits:
+    cpu: 2000m
+    memory: 2Gi
+
+# Atlas data directory persistence
+persistence:
+  enabled: true
+  storageClass: ""
+  accessMode: ReadWriteOnce
+  size: 10Gi
+  mountPath: /apache-atlas/data
+
+# JVM heap settings
+javaOptions: "-Xmx2g -Xms1g"
+
+# Atlas admin credentials
+auth:
+  adminUsername: "admin"
+  adminPassword: "changeme"
+
+podAnnotations: {}
+
+podSecurityContext:
+  runAsNonRoot: false
+  runAsUser: 1000
+  fsGroup: 1000
+
+containerSecurityContext:
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: false
+
+nameOverride: ""
+fullnameOverride: ""

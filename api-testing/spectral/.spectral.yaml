@@ -1,0 +1,121 @@
+extends:
+  - spectral:oas
+
+rules:
+  # ── Require operationId on every operation ──────────────────────────────────
+  operation-id-required:
+    description: Every operation must have an operationId.
+    message: "Operation '{{property}}' is missing an operationId. All ShopOS operations must be uniquely identified."
+    severity: error
+    given: "$.paths[*][get,post,put,patch,delete,options,head,trace]"
+    then:
+      field: operationId
+      function: truthy
+
+  # ── Require description on every operation ──────────────────────────────────
+  operation-description-required:
+    description: Every operation must have a non-empty description.
+    message: "Operation '{{operationId}}' is missing a description. Describe what the operation does."
+    severity: error
+    given: "$.paths[*][get,post,put,patch,delete,options,head,trace]"
+    then:
+      field: description
+      function: truthy
+
+  # ── No 2xx response without a schema ────────────────────────────────────────
+  response-2xx-schema-required:
+    description: All 2xx responses must define a schema.
+    message: "Response {{property}} on '{{path}}' is missing a schema. Define what is returned."
+    severity: error
+    given: "$.paths[*][*].responses[200,201,202,203,204,206]"
+    then:
+      - field: content
+        function: truthy
+      - field: content
+        function: schema
+        functionOptions:
+          schema:
+            type: object
+            minProperties: 1
+
+  # ── Require x-service-name extension on every operation ─────────────────────
+  operation-x-service-name-required:
+    description: Every operation must declare which ShopOS service owns it via x-service-name.
+    message: "Operation '{{operationId}}' is missing 'x-service-name'. Tag it with the owning microservice name (e.g. order-service)."
+    severity: warn
+    given: "$.paths[*][get,post,put,patch,delete,options,head,trace]"
+    then:
+      field: x-service-name
+      function: truthy
+
+  # ── Warn when no security scheme is declared ────────────────────────────────
+  operation-security-defined:
+    description: Operations should declare a security requirement or explicitly opt-out with [].
+    message: "Operation '{{operationId}}' does not declare a security requirement. Add a security field or set it to [] for public endpoints."
+    severity: warn
+    given: "$.paths[*][get,post,put,patch,delete,options,head,trace]"
+    then:
+      field: security
+      function: defined
+
+  # ── Warn if global securitySchemes is missing entirely ──────────────────────
+  oas3-security-schemes-defined:
+    description: The API should define at least one security scheme.
+    message: "No securitySchemes found under components. Define Bearer/OAuth2/ApiKey schemes."
+    severity: warn
+    given: "$.components"
+    then:
+      field: securitySchemes
+      function: truthy
+
+  # ── Paths must start with /api/v{n}/ (ShopOS convention) ────────────────────
+  path-must-be-versioned:
+    description: All ShopOS API paths must be versioned (e.g. /api/v1/...).
+    message: "Path '{{property}}' does not follow the versioned path convention /api/v{n}/."
+    severity: warn
+    given: "$.paths"
+    then:
+      field: "@key"
+      function: pattern
+      functionOptions:
+        match: "^\/api\/v[0-9]+"
+
+  # ── Tags required on every operation ────────────────────────────────────────
+  operation-tags-required:
+    description: Every operation must include at least one tag.
+    message: "Operation '{{operationId}}' is missing tags. Add domain/service tags for grouping."
+    severity: warn
+    given: "$.paths[*][get,post,put,patch,delete,options,head,trace]"
+    then:
+      field: tags
+      function: truthy
+
+  # ── 4xx responses must have a schema ────────────────────────────────────────
+  response-4xx-schema-required:
+    description: All 4xx error responses should have a schema.
+    message: "Error response {{property}} is missing a schema. Return a structured error body."
+    severity: warn
+    given: "$.paths[*][*].responses[400,401,403,404,409,422,429]"
+    then:
+      field: content
+      function: truthy
+
+  # ── Request bodies must have a schema ───────────────────────────────────────
+  request-body-schema-required:
+    description: Request bodies must define a schema.
+    message: "RequestBody in '{{path}}' is missing content/schema definition."
+    severity: error
+    given: "$.paths[*][post,put,patch].requestBody.content[*]"
+    then:
+      field: schema
+      function: truthy
+
+  # ── Summary required (short title for SDK generation) ───────────────────────
+  operation-summary-required:
+    description: Every operation should have a short summary.
+    message: "Operation '{{operationId}}' is missing a summary. Provide a concise one-line title."
+    severity: warn
+    given: "$.paths[*][get,post,put,patch,delete,options,head,trace]"
+    then:
+      field: summary
+      function: truthy

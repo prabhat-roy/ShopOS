@@ -1,0 +1,273 @@
+## Botkube Helm Chart Values
+## Chart: botkube/botkube
+## Docs: https://docs.botkube.io/installation/helm
+
+# -- Botkube image
+image:
+  repository: ghcr.io/kubeshop/botkube
+  pullPolicy: IfNotPresent
+  # renovate: datasource=docker depName=ghcr.io/kubeshop/botkube
+  tag: "v1.13.0"
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Communications — Slack
+# ──────────────────────────────────────────────────────────────────────────────
+communications:
+  defaultGroup:
+    slack:
+      enabled: true
+      token: "${SLACK_BOT_TOKEN}"
+      appToken: "${SLACK_APP_TOKEN}"
+      channels:
+        default:
+          name: shopos-alerts
+          notification:
+            disabled: false
+          bindings:
+            executors:
+              - k8s-default-tools
+            sources:
+              - k8s-events
+              - k8s-errors
+        deployments:
+          name: shopos-deployments
+          notification:
+            disabled: false
+          bindings:
+            executors:
+              - k8s-default-tools
+            sources:
+              - k8s-deploy-events
+        security:
+          name: shopos-security
+          notification:
+            disabled: false
+          bindings:
+            executors: []
+            sources:
+              - k8s-security-events
+      botName: botkube
+      notiftype: short
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Executors — kubectl commands Botkube will run on behalf of users
+# ──────────────────────────────────────────────────────────────────────────────
+executors:
+  k8s-default-tools:
+    botkube/kubectl:
+      enabled: true
+      config:
+        defaultNamespace: default
+        restrictAccess: true
+        # Commands users can invoke via Slack (@botkube kubectl ...)
+        enabledVerbs:
+          - get
+          - describe
+          - logs
+          - top
+          - explain
+          - diff
+          - version
+          - api-resources
+          - api-versions
+        # Resources users can query
+        enabledResources:
+          - deployments
+          - pods
+          - namespaces
+          - daemonsets
+          - statefulsets
+          - storageclasses
+          - nodes
+          - configmaps
+          - services
+          - ingresses
+          - jobs
+          - cronjobs
+          - replicasets
+          - horizontalpodautoscalers
+          - persistentvolumeclaims
+          - persistentvolumes
+          - events
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Plugin repositories
+# ──────────────────────────────────────────────────────────────────────────────
+plugins:
+  cacheDir: /tmp/botkube/plugins
+  repositories:
+    botkube:
+      url: https://charts.botkube.io/plugins-index.yaml
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Sources — which Kubernetes events to watch and forward to channels
+# ──────────────────────────────────────────────────────────────────────────────
+sources:
+  # General error/warning events across all namespaces
+  k8s-events:
+    botkube/kubernetes:
+      enabled: true
+      config:
+        namespaces:
+          include:
+            - ".*"
+          exclude:
+            - kube-system
+            - cert-manager
+            - teleport
+        event:
+          types:
+            - error
+            - warning
+            - normal
+          reason: ""
+          message: ""
+        resources:
+          - type: v1/pods
+            namespaces:
+              include:
+                - ".*"
+            annotations: {}
+            labels: {}
+            event:
+              types:
+                - error
+                - warning
+          - type: v1/services
+            event:
+              types:
+                - warning
+                - error
+          - type: apps/v1/deployments
+            event:
+              types:
+                - warning
+                - error
+                - normal
+          - type: apps/v1/statefulsets
+            event:
+              types:
+                - warning
+                - error
+                - normal
+          - type: apps/v1/daemonsets
+            event:
+              types:
+                - warning
+                - error
+          - type: batch/v1/jobs
+            event:
+              types:
+                - error
+                - warning
+                - normal
+          - type: v1/persistentvolumeclaims
+            event:
+              types:
+                - warning
+                - error
+          - type: v1/nodes
+            event:
+              types:
+                - warning
+                - error
+
+  # Errors only — high signal channel
+  k8s-errors:
+    botkube/kubernetes:
+      enabled: true
+      config:
+        namespaces:
+          include:
+            - ".*"
+        event:
+          types:
+            - error
+        resources:
+          - type: v1/pods
+          - type: apps/v1/deployments
+          - type: apps/v1/statefulsets
+          - type: batch/v1/jobs
+
+  # Deployment lifecycle events
+  k8s-deploy-events:
+    botkube/kubernetes:
+      enabled: true
+      config:
+        namespaces:
+          include:
+            - ".*"
+        event:
+          types:
+            - normal
+        resources:
+          - type: apps/v1/deployments
+          - type: apps/v1/statefulsets
+          - type: argo.io/v1alpha1/rollouts
+
+  # Security-relevant events
+  k8s-security-events:
+    botkube/kubernetes:
+      enabled: true
+      config:
+        namespaces:
+          include:
+            - security
+            - teleport
+            - vault
+            - keycloak
+            - falco
+        event:
+          types:
+            - error
+            - warning
+            - normal
+        resources:
+          - type: v1/pods
+          - type: v1/events
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Resource allocation
+# ──────────────────────────────────────────────────────────────────────────────
+resources:
+  requests:
+    cpu: 50m
+    memory: 64Mi
+  limits:
+    cpu: 250m
+    memory: 256Mi
+
+# -- Service account
+serviceAccount:
+  create: true
+  name: botkube
+
+# -- RBAC for cluster-wide read + event watch
+rbac:
+  create: true
+  rules:
+    - apiGroups: ["*"]
+      resources: ["*"]
+      verbs: ["get", "watch", "list"]
+
+# -- Config watcher — reload Botkube when ConfigMap changes
+settings:
+  clusterName: shopos-cluster
+  upgradeNotifier: true
+  log:
+    level: info
+    disableColors: false
+
+# -- Persistence not required — stateless
+persistence:
+  enabled: false
+
+# -- Pod labels
+podLabels:
+  app.kubernetes.io/part-of: shopos
+  team: platform
+
+# -- Common labels
+commonLabels:
+  app.kubernetes.io/part-of: shopos
+  env: production

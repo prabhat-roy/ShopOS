@@ -1,0 +1,70 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "redis-commander.fullname" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "redis-commander.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "redis-commander.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "redis-commander.selectorLabels" . | nindent 8 }}
+      {{- with .Values.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+    spec:
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      containers:
+        - name: redis-commander
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          securityContext:
+            {{- toYaml .Values.containerSecurityContext | nindent 12 }}
+          ports:
+            - name: http
+              containerPort: 8081
+              protocol: TCP
+          env:
+            - name: REDIS_HOSTS
+              value: {{ .Values.redis.hosts | quote }}
+            {{- if .Values.redis.password }}
+            - name: REDIS_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "redis-commander.fullname" . }}-secret
+                  key: redis-password
+            {{- end }}
+            {{- if .Values.basicAuth.enabled }}
+            - name: HTTP_USER
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "redis-commander.fullname" . }}-secret
+                  key: basicauth-username
+            - name: HTTP_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "redis-commander.fullname" . }}-secret
+                  key: basicauth-password
+            {{- end }}
+          livenessProbe:
+            httpGet:
+              path: /
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 15
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
