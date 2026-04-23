@@ -152,7 +152,7 @@ server:
       default:
         driver: "cassandra"
         cassandra:
-          hosts: []
+          hosts: ["temporal-cassandra"]
           # port: 9042
           keyspace: "temporal"
           user: "user"
@@ -183,7 +183,7 @@ server:
       visibility:
         driver: "cassandra"
         cassandra:
-          hosts: []
+          hosts: ["temporal-cassandra"]
           # port: 9042
           keyspace: "temporal_visibility"
           user: "user"
