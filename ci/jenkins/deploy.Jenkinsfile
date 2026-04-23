@@ -293,42 +293,27 @@ pipeline {
         stage('Dashboard Links') {
             steps {
                 script {
+                    def envMap = [:]
+                    if (fileExists('infra.env')) {
+                        readFile('infra.env').trim().split('\n').each { line ->
+                            def idx = line.indexOf('=')
+                            if (idx > 0) envMap[line[0..<idx].trim()] = line[(idx+1)..-1].trim()
+                        }
+                    }
+                    ['HARBOR_URL','ARGOCD_URL','GRAFANA_URL','PROMETHEUS_URL',
+                     'JAEGER_URL','KIALI_URL','DEFECTDOJO_URL'].each { k ->
+                        if (env."${k}") envMap[k] = env."${k}"
+                    }
+
                     def primarySvc = env.SERVICES?.split(',')?.getAt(0)?.trim() ?: 'unknown'
-                    echo """
-╔══════════════════════════════════════════════════════════════════════════╗
-║              SHOPOS — DEPLOYMENT DASHBOARD LINKS                         ║
-╠══════════════════════════════════════════════════════════════════════════╣
-║  Domain    : ${env.BUILD_DOMAIN}
-║  Env       : ${env.BUILD_ENV}
-║  Tag       : ${env.IMAGE_TAG}
-║  Services  : ${env.SERVICES}
-╠══════════════════════════════════════════════════════════════════════════╣
-║  GITOPS & DEPLOYMENT                                                     ║
-║  ArgoCD (all apps)         : ${env.ARGOCD_URL}/applications
-║  ArgoCD (this service)     : ${env.ARGOCD_URL}/applications/${primarySvc}
-║  Flux UI                   : http://weave-gitops.gitops.svc.cluster.local:9001
-╠══════════════════════════════════════════════════════════════════════════╣
-║  REGISTRY                                                                ║
-║  Harbor (registry)         : https://${env.HARBOR_URL}/harbor/projects
-║  Image                     : https://${env.HARBOR_URL}/harbor/projects/${env.REGISTRY_PROJECT}/repositories/${primarySvc}
-╠══════════════════════════════════════════════════════════════════════════╣
-║  SERVICE HEALTH & OBSERVABILITY                                          ║
-║  Grafana (dashboards)      : ${env.GRAFANA_URL}/dashboards
-║  Grafana (service board)   : ${env.GRAFANA_URL}/d/services/service-overview?var-service=${primarySvc}
-║  Jaeger (traces)           : ${env.JAEGER_URL}/search?service=${primarySvc}
-║  Loki (logs)               : ${env.GRAFANA_URL}/explore (datasource=Loki)
-║  Kiali (service mesh)      : ${env.KIALI_URL}/kiali/graph
-║  Prometheus (metrics)      : ${env.PROMETHEUS_URL}/graph?g0.expr=up{job="${primarySvc}"}
-║  Alertmanager              : http://alertmanager.prometheus.svc.cluster.local:9093
-║  Uptime Kuma               : ${env.UPTIME_KUMA_URL}
-╠══════════════════════════════════════════════════════════════════════════╣
-║  SUPPLY CHAIN & SECURITY                                                 ║
-║  DefectDojo (findings)     : ${env.DEFECTDOJO_URL}/finding
-║  Backstage (service info)  : http://backstage.backstage.svc.cluster.local:7007/catalog/default/component/${primarySvc}
-╠══════════════════════════════════════════════════════════════════════════╣
-║  NEXT STEP: Trigger post-deploy.Jenkinsfile for validation tests         ║
-╚══════════════════════════════════════════════════════════════════════════╝
-                    """
+                    def d = load 'scripts/groovy/dashboard-links.groovy'
+                    echo d.call(envMap, "DEPLOY (GitOps) — Build #${env.BUILD_NUMBER}", [
+                        service: primarySvc,
+                        tag:     env.IMAGE_TAG ?: 'unknown',
+                        domain:  env.BUILD_DOMAIN ?: params.DOMAIN,
+                        project: env.REGISTRY_PROJECT ?: 'shopos'
+                    ])
+                    echo "NEXT STEP: Trigger post-deploy.Jenkinsfile for smoke, load, DAST, chaos, and SLO tests."
                 }
             }
         }

@@ -555,71 +555,33 @@ pipeline {
         stage('Dashboard Links') {
             steps {
                 script {
-                    echo """
-╔══════════════════════════════════════════════════════════════════════════════╗
-║              SHOPOS — POST-DEPLOY VALIDATION DASHBOARD LINKS                 ║
-╠══════════════════════════════════════════════════════════════════════════════╣
-║  Service   : ${env.TEST_SERVICE}
-║  Namespace : ${env.TEST_NAMESPACE}
-║  Image Tag : ${env.IMAGE_TAG}
-║  Env       : ${params.ENVIRONMENT}
-╠══════════════════════════════════════════════════════════════════════════════╣
-║  OBSERVABILITY — METRICS & DASHBOARDS                                        ║
-║  Grafana (main)         : ${env.GRAFANA_URL}/dashboards
-║  Grafana (service)      : ${env.GRAFANA_URL}/d/services/service-overview?var-service=${env.TEST_SERVICE}
-║  Grafana (SLO)          : ${env.GRAFANA_URL}/d/slo/slo-overview
-║  Grafana (load test)    : ${env.GRAFANA_URL}/d/k6/k6-load-test-results
-║  Prometheus (metrics)   : ${env.PROMETHEUS_URL}/graph?g0.expr=up{job="${env.TEST_SERVICE}"}
-║  Prometheus (all)       : ${env.PROMETHEUS_URL}
-║  Alertmanager           : ${env.ALERTMANAGER_URL}
-║  Pyrra (SLO budget)     : ${env.PYRRA_URL}
-╠══════════════════════════════════════════════════════════════════════════════╣
-║  OBSERVABILITY — TRACING & LOGS                                              ║
-║  Jaeger (traces)        : ${env.JAEGER_URL}/search?service=${env.TEST_SERVICE}
-║  Zipkin (traces)        : ${env.ZIPKIN_URL}
-║  Grafana Tempo          : ${env.GRAFANA_URL}/explore (datasource=Tempo)
-║  Loki (logs)            : ${env.GRAFANA_URL}/explore (datasource=Loki)
-║  OpenSearch (logs)      : http://opensearch-dashboards.logging.svc.cluster.local:5601
-║  Kibana (logs)          : http://kibana.logging.svc.cluster.local:5601
-╠══════════════════════════════════════════════════════════════════════════════╣
-║  OBSERVABILITY — PROFILING & SESSIONS                                        ║
-║  Pyroscope (profiling)  : ${env.PYROSCOPE_URL}
-║  SigNoz (full-stack)    : ${env.SIGNOZ_URL}
-║  OpenReplay (sessions)  : ${env.OPENREPLAY_URL ?: 'not configured'}
-║  Plausible (analytics)  : ${env.PLAUSIBLE_URL ?: 'not configured'}
-╠══════════════════════════════════════════════════════════════════════════════╣
-║  SERVICE MESH & NETWORKING                                                   ║
-║  Kiali (service mesh)   : ${env.KIALI_URL}/kiali/graph
-║  Uptime Kuma (uptime)   : ${env.UPTIME_KUMA_URL}
-╠══════════════════════════════════════════════════════════════════════════════╣
-║  LOAD TEST REPORTS                                                           ║
-║  k6 HTML report         : reports/load/k6/ (archived artifact)
-║  Locust HTML report     : reports/load/locust/ (archived artifact)
-║  Gatling HTML report    : reports/load/gatling/ (archived artifact)
-╠══════════════════════════════════════════════════════════════════════════════╣
-║  SECURITY & COMPLIANCE                                                       ║
-║  DefectDojo (findings)  : ${env.DEFECTDOJO_URL}/finding
-║  Dependency-Track (SBOM): ${env.DEPTRACK_URL}/projects
-║  SonarQube (quality)    : ${env.SONAR_URL}/dashboard?id=${env.TEST_SERVICE}
-║  ZAP report             : reports/dast/zap/zap-report.html (archived)
-║  Nuclei report          : reports/dast/nuclei/ (archived)
-╠══════════════════════════════════════════════════════════════════════════════╣
-║  CONTRACTS & API QUALITY                                                     ║
-║  Pact Broker            : http://pact-broker.testing.svc.cluster.local:9292
-║  Spectral results       : reports/api-quality/spectral/ (archived)
-║  Hurl results           : reports/api-quality/hurl/ (archived)
-╠══════════════════════════════════════════════════════════════════════════════╣
-║  MESSAGING & STREAMING                                                       ║
-║  AKHQ (Kafka)           : ${env.AKHQ_URL}
-║  Kafka UI               : ${env.KAFKA_UI_URL}
-║  Conduktor Gateway      : http://conduktor.kafka.svc.cluster.local:8080
-╠══════════════════════════════════════════════════════════════════════════════╣
-║  GITOPS & REGISTRY                                                           ║
-║  ArgoCD                 : ${env.ARGOCD_URL}/applications/${env.TEST_SERVICE}
-║  Harbor (registry)      : https://${env.HARBOR_URL}/harbor/projects
-║  Backstage (catalog)    : http://backstage.backstage.svc.cluster.local:7007/catalog/default/component/${env.TEST_SERVICE}
-╚══════════════════════════════════════════════════════════════════════════════╝
-                    """
+                    def envMap = [:]
+                    if (fileExists('infra.env')) {
+                        readFile('infra.env').trim().split('\n').each { line ->
+                            def idx = line.indexOf('=')
+                            if (idx > 0) envMap[line[0..<idx].trim()] = line[(idx+1)..-1].trim()
+                        }
+                    }
+                    ['GRAFANA_URL','PROMETHEUS_URL','JAEGER_URL','LOKI_URL','ALERTMANAGER_URL',
+                     'PYRRA_URL','KIALI_URL','UPTIME_KUMA_URL','PYROSCOPE_URL','SIGNOZ_URL',
+                     'ZIPKIN_URL','DEFECTDOJO_URL','DEPENDENCY_TRACK_URL','SONARQUBE_URL',
+                     'ARGOCD_URL','HARBOR_URL','PACT_BROKER_URL','AKHQ_URL','KAFKA_UI_URL',
+                     'OPENREPLAY_URL','PLAUSIBLE_URL'].each { k ->
+                        if (env."${k}") envMap[k] = env."${k}"
+                    }
+                    envMap['SONARQUBE_URL'] = envMap['SONARQUBE_URL'] ?: env.SONAR_URL
+
+                    def d = load 'scripts/groovy/dashboard-links.groovy'
+                    echo d.call(envMap, "POST-DEPLOY — Build #${env.BUILD_NUMBER}", [
+                        service: env.TEST_SERVICE ?: 'unknown',
+                        tag:     env.IMAGE_TAG    ?: 'unknown',
+                        domain:  env.TEST_DOMAIN  ?: params.DOMAIN,
+                        project: 'shopos'
+                    ])
+                    echo "ZAP DAST report : reports/dast/zap/zap-report.html (Jenkins artifact)"
+                    echo "Nuclei report   : reports/dast/nuclei/ (Jenkins artifact)"
+                    echo "k6/Locust/Gatling: reports/load/ (Jenkins artifact + HTML publisher)"
+                    echo "Spectral/Hurl   : reports/api-quality/ (Jenkins artifact)"
                 }
             }
         }

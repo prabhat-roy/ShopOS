@@ -459,6 +459,66 @@ services:
     networks:
       - shopos
 
+  reports-portal-service:
+    image: shopos/reports-portal-service:latest
+    build:
+      context: ./src/platform/reports-portal-service
+      dockerfile: Dockerfile
+    environment:
+      - PORT=8300
+      - GRAFANA_URL=http://grafana:3000
+      - PROMETHEUS_URL=http://prometheus:9090
+      - ALERTMANAGER_URL=http://alertmanager:9093
+      - JAEGER_URL=http://jaeger:16686
+      - ZIPKIN_URL=http://zipkin:9411
+      - KIBANA_URL=http://kibana:5601
+      - OPENSEARCH_DASHBOARDS_URL=http://opensearch-dashboards:5601
+      - PYROSCOPE_URL=http://pyroscope:4040
+      - SIGNOZ_URL=http://signoz:3301
+      - GLITCHTIP_URL=http://glitchtip:8000
+      - UPTIME_KUMA_URL=http://uptime-kuma:3001
+      - JENKINS_URL=http://jenkins:8080
+      - ARGOCD_URL=http://argocd-server:80
+      - ARGO_WORKFLOWS_URL=http://argo-workflows-server:2746
+      - FLUX_URL=http://weave-gitops:9001
+      - HARBOR_URL=http://harbor:80
+      - NEXUS_URL=http://nexus:8081
+      - GITEA_URL=http://gitea:3000
+      - SONARQUBE_URL=http://sonarqube:9000
+      - DEFECTDOJO_URL=http://defectdojo:8080
+      - DEPENDENCY_TRACK_URL=http://dependency-track:8080
+      - VAULT_URL=http://vault:8200
+      - KEYCLOAK_URL=http://keycloak:8080
+      - WAZUH_URL=http://wazuh-dashboard:5601
+      - REKOR_URL=http://rekor-server:3000
+      - PACT_BROKER_URL=http://pact-broker:9292
+      - AKHQ_URL=http://akhq:8080
+      - KAFKA_UI_URL=http://kafka-ui:8080
+      - RABBITMQ_URL=http://rabbitmq:15672
+      - NATS_MON_URL=http://nats:8222
+      - CONDUKTOR_URL=http://conduktor-platform:8080
+      - AIRFLOW_URL=http://airflow-webserver:8080
+      - PREFECT_URL=http://prefect-server:4200
+      - DAGSTER_URL=http://dagster-dagit:3000
+      - MARQUEZ_URL=http://marquez-web:3000
+      - SUPERSET_URL=http://superset:8088
+      - MLFLOW_URL=http://mlflow:5000
+      - BACKSTAGE_URL=http://backstage:7007
+      - TEMPORAL_URL=http://temporal-web:8080
+      - UNLEASH_URL=http://unleash:4242
+      - CHAOS_MESH_URL=http://chaos-dashboard:2333
+      - LITMUS_URL=http://litmusportal-frontend:9091
+    ports:
+      - "8300:8300"
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8300/healthz"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    restart: unless-stopped
+    networks:
+      - shopos
+
   admin-portal:
     image: shopos/admin-portal:latest
     build:

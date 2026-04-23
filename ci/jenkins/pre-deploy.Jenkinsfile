@@ -454,42 +454,30 @@ pipeline {
         stage('Dashboard Links') {
             steps {
                 script {
+                    def envMap = [:]
+                    if (fileExists('infra.env')) {
+                        readFile('infra.env').trim().split('\n').each { line ->
+                            def idx = line.indexOf('=')
+                            if (idx > 0) envMap[line[0..<idx].trim()] = line[(idx+1)..-1].trim()
+                        }
+                    }
+                    // Merge pipeline-level env vars set in Load Environment stage
+                    ['HARBOR_URL','SONARQUBE_URL','SONAR_URL','DEFECTDOJO_URL','DEPENDENCY_TRACK_URL',
+                     'ARGOCD_URL','GRAFANA_URL','PROMETHEUS_URL','PACT_BROKER_URL'].each { k ->
+                        if (env."${k}") envMap[k] = env."${k}"
+                    }
+                    envMap['SONARQUBE_URL'] = envMap['SONARQUBE_URL'] ?: env.SONAR_URL
+
                     def primarySvc = env.SERVICES?.split(',')?.getAt(0)?.trim() ?: 'unknown'
-                    echo """
-╔══════════════════════════════════════════════════════════════════════════╗
-║            SHOPOS — PRE-DEPLOY DASHBOARD LINKS                           ║
-╠══════════════════════════════════════════════════════════════════════════╣
-║  Build   : #${env.BUILD_NUMBER}  │  Tag    : ${env.IMAGE_TAG}
-║  Domain  : ${env.BUILD_DOMAIN}    │  Env    : ${env.BUILD_ENV}
-║  Branch  : ${env.GIT_BRANCH_NAME}
-║  Services: ${env.SERVICES}
-╠══════════════════════════════════════════════════════════════════════════╣
-║  CODE QUALITY & SECURITY ANALYSIS                                        ║
-║  SonarQube (code quality)  : ${env.SONAR_URL}/dashboard?id=${primarySvc}
-║  DefectDojo (findings)     : ${env.DEFECTDOJO_URL}/finding
-║  Dependency-Track (SBOM)   : ${env.DEPTRACK_URL}/projects
-║  GitLeaks report           : reports/secrets/gitleaks-report.json
-║  SBOM (CycloneDX)          : reports/sbom/ (archived artifacts)
-╠══════════════════════════════════════════════════════════════════════════╣
-║  REGISTRY & SUPPLY CHAIN                                                 ║
-║  Harbor (image registry)   : https://${env.HARBOR_URL}/harbor/projects
-║  Harbor project            : https://${env.HARBOR_URL}/harbor/projects/${env.REGISTRY_PROJECT}
-║  Rekor (transparency log)  : https://rekor.sigstore.dev
-║  Cosign verify cmd         : cosign verify ${env.HARBOR_URL}/${env.REGISTRY_PROJECT}/${primarySvc}:${env.IMAGE_TAG}
-╠══════════════════════════════════════════════════════════════════════════╣
-║  GITOPS & DEPLOYMENT STATUS                                              ║
-║  ArgoCD (sync status)      : ${env.ARGOCD_URL}/applications
-║  ArgoCD app detail         : ${env.ARGOCD_URL}/applications/${primarySvc}
-║  Flux UI (GitOps)          : http://weave-gitops.gitops.svc.cluster.local:9001
-╠══════════════════════════════════════════════════════════════════════════╣
-║  OBSERVABILITY                                                           ║
-║  Grafana (dashboards)      : ${env.GRAFANA_URL}/dashboards
-║  Grafana CI/CD board       : ${env.GRAFANA_URL}/d/cicd/cicd-overview
-║  Prometheus (metrics)      : ${env.PROMETHEUS_URL}
-║  Alertmanager (alerts)     : http://alertmanager.prometheus.svc.cluster.local:9093
-║  Backstage (service catalog): http://backstage.backstage.svc.cluster.local:7007
-╚══════════════════════════════════════════════════════════════════════════╝
-                    """
+                    def d = load 'scripts/groovy/dashboard-links.groovy'
+                    echo d.call(envMap, "PRE-DEPLOY — Build #${env.BUILD_NUMBER}", [
+                        service: primarySvc,
+                        tag:     env.IMAGE_TAG ?: 'unknown',
+                        domain:  env.BUILD_DOMAIN ?: params.DOMAIN,
+                        project: env.REGISTRY_PROJECT ?: 'shopos'
+                    ])
+                    echo "Cosign verify: cosign verify ${env.HARBOR_URL}/${env.REGISTRY_PROJECT}/${primarySvc}:${env.IMAGE_TAG}"
+                    echo "Scan reports archived: reports/secrets/, reports/sast/, reports/sca/, reports/image-scan/, reports/sbom/"
                 }
             }
         }

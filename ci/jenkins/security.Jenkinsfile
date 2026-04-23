@@ -1020,50 +1020,16 @@ pipeline {
                             if (idx > 0) envMap[line[0..<idx].trim()] = line[(idx+1)..-1].trim()
                         }
                     }
-                    def grafana   = envMap['GRAFANA_URL']       ?: 'http://grafana-grafana.grafana.svc.cluster.local:3000'
-                    def dojo      = envMap['DEFECTDOJO_URL']    ?: 'http://defectdojo:8080'
-                    def deptrack  = envMap['DEPENDENCY_TRACK_URL'] ?: 'http://dependency-track:8080'
-                    def sonar     = envMap['SONARQUBE_URL']     ?: 'http://sonarqube:9000'
-                    def argocd    = envMap['ARGOCD_URL']        ?: 'http://argocd-server.argocd.svc.cluster.local:80'
-                    def harbor    = envMap['HARBOR_URL']        ?: 'harbor.shopos.local'
-
-                    echo """
-╔══════════════════════════════════════════════════════════════════════════╗
-║             SHOPOS — SECURITY STACK DASHBOARD LINKS                      ║
-╠══════════════════════════════════════════════════════════════════════════╣
-║  VULNERABILITY MANAGEMENT                                                ║
-║  DefectDojo (findings)     : ${dojo}/finding
-║  DefectDojo (engagements)  : ${dojo}/engagement
-║  Dependency-Track (SBOMs)  : ${deptrack}/projects
-║  SonarQube (code quality)  : ${sonar}
-╠══════════════════════════════════════════════════════════════════════════╣
-║  IDENTITY & ACCESS                                                       ║
-║  Keycloak (IAM)            : http://keycloak.keycloak.svc.cluster.local
-║  Vault (secrets)           : http://vault.vault.svc.cluster.local:8200/ui
-║  Pomerium (access proxy)   : http://pomerium.pomerium.svc.cluster.local
-║  OpenFGA (authz)           : http://openfga.openfga.svc.cluster.local:8080
-╠══════════════════════════════════════════════════════════════════════════╣
-║  RUNTIME SECURITY                                                        ║
-║  Falco Sidekick UI         : http://falco-falcosidekick-ui.falco.svc.cluster.local:2802
-║  Wazuh (SIEM)              : http://wazuh-dashboard.wazuh.svc.cluster.local:5601
-╠══════════════════════════════════════════════════════════════════════════╣
-║  SUPPLY CHAIN                                                            ║
-║  Harbor (image registry)   : https://${harbor}/harbor/projects
-║  Rekor (transparency log)  : https://rekor.sigstore.dev
-║  Cosign verify             : cosign verify --certificate-identity-regexp=jenkins ${harbor}/shopos/<image>
-╠══════════════════════════════════════════════════════════════════════════╣
-║  OBSERVABILITY (security dashboards)                                     ║
-║  Grafana security board    : ${grafana}/d/security/security-overview
-║  Grafana Falco board       : ${grafana}/d/falco/falco-runtime-security
-║  Grafana Cert board        : ${grafana}/d/certs/certificate-expiry
-║  ArgoCD (security apps)    : ${argocd}/applications
-╠══════════════════════════════════════════════════════════════════════════╣
-║  API GATEWAY SECURITY                                                    ║
-║  Coraza WAF                : http://traefik.traefik.svc.cluster.local:9000/dashboard
-║  Kyverno policies          : kubectl get cpol -A
-║  OPA Gatekeeper            : kubectl get constrainttemplate -A
-╚══════════════════════════════════════════════════════════════════════════╝
-                    """
+                    def d = load 'scripts/groovy/dashboard-links.groovy'
+                    echo d.call(envMap, "SECURITY STACK — Build #${env.BUILD_NUMBER}", [
+                        service: 'security-stack',
+                        tag:     env.BUILD_NUMBER ?: 'latest',
+                        domain:  'security',
+                        project: 'shopos'
+                    ])
+                    echo "Kyverno policies  : kubectl get cpol -A"
+                    echo "OPA constraints   : kubectl get constrainttemplate -A"
+                    echo "Cosign verify cmd : cosign verify ${envMap['HARBOR_URL'] ?: 'harbor.shopos.local'}/shopos/<image>:<tag>"
                 }
             }
         }

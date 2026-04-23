@@ -191,43 +191,21 @@ pipeline {
                 }
             }
         }
-    }
 
-        // ── DASHBOARD LINKS ───────────────────────────────────────────────────
+        // ── Dashboard Links ───────────────────────────────────────────────────
 
         stage('Dashboard Links') {
             steps {
                 script {
                     def envMap = [:]
-                    if (fileExists('infra.env')) {
-                        readFile('infra.env').trim().split('\n').each { line ->
+                    if (fileExists('/var/lib/jenkins/infra.env')) {
+                        readFile('/var/lib/jenkins/infra.env').trim().split('\n').each { line ->
                             def idx = line.indexOf('=')
                             if (idx > 0) envMap[line[0..<idx].trim()] = line[(idx+1)..-1].trim()
                         }
                     }
-                    def grafana  = envMap['GRAFANA_URL']     ?: 'http://grafana-grafana.grafana.svc.cluster.local:3000'
-                    def sonar    = envMap['SONARQUBE_URL']   ?: 'http://sonarqube:9000'
-                    def dojo     = envMap['DEFECTDOJO_URL']  ?: 'http://defectdojo:8080'
-                    def pact     = envMap['PACT_BROKER_URL'] ?: 'http://pact-broker:9292'
-                    def argocd   = envMap['ARGOCD_URL']      ?: 'http://argocd-server.argocd.svc.cluster.local:80'
-
-                    echo """
-╔══════════════════════════════════════════════════════════════════════════╗
-║            SHOPOS — API QUALITY DASHBOARD LINKS                          ║
-╠══════════════════════════════════════════════════════════════════════════╣
-║  API QUALITY RESULTS (archived artifacts)                                ║
-║  Spectral lint   : spectral-results.xml (JUnit in Jenkins)
-║  Hurl tests      : api-testing/hurl/hurl-*.xml (JUnit in Jenkins)
-║  IaC SARIF       : terrascan-*.sarif (archived)
-╠══════════════════════════════════════════════════════════════════════════╣
-║  EXTERNAL DASHBOARDS                                                     ║
-║  Pact Broker     : ${pact}
-║  SonarQube       : ${sonar}
-║  DefectDojo      : ${dojo}/finding
-║  Grafana         : ${grafana}/dashboards
-║  ArgoCD          : ${argocd}/applications
-╚══════════════════════════════════════════════════════════════════════════╝
-                    """
+                    def links = load 'scripts/groovy/dashboard-links.groovy'
+                    echo links.call(envMap, 'SHOPOS — API QUALITY PIPELINE DASHBOARDS')
                 }
             }
         }
@@ -241,8 +219,8 @@ pipeline {
         success {
             script {
                 def envMap = [:]
-                if (fileExists('infra.env')) {
-                    readFile('infra.env').trim().split('\n').each { line ->
+                if (fileExists('/var/lib/jenkins/infra.env')) {
+                    readFile('/var/lib/jenkins/infra.env').trim().split('\n').each { line ->
                         def idx = line.indexOf('=')
                         if (idx > 0) envMap[line[0..<idx].trim()] = line[(idx+1)..-1].trim()
                     }
@@ -250,21 +228,21 @@ pipeline {
                 def slack  = envMap['SLACK_WEBHOOK_URL'] ?: ''
                 def emails = envMap['EMAIL_RECIPIENTS']  ?: ''
                 def pact   = envMap['PACT_BROKER_URL']   ?: 'http://pact-broker:9292'
-                def msg    = "API QUALITY SUCCESS — ShopOS Build #${env.BUILD_NUMBER}: Spectral lint, Hurl HTTP tests, Pact contracts, Terrascan IaC scan all passed. Pact Broker: ${pact}  Build: ${env.BUILD_URL}"
+                def portal = envMap['REPORTS_PORTAL_URL'] ?: 'http://reports-portal.platform.svc.cluster.local:8300'
+                def msg    = "API QUALITY SUCCESS — ShopOS Build #${env.BUILD_NUMBER}: Spectral lint, Hurl HTTP tests, Pact contracts, Terrascan IaC scan all passed. Reports Portal: ${portal}  Pact Broker: ${pact}  Build: ${env.BUILD_URL}"
                 if (slack?.trim()) {
                     sh "curl -s -X POST '${slack}' -H 'Content-Type: application/json' -d '{\"text\":\"${msg}\"}' || true"
                 }
                 if (emails?.trim()) {
                     mail to: emails, subject: "API Quality SUCCESS — Build #${env.BUILD_NUMBER}", body: msg
                 }
-                echo 'API quality checks passed.'
             }
         }
         failure {
             script {
                 def envMap = [:]
-                if (fileExists('infra.env')) {
-                    readFile('infra.env').trim().split('\n').each { line ->
+                if (fileExists('/var/lib/jenkins/infra.env')) {
+                    readFile('/var/lib/jenkins/infra.env').trim().split('\n').each { line ->
                         def idx = line.indexOf('=')
                         if (idx > 0) envMap[line[0..<idx].trim()] = line[(idx+1)..-1].trim()
                     }
@@ -278,7 +256,6 @@ pipeline {
                 if (emails?.trim()) {
                     mail to: emails, subject: "API Quality FAILED — Build #${env.BUILD_NUMBER}", body: msg
                 }
-                echo 'API quality checks failed — review Spectral, Hurl, and Terrascan results above.'
             }
         }
     }
