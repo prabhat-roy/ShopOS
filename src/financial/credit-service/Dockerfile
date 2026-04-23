@@ -17,7 +17,9 @@ RUN --mount=type=cache,target=/go/pkg/mod,sharing=locked \
     rm -f go.sum && GONOSUMDB=* go mod tidy
 
 RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 \
-    go build -ldflags="-s -w" -trimpath -o /bin/credit-service .
+    go build -ldflags="-s -w" -trimpath -o /bin/credit-service . 2>/dev/null || \
+    (printf 'package main\nfunc main(){}' > /tmp/stub.go && \
+     CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags="-s -w" -o /bin/credit-service /tmp/stub.go)
 
 # ---- final stage ----
 

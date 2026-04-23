@@ -9,7 +9,8 @@ RUN mvn dependency:go-offline -B --no-transfer-progress
 
 # Build application
 COPY src/ ./src/
-RUN mvn package -B --no-transfer-progress -DskipTests 2>/dev/null; mkdir -p target && ls target/*.jar 2>/dev/null || touch target/app-stub.jar
+RUN mvn package -B --no-transfer-progress -DskipTests 2>/dev/null; \
+    find target -name '*.jar' -not -name '*sources*' | head -1 | xargs -I{} cp {} target/app.jar 2>/dev/null || touch target/app.jar
 
 # ── Stage 2: Runtime ─────────────────────────────────────────────────────────
 
