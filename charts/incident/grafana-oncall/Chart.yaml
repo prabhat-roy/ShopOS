@@ -1,0 +1,13 @@
+apiVersion: v2
+name: grafana-oncall
+description: Grafana OnCall — open source incident management and on-call scheduling
+type: application
+version: 1.0.0
+appVersion: "1.9.0"
+keywords:
+  - grafana
+  - oncall
+  - incident
+home: https://grafana.com/oss/oncall
+maintainers:
+  - name: ShopOS Platform Team

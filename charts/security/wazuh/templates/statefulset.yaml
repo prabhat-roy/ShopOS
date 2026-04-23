@@ -1,0 +1,64 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ include "wazuh.fullname" . }}-manager
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "wazuh.labels" . | nindent 4 }}
+    component: manager
+spec:
+  serviceName: {{ include "wazuh.fullname" . }}-manager-headless
+  replicas: {{ .Values.manager.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "wazuh.selectorLabels" . | nindent 6 }}
+      component: manager
+  template:
+    metadata:
+      labels:
+        {{- include "wazuh.selectorLabels" . | nindent 8 }}
+        component: manager
+    spec:
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      containers:
+        - name: wazuh-manager
+          image: "{{ .Values.manager.image.repository }}:{{ .Values.manager.image.tag }}"
+          imagePullPolicy: {{ .Values.manager.image.pullPolicy }}
+          ports:
+            - name: agent
+              containerPort: 1514
+              protocol: TCP
+            - name: api
+              containerPort: 55000
+              protocol: TCP
+            - name: syslog
+              containerPort: 514
+              protocol: TCP
+          livenessProbe:
+            tcpSocket:
+              port: api
+            initialDelaySeconds: 60
+            periodSeconds: 20
+          readinessProbe:
+            tcpSocket:
+              port: api
+            initialDelaySeconds: 30
+            periodSeconds: 10
+          volumeMounts:
+            - name: data
+              mountPath: {{ .Values.manager.storage.mountPath }}
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+      spec:
+        accessModes:
+          - ReadWriteOnce
+        {{- if .Values.manager.storage.storageClass }}
+        storageClassName: {{ .Values.manager.storage.storageClass }}
+        {{- end }}
+        resources:
+          requests:
+            storage: {{ .Values.manager.storage.size }}

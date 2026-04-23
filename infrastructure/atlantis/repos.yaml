@@ -1,0 +1,32 @@
+# Atlantis server-side repo configuration
+# Place at --repo-config path on Atlantis server
+
+repos:
+  - id: github.com/shopos/*
+    allowed_overrides:
+      - apply_requirements
+      - workflow
+      - delete_source_branch_on_merge
+    allow_custom_workflows: true
+    pre_workflow_hooks:
+      - run: echo "Starting Atlantis workflow for $BASE_REPO_NAME"
+
+  - id: /^github\.com\/shopos\/infra.*/
+    workflow: infra-workflow
+    apply_requirements:
+      - approved
+      - mergeable
+    allowed_overrides: []
+    allow_custom_workflows: false
+
+workflows:
+  infra-workflow:
+    plan:
+      steps:
+        - init:
+            extra_args: ["-backend-config=backend.hcl"]
+        - plan:
+            extra_args: ["-var-file=production.tfvars"]
+    apply:
+      steps:
+        - apply

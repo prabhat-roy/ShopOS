@@ -1,0 +1,45 @@
+image:
+  repository: netdata/netdata
+  tag: "v1.47.0"
+  pullPolicy: IfNotPresent
+
+service:
+  type: ClusterIP
+  port: 19999
+
+# DaemonSet — runs on every node
+kind: DaemonSet
+
+env:
+  NETDATA_CLAIM_TOKEN: ""
+  NETDATA_CLAIM_URL: "https://app.netdata.cloud"
+  DO_NOT_TRACK: "1"
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 128Mi
+  limits:
+    cpu: 500m
+    memory: 512Mi
+
+podAnnotations:
+  prometheus.io/scrape: "true"
+  prometheus.io/port: "19999"
+  prometheus.io/path: "/api/v1/allmetrics?format=prometheus"
+
+podSecurityContext:
+  runAsNonRoot: false
+
+securityContext:
+  privileged: true
+  capabilities:
+    add:
+      - SYS_PTRACE
+      - SYS_ADMIN
+
+tolerations:
+  - operator: Exists
+    effect: NoSchedule
+  - operator: Exists
+    effect: NoExecute

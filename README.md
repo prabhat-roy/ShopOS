@@ -1,6 +1,6 @@
 # ShopOS — Enterprise Commerce Platform
 
-An enterprise-grade, cloud-native commerce platform — 230 services, 19 domains, 13 languages, full open source stack.
+An enterprise-grade, cloud-native commerce platform — 262 services, 22 domains, 19 languages, full open source stack.
 
 ---
 
@@ -26,8 +26,11 @@ An enterprise-grade, cloud-native commerce platform — 230 services, 19 domains
 | 16 | Developer Platform | 6 |
 | 17 | Compliance | 5 |
 | 18 | Sustainability | 5 |
-| 19 | Web | 6 |
-| | **Total** | **230** |
+| 19 | Web | 7 |
+| 20 | Events & Ticketing | 6 |
+| 21 | Auction | 4 |
+| 22 | Rental | 4 |
+| | **Total** | **262** |
 
 ---
 
@@ -37,14 +40,24 @@ An enterprise-grade, cloud-native commerce platform — 230 services, 19 domains
 
 | Language | Version | Used In |
 |---|---|---|
-| Go | 1.24 | Platform, Catalog, Commerce, Supply Chain, Financial, CX, Content, B2B, Integrations, Affiliate |
-| Java | 21 (Spring Boot) | Identity, Catalog, Commerce, Supply Chain, Financial, B2B, Integrations |
-| Kotlin | 2.x (Spring Boot) | Catalog, Commerce, Supply Chain, Financial, B2B |
+| Go | 1.24 | Platform, Catalog, Commerce, Supply Chain, Financial, CX, Content, B2B, Integrations, Affiliate, Events, Auction, Rental |
+| Java | 21 (Spring Boot) | Identity, Catalog, Commerce, Supply Chain, Financial, B2B, Integrations, Auction |
+| Kotlin | 2.x (Spring Boot) | Catalog, Commerce, Supply Chain, Financial, B2B, Rental |
 | Python | 3.12 | Analytics & AI, Supply Chain, Communications, Content |
 | Node.js | 22 | Platform, Catalog, Customer Experience, Communications, Content, Integrations |
 | C# | .NET 9 | Commerce (cart, return-refund) |
 | Rust | 1.80 | Identity (auth), Commerce (shipping) |
 | Scala | 3.x | Analytics & AI (reporting) |
+| **Elixir** | 1.17 (OTP 27) | Platform (presence, realtime, pubsub), Events & Ticketing, Auction — real-time concurrent services |
+| **Haskell** | GHC 9.6 | Financial (rules engine) — type-safe pure functional calculations |
+| **PHP** | 8.3 (Laravel 11) | Integrations (Magento/WooCommerce adapters) |
+| **Ruby** | 3.3 (Sinatra 4) | Content (CMS adapter) |
+| **Dart** | 3.4 (Flutter) | Web (mobile-flutter-service) — native iOS + Android |
+| **Swift** | 5.10 (Vapor 4) | Platform (iOS push gateway) |
+| **Clojure** | 1.12 | Platform (event transform) — immutable stream transformation |
+| **Crystal** | 1.13 | Content (webhook service) — Ruby-like, C performance |
+| **Zig** | 0.13 | Platform (rate-limiter-core) — zero-overhead systems-level |
+| **Gleam** | 1.4 | Platform (event pipeline) — type-safe on BEAM/OTP |
 
 ### Databases
 
@@ -55,6 +68,13 @@ An enterprise-grade, cloud-native commerce platform — 230 services, 19 domains
 | Redis | 7 | Cache, sessions, pub/sub, ephemeral data |
 | Cassandra | 5.0 | Time-series analytics events |
 | TimescaleDB | 2.15 | Time-series metrics — service metrics, inventory events, page views |
+| CockroachDB | 24.2 | Distributed PostgreSQL — geo-distributed ACID transactions |
+| SurrealDB | 2.1 | Multi-model — SQL + document + graph + time-series in one |
+| EventStoreDB | 24.10 | Purpose-built event store for event sourcing |
+| Valkey | 8.0 | Redis-compatible cache (Linux Foundation open fork) |
+| Typesense | 27.0 | Typo-tolerant instant search engine |
+| Manticore Search | 6.3 | Fast full-text search, Sphinx-compatible |
+| SeaweedFS | 3.78 | Distributed object + file storage, S3-compatible |
 | Elasticsearch | 8.15.3 | Full-text search, faceted filtering |
 | OpenSearch | 2.17 | Log analytics, audit trail, security events |
 | ClickHouse | 24.8 | OLAP — orders, events, revenue aggregation |
@@ -108,6 +128,10 @@ An enterprise-grade, cloud-native commerce platform — 230 services, 19 domains
 | Skaffold | latest | Local dev hot-reload |
 | Tilt | latest | Local dev hot-reload (alternative) |
 | Kaniko | latest | Rootless container builds inside Kubernetes pods |
+| Bazel | 7.x | Google's hermetic monorepo build system — 1000+ targets |
+| Nx | 20.x | Monorepo orchestration for TypeScript/JavaScript frontend services |
+| Turborepo | 2.x | Fast JS monorepo builds with remote cache |
+| Packer | 1.11 | Automated VM image builder for cloud AMIs and GCE images |
 
 ### Infrastructure as Code
 
@@ -185,6 +209,13 @@ Jenkins pipelines: `build.Jenkinsfile`, `test.Jenkinsfile`, `security.Jenkinsfil
 | k8sGPT | latest | AI-powered Kubernetes diagnostics |
 | Plausible | latest | Privacy-friendly web analytics (GDPR, no cookies) |
 | OpenReplay | latest | Self-hosted session replay |
+| Grafana Mimir | 2.14 | Horizontally scalable long-term Prometheus storage |
+| VictoriaLogs | 1.4 | Fast, cheap log storage at high volume |
+| Pixie | latest | eBPF auto-instrumentation — zero-code traces per pod |
+| SigNoz | 0.53 | Full-stack observability — traces + metrics + logs, OTel-native |
+| Netdata | 1.47 | Real-time per-second metrics per container |
+| Kiali | 2.0 | Istio service mesh observability UI — topology + traffic |
+| Perses | 0.49 | GitOps-native dashboard-as-code |
 | Goldilocks | 9.x | VPA-based resource right-sizing recommendations |
 | kube-state-metrics | latest | Kubernetes object metrics |
 | node-exporter | latest | Node-level hardware metrics |
@@ -230,6 +261,14 @@ Jenkins pipelines: `build.Jenkinsfile`, `test.Jenkinsfile`, `security.Jenkinsfil
 | Dependency-Track | SBOM analysis and CVE tracking |
 | DefectDojo | Vulnerability management and finding aggregation |
 | Teleport | Zero-trust SSH and Kubernetes access |
+| Wazuh | SIEM + HIDS — log correlation, compliance, intrusion detection |
+| Suricata | Network IDS/IPS — deep packet inspection on cluster traffic |
+| Zeek | Network traffic analysis — behavioral detection, TLS fingerprinting |
+| OpenVAS | External attack surface vulnerability scanning |
+| Pomerium | Identity-aware access proxy — zero-trust for internal tools |
+| External Secrets Operator | Sync secrets from Vault/AWS SSM into Kubernetes |
+| Sealed Secrets | Encrypt secrets for safe GitOps storage |
+| OpenSSF Scorecard | Automated security best-practice scoring |
 
 ### Networking & Service Mesh
 
@@ -304,20 +343,66 @@ Jenkins pipelines: `build.Jenkinsfile`, `test.Jenkinsfile`, `security.Jenkinsfil
 | Score | Cloud-agnostic workload specification |
 | DevPod | Cloud development environments (alternative to Codespaces) |
 
+### Feature Flags
+
+| Tool | Role |
+|---|---|
+| Unleash | Open source feature flag platform — SDK, UI, audit trail |
+| OpenFeature | Open standard SDK for feature flags — wraps any backend |
+
+### Incident Management
+
+| Tool | Role |
+|---|---|
+| Grafana OnCall | Open source on-call scheduling, escalation, Slack integration |
+| Cachet | Open source public status page for customer-facing uptime |
+
+### API Management
+
+| Tool | Role |
+|---|---|
+| Apache APISIX | Cloud-native API gateway with Lua plugin ecosystem |
+| Tyk | Open source API management + built-in developer portal |
+| Hasura | Instant GraphQL engine from PostgreSQL |
+
+### Infrastructure Automation
+
+| Tool | Role |
+|---|---|
+| Atlantis | Terraform GitOps — plan on PR, apply on merge |
+| Infracost | Cloud cost estimation on every Terraform PR |
+| Driftctl | Detect drift between Terraform state and cloud resources |
+| Packer | Automated VM image builder (AMI, GCE) |
+| Nomad | HashiCorp workload orchestrator for mixed containerised/bare-metal |
+| Boundary | HashiCorp zero-trust SSH/RDP access without VPN |
+| Waypoint | HashiCorp app deployment abstraction across K8s/Nomad/ECS |
+
 ### Developer Experience
 
 | Tool | Role |
 |---|---|
-| Devcontainer | VS Code / GitHub Codespaces — all languages pre-installed |
+| Devcontainer | VS Code / GitHub Codespaces — all 19 languages pre-installed |
 | Skaffold | Local Kubernetes dev hot-reload |
 | Tilt | Local Kubernetes dev with live_update (alternative) |
 | Backstage | Internal developer portal — service catalog, API docs |
 | Buf CLI | Protobuf workflow — lint, format, codegen, breaking detection |
 | Teleport | Zero-trust SSH + Kubernetes access for developers and ops |
+| Telepresence | Run one local service against live cluster — instant debugging |
+| Garden | Full environment automation — spin up entire stack per PR |
+| Signadot | Kubernetes sandbox per PR — route traffic to feature branch |
+| Devspace | Kubernetes dev tool — live sync, port-forward, log aggregation |
 | Botkube | Kubernetes alerts to Slack — pod failures, deployments |
 | k8sGPT | AI-powered Kubernetes diagnostics operator |
 | k9s | Terminal-based Kubernetes UI |
 | grpcurl | gRPC API testing |
+
+### Workflow Orchestration (Data)
+
+| Tool | Role |
+|---|---|
+| Prefect | Python-native workflow orchestration — complement to Airflow |
+| Dagster | Data asset orchestration — lineage-first pipeline management |
+| Apache Camel | Enterprise integration patterns — 300+ connectors |
 
 ### Chaos & Load Testing
 
@@ -328,12 +413,23 @@ Jenkins pipelines: `build.Jenkinsfile`, `test.Jenkinsfile`, `security.Jenkinsfil
 | k6 | JavaScript-based load testing |
 | Locust | Python-based distributed load testing |
 | Gatling | Scala-based load and performance testing |
+| Artillery | Node.js load testing for realistic browser scenarios |
+| Vegeta | Go HTTP load testing — deterministic rate, ideal for soak tests |
+| k6 Operator | Run k6 load tests natively as Kubernetes Jobs |
+
+### Testing Extensions
+
+| Tool | Role |
+|---|---|
+| Playwright | E2E browser testing for all 7 frontend services |
+| WireMock | API mock server — stub third-party APIs in integration tests |
+| Karate | Java BDD-style API + UI testing framework |
 
 ---
 
 ## Services
 
-### 1. Platform (27 services)
+### 1. Platform (34 services)
 
 | Service | Language | Responsibility |
 |---|---|---|
@@ -364,6 +460,13 @@ Jenkins pipelines: `build.Jenkinsfile`, `test.Jenkinsfile`, `security.Jenkinsfil
 | idempotency-service | Go | Idempotency key storage and deduplication |
 | correlation-id-service | Go | Request correlation ID propagation across services |
 | data-masking-service | Go | PII masking and tokenisation for logs and events |
+| presence-service | Elixir | Real-time user presence tracking using BEAM/OTP |
+| realtime-gateway-service | Elixir | WebSocket gateway for real-time event streaming |
+| pubsub-router-service | Elixir | Pub/sub message routing using Phoenix.PubSub |
+| api-versioning-service | Go | API version negotiation and deprecation lifecycle |
+| event-transform-service | Clojure | Kafka event transformation with immutable data pipelines |
+| ios-push-gateway-service | Swift | Apple APNs push notification gateway |
+| rate-limiter-core | Zig | Ultra-low-latency rate limiting core in systems-level Zig |
 
 ---
 
@@ -385,7 +488,7 @@ Jenkins pipelines: `build.Jenkinsfile`, `test.Jenkinsfile`, `security.Jenkinsfil
 
 ---
 
-### 3. Catalog (15 services)
+### 3. Catalog (16 services)
 
 | Service | Language | Responsibility |
 |---|---|---|
@@ -404,6 +507,7 @@ Jenkins pipelines: `build.Jenkinsfile`, `test.Jenkinsfile`, `security.Jenkinsfil
 | product-label-service | Go | Product labels, badges, and promotional tags |
 | variant-service | Go | Product variant matrix management |
 | stock-reservation-service | Go | Atomic stock reservations via Redis |
+| search-suggestion-service | Go | Autocomplete and typeahead suggestions via Redis |
 
 ---
 
@@ -442,7 +546,7 @@ Jenkins pipelines: `build.Jenkinsfile`, `test.Jenkinsfile`, `security.Jenkinsfil
 
 ---
 
-### 5. Supply Chain (17 services)
+### 5. Supply Chain (18 services)
 
 | Service | Language | Responsibility |
 |---|---|---|
@@ -463,10 +567,11 @@ Jenkins pipelines: `build.Jenkinsfile`, `test.Jenkinsfile`, `security.Jenkinsfil
 | packaging-service | Go | Packaging material selection and cost optimisation |
 | cross-dock-service | Go | Cross-docking flow management — inbound to outbound |
 | duty-drawback-service | Go | Import duty drawback claim management |
+| zone-pricing-service | Go | Geo-zone based shipping price matrices |
 
 ---
 
-### 6. Financial (15 services)
+### 6. Financial (18 services)
 
 | Service | Language | Responsibility |
 |---|---|---|
@@ -485,10 +590,13 @@ Jenkins pipelines: `build.Jenkinsfile`, `test.Jenkinsfile`, `security.Jenkinsfil
 | forex-service | Go | Foreign exchange rate management and hedging |
 | audit-trail-service | Java | Immutable financial audit trail |
 | dunning-service | Go | Failed payment retry and dunning communication |
+| financial-rules-engine | Haskell | Type-safe pure functional financial calculation engine |
+| tax-exemption-service | Go | B2B tax-exempt purchase handling and certificate management |
+| multi-currency-account-service | Go | Multi-currency ledger and account management per customer |
 
 ---
 
-### 7. Customer Experience (17 services)
+### 7. Customer Experience (18 services)
 
 | Service | Language | Responsibility |
 |---|---|---|
@@ -509,6 +617,7 @@ Jenkins pipelines: `build.Jenkinsfile`, `test.Jenkinsfile`, `security.Jenkinsfil
 | loyalty-tier-service | Go | Loyalty tier evaluation and benefit management |
 | accessibility-service | Node.js | WCAG accessibility audit and remediation guidance |
 | return-portal-service | Go | Self-service customer return initiation |
+| review-summary-service | Go | Aggregated review analytics and summary per product |
 
 ---
 
@@ -531,7 +640,7 @@ Jenkins pipelines: `build.Jenkinsfile`, `test.Jenkinsfile`, `security.Jenkinsfil
 
 ---
 
-### 9. Content (9 services)
+### 9. Content (11 services)
 
 | Service | Language | Responsibility |
 |---|---|---|
@@ -544,6 +653,8 @@ Jenkins pipelines: `build.Jenkinsfile`, `test.Jenkinsfile`, `security.Jenkinsfil
 | i18n-l10n-service | Go | Translation strings and locale management |
 | data-export-service | Python | CSV/Excel data exports for merchants |
 | ab-content-service | Go | A/B content variant management and assignment |
+| storefront-cms-adapter | Ruby | Magento/Spree-compatible CMS adapter service |
+| content-webhook-service | Crystal | High-throughput inbound content webhook processor |
 
 ---
 
@@ -584,7 +695,7 @@ Jenkins pipelines: `build.Jenkinsfile`, `test.Jenkinsfile`, `security.Jenkinsfil
 
 ---
 
-### 12. Integrations (14 services)
+### 12. Integrations (16 services)
 
 | Service | Language | Responsibility |
 |---|---|---|
@@ -602,6 +713,8 @@ Jenkins pipelines: `build.Jenkinsfile`, `test.Jenkinsfile`, `security.Jenkinsfil
 | etl-service | Python | Extract-transform-load for third-party data sources |
 | data-sync-service | Go | Near-real-time bidirectional data synchronisation |
 | ipaas-connector-service | Go | iPaaS integration connector (Zapier/Make-compatible) |
+| magento-sync-service | PHP | Bi-directional sync with Magento 2 catalog and orders |
+| woocommerce-adapter-service | PHP | WooCommerce product, order, and customer sync adapter |
 
 ---
 
@@ -683,7 +796,7 @@ Jenkins pipelines: `build.Jenkinsfile`, `test.Jenkinsfile`, `security.Jenkinsfil
 
 ---
 
-### 19. Web (6 services)
+### 19. Web (7 services)
 
 | Service | Framework | Responsibility |
 |---|---|---|
@@ -693,6 +806,42 @@ Jenkins pipelines: `build.Jenkinsfile`, `test.Jenkinsfile`, `security.Jenkinsfil
 | partner-portal-service | Angular 18 (TS) | B2B partner portal — contracts, orders, invoices |
 | mobile-app-service | React Native / Expo (TS) | iOS + Android customer app |
 | developer-portal-service | React + Vite (TS) | Developer portal — API docs, sandbox, OAuth apps |
+| mobile-flutter-service | Dart / Flutter | iOS + Android customer app (Flutter native alternative) |
+
+---
+
+### 20. Events & Ticketing (6 services)
+
+| Service | Language | Responsibility |
+|---|---|---|
+| event-service | Elixir | Event creation, scheduling, and lifecycle management |
+| ticket-service | Go | Ticket issuance, validation, and transfer |
+| seat-map-service | Go | Venue seat map management and availability |
+| venue-service | Go | Venue profiles, capacity, and facility management |
+| booking-service | Go | Event booking orchestration and confirmation |
+| check-in-service | Go | QR-code check-in and attendance tracking via Redis |
+
+---
+
+### 21. Auction (4 services)
+
+| Service | Language | Responsibility |
+|---|---|---|
+| auction-service | Elixir | Real-time auction lifecycle using BEAM/OTP concurrency |
+| bidding-service | Go | Bid submission, validation, and real-time leaderboard |
+| reserve-price-service | Go | Reserve price management and auto-extension rules |
+| auction-settlement-service | Java | Auction close, winner selection, and payment initiation |
+
+---
+
+### 22. Rental (4 services)
+
+| Service | Language | Responsibility |
+|---|---|---|
+| rental-service | Go | Rental agreement creation and lifecycle management |
+| lease-service | Kotlin | Long-term lease management and renewal scheduling |
+| damage-deposit-service | Go | Security deposit collection, hold, and release |
+| availability-calendar-service | Go | Real-time rental item availability calendar |
 
 ---
 

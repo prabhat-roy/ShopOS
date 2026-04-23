@@ -1,0 +1,13 @@
+apiVersion: v2
+name: atlantis
+description: Atlantis Terraform pull request automation
+type: application
+version: 1.0.0
+appVersion: "0.30.0"
+keywords:
+  - atlantis
+  - terraform
+  - gitops
+home: https://www.runatlantis.io
+maintainers:
+  - name: ShopOS Platform Team

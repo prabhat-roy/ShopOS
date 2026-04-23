@@ -1,0 +1,59 @@
+replicaCount: 2
+
+image:
+  repository: pomerium/pomerium
+  tag: "v0.27.0"
+  pullPolicy: IfNotPresent
+
+service:
+  type: ClusterIP
+  ports:
+    - name: http
+      port: 80
+      targetPort: 80
+    - name: https
+      port: 443
+      targetPort: 443
+
+ingress:
+  enabled: true
+  className: nginx
+  annotations:
+    nginx.ingress.kubernetes.io/ssl-passthrough: "true"
+  hosts:
+    - host: pomerium.shopos.internal
+      paths:
+        - path: /
+          pathType: Prefix
+  tls: []
+
+config:
+  sharedSecret: "changeme-replace-in-production"
+  cookieSecret: "changeme-replace-in-production"
+  idpClientId: "pomerium"
+  idpClientSecret: "changeme-replace-in-production"
+  idpProvider: "oidc"
+  idpProviderUrl: "http://keycloak/realms/shopos"
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 128Mi
+  limits:
+    cpu: 500m
+    memory: 256Mi
+
+podAnnotations:
+  prometheus.io/scrape: "true"
+  prometheus.io/port: "9090"
+  prometheus.io/path: "/metrics"
+
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 1000
+
+containerSecurityContext:
+  allowPrivilegeEscalation: false
+  capabilities:
+    drop:
+      - ALL

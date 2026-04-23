@@ -1,0 +1,14 @@
+apiVersion: v2
+name: driftctl
+description: driftctl IaC drift detection CronJob
+type: application
+version: 1.0.0
+appVersion: "0.40.0"
+keywords:
+  - driftctl
+  - drift-detection
+  - iac
+  - terraform
+home: https://driftctl.com
+maintainers:
+  - name: ShopOS Platform Team

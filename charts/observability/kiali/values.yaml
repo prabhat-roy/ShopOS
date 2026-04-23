@@ -1,0 +1,51 @@
+replicaCount: 1
+
+image:
+  repository: quay.io/kiali/kiali
+  tag: "v2.0.0"
+  pullPolicy: IfNotPresent
+
+service:
+  type: ClusterIP
+  port: 20001
+
+ingress:
+  enabled: true
+  className: nginx
+  annotations: {}
+  hosts:
+    - host: kiali.shopos.internal
+      paths:
+        - path: /
+          pathType: Prefix
+  tls: []
+
+istio:
+  namespace: istio-system
+
+auth:
+  strategy: anonymous
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 128Mi
+  limits:
+    cpu: 500m
+    memory: 512Mi
+
+podAnnotations:
+  prometheus.io/scrape: "true"
+  prometheus.io/port: "9090"
+  prometheus.io/path: "/metrics"
+
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 1000
+
+containerSecurityContext:
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: true
+  capabilities:
+    drop:
+      - ALL

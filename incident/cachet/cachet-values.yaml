@@ -1,0 +1,28 @@
+# Helm values override for Cachet production deployment
+replicaCount: 1
+
+image:
+  repository: cachethq/docker
+  tag: "latest"
+
+ingress:
+  enabled: true
+  className: nginx
+  hosts:
+    - host: status.shopos.internal
+      paths:
+        - path: /
+          pathType: Prefix
+
+pvc:
+  enabled: true
+  size: 5Gi
+  storageClass: standard
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 128Mi
+  limits:
+    cpu: 300m
+    memory: 256Mi

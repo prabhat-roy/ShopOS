@@ -1,0 +1,14 @@
+apiVersion: v2
+name: boundary
+description: HashiCorp Boundary identity-based access management
+type: application
+version: 1.0.0
+appVersion: "0.18.0"
+keywords:
+  - boundary
+  - hashicorp
+  - access-management
+  - zero-trust
+home: https://www.boundaryproject.io
+maintainers:
+  - name: ShopOS Platform Team

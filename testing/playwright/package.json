@@ -1,0 +1,20 @@
+{
+  "name": "@shopos/e2e-tests",
+  "version": "1.0.0",
+  "private": true,
+  "description": "ShopOS end-to-end tests with Playwright",
+  "scripts": {
+    "test": "playwright test",
+    "test:headed": "playwright test --headed",
+    "test:ui": "playwright test --ui",
+    "test:storefront": "playwright test tests/storefront.spec.ts",
+    "test:checkout": "playwright test tests/checkout.spec.ts",
+    "test:debug": "playwright test --debug",
+    "report": "playwright show-report",
+    "install-browsers": "playwright install --with-deps"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.49.0",
+    "typescript": "~5.6.0"
+  }
+}

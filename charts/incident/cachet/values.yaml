@@ -1,0 +1,53 @@
+replicaCount: 1
+
+image:
+  repository: cachethq/docker
+  tag: "latest"
+  pullPolicy: IfNotPresent
+
+service:
+  type: ClusterIP
+  port: 8000
+
+ingress:
+  enabled: true
+  className: nginx
+  annotations: {}
+  hosts:
+    - host: status.shopos.internal
+      paths:
+        - path: /
+          pathType: Prefix
+  tls: []
+
+pvc:
+  enabled: true
+  storageClass: standard
+  size: 5Gi
+  accessMode: ReadWriteOnce
+
+env:
+  APP_ENV: "production"
+  APP_DEBUG: "false"
+  APP_URL: "http://status.shopos.internal"
+  DB_DRIVER: "pgsql"
+  DB_HOST: "postgres"
+  DB_DATABASE: "cachet"
+  DB_USERNAME: "cachet"
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 128Mi
+  limits:
+    cpu: 300m
+    memory: 256Mi
+
+podSecurityContext:
+  runAsNonRoot: false
+
+containerSecurityContext:
+  allowPrivilegeEscalation: false
+  capabilities:
+    drop:
+      - ALL

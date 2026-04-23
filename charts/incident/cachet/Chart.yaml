@@ -1,0 +1,13 @@
+apiVersion: v2
+name: cachet
+description: Cachet open source status page system
+type: application
+version: 1.0.0
+appVersion: "3.0.0"
+keywords:
+  - cachet
+  - status-page
+  - incident
+home: https://cachethq.io
+maintainers:
+  - name: ShopOS Platform Team

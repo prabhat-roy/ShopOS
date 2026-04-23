@@ -1,0 +1,17 @@
+{
+  "name": "@shopos/load-tests",
+  "version": "1.0.0",
+  "private": true,
+  "description": "ShopOS load tests with Artillery",
+  "scripts": {
+    "test": "artillery run load-test.yml",
+    "test:quick": "artillery run --count 5 load-test.yml",
+    "test:report": "artillery run --output report.json load-test.yml && artillery report report.json",
+    "test:dryrun": "artillery run --dry-run load-test.yml"
+  },
+  "devDependencies": {
+    "artillery": "^2.0.0",
+    "@artilleryio/artillery-plugin-expect": "^2.0.0",
+    "@artilleryio/artillery-plugin-metrics-by-endpoint": "^0.3.0"
+  }
+}

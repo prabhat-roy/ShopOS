@@ -1,0 +1,43 @@
+replicaCount: 3
+
+image:
+  repository: yugabytedb/yugabyte
+  tag: "2.23.0.0-b710"
+  pullPolicy: IfNotPresent
+
+service:
+  type: ClusterIP
+  ports:
+    - name: ysql
+      port: 5433
+    - name: ycql
+      port: 9042
+    - name: master-ui
+      port: 7000
+    - name: tserver-ui
+      port: 9000
+
+storage:
+  size: 20Gi
+  storageClass: standard
+
+resources:
+  requests:
+    cpu: 500m
+    memory: 1Gi
+  limits:
+    cpu: 2000m
+    memory: 2Gi
+
+podAnnotations:
+  prometheus.io/scrape: "true"
+  prometheus.io/port: "9000"
+
+podSecurityContext:
+  runAsNonRoot: false
+
+containerSecurityContext:
+  allowPrivilegeEscalation: false
+  capabilities:
+    drop:
+      - ALL

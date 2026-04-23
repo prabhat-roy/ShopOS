@@ -1,0 +1,42 @@
+replicaCount: 1
+
+image:
+  repository: apache/apisix-dashboard
+  tag: "3.0.0"
+  pullPolicy: IfNotPresent
+
+service:
+  type: ClusterIP
+  port: 9000
+
+ingress:
+  enabled: true
+  className: nginx
+  annotations: {}
+  hosts:
+    - host: apisix-dashboard.shopos.internal
+      paths:
+        - path: /
+          pathType: Prefix
+  tls: []
+
+env:
+  APISIX_ADMIN_URL: "http://apisix:9180"
+  APISIX_ADMIN_KEY: "shopos-apisix-admin-key"
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 128Mi
+  limits:
+    cpu: 300m
+    memory: 256Mi
+
+podSecurityContext:
+  runAsNonRoot: false
+
+containerSecurityContext:
+  allowPrivilegeEscalation: false
+  capabilities:
+    drop:
+      - ALL

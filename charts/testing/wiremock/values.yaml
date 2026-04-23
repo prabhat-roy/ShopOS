@@ -1,0 +1,53 @@
+replicaCount: 1
+
+image:
+  repository: wiremock/wiremock
+  tag: "3.9.1"
+  pullPolicy: IfNotPresent
+
+service:
+  type: ClusterIP
+  port: 8080
+
+ingress:
+  enabled: true
+  className: nginx
+  annotations: {}
+  hosts:
+    - host: wiremock.shopos.internal
+      paths:
+        - path: /
+          pathType: Prefix
+  tls: []
+
+pvc:
+  enabled: true
+  storageClass: standard
+  size: 1Gi
+  accessMode: ReadWriteOnce
+  mountPath: /home/wiremock/mappings
+
+args:
+  - --port=8080
+  - --verbose
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 128Mi
+  limits:
+    cpu: 300m
+    memory: 256Mi
+
+podAnnotations:
+  prometheus.io/scrape: "false"
+
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 1000
+
+containerSecurityContext:
+  allowPrivilegeEscalation: false
+  capabilities:
+    drop:
+      - ALL

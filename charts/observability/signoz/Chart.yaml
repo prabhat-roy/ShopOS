@@ -1,0 +1,13 @@
+apiVersion: v2
+name: signoz
+description: SigNoz open source observability platform
+type: application
+version: 1.0.0
+appVersion: "0.53.0"
+keywords:
+  - signoz
+  - observability
+  - apm
+home: https://signoz.io
+maintainers:
+  - name: ShopOS Platform Team

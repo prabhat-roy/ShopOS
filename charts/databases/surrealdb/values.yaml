@@ -1,0 +1,40 @@
+replicaCount: 1
+
+image:
+  repository: surrealdb/surrealdb
+  tag: "v2.1.0"
+  pullPolicy: IfNotPresent
+
+service:
+  type: ClusterIP
+  port: 8000
+
+storage:
+  size: 10Gi
+  storageClass: standard
+
+args:
+  - start
+  - --log=info
+  - --bind=0.0.0.0:8000
+  - file://data/shopos.db
+
+resources:
+  requests:
+    cpu: 200m
+    memory: 256Mi
+  limits:
+    cpu: 1000m
+    memory: 1Gi
+
+podAnnotations:
+  prometheus.io/scrape: "false"
+
+podSecurityContext:
+  runAsNonRoot: false
+
+containerSecurityContext:
+  allowPrivilegeEscalation: false
+  capabilities:
+    drop:
+      - ALL

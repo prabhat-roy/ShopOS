@@ -1,0 +1,43 @@
+replicaCount: 1
+
+image:
+  repository: manticoresearch/manticore
+  tag: "6.3.6"
+  pullPolicy: IfNotPresent
+
+service:
+  type: ClusterIP
+  ports:
+    - name: mysql
+      port: 9306
+      targetPort: 9306
+    - name: http
+      port: 9308
+      targetPort: 9308
+
+storage:
+  size: 10Gi
+  storageClass: standard
+  mountPath: /var/lib/manticore
+
+resources:
+  requests:
+    cpu: 200m
+    memory: 512Mi
+  limits:
+    cpu: 1000m
+    memory: 2Gi
+
+podAnnotations:
+  prometheus.io/scrape: "true"
+  prometheus.io/port: "9308"
+  prometheus.io/path: "/metrics"
+
+podSecurityContext:
+  runAsNonRoot: false
+
+containerSecurityContext:
+  allowPrivilegeEscalation: false
+  capabilities:
+    drop:
+      - ALL

@@ -1,0 +1,13 @@
+apiVersion: v2
+name: prefect
+description: Prefect modern dataflow and workflow orchestration
+type: application
+version: 1.0.0
+appVersion: "3.1.0"
+keywords:
+  - prefect
+  - workflow
+  - orchestration
+home: https://www.prefect.io
+maintainers:
+  - name: ShopOS Platform Team

@@ -1,0 +1,62 @@
+master:
+  replicaCount: 1
+  image:
+    repository: chrislusf/seaweedfs
+    tag: "3.78"
+    pullPolicy: IfNotPresent
+  service:
+    type: ClusterIP
+    ports:
+      - name: http
+        port: 9333
+      - name: grpc
+        port: 19333
+
+volume:
+  replicaCount: 3
+  image:
+    repository: chrislusf/seaweedfs
+    tag: "3.78"
+    pullPolicy: IfNotPresent
+  storage:
+    size: 50Gi
+    storageClass: standard
+    mountPath: /data
+  service:
+    type: ClusterIP
+    ports:
+      - name: http
+        port: 8080
+      - name: grpc
+        port: 18080
+
+filer:
+  enabled: true
+  image:
+    repository: chrislusf/seaweedfs
+    tag: "3.78"
+  service:
+    type: ClusterIP
+    port: 8888
+
+resources:
+  requests:
+    cpu: 200m
+    memory: 256Mi
+  limits:
+    cpu: 1000m
+    memory: 1Gi
+
+podAnnotations:
+  prometheus.io/scrape: "true"
+  prometheus.io/port: "9333"
+  prometheus.io/path: "/metrics"
+
+podSecurityContext:
+  runAsNonRoot: false
+
+containerSecurityContext:
+  allowPrivilegeEscalation: false
+  capabilities:
+    drop:
+      - ALL

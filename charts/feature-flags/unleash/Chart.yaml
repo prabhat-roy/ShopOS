@@ -1,0 +1,13 @@
+apiVersion: v2
+name: unleash
+description: Open source feature flag management
+type: application
+version: 1.0.0
+appVersion: "6.3.0"
+keywords:
+  - unleash
+  - feature-flags
+  - feature-toggles
+home: https://www.getunleash.io
+maintainers:
+  - name: ShopOS Platform Team

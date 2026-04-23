@@ -1,0 +1,73 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "atlantis.fullname" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "atlantis.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "atlantis.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "atlantis.selectorLabels" . | nindent 8 }}
+    spec:
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      containers:
+        - name: atlantis
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          securityContext:
+            {{- toYaml .Values.containerSecurityContext | nindent 12 }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.service.port }}
+              protocol: TCP
+          args:
+            - server
+            - --atlantis-url=http://atlantis.shopos.internal
+            - --repo-allowlist={{ .Values.config.repoAllowlist }}
+            - --log-level={{ .Values.config.logLevel }}
+          env:
+            - name: ATLANTIS_DATA_DIR
+              value: {{ .Values.storage.mountPath }}
+            - name: GITHUB_USER
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "atlantis.fullname" . }}-secret
+                  key: github-user
+            - name: GITHUB_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "atlantis.fullname" . }}-secret
+                  key: github-token
+            - name: ATLANTIS_WEBHOOK_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "atlantis.fullname" . }}-secret
+                  key: webhook-secret
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            initialDelaySeconds: 20
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 5
+          volumeMounts:
+            - name: data
+              mountPath: {{ .Values.storage.mountPath }}
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: {{ include "atlantis.fullname" . }}-pvc

@@ -1,0 +1,53 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "apisix.fullname" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "apisix.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "apisix.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "apisix.selectorLabels" . | nindent 8 }}
+      annotations:
+        {{- toYaml .Values.podAnnotations | nindent 8 }}
+    spec:
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      containers:
+        - name: apisix
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          securityContext:
+            {{- toYaml .Values.containerSecurityContext | nindent 12 }}
+          ports:
+            - name: http
+              containerPort: 9080
+              protocol: TCP
+            - name: admin
+              containerPort: 9180
+              protocol: TCP
+          env:
+            - name: APISIX_ADMIN_KEY
+              value: {{ .Values.admin.key | quote }}
+          livenessProbe:
+            httpGet:
+              path: /apisix/admin/routes
+              port: admin
+              httpHeaders:
+                - name: X-API-KEY
+                  value: {{ .Values.admin.key }}
+            initialDelaySeconds: 30
+            periodSeconds: 15
+          readinessProbe:
+            tcpSocket:
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 5
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}

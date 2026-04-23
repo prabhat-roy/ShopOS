@@ -1,0 +1,27 @@
+# Helm values override for Dagster production deployment
+replicaCount: 1
+
+image:
+  repository: dagster/dagster-celery-k8s
+  tag: "1.9.0"
+
+ingress:
+  enabled: true
+  className: nginx
+  hosts:
+    - host: dagster.shopos.internal
+      paths:
+        - path: /
+          pathType: Prefix
+
+storage:
+  size: 10Gi
+  storageClass: standard
+
+resources:
+  requests:
+    cpu: 200m
+    memory: 256Mi
+  limits:
+    cpu: 500m
+    memory: 512Mi

@@ -1,0 +1,13 @@
+apiVersion: v2
+name: manticore-search
+description: Manticore Search — fast open source full-text search engine
+type: application
+version: 1.0.0
+appVersion: "6.3.6"
+keywords:
+  - manticore
+  - search
+  - full-text
+home: https://manticoresearch.com
+maintainers:
+  - name: ShopOS Platform Team

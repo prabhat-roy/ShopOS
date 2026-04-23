@@ -1,0 +1,13 @@
+apiVersion: v2
+name: typesense
+description: Typesense fast typo-tolerant search engine
+type: application
+version: 1.0.0
+appVersion: "27.0"
+keywords:
+  - typesense
+  - search
+  - full-text
+home: https://typesense.org
+maintainers:
+  - name: ShopOS Platform Team

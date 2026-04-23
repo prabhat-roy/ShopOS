@@ -1,0 +1,77 @@
+# APISIX configuration
+apisix:
+  node_listen: 9080
+  enable_ipv6: false
+  enable_admin: true
+  admin_listen:
+    ip: 0.0.0.0
+    port: 9180
+  admin_api_mtls:
+    admin_ssl_cert: ""
+    admin_ssl_cert_key: ""
+
+  admin_key:
+    - name: admin
+      key: shopos-apisix-admin-key
+      role: admin
+    - name: viewer
+      key: shopos-apisix-viewer-key
+      role: viewer
+
+deployment:
+  admin:
+    admin_key_required: true
+
+etcd:
+  host:
+    - "http://etcd:2379"
+  prefix: "/apisix"
+  timeout: 30
+
+plugin_attr:
+  prometheus:
+    export_addr:
+      ip: "0.0.0.0"
+      port: 9091
+
+plugins:
+  - api-breaker
+  - authz-keycloak
+  - basic-auth
+  - batch-requests
+  - consumer-restriction
+  - cors
+  - echo
+  - fault-injection
+  - grpc-transcode
+  - hmac-auth
+  - http-logger
+  - ip-restriction
+  - jwt-auth
+  - kafka-logger
+  - key-auth
+  - limit-conn
+  - limit-count
+  - limit-req
+  - node-status
+  - opa
+  - openid-connect
+  - prometheus
+  - proxy-cache
+  - proxy-mirror
+  - proxy-rewrite
+  - redirect
+  - referer-restriction
+  - request-id
+  - request-validation
+  - response-rewrite
+  - serverless-post-function
+  - serverless-pre-function
+  - skywalking
+  - syslog
+  - tcp-logger
+  - traffic-split
+  - ua-restriction
+  - uri-blocker
+  - wolf-rbac
+  - zipkin

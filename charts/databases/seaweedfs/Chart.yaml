@@ -1,0 +1,13 @@
+apiVersion: v2
+name: seaweedfs
+description: SeaweedFS distributed object storage
+type: application
+version: 1.0.0
+appVersion: "3.78"
+keywords:
+  - seaweedfs
+  - object-storage
+  - distributed
+home: https://github.com/seaweedfs/seaweedfs
+maintainers:
+  - name: ShopOS Platform Team

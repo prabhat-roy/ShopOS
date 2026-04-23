@@ -1,0 +1,26 @@
+# Helm values override for APISIX production deployment
+replicaCount: 2
+
+image:
+  repository: apache/apisix
+  tag: "3.10.0-debian"
+
+ingress:
+  enabled: true
+  className: nginx
+  hosts:
+    - host: apisix.shopos.internal
+      paths:
+        - path: /
+          pathType: Prefix
+
+resources:
+  requests:
+    cpu: 500m
+    memory: 512Mi
+  limits:
+    cpu: 2000m
+    memory: 1Gi
+
+admin:
+  key: "shopos-apisix-admin-key"

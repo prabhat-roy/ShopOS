@@ -1,0 +1,13 @@
+apiVersion: v2
+name: apache-camel
+description: Apache Camel K integration framework on Kubernetes
+type: application
+version: 1.0.0
+appVersion: "4.8.0"
+keywords:
+  - camel
+  - integration
+  - apache
+home: https://camel.apache.org/camel-k
+maintainers:
+  - name: ShopOS Platform Team

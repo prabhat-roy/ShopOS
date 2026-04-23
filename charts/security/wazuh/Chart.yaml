@@ -1,0 +1,13 @@
+apiVersion: v2
+name: wazuh
+description: Wazuh open source security monitoring platform
+type: application
+version: 1.0.0
+appVersion: "4.9.0"
+keywords:
+  - wazuh
+  - security
+  - siem
+home: https://wazuh.com
+maintainers:
+  - name: ShopOS Platform Team

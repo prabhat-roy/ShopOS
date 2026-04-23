@@ -1,0 +1,25 @@
+# Helm values override for Nomad production deployment
+replicaCount: 3
+
+image:
+  repository: hashicorp/nomad
+  tag: "1.9.0"
+
+storage:
+  size: 10Gi
+  storageClass: standard
+
+server:
+  enabled: true
+  bootstrapExpect: 3
+
+client:
+  enabled: true
+
+resources:
+  requests:
+    cpu: 200m
+    memory: 256Mi
+  limits:
+    cpu: 1000m
+    memory: 512Mi

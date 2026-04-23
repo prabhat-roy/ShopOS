@@ -1,0 +1,13 @@
+apiVersion: v2
+name: yugabytedb
+description: YugabyteDB distributed SQL database
+type: application
+version: 1.0.0
+appVersion: "2.23.0"
+keywords:
+  - yugabytedb
+  - database
+  - distributed-sql
+home: https://www.yugabyte.com
+maintainers:
+  - name: ShopOS Platform Team

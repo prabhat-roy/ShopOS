@@ -1,0 +1,14 @@
+apiVersion: v2
+name: grafana-mimir
+description: Grafana Mimir scalable long-term Prometheus metrics storage
+type: application
+version: 1.0.0
+appVersion: "2.14.0"
+keywords:
+  - grafana
+  - mimir
+  - prometheus
+  - metrics
+home: https://grafana.com/oss/mimir
+maintainers:
+  - name: ShopOS Platform Team

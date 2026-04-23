@@ -1,0 +1,13 @@
+apiVersion: v2
+name: sealed-secrets
+description: Sealed Secrets controller — encrypt Kubernetes Secrets for safe GitOps storage
+type: application
+version: 1.0.0
+appVersion: "0.27.0"
+keywords:
+  - sealed-secrets
+  - secrets
+  - gitops
+home: https://github.com/bitnami-labs/sealed-secrets
+maintainers:
+  - name: ShopOS Platform Team

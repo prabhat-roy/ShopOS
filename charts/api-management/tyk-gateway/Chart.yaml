@@ -1,0 +1,13 @@
+apiVersion: v2
+name: tyk-gateway
+description: Tyk open source API gateway
+type: application
+version: 1.0.0
+appVersion: "5.6.0"
+keywords:
+  - tyk
+  - api-gateway
+  - api-management
+home: https://tyk.io
+maintainers:
+  - name: ShopOS Platform Team

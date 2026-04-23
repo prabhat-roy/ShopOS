@@ -1,0 +1,63 @@
+{
+  "resource_version": 1,
+  "metadata": {
+    "version": 3,
+    "sources": [
+      {
+        "name": "shopos_default",
+        "kind": "postgres",
+        "tables": [],
+        "configuration": {
+          "connection_info": {
+            "database_url": {
+              "from_env": "HASURA_GRAPHQL_DATABASE_URL"
+            },
+            "pool_settings": {
+              "max_connections": 50,
+              "idle_timeout": 180,
+              "retries": 1,
+              "pool_timeout": 360,
+              "connection_lifetime": 600
+            },
+            "use_prepared_statements": true,
+            "isolation_level": "read-committed"
+          }
+        }
+      }
+    ],
+    "remote_schemas": [],
+    "actions": [
+      {
+        "name": "health_check",
+        "definition": {
+          "handler": "{{HASURA_GRAPHQL_ACTIONS_HANDLER_WEBHOOK_BASEURL}}/health",
+          "output_type": "HealthCheckOutput",
+          "arguments": [],
+          "type": "query",
+          "kind": "synchronous"
+        },
+        "comment": "Health check action"
+      }
+    ],
+    "custom_types": {
+      "objects": [
+        {
+          "name": "HealthCheckOutput",
+          "fields": [
+            {
+              "name": "status",
+              "type": "String!"
+            }
+          ]
+        }
+      ],
+      "scalars": [],
+      "enums": [],
+      "input_objects": []
+    },
+    "allowlist": [],
+    "cron_triggers": [],
+    "inherited_roles": [],
+    "query_collections": []
+  }
+}

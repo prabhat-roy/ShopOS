@@ -1,0 +1,14 @@
+apiVersion: v2
+name: pomerium
+description: Pomerium zero-trust identity-aware access proxy
+type: application
+version: 1.0.0
+appVersion: "0.27.0"
+keywords:
+  - pomerium
+  - zero-trust
+  - proxy
+  - security
+home: https://www.pomerium.com
+maintainers:
+  - name: ShopOS Platform Team

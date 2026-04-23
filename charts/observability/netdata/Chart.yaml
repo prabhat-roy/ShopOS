@@ -1,0 +1,13 @@
+apiVersion: v2
+name: netdata
+description: Netdata real-time performance and health monitoring
+type: application
+version: 1.0.0
+appVersion: "1.47.0"
+keywords:
+  - netdata
+  - monitoring
+  - observability
+home: https://www.netdata.cloud
+maintainers:
+  - name: ShopOS Platform Team

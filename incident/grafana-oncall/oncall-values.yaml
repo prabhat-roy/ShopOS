@@ -1,0 +1,23 @@
+# Helm values override for Grafana OnCall production deployment
+replicaCount: 1
+
+image:
+  repository: grafana/oncall
+  tag: "v1.9.0"
+
+ingress:
+  enabled: true
+  className: nginx
+  hosts:
+    - host: oncall.shopos.internal
+      paths:
+        - path: /
+          pathType: Prefix
+
+resources:
+  requests:
+    cpu: 200m
+    memory: 256Mi
+  limits:
+    cpu: 500m
+    memory: 512Mi

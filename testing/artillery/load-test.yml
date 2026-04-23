@@ -1,0 +1,106 @@
+# Artillery load test configuration for ShopOS
+# Usage: artillery run load-test.yml
+
+config:
+  target: "{{ $processEnvironment.TARGET_URL || 'http://localhost:8080' }}"
+  phases:
+    - name: "Warm up"
+      duration: 30
+      arrivalRate: 2
+      rampTo: 10
+    - name: "Ramp up load"
+      duration: 60
+      arrivalRate: 10
+      rampTo: 50
+    - name: "Sustained load"
+      duration: 120
+      arrivalRate: 50
+    - name: "Spike"
+      duration: 30
+      arrivalRate: 200
+    - name: "Cool down"
+      duration: 30
+      arrivalRate: 10
+      rampTo: 2
+
+  defaults:
+    headers:
+      Content-Type: "application/json"
+      Accept: "application/json"
+      X-Request-ID: "{{ $uuid }}"
+
+  plugins:
+    metrics-by-endpoint:
+      useOnlyRequestNames: true
+    expect: {}
+
+  ensure:
+    p99: 2000
+    p95: 1000
+    median: 500
+    maxErrorRate: 1
+
+scenarios:
+  - name: "Health checks"
+    weight: 10
+    flow:
+      - get:
+          url: "/healthz"
+          name: "Health check"
+          expect:
+            - statusCode: 200
+            - contentType: json
+            - hasProperty: "status"
+
+  - name: "Product catalog browse"
+    weight: 40
+    flow:
+      - get:
+          url: "/api/v1/products"
+          name: "List products"
+          qs:
+            page: "{{ $randomInt(1, 10) }}"
+            limit: "20"
+          expect:
+            - statusCode: 200
+
+      - get:
+          url: "/api/v1/products/{{ $randomInt(1, 100) }}"
+          name: "Get product detail"
+          expect:
+            - statusCode: [200, 404]
+
+  - name: "Search flow"
+    weight: 30
+    flow:
+      - get:
+          url: "/api/v1/search"
+          name: "Search products"
+          qs:
+            q: "{{ ['laptop', 'phone', 'headphones', 'keyboard', 'monitor'][$randomInt(0, 4)] }}"
+            limit: "20"
+          expect:
+            - statusCode: 200
+
+  - name: "Cart operations"
+    weight: 20
+    flow:
+      - post:
+          url: "/api/v1/cart"
+          name: "Create cart"
+          json:
+            session_id: "{{ $uuid }}"
+          expect:
+            - statusCode: [200, 201]
+          capture:
+            - json: "$.id"
+              as: cartId
+
+      - post:
+          url: "/api/v1/cart/{{ cartId }}/items"
+          name: "Add to cart"
+          json:
+            product_id: "{{ $randomInt(1, 100) }}"
+            quantity: "{{ $randomInt(1, 5) }}"
+          expect:
+            - statusCode: [200, 201]

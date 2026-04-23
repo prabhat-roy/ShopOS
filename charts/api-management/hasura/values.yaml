@@ -1,0 +1,48 @@
+replicaCount: 2
+
+image:
+  repository: hasura/graphql-engine
+  tag: "v2.42.0"
+  pullPolicy: IfNotPresent
+
+service:
+  type: ClusterIP
+  port: 8080
+
+ingress:
+  enabled: true
+  className: nginx
+  annotations: {}
+  hosts:
+    - host: hasura.shopos.internal
+      paths:
+        - path: /
+          pathType: Prefix
+  tls: []
+
+env:
+  HASURA_GRAPHQL_ENABLE_CONSOLE: "true"
+  HASURA_GRAPHQL_DEV_MODE: "false"
+  HASURA_GRAPHQL_ENABLED_LOG_TYPES: "startup, http-log, webhook-log, websocket-log, query-log"
+
+resources:
+  requests:
+    cpu: 200m
+    memory: 256Mi
+  limits:
+    cpu: 1000m
+    memory: 512Mi
+
+podAnnotations:
+  prometheus.io/scrape: "true"
+  prometheus.io/port: "8080"
+  prometheus.io/path: "/v1/metrics"
+
+podSecurityContext:
+  runAsNonRoot: false
+
+containerSecurityContext:
+  allowPrivilegeEscalation: false
+  capabilities:
+    drop:
+      - ALL

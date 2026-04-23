@@ -1,0 +1,27 @@
+# Helm values override for Prefect production deployment
+replicaCount: 1
+
+image:
+  repository: prefecthq/prefect
+  tag: "3-python3.12"
+
+ingress:
+  enabled: true
+  className: nginx
+  hosts:
+    - host: prefect.shopos.internal
+      paths:
+        - path: /
+          pathType: Prefix
+
+storage:
+  size: 10Gi
+  storageClass: standard
+
+resources:
+  requests:
+    cpu: 200m
+    memory: 256Mi
+  limits:
+    cpu: 500m
+    memory: 512Mi

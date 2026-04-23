@@ -1,0 +1,52 @@
+replicaCount: 1
+
+image:
+  repository: signoz/frontend
+  tag: "0.53.0"
+  pullPolicy: IfNotPresent
+
+service:
+  type: ClusterIP
+  port: 3301
+
+ingress:
+  enabled: true
+  className: nginx
+  annotations: {}
+  hosts:
+    - host: signoz.shopos.internal
+      paths:
+        - path: /
+          pathType: Prefix
+  tls: []
+
+queryService:
+  image:
+    repository: signoz/query-service
+    tag: "0.53.0"
+  port: 8080
+
+clickhouse:
+  host: clickhouse
+  port: 9000
+  database: signoz_metrics
+
+resources:
+  requests:
+    cpu: 200m
+    memory: 256Mi
+  limits:
+    cpu: 500m
+    memory: 512Mi
+
+podAnnotations:
+  prometheus.io/scrape: "false"
+
+podSecurityContext:
+  runAsNonRoot: false
+
+containerSecurityContext:
+  allowPrivilegeEscalation: false
+  capabilities:
+    drop:
+      - ALL

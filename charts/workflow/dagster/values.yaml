@@ -1,0 +1,58 @@
+replicaCount: 1
+
+image:
+  repository: dagster/dagster-celery-k8s
+  tag: "1.9.0"
+  pullPolicy: IfNotPresent
+
+service:
+  type: ClusterIP
+  port: 3000
+
+ingress:
+  enabled: true
+  className: nginx
+  annotations: {}
+  hosts:
+    - host: dagster.shopos.internal
+      paths:
+        - path: /
+          pathType: Prefix
+  tls: []
+
+storage:
+  size: 10Gi
+  storageClass: standard
+  mountPath: /opt/dagster/dagster_home
+
+env:
+  DAGSTER_HOME: "/opt/dagster/dagster_home"
+  DAGSTER_PG_HOST: "postgres"
+  DAGSTER_PG_DB: "dagster"
+  DAGSTER_PG_USERNAME: "dagster"
+
+postgresql:
+  enabled: true
+  database: dagster
+  username: dagster
+
+resources:
+  requests:
+    cpu: 200m
+    memory: 256Mi
+  limits:
+    cpu: 500m
+    memory: 512Mi
+
+podAnnotations:
+  prometheus.io/scrape: "true"
+  prometheus.io/port: "3000"
+
+podSecurityContext:
+  runAsNonRoot: false
+
+containerSecurityContext:
+  allowPrivilegeEscalation: false
+  capabilities:
+    drop:
+      - ALL

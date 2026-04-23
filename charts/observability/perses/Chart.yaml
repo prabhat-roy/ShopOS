@@ -1,0 +1,13 @@
+apiVersion: v2
+name: perses
+description: Perses open source dashboarding and observability tool
+type: application
+version: 1.0.0
+appVersion: "0.49.0"
+keywords:
+  - perses
+  - dashboards
+  - observability
+home: https://perses.dev
+maintainers:
+  - name: ShopOS Platform Team

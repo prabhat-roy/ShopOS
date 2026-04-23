@@ -1,0 +1,29 @@
+# Helm values override for Unleash production deployment
+replicaCount: 2
+
+image:
+  repository: unleashorg/unleash-server
+  tag: "6.3.0"
+
+ingress:
+  enabled: true
+  className: nginx
+  hosts:
+    - host: unleash.shopos.internal
+      paths:
+        - path: /
+          pathType: Prefix
+
+postgresql:
+  enabled: true
+  auth:
+    database: unleash
+    username: unleash
+
+resources:
+  requests:
+    cpu: 200m
+    memory: 256Mi
+  limits:
+    cpu: 1000m
+    memory: 512Mi

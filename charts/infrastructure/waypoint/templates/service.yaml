@@ -1,0 +1,33 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "waypoint.fullname" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "waypoint.labels" . | nindent 4 }}
+spec:
+  type: {{ .Values.service.type }}
+  ports:
+    {{- range .Values.service.ports }}
+    - port: {{ .port }}
+      targetPort: {{ .name }}
+      protocol: TCP
+      name: {{ .name }}
+    {{- end }}
+  selector:
+    {{- include "waypoint.selectorLabels" . | nindent 4 }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "waypoint.fullname" . }}-headless
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "waypoint.labels" . | nindent 4 }}
+spec:
+  clusterIP: None
+  ports:
+    - port: 9701
+      name: grpc
+  selector:
+    {{- include "waypoint.selectorLabels" . | nindent 4 }}

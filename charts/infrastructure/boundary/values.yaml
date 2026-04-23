@@ -1,0 +1,56 @@
+replicaCount: 2
+
+image:
+  repository: hashicorp/boundary
+  tag: "0.18.0"
+  pullPolicy: IfNotPresent
+
+service:
+  type: ClusterIP
+  ports:
+    - name: api
+      port: 9200
+      targetPort: 9200
+    - name: cluster
+      port: 9201
+      targetPort: 9201
+    - name: data
+      port: 9202
+      targetPort: 9202
+
+ingress:
+  enabled: true
+  className: nginx
+  annotations: {}
+  hosts:
+    - host: boundary.shopos.internal
+      paths:
+        - path: /
+          pathType: Prefix
+  tls: []
+
+config:
+  controller: true
+  worker: true
+  database:
+    url: "postgresql://boundary:boundary@postgres/boundary?sslmode=disable"
+
+resources:
+  requests:
+    cpu: 200m
+    memory: 256Mi
+  limits:
+    cpu: 500m
+    memory: 512Mi
+
+podAnnotations:
+  prometheus.io/scrape: "false"
+
+podSecurityContext:
+  runAsNonRoot: false
+
+containerSecurityContext:
+  allowPrivilegeEscalation: false
+  capabilities:
+    drop:
+      - ALL

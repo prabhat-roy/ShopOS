@@ -1,0 +1,13 @@
+apiVersion: v2
+name: surrealdb
+description: SurrealDB multi-model database
+type: application
+version: 1.0.0
+appVersion: "2.1.0"
+keywords:
+  - surrealdb
+  - database
+  - multi-model
+home: https://surrealdb.com
+maintainers:
+  - name: ShopOS Platform Team

@@ -1,0 +1,70 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ include "yugabytedb.fullname" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "yugabytedb.labels" . | nindent 4 }}
+spec:
+  serviceName: {{ include "yugabytedb.fullname" . }}-headless
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "yugabytedb.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "yugabytedb.selectorLabels" . | nindent 8 }}
+      annotations:
+        {{- toYaml .Values.podAnnotations | nindent 8 }}
+    spec:
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      containers:
+        - name: yugabytedb
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          securityContext:
+            {{- toYaml .Values.containerSecurityContext | nindent 12 }}
+          command:
+            - /home/yugabyte/bin/yugabyted
+            - start
+            - --daemon=false
+            - --tserver_flags=yb_enable_read_committed_isolation=true
+          ports:
+            - name: ysql
+              containerPort: 5433
+            - name: ycql
+              containerPort: 9042
+            - name: master-ui
+              containerPort: 7000
+            - name: tserver-ui
+              containerPort: 9000
+          livenessProbe:
+            httpGet:
+              path: /status
+              port: tserver-ui
+            initialDelaySeconds: 60
+            periodSeconds: 20
+          readinessProbe:
+            tcpSocket:
+              port: ysql
+            initialDelaySeconds: 30
+            periodSeconds: 10
+          volumeMounts:
+            - name: data
+              mountPath: /home/yugabyte/yb_data
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+      spec:
+        accessModes:
+          - ReadWriteOnce
+        {{- if .Values.storage.storageClass }}
+        storageClassName: {{ .Values.storage.storageClass }}
+        {{- end }}
+        resources:
+          requests:
+            storage: {{ .Values.storage.size }}

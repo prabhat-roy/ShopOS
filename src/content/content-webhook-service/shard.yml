@@ -1,0 +1,16 @@
+name: content-webhook-service
+version: 1.0.0
+
+description: Content Webhook Service — receives and dispatches content CMS webhooks
+
+authors:
+  - Enterprise Platform
+
+dependencies:
+  kemal:
+    github: kemalcr/kemal
+    version: ~> 1.4.0
+
+crystal: ~> 1.13
+
+license: MIT

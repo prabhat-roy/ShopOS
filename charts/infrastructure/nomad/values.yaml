@@ -1,0 +1,53 @@
+replicaCount: 3
+
+image:
+  repository: hashicorp/nomad
+  tag: "1.9.0"
+  pullPolicy: IfNotPresent
+
+service:
+  type: ClusterIP
+  ports:
+    - name: http
+      port: 4646
+      targetPort: 4646
+    - name: rpc
+      port: 4647
+      targetPort: 4647
+    - name: serf
+      port: 4648
+      targetPort: 4648
+
+storage:
+  size: 10Gi
+  storageClass: standard
+  mountPath: /opt/nomad/data
+
+server:
+  enabled: true
+  bootstrapExpect: 3
+
+client:
+  enabled: true
+
+resources:
+  requests:
+    cpu: 200m
+    memory: 256Mi
+  limits:
+    cpu: 1000m
+    memory: 512Mi
+
+podAnnotations:
+  prometheus.io/scrape: "true"
+  prometheus.io/port: "4646"
+  prometheus.io/path: "/v1/metrics?format=prometheus"
+
+podSecurityContext:
+  runAsNonRoot: false
+
+containerSecurityContext:
+  allowPrivilegeEscalation: false
+  capabilities:
+    drop:
+      - ALL

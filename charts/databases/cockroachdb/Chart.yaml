@@ -1,0 +1,13 @@
+apiVersion: v2
+name: cockroachdb
+description: CockroachDB distributed SQL database
+type: application
+version: 1.0.0
+appVersion: "24.2.0"
+keywords:
+  - cockroachdb
+  - database
+  - distributed-sql
+home: https://www.cockroachlabs.com
+maintainers:
+  - name: ShopOS Platform Team

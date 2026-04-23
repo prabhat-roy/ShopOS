@@ -1,0 +1,61 @@
+manager:
+  replicaCount: 1
+  image:
+    repository: wazuh/wazuh-manager
+    tag: "4.9.0"
+    pullPolicy: IfNotPresent
+  storage:
+    size: 50Gi
+    storageClass: standard
+    mountPath: /var/ossec/data
+  service:
+    type: ClusterIP
+    ports:
+      - name: agent
+        port: 1514
+      - name: api
+        port: 55000
+      - name: syslog
+        port: 514
+
+dashboard:
+  replicaCount: 1
+  image:
+    repository: wazuh/wazuh-dashboard
+    tag: "4.9.0"
+    pullPolicy: IfNotPresent
+  service:
+    type: ClusterIP
+    port: 5601
+  ingress:
+    enabled: true
+    className: nginx
+    annotations: {}
+    hosts:
+      - host: wazuh.shopos.internal
+        paths:
+          - path: /
+            pathType: Prefix
+    tls: []
+
+indexer:
+  image:
+    repository: wazuh/wazuh-indexer
+    tag: "4.9.0"
+  service:
+    type: ClusterIP
+    port: 9200
+
+resources:
+  requests:
+    cpu: 500m
+    memory: 1Gi
+  limits:
+    cpu: 2000m
+    memory: 4Gi
+
+podAnnotations:
+  prometheus.io/scrape: "false"
+
+podSecurityContext:
+  runAsNonRoot: false

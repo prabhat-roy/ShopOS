@@ -1,0 +1,37 @@
+replicaCount: 1
+
+image:
+  repository: typesense/typesense
+  tag: "27.0"
+  pullPolicy: IfNotPresent
+
+service:
+  type: ClusterIP
+  port: 8108
+
+storage:
+  size: 10Gi
+  storageClass: standard
+  mountPath: /data
+
+apiKey: "changeme-replace-in-production"
+
+resources:
+  requests:
+    cpu: 200m
+    memory: 512Mi
+  limits:
+    cpu: 1000m
+    memory: 2Gi
+
+podAnnotations:
+  prometheus.io/scrape: "false"
+
+podSecurityContext:
+  runAsNonRoot: false
+
+containerSecurityContext:
+  allowPrivilegeEscalation: false
+  capabilities:
+    drop:
+      - ALL

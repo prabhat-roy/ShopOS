@@ -1,0 +1,28 @@
+# Helm values override for EventStoreDB production deployment
+replicaCount: 3
+
+image:
+  repository: eventstore/eventstore
+  tag: "24.10.0-jammy"
+
+storage:
+  size: 20Gi
+  storageClass: standard
+  mountPath: /var/lib/eventstore
+
+env:
+  EVENTSTORE_CLUSTER_SIZE: "3"
+  EVENTSTORE_RUN_PROJECTIONS: "All"
+  EVENTSTORE_START_STANDARD_PROJECTIONS: "true"
+  EVENTSTORE_INSECURE: "true"
+  EVENTSTORE_ENABLE_ATOM_PUB_OVER_HTTP: "true"
+  EVENTSTORE_LOG_LEVEL: "Information"
+  EVENTSTORE_LOG_FORMAT: "Json"
+
+resources:
+  requests:
+    cpu: 500m
+    memory: 1Gi
+  limits:
+    cpu: 2000m
+    memory: 2Gi

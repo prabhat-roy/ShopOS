@@ -4933,6 +4933,549 @@ networks:
     networks:
       - shopos
 
+  # ===========================================================================
+  # DOMAIN: EVENTS & TICKETING (6 services)
+  # ===========================================================================
+
+  event-service:
+    build: ./src/events-ticketing/event-service
+    image: shopos/event-service:latest
+    ports: ["50300:50300"]
+    environment: [PORT=50300]
+    networks: [shopos]
+
+  ticket-service:
+    build: ./src/events-ticketing/ticket-service
+    image: shopos/ticket-service:latest
+    ports: ["50301:50301"]
+    networks: [shopos]
+
+  seat-map-service:
+    build: ./src/events-ticketing/seat-map-service
+    image: shopos/seat-map-service:latest
+    ports: ["50302:50302"]
+    networks: [shopos]
+
+  venue-service:
+    build: ./src/events-ticketing/venue-service
+    image: shopos/venue-service:latest
+    ports: ["50303:50303"]
+    networks: [shopos]
+
+  booking-service:
+    build: ./src/events-ticketing/booking-service
+    image: shopos/booking-service:latest
+    ports: ["50304:50304"]
+    networks: [shopos]
+
+  check-in-service:
+    build: ./src/events-ticketing/check-in-service
+    image: shopos/check-in-service:latest
+    ports: ["50305:50305"]
+    networks: [shopos]
+
+  # ===========================================================================
+  # DOMAIN: AUCTION (4 services)
+  # ===========================================================================
+
+  auction-service:
+    build: ./src/auction/auction-service
+    image: shopos/auction-service:latest
+    ports: ["8211:8211"]
+    networks: [shopos]
+
+  bidding-service:
+    build: ./src/auction/bidding-service
+    image: shopos/bidding-service:latest
+    ports: ["50311:50311"]
+    networks: [shopos]
+
+  reserve-price-service:
+    build: ./src/auction/reserve-price-service
+    image: shopos/reserve-price-service:latest
+    ports: ["50312:50312"]
+    networks: [shopos]
+
+  auction-settlement-service:
+    build: ./src/auction/auction-settlement-service
+    image: shopos/auction-settlement-service:latest
+    ports: ["50313:50313"]
+    networks: [shopos]
+
+  # ===========================================================================
+  # DOMAIN: RENTAL (4 services)
+  # ===========================================================================
+
+  rental-service:
+    build: ./src/rental/rental-service
+    image: shopos/rental-service:latest
+    ports: ["50320:50320"]
+    networks: [shopos]
+
+  lease-service:
+    build: ./src/rental/lease-service
+    image: shopos/lease-service:latest
+    ports: ["50321:50321"]
+    networks: [shopos]
+
+  damage-deposit-service:
+    build: ./src/rental/damage-deposit-service
+    image: shopos/damage-deposit-service:latest
+    ports: ["50322:50322"]
+    networks: [shopos]
+
+  availability-calendar-service:
+    build: ./src/rental/availability-calendar-service
+    image: shopos/availability-calendar-service:latest
+    ports: ["50323:50323"]
+    networks: [shopos]
+
+  # ===========================================================================
+  # PLATFORM — NEW SERVICES
+  # ===========================================================================
+
+  presence-service:
+    build: ./src/platform/presence-service
+    image: shopos/presence-service:latest
+    ports: ["8212:8212"]
+    networks: [shopos]
+
+  realtime-gateway-service:
+    build: ./src/platform/realtime-gateway-service
+    image: shopos/realtime-gateway-service:latest
+    ports: ["8213:8213"]
+    networks: [shopos]
+
+  pubsub-router-service:
+    build: ./src/platform/pubsub-router-service
+    image: shopos/pubsub-router-service:latest
+    ports: ["50352:50352"]
+    networks: [shopos]
+
+  api-versioning-service:
+    build: ./src/platform/api-versioning-service
+    image: shopos/api-versioning-service:latest
+    ports: ["50353:50353"]
+    networks: [shopos]
+
+  event-transform-service:
+    build: ./src/platform/event-transform-service
+    image: shopos/event-transform-service:latest
+    ports: ["50354:50354"]
+    networks: [shopos]
+
+  ios-push-gateway-service:
+    build: ./src/platform/ios-push-gateway-service
+    image: shopos/ios-push-gateway-service:latest
+    ports: ["8214:8214"]
+    networks: [shopos]
+
+  rate-limiter-core:
+    build: ./src/platform/rate-limiter-core
+    image: shopos/rate-limiter-core:latest
+    ports: ["50355:50355"]
+    networks: [shopos]
+
+  # ===========================================================================
+  # FINANCIAL — NEW SERVICES
+  # ===========================================================================
+
+  financial-rules-engine:
+    build: ./src/financial/financial-rules-engine
+    image: shopos/financial-rules-engine:latest
+    ports: ["50360:50360"]
+    networks: [shopos]
+
+  tax-exemption-service:
+    build: ./src/financial/tax-exemption-service
+    image: shopos/tax-exemption-service:latest
+    ports: ["50361:50361"]
+    networks: [shopos]
+
+  multi-currency-account-service:
+    build: ./src/financial/multi-currency-account-service
+    image: shopos/multi-currency-account-service:latest
+    ports: ["50362:50362"]
+    networks: [shopos]
+
+  # ===========================================================================
+  # CATALOG — NEW SERVICES
+  # ===========================================================================
+
+  search-suggestion-service:
+    build: ./src/catalog/search-suggestion-service
+    image: shopos/search-suggestion-service:latest
+    ports: ["50370:50370"]
+    networks: [shopos]
+
+  # ===========================================================================
+  # CUSTOMER EXPERIENCE — NEW SERVICES
+  # ===========================================================================
+
+  review-summary-service:
+    build: ./src/customer-experience/review-summary-service
+    image: shopos/review-summary-service:latest
+    ports: ["50371:50371"]
+    networks: [shopos]
+
+  # ===========================================================================
+  # SUPPLY CHAIN — NEW SERVICES
+  # ===========================================================================
+
+  zone-pricing-service:
+    build: ./src/supply-chain/zone-pricing-service
+    image: shopos/zone-pricing-service:latest
+    ports: ["50372:50372"]
+    networks: [shopos]
+
+  # ===========================================================================
+  # INTEGRATIONS — NEW SERVICES
+  # ===========================================================================
+
+  magento-sync-service:
+    build: ./src/integrations/magento-sync-service
+    image: shopos/magento-sync-service:latest
+    ports: ["8215:8215"]
+    networks: [shopos]
+
+  woocommerce-adapter-service:
+    build: ./src/integrations/woocommerce-adapter-service
+    image: shopos/woocommerce-adapter-service:latest
+    ports: ["8216:8216"]
+    networks: [shopos]
+
+  # ===========================================================================
+  # CONTENT — NEW SERVICES
+  # ===========================================================================
+
+  storefront-cms-adapter:
+    build: ./src/content/storefront-cms-adapter
+    image: shopos/storefront-cms-adapter:latest
+    ports: ["8217:8217"]
+    networks: [shopos]
+
+  content-webhook-service:
+    build: ./src/content/content-webhook-service
+    image: shopos/content-webhook-service:latest
+    ports: ["8218:8218"]
+    networks: [shopos]
+
+  # ===========================================================================
+  # WEB — NEW FRONTEND
+  # ===========================================================================
+
+  mobile-flutter-service:
+    build: ./src/web/mobile-flutter-service
+    image: shopos/mobile-flutter-service:latest
+    ports: ["3005:3005"]
+    networks: [shopos]
+
+  # ===========================================================================
+  # INFRASTRUCTURE TOOLS — NEW
+  # ===========================================================================
+
+  # ── Feature Flags ─────────────────────────────────────────────────────────
+  unleash:
+    image: unleashorg/unleash-server:6.3.0
+    ports:
+      - "4242:4242"
+    environment:
+      - DATABASE_URL=postgres://unleash:unleash@unleash-db:5432/unleash
+      - INIT_FRONTEND_API_TOKENS=default:development.unleash-insecure-frontend-api-token
+    depends_on:
+      - unleash-db
+    networks:
+      - shopos
+
+  unleash-db:
+    image: postgres:16-alpine
+    environment:
+      - POSTGRES_DB=unleash
+      - POSTGRES_USER=unleash
+      - POSTGRES_PASSWORD=unleash
+    volumes:
+      - unleash_db_data:/var/lib/postgresql/data
+    networks:
+      - shopos
+
+  # ── Incident Management ───────────────────────────────────────────────────
+  grafana-oncall:
+    image: grafana/oncall:v1.9.0
+    ports:
+      - "8220:8080"
+    environment:
+      - SECRET_KEY=oncall-secret-key
+      - DATABASE_TYPE=sqlite3
+    networks:
+      - shopos
+
+  cachet:
+    image: cachethq/docker:latest
+    ports:
+      - "8221:8000"
+    environment:
+      - APP_KEY=base64:placeholder-key-32chars-minimum
+      - DB_DRIVER=sqlite
+    volumes:
+      - cachet_data:/var/www/html/database
+    networks:
+      - shopos
+
+  # ── API Management ────────────────────────────────────────────────────────
+  apisix:
+    image: apache/apisix:3.10.0-debian
+    ports:
+      - "9080:9080"
+      - "9180:9180"
+    volumes:
+      - ./api-management/apisix/config.yaml:/usr/local/apisix/conf/config.yaml:ro
+    networks:
+      - shopos
+
+  apisix-dashboard:
+    image: apache/apisix-dashboard:3.0.0
+    ports:
+      - "8222:9000"
+    networks:
+      - shopos
+
+  hasura:
+    image: hasura/graphql-engine:v2.42.0
+    ports:
+      - "8223:8080"
+    environment:
+      - HASURA_GRAPHQL_DATABASE_URL=postgres://postgres:postgres@postgres:5432/postgres
+      - HASURA_GRAPHQL_ENABLE_CONSOLE=true
+      - HASURA_GRAPHQL_DEV_MODE=true
+      - HASURA_GRAPHQL_ADMIN_SECRET=hasura-admin-secret
+    networks:
+      - shopos
+
+  tyk-gateway:
+    image: tykio/tyk-gateway:v5.6.0
+    ports:
+      - "8224:8080"
+    environment:
+      - TYK_GW_SECRET=tyk-secret
+    networks:
+      - shopos
+
+  # ── New Databases ─────────────────────────────────────────────────────────
+  cockroachdb:
+    image: cockroachdb/cockroach:v24.2.0
+    ports:
+      - "26257:26257"
+      - "8226:8080"
+    command: start-single-node --insecure
+    volumes:
+      - cockroachdb_data:/cockroach/cockroach-data
+    networks:
+      - shopos
+
+  surrealdb:
+    image: surrealdb/surrealdb:v2.1.0
+    ports:
+      - "8227:8000"
+    command: start --log trace --user root --pass root memory
+    networks:
+      - shopos
+
+  valkey:
+    image: valkey/valkey:8.0-alpine
+    ports:
+      - "6380:6379"
+    networks:
+      - shopos
+
+  typesense:
+    image: typesense/typesense:27.0
+    ports:
+      - "8108:8108"
+    command: --data-dir /data --api-key=typesense-api-key
+    volumes:
+      - typesense_data:/data
+    networks:
+      - shopos
+
+  manticore-search:
+    image: manticoresearch/manticore:6.3.6
+    ports:
+      - "9306:9306"
+      - "9308:9308"
+    volumes:
+      - manticore_data:/var/lib/manticore
+    networks:
+      - shopos
+
+  eventstore:
+    image: eventstore/eventstore:24.10.0-jammy
+    ports:
+      - "1113:1113"
+      - "2113:2113"
+    environment:
+      - EVENTSTORE_CLUSTER_SIZE=1
+      - EVENTSTORE_RUN_PROJECTIONS=All
+      - EVENTSTORE_START_STANDARD_PROJECTIONS=true
+      - EVENTSTORE_INSECURE=true
+    volumes:
+      - eventstore_data:/var/lib/eventstore
+    networks:
+      - shopos
+
+  seaweedfs-master:
+    image: chrislusf/seaweedfs:3.78
+    ports:
+      - "9333:9333"
+    command: master
+    networks:
+      - shopos
+
+  seaweedfs-volume:
+    image: chrislusf/seaweedfs:3.78
+    ports:
+      - "8228:8080"
+    command: volume -mserver=seaweedfs-master:9333 -dir=/data
+    volumes:
+      - seaweedfs_data:/data
+    depends_on:
+      - seaweedfs-master
+    networks:
+      - shopos
+
+  # ── Observability new ─────────────────────────────────────────────────────
+  grafana-mimir:
+    image: grafana/mimir:2.14.0
+    ports:
+      - "9009:9009"
+    command: ["-config.file=/etc/mimir/mimir.yaml"]
+    volumes:
+      - mimir_data:/data
+    networks:
+      - shopos
+
+  victoria-logs:
+    image: victoriametrics/victoria-logs:v1.4.0-victorialogs
+    ports:
+      - "9428:9428"
+    volumes:
+      - victoria_logs_data:/victoria-logs-data
+    networks:
+      - shopos
+
+  netdata:
+    image: netdata/netdata:v1.47.0
+    ports:
+      - "19999:19999"
+    cap_add:
+      - SYS_PTRACE
+      - SYS_ADMIN
+    security_opt:
+      - apparmor:unconfined
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+    networks:
+      - shopos
+
+  kiali:
+    image: quay.io/kiali/kiali:v2.0.0
+    ports:
+      - "20001:20001"
+    networks:
+      - shopos
+
+  perses:
+    image: persesdev/perses:v0.49.0
+    ports:
+      - "11123:8080"
+    networks:
+      - shopos
+
+  signoz:
+    image: signoz/frontend:0.53.0
+    ports:
+      - "3301:3301"
+    networks:
+      - shopos
+
+  # ── Workflow new ──────────────────────────────────────────────────────────
+  prefect-server:
+    image: prefecthq/prefect:3-python3.12
+    ports:
+      - "4200:4200"
+    command: prefect server start --host 0.0.0.0
+    volumes:
+      - prefect_data:/root/.prefect
+    networks:
+      - shopos
+
+  dagster-webserver:
+    image: ghcr.io/dagster-io/dagster-webserver:1.9.0
+    ports:
+      - "8229:3000"
+    volumes:
+      - dagster_data:/opt/dagster/dagster_home
+    networks:
+      - shopos
+
+  # ── Testing tools ─────────────────────────────────────────────────────────
+  wiremock:
+    image: wiremock/wiremock:3.9.1
+    ports:
+      - "8231:8080"
+    volumes:
+      - wiremock_data:/home/wiremock
+    networks:
+      - shopos
+
+  # ── Security new ──────────────────────────────────────────────────────────
+  pomerium:
+    image: pomerium/pomerium:v0.27.0
+    ports:
+      - "8232:80"
+      - "8233:443"
+    networks:
+      - shopos
+
+  atlantis:
+    image: ghcr.io/runatlantis/atlantis:v0.30.0
+    ports:
+      - "4141:4141"
+    environment:
+      - ATLANTIS_GH_TOKEN=placeholder
+      - ATLANTIS_GH_WEBHOOK_SECRET=placeholder
+      - ATLANTIS_REPO_ALLOWLIST=github.com/prabhat-roy/ShopOS
+    volumes:
+      - atlantis_data:/atlantis
+    networks:
+      - shopos
+
+  # ── Infrastructure tools ──────────────────────────────────────────────────
+  nomad:
+    image: hashicorp/nomad:1.9.0
+    ports:
+      - "4646:4646"
+      - "4647:4647"
+      - "4648:4648"
+    command: agent -dev -bind=0.0.0.0
+    cap_add:
+      - SYS_ADMIN
+    volumes:
+      - nomad_data:/opt/nomad/data
+    networks:
+      - shopos
+
+  waypoint-server:
+    image: hashicorp/waypoint:0.11.0
+    ports:
+      - "9701:9701"
+      - "9702:9702"
+    command: server run -accept-tos -db=/data/data.db -listen-grpc=0.0.0.0:9701 -listen-http=0.0.0.0:9702
+    volumes:
+      - waypoint_data:/data
+    networks:
+      - shopos
+
 # VOLUMES
 # =============================================================================
 
@@ -4972,3 +5515,20 @@ volumes:
   atlas_data:
   timescaledb_data:
   memcached_data:
+  unleash_db_data:
+  cachet_data:
+  cockroachdb_data:
+  surrealdb_data:
+  typesense_data:
+  manticore_data:
+  eventstore_data:
+  seaweedfs_data:
+  mimir_data:
+  victoria_logs_data:
+  prefect_data:
+  dagster_data:
+  wiremock_data:
+  atlantis_data:
+  nomad_data:
+  waypoint_data:
+  valkey_data:

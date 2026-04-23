@@ -1,0 +1,13 @@
+apiVersion: v2
+name: victoria-logs
+description: VictoriaLogs high-performance log storage
+type: application
+version: 1.0.0
+appVersion: "1.4.0"
+keywords:
+  - victorialogs
+  - logs
+  - observability
+home: https://victoriametrics.com/products/victorialogs
+maintainers:
+  - name: ShopOS Platform Team

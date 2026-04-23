@@ -1,0 +1,41 @@
+replicaCount: 1
+
+image:
+  repository: hashicorp/waypoint
+  tag: "0.11.0"
+  pullPolicy: IfNotPresent
+
+service:
+  type: ClusterIP
+  ports:
+    - name: grpc
+      port: 9701
+      targetPort: 9701
+    - name: http
+      port: 9702
+      targetPort: 9702
+
+storage:
+  size: 10Gi
+  storageClass: standard
+  mountPath: /data
+
+resources:
+  requests:
+    cpu: 200m
+    memory: 256Mi
+  limits:
+    cpu: 500m
+    memory: 512Mi
+
+podAnnotations:
+  prometheus.io/scrape: "false"
+
+podSecurityContext:
+  runAsNonRoot: false
+
+containerSecurityContext:
+  allowPrivilegeEscalation: false
+  capabilities:
+    drop:
+      - ALL

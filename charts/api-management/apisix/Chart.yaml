@@ -1,0 +1,13 @@
+apiVersion: v2
+name: apisix
+description: Apache APISIX cloud-native API gateway
+type: application
+version: 1.0.0
+appVersion: "3.10.0"
+keywords:
+  - apisix
+  - api-gateway
+  - apache
+home: https://apisix.apache.org
+maintainers:
+  - name: ShopOS Platform Team

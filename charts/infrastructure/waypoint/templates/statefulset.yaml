@@ -1,0 +1,68 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ include "waypoint.fullname" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "waypoint.labels" . | nindent 4 }}
+spec:
+  serviceName: {{ include "waypoint.fullname" . }}-headless
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "waypoint.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "waypoint.selectorLabels" . | nindent 8 }}
+    spec:
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      containers:
+        - name: waypoint
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          securityContext:
+            {{- toYaml .Values.containerSecurityContext | nindent 12 }}
+          command:
+            - waypoint
+            - server
+            - run
+            - -accept-tos
+            - -db=/data/waypoint.db
+            - -advertise-addr={{ include "waypoint.fullname" . }}:9701
+            - -advertise-tls-skip-verify
+          ports:
+            - name: grpc
+              containerPort: 9701
+              protocol: TCP
+            - name: http
+              containerPort: 9702
+              protocol: TCP
+          livenessProbe:
+            tcpSocket:
+              port: grpc
+            initialDelaySeconds: 30
+            periodSeconds: 15
+          readinessProbe:
+            tcpSocket:
+              port: grpc
+            initialDelaySeconds: 15
+            periodSeconds: 5
+          volumeMounts:
+            - name: data
+              mountPath: {{ .Values.storage.mountPath }}
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+      spec:
+        accessModes:
+          - ReadWriteOnce
+        {{- if .Values.storage.storageClass }}
+        storageClassName: {{ .Values.storage.storageClass }}
+        {{- end }}
+        resources:
+          requests:
+            storage: {{ .Values.storage.size }}

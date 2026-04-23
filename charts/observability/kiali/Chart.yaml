@@ -1,0 +1,14 @@
+apiVersion: v2
+name: kiali
+description: Kiali Istio service mesh observability console
+type: application
+version: 1.0.0
+appVersion: "2.0.0"
+keywords:
+  - kiali
+  - istio
+  - service-mesh
+  - observability
+home: https://kiali.io
+maintainers:
+  - name: ShopOS Platform Team

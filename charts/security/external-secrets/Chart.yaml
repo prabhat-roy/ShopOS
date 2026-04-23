@@ -1,0 +1,13 @@
+apiVersion: v2
+name: external-secrets
+description: External Secrets Operator — sync secrets from Vault, AWS, GCP into Kubernetes
+type: application
+version: 1.0.0
+appVersion: "0.11.0"
+keywords:
+  - external-secrets
+  - secrets
+  - operator
+home: https://external-secrets.io
+maintainers:
+  - name: ShopOS Platform Team

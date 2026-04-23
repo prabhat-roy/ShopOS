@@ -1,0 +1,11 @@
+# Dagster workspace configuration for ShopOS data pipelines
+load_from:
+  - grpc_server:
+      host: dagster-user-code
+      port: 4000
+      location_name: "shopos_pipelines"
+
+  - grpc_server:
+      host: dagster-ml-code
+      port: 4001
+      location_name: "shopos_ml_pipelines"

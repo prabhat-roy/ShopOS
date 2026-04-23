@@ -1,0 +1,13 @@
+apiVersion: v2
+name: apisix-dashboard
+description: Apache APISIX Dashboard — web UI for managing APISIX
+type: application
+version: 1.0.0
+appVersion: "3.0.0"
+keywords:
+  - apisix
+  - dashboard
+  - api-management
+home: https://apisix.apache.org/docs/dashboard/USER_GUIDE
+maintainers:
+  - name: ShopOS Platform Team

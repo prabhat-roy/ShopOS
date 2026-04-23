@@ -1,0 +1,49 @@
+replicaCount: 2
+
+image:
+  repository: tykio/tyk-gateway
+  tag: "v5.6.0"
+  pullPolicy: IfNotPresent
+
+service:
+  type: ClusterIP
+  port: 8080
+
+ingress:
+  enabled: true
+  className: nginx
+  annotations: {}
+  hosts:
+    - host: tyk.shopos.internal
+      paths:
+        - path: /
+          pathType: Prefix
+  tls: []
+
+env:
+  TYK_GW_LISTENPORT: "8080"
+  TYK_GW_SECRET: "changeme-replace-in-production"
+  TYK_GW_STORAGE_TYPE: "redis"
+  TYK_GW_STORAGE_HOST: "redis"
+  TYK_GW_STORAGE_PORT: "6379"
+
+resources:
+  requests:
+    cpu: 200m
+    memory: 256Mi
+  limits:
+    cpu: 500m
+    memory: 512Mi
+
+podAnnotations:
+  prometheus.io/scrape: "true"
+  prometheus.io/port: "8080"
+
+podSecurityContext:
+  runAsNonRoot: false
+
+containerSecurityContext:
+  allowPrivilegeEscalation: false
+  capabilities:
+    drop:
+      - ALL
