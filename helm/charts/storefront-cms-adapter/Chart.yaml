@@ -1,0 +1,19 @@
+apiVersion: v2
+name: storefront-cms-adapter
+description: ShopOS storefront-cms-adapter — CMS content adapter for storefront
+type: application
+version: 0.1.0
+appVersion: "1.0.0"
+keywords:
+  - shopos
+  - storefront-cms-adapter
+  - content
+home: https://github.com/your-org/shopos
+sources:
+  - https://github.com/your-org/shopos/tree/main/src/content/storefront-cms-adapter
+maintainers:
+  - name: ShopOS Content Team
+    email: content@shopos.io
+annotations:
+  app.kubernetes.io/domain: content
+  app.kubernetes.io/language: Ruby

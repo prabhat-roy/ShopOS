@@ -1,0 +1,17 @@
+apiVersion: v2
+name: k8sgpt
+description: k8sGPT — AI-powered Kubernetes diagnostics and analysis
+type: application
+version: 0.3.42
+appVersion: "v0.3.42"
+keywords:
+  - k8sgpt
+  - kubernetes
+  - ai
+  - diagnostics
+home: https://k8sgpt.ai
+sources:
+  - https://github.com/k8sgpt-ai/k8sgpt
+maintainers:
+  - name: ShopOS Platform Team
+    email: platform@shopos.io

@@ -1,0 +1,17 @@
+apiVersion: v2
+name: botkube
+description: Botkube — Kubernetes event alerting to Slack/Teams/Discord
+type: application
+version: 1.13.0
+appVersion: "v1.13.0"
+keywords:
+  - botkube
+  - kubernetes
+  - alerting
+  - slack
+home: https://botkube.io
+sources:
+  - https://github.com/kubeshop/botkube
+maintainers:
+  - name: ShopOS Platform Team
+    email: platform@shopos.io

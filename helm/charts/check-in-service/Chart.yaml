@@ -1,0 +1,19 @@
+apiVersion: v2
+name: check-in-service
+description: ShopOS check-in-service — QR-code check-in and attendance tracking
+type: application
+version: 0.1.0
+appVersion: "1.0.0"
+keywords:
+  - shopos
+  - check-in-service
+  - events-ticketing
+home: https://github.com/your-org/shopos
+sources:
+  - https://github.com/your-org/shopos/tree/main/src/events-ticketing/check-in-service
+maintainers:
+  - name: ShopOS Events Team
+    email: events-ticketing@shopos.io
+annotations:
+  app.kubernetes.io/domain: events-ticketing
+  app.kubernetes.io/language: Go

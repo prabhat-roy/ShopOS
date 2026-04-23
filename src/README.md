@@ -1,7 +1,7 @@
 # Services — ShopOS
 
-154 microservices across 13 business domains. Each service is a self-contained unit with
-its own codebase, database, Dockerfile, Helm chart, and CI pipeline.
+262 services (255 backend microservices + 7 frontend) across 22 business domains. Each service
+is a self-contained unit with its own codebase, database, Dockerfile, Helm chart, and CI pipeline.
 
 ---
 
@@ -9,20 +9,29 @@ its own codebase, database, Dockerfile, Helm chart, and CI pipeline.
 
 | # | Domain | Directory | Services | Languages |
 |---|---|---|---|---|
-| 1 | Platform | `platform/` | 22 | Go, Java, Python, Node.js |
-| 2 | Identity | `identity/` | 8 | Go, Java, Rust |
-| 3 | Catalog | `catalog/` | 12 | Go, Java, Kotlin, Python, Node.js |
-| 4 | Commerce | `commerce/` | 23 | Go, Java, Kotlin, Python, C#, Rust, Node.js |
-| 5 | Supply Chain | `supply-chain/` | 13 | Go, Java, Kotlin, Python, Node.js |
-| 6 | Financial | `financial/` | 11 | Go, Java, Kotlin |
-| 7 | Customer Experience | `customer-experience/` | 14 | Go, Java, Node.js |
-| 8 | Communications | `communications/` | 9 | Go, Python, Node.js |
-| 9 | Content | `content/` | 8 | Go, Java, Python, Node.js |
+| 1 | Platform | `platform/` | 34 | Go, Java, Python, Node.js, Elixir, Clojure, Swift, Zig |
+| 2 | Identity | `identity/` | 11 | Go, Java, Rust |
+| 3 | Catalog | `catalog/` | 16 | Go, Java, Kotlin, Python, Node.js |
+| 4 | Commerce | `commerce/` | 28 | Go, Java, Kotlin, Python, C#, Rust, Node.js |
+| 5 | Supply Chain | `supply-chain/` | 18 | Go, Java, Kotlin, Python, Node.js |
+| 6 | Financial | `financial/` | 18 | Go, Java, Kotlin, Haskell |
+| 7 | Customer Experience | `customer-experience/` | 18 | Go, Java, Node.js |
+| 8 | Communications | `communications/` | 12 | Go, Python, Node.js |
+| 9 | Content | `content/` | 11 | Go, Java, Python, Node.js, Ruby, Crystal |
 | 10 | Analytics & AI | `analytics-ai/` | 13 | Python, Java, Scala |
-| 11 | B2B | `b2b/` | 7 | Go, Java, Kotlin |
-| 12 | Integrations | `integrations/` | 10 | Go, Java, Node.js |
-| 13 | Affiliate | `affiliate/` | 4 | Go |
-| | **Total** | | **154** | **8 languages** |
+| 11 | B2B | `b2b/` | 10 | Go, Java, Kotlin |
+| 12 | Integrations | `integrations/` | 16 | Go, Java, Node.js, PHP |
+| 13 | Affiliate | `affiliate/` | 6 | Go |
+| 14 | Marketplace | `marketplace/` | 8 | Go, Java, Node.js |
+| 15 | Gamification | `gamification/` | 6 | Go |
+| 16 | Developer Platform | `developer-platform/` | 6 | Go, Node.js |
+| 17 | Compliance | `compliance/` | 5 | Go, Java |
+| 18 | Sustainability | `sustainability/` | 5 | Go |
+| 19 | Events & Ticketing | `events-ticketing/` | 6 | Go, Elixir |
+| 20 | Auction | `auction/` | 4 | Go, Java, Elixir |
+| 21 | Rental | `rental/` | 4 | Go, Kotlin |
+| 22 | Web (Frontend) | `web/` | 7 | Next.js, React, Vue.js, Angular, React Native, Flutter, Dart |
+| | **Total** | | **262** | **19 languages** |
 
 ---
 

@@ -1,0 +1,19 @@
+apiVersion: v2
+name: bidding-service
+description: ShopOS bidding-service — Bid placement validation and real-time processing
+type: application
+version: 0.1.0
+appVersion: "1.0.0"
+keywords:
+  - shopos
+  - bidding-service
+  - auction
+home: https://github.com/your-org/shopos
+sources:
+  - https://github.com/your-org/shopos/tree/main/src/auction/bidding-service
+maintainers:
+  - name: ShopOS Auction Team
+    email: auction@shopos.io
+annotations:
+  app.kubernetes.io/domain: auction
+  app.kubernetes.io/language: Go

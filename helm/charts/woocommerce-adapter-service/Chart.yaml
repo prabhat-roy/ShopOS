@@ -1,0 +1,19 @@
+apiVersion: v2
+name: woocommerce-adapter-service
+description: ShopOS woocommerce-adapter-service — WooCommerce catalog and order adapter
+type: application
+version: 0.1.0
+appVersion: "1.0.0"
+keywords:
+  - shopos
+  - woocommerce-adapter-service
+  - integrations
+home: https://github.com/your-org/shopos
+sources:
+  - https://github.com/your-org/shopos/tree/main/src/integrations/woocommerce-adapter-service
+maintainers:
+  - name: ShopOS Integrations Team
+    email: integrations@shopos.io
+annotations:
+  app.kubernetes.io/domain: integrations
+  app.kubernetes.io/language: PHP

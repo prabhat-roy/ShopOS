@@ -1,0 +1,41 @@
+replicaCount: 1
+
+image:
+  repository: ghcr.io/k8sgpt-ai/k8sgpt
+  tag: v0.3.42
+  pullPolicy: IfNotPresent
+
+serviceAccount:
+  create: true
+  name: k8sgpt
+
+deployment:
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      cpu: 200m
+      memory: 256Mi
+
+# k8sGPT operator CRD-based config
+k8sgpt:
+  # AI backend: openai, localai, ollama
+  backend: localai
+  model: mistral
+  # Secret with API key (key: openai-api-key)
+  secretRef: k8sgpt-secret
+  filters:
+    - Pod
+    - Deployment
+    - Service
+    - PersistentVolumeClaim
+  anonymize: true
+  language: english
+  noCache: false
+  interval: 5m
+
+# Prometheus integration
+serviceMonitor:
+  enabled: true
+  interval: 60s

@@ -1,6 +1,6 @@
 # Helm Charts — ShopOS
 
-ShopOS uses Helm 3 to package, template, and deploy all 154 microservices onto Kubernetes.
+ShopOS uses Helm 3 to package, template, and deploy all 263 services onto Kubernetes.
 Each service has its own self-contained chart under `helm/charts/` with per-environment
 value overrides.
 
@@ -10,7 +10,7 @@ value overrides.
 
 ```
 helm/
-└── charts/                         ← 154 individual service charts
+└── charts/                         ← 263 individual service charts
     ├── api-gateway/
     │   ├── Chart.yaml
     │   ├── values.yaml             ← Defaults (1 replica, debug logging, minimal resources)
@@ -116,7 +116,7 @@ helm rollback order-service 5 -n order-service --wait
 ### Deploy All Services (via Make)
 
 ```bash
-# Deploy all 154 services — each to its own namespace
+# Deploy all 263 services — each to its own namespace
 make deploy-local
 
 # Deploy a single service

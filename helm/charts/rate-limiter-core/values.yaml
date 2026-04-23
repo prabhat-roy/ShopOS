@@ -1,0 +1,88 @@
+replicaCount: 1
+
+image:
+  repository: shopos/rate-limiter-core
+  tag: latest
+  pullPolicy: IfNotPresent
+
+imagePullSecrets: []
+nameOverride: ""
+fullnameOverride: ""
+
+serviceAccount:
+  name: shopos-service-account
+  create: false
+
+podAnnotations:
+  prometheus.io/scrape: "true"
+  prometheus.io/port: "50355"
+  prometheus.io/path: "/metrics"
+
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 1000
+  fsGroup: 2000
+
+securityContext:
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: true
+  capabilities:
+    drop: ["ALL"]
+
+service:
+  type: ClusterIP
+  port: 50355
+  targetPort: 50355
+  protocol: TCP
+
+resources:
+  requests:
+    cpu: 50m
+    memory: 64Mi
+  limits:
+    cpu: 200m
+    memory: 256Mi
+
+autoscaling:
+  enabled: false
+  minReplicas: 1
+  maxReplicas: 3
+  targetCPUUtilizationPercentage: 80
+
+livenessProbe:
+  httpGet:
+    path: /healthz
+    port: 50355
+  initialDelaySeconds: 10
+  periodSeconds: 30
+
+readinessProbe:
+  httpGet:
+    path: /healthz
+    port: 50355
+  initialDelaySeconds: 5
+  periodSeconds: 10
+
+config:
+  environment: production
+  logLevel: info
+  logFormat: json
+  otelEnabled: "true"
+  otelEndpoint: "http://otel-collector.observability.svc.cluster.local:4317"
+
+namespaceOverride: ""
+
+strategy:
+  type: RollingUpdate
+  rollingUpdate:
+    maxSurge: 1
+    maxUnavailable: 0
+
+terminationGracePeriodSeconds: 30
+
+nodeSelector: {}
+tolerations: []
+affinity: {}
+extraEnv: []
+extraVolumes: []
+extraVolumeMounts: []

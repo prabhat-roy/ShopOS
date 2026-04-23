@@ -1,0 +1,19 @@
+apiVersion: v2
+name: seat-map-service
+description: ShopOS seat-map-service — Venue seat map and section management
+type: application
+version: 0.1.0
+appVersion: "1.0.0"
+keywords:
+  - shopos
+  - seat-map-service
+  - events-ticketing
+home: https://github.com/your-org/shopos
+sources:
+  - https://github.com/your-org/shopos/tree/main/src/events-ticketing/seat-map-service
+maintainers:
+  - name: ShopOS Events Team
+    email: events-ticketing@shopos.io
+annotations:
+  app.kubernetes.io/domain: events-ticketing
+  app.kubernetes.io/language: Go

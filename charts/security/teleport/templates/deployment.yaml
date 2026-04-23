@@ -1,0 +1,188 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: teleport-config
+  namespace: {{ .Release.Namespace }}
+data:
+  teleport.yaml: |
+    teleport:
+      nodename: {{ .Values.clusterName }}
+      data_dir: /var/lib/teleport
+      log:
+        output: stderr
+        severity: INFO
+        format:
+          output: json
+      storage:
+        type: {{ .Values.storage.type }}
+
+    auth_service:
+      enabled: {{ .Values.teleport.auth.enabled }}
+      listen_addr: "0.0.0.0:{{ .Values.teleport.auth.port }}"
+      cluster_name: {{ .Values.clusterName }}
+      tokens:
+        - "proxy,node,kube:shopos-teleport-join-token"
+
+    proxy_service:
+      enabled: {{ .Values.teleport.proxy.enabled }}
+      public_addr: {{ .Values.teleport.proxy.publicAddr }}
+      listen_addr: "0.0.0.0:{{ .Values.teleport.proxy.webPort }}"
+      ssh_public_addr: {{ .Values.teleport.proxy.publicAddr | replace "443" "3023" }}
+      tunnel_listen_addr: "0.0.0.0:{{ .Values.teleport.proxy.tunnelPort }}"
+
+    kubernetes_service:
+      enabled: {{ .Values.teleport.kubernetes.enabled }}
+      listen_addr: {{ .Values.teleport.kubernetes.listenAddr }}
+      public_addr: {{ .Values.teleport.kubernetes.publicAddr }}
+      kube_cluster_name: shopos-k8s
+
+    ssh_service:
+      enabled: {{ .Values.teleport.ssh.enabled }}
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: teleport
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: teleport
+spec:
+  serviceName: teleport
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      app: teleport
+  template:
+    metadata:
+      labels:
+        app: teleport
+      annotations:
+        {{- with .Values.podAnnotations }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+    spec:
+      serviceAccountName: {{ .Values.serviceAccount.name }}
+      containers:
+        - name: teleport
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          args:
+            - "--config=/etc/teleport/teleport.yaml"
+          ports:
+            - name: auth
+              containerPort: {{ .Values.teleport.auth.port }}
+            - name: proxy-web
+              containerPort: {{ .Values.teleport.proxy.webPort }}
+            - name: proxy-ssh
+              containerPort: {{ .Values.teleport.proxy.sshPort }}
+            - name: proxy-tunnel
+              containerPort: {{ .Values.teleport.proxy.tunnelPort }}
+            - name: kube
+              containerPort: 3026
+          volumeMounts:
+            - name: config
+              mountPath: /etc/teleport
+            - name: data
+              mountPath: /var/lib/teleport
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+          livenessProbe:
+            httpGet:
+              path: /readyz
+              port: {{ .Values.teleport.proxy.webPort }}
+            initialDelaySeconds: 30
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /readyz
+              port: {{ .Values.teleport.proxy.webPort }}
+            initialDelaySeconds: 15
+            periodSeconds: 5
+      volumes:
+        - name: config
+          configMap:
+            name: teleport-config
+  {{- if .Values.persistence.enabled }}
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        {{- if .Values.persistence.storageClass }}
+        storageClassName: {{ .Values.persistence.storageClass }}
+        {{- end }}
+        resources:
+          requests:
+            storage: {{ .Values.persistence.size }}
+  {{- end }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: teleport
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: teleport
+spec:
+  type: {{ .Values.service.type }}
+  {{- with .Values.service.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+  ports:
+    - name: auth
+      port: {{ .Values.teleport.auth.port }}
+      targetPort: auth
+    - name: proxy-web
+      port: {{ .Values.teleport.proxy.webPort }}
+      targetPort: proxy-web
+    - name: proxy-ssh
+      port: {{ .Values.teleport.proxy.sshPort }}
+      targetPort: proxy-ssh
+    - name: proxy-tunnel
+      port: {{ .Values.teleport.proxy.tunnelPort }}
+      targetPort: proxy-tunnel
+    - name: kube
+      port: 3026
+      targetPort: kube
+  selector:
+    app: teleport
+---
+{{- if .Values.rbac.create }}
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: {{ .Values.serviceAccount.name }}
+  namespace: {{ .Release.Namespace }}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: teleport
+rules:
+  - apiGroups: [""]
+    resources: ["users", "groups", "serviceaccounts"]
+    verbs: ["impersonate"]
+  - apiGroups: ["authorization.k8s.io"]
+    resources: ["selfsubjectaccessreviews", "selfsubjectrulesreviews"]
+    verbs: ["create"]
+  - apiGroups: [""]
+    resources: ["pods", "pods/exec", "pods/log"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: [""]
+    resources: ["namespaces"]
+    verbs: ["get", "list", "watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: teleport
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: teleport
+subjects:
+  - kind: ServiceAccount
+    name: {{ .Values.serviceAccount.name }}
+    namespace: {{ .Release.Namespace }}
+{{- end }}

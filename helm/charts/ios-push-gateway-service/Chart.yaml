@@ -1,0 +1,19 @@
+apiVersion: v2
+name: ios-push-gateway-service
+description: ShopOS ios-push-gateway-service — APNs push notification gateway
+type: application
+version: 0.1.0
+appVersion: "1.0.0"
+keywords:
+  - shopos
+  - ios-push-gateway-service
+  - platform
+home: https://github.com/your-org/shopos
+sources:
+  - https://github.com/your-org/shopos/tree/main/src/platform/ios-push-gateway-service
+maintainers:
+  - name: ShopOS Platform Team
+    email: platform@shopos.io
+annotations:
+  app.kubernetes.io/domain: platform
+  app.kubernetes.io/language: Swift

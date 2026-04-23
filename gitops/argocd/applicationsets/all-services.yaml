@@ -697,23 +697,132 @@ spec:
           - service: offset-service
             domain: sustainability
             namespace: shopos-sustainability
-          # Web (6)
-          - service: storefront
+          # Events & Ticketing (6)
+          - service: event-service
+            domain: events-ticketing
+            namespace: shopos-events-ticketing
+          - service: ticket-service
+            domain: events-ticketing
+            namespace: shopos-events-ticketing
+          - service: seat-map-service
+            domain: events-ticketing
+            namespace: shopos-events-ticketing
+          - service: venue-service
+            domain: events-ticketing
+            namespace: shopos-events-ticketing
+          - service: booking-service
+            domain: events-ticketing
+            namespace: shopos-events-ticketing
+          - service: check-in-service
+            domain: events-ticketing
+            namespace: shopos-events-ticketing
+          # Auction (4)
+          - service: auction-service
+            domain: auction
+            namespace: shopos-auction
+          - service: bidding-service
+            domain: auction
+            namespace: shopos-auction
+          - service: reserve-price-service
+            domain: auction
+            namespace: shopos-auction
+          - service: auction-settlement-service
+            domain: auction
+            namespace: shopos-auction
+          # Rental (4)
+          - service: rental-service
+            domain: rental
+            namespace: shopos-rental
+          - service: lease-service
+            domain: rental
+            namespace: shopos-rental
+          - service: damage-deposit-service
+            domain: rental
+            namespace: shopos-rental
+          - service: availability-calendar-service
+            domain: rental
+            namespace: shopos-rental
+          # Platform extras
+          - service: api-versioning-service
+            domain: platform
+            namespace: shopos-platform
+          - service: event-transform-service
+            domain: platform
+            namespace: shopos-platform
+          - service: ios-push-gateway-service
+            domain: platform
+            namespace: shopos-platform
+          - service: presence-service
+            domain: platform
+            namespace: shopos-platform
+          - service: pubsub-router-service
+            domain: platform
+            namespace: shopos-platform
+          - service: rate-limiter-core
+            domain: platform
+            namespace: shopos-platform
+          - service: realtime-gateway-service
+            domain: platform
+            namespace: shopos-platform
+          - service: reports-portal-service
+            domain: platform
+            namespace: shopos-platform
+          # Financial extras
+          - service: financial-rules-engine
+            domain: financial
+            namespace: shopos-financial
+          - service: multi-currency-account-service
+            domain: financial
+            namespace: shopos-financial
+          - service: tax-exemption-service
+            domain: financial
+            namespace: shopos-financial
+          # Catalog extras
+          - service: search-suggestion-service
+            domain: catalog
+            namespace: shopos-catalog
+          # Customer Experience extras
+          - service: review-summary-service
+            domain: customer-experience
+            namespace: shopos-customer-experience
+          # Content extras
+          - service: storefront-cms-adapter
+            domain: content
+            namespace: shopos-content
+          - service: content-webhook-service
+            domain: content
+            namespace: shopos-content
+          # Integrations extras
+          - service: magento-sync-service
+            domain: integrations
+            namespace: shopos-integrations
+          - service: woocommerce-adapter-service
+            domain: integrations
+            namespace: shopos-integrations
+          # Supply Chain extras
+          - service: zone-pricing-service
+            domain: supply-chain
+            namespace: shopos-supply-chain
+          # Web (7)
+          - service: storefront-service
             domain: web
             namespace: shopos-web
-          - service: admin-dashboard
+          - service: admin-dashboard-service
             domain: web
             namespace: shopos-web
-          - service: seller-portal
+          - service: seller-portal-service
             domain: web
             namespace: shopos-web
-          - service: partner-portal
+          - service: partner-portal-service
             domain: web
             namespace: shopos-web
-          - service: mobile-app
+          - service: mobile-app-service
             domain: web
             namespace: shopos-web
-          - service: developer-portal-ui
+          - service: developer-portal-service
+            domain: web
+            namespace: shopos-web
+          - service: mobile-flutter-service
             domain: web
             namespace: shopos-web
   template:

@@ -1,0 +1,19 @@
+apiVersion: v2
+name: event-service
+description: ShopOS event-service — Event creation and lifecycle management
+type: application
+version: 0.1.0
+appVersion: "1.0.0"
+keywords:
+  - shopos
+  - event-service
+  - events-ticketing
+home: https://github.com/your-org/shopos
+sources:
+  - https://github.com/your-org/shopos/tree/main/src/events-ticketing/event-service
+maintainers:
+  - name: ShopOS Events Team
+    email: events-ticketing@shopos.io
+annotations:
+  app.kubernetes.io/domain: events-ticketing
+  app.kubernetes.io/language: Elixir

@@ -1,0 +1,19 @@
+apiVersion: v2
+name: magento-sync-service
+description: ShopOS magento-sync-service — Magento catalog and order synchronisation
+type: application
+version: 0.1.0
+appVersion: "1.0.0"
+keywords:
+  - shopos
+  - magento-sync-service
+  - integrations
+home: https://github.com/your-org/shopos
+sources:
+  - https://github.com/your-org/shopos/tree/main/src/integrations/magento-sync-service
+maintainers:
+  - name: ShopOS Integrations Team
+    email: integrations@shopos.io
+annotations:
+  app.kubernetes.io/domain: integrations
+  app.kubernetes.io/language: PHP

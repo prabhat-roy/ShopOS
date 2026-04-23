@@ -1,8 +1,7 @@
 # CI Pipelines — ShopOS
 
-ShopOS ships **11 pipelines** implemented across **15 CI/CD platforms**. Every platform covers
-the same 11 pipeline types — same stages, same logic, different syntax. Use whichever CI engine
-your environment supports.
+ShopOS ships **17 pipelines** implemented across **15 CI/CD platforms**. Jenkins is the primary
+CI server with 17 Jenkinsfiles; all other platforms mirror the same pipeline set.
 
 ---
 
@@ -10,8 +9,8 @@ your environment supports.
 
 | Platform | Directory | Files | Notes |
 |---|---|---|---|
-| Jenkins | `jenkins/` | 12 Jenkinsfiles | Primary CI server; declarative pipeline syntax |
-| Drone CI | `drone/` | 12 YAML | Drone v2; exact Jenkins mirror |
+| Jenkins | `jenkins/` | 17 Jenkinsfiles | Primary CI server; declarative pipeline syntax |
+| Drone CI | `drone/` | 12 YAML | Drone v2; mirrors core Jenkins pipelines |
 | Woodpecker CI | `woodpecker/` | 12 YAML | Drone-compatible fork; drop-in replacement |
 | Dagger | `dagger/` | 12 Go modules | Portable Go SDK — run on any CI or locally |
 | Tekton | `tekton/` | 12 YAML | Kubernetes CRD-native (Task + Pipeline + PipelineRun) |
@@ -32,18 +31,24 @@ your environment supports.
 
 ```
 ci/
-├── jenkins/                          ← 11 Jenkinsfiles
-│   ├── deploy.Jenkinsfile
-│   ├── post-deploy.Jenkinsfile
-│   ├── k8s-infra.Jenkinsfile
-│   ├── gitops.Jenkinsfile
-│   ├── security.Jenkinsfile
-│   ├── observability.Jenkinsfile
-│   ├── messaging.Jenkinsfile
-│   ├── networking.Jenkinsfile
-│   ├── registry.Jenkinsfile
-│   ├── install-tools.Jenkinsfile
-│   └── cluster-bootstrap.Jenkinsfile
+├── jenkins/                          ← 17 Jenkinsfiles (primary)
+│   ├── install-tools.Jenkinsfile     ← Bootstrap agent runtimes and CLIs
+│   ├── cluster-bootstrap.Jenkinsfile ← Full cluster bring-up (6 phases)
+│   ├── k8s-infra.Jenkinsfile         ← Terraform EKS/GKE/AKS provisioning
+│   ├── gitops.Jenkinsfile            ← ArgoCD, Flux, Argo Rollouts, KEDA, Velero
+│   ├── security.Jenkinsfile          ← Vault, Keycloak, Falco, Kyverno, cert-manager
+│   ├── observability.Jenkinsfile     ← Prometheus, Grafana, Loki, Jaeger, OTel
+│   ├── messaging.Jenkinsfile         ← Kafka, RabbitMQ, NATS, schema registry
+│   ├── networking.Jenkinsfile        ← Istio, Traefik, Cilium, Consul
+│   ├── registry.Jenkinsfile          ← Harbor, Nexus + cloud registry provisioning
+│   ├── databases.Jenkinsfile         ← Postgres, MongoDB, Redis, Cassandra, ClickHouse
+│   ├── streaming.Jenkinsfile         ← Debezium CDC, Apache Flink jobs
+│   ├── tooling.Jenkinsfile           ← Developer tools (pgAdmin, Superset, MLflow, etc.)
+│   ├── pre-deploy.Jenkinsfile        ← Git fetch → scan → compile → docker build → push
+│   ├── deploy.Jenkinsfile            ← GitOps trigger → ArgoCD sync → rollout verify
+│   ├── post-deploy.Jenkinsfile       ← Smoke tests → DAST → load tests → SLO validate
+│   ├── api-quality.Jenkinsfile       ← Spectral lint → Hurl → Pact → Terrascan
+│   └── reports.Jenkinsfile           ← Build/deploy Reports Portal web app
 │
 ├── drone/                            ← Drone CI (same 12 pipelines, *.drone.yml)
 ├── woodpecker/                       ← Woodpecker CI (same 12 pipelines, *.woodpecker.yml)
@@ -107,17 +112,23 @@ ci/
 
 | Pipeline | Trigger | Est. Duration | Purpose |
 |---|---|---|---|
-| **deploy** | manual | ~25 min | Build → scan → sign → push → Helm deploy |
-| **post-deploy** | manual | ~45 min | Smoke, load tests, ZAP DAST, SLO validation |
-| **k8s-infra** | manual | ~90 min | Provision / destroy EKS / GKE / AKS via Terraform. Parameters: ACTION, CLOUD_PROVIDER (AUTO/GCP/AWS/AZURE), ENVIRONMENT. AWS-only stages (VPC, Subnets, IGW, NAT, Route Tables, SG, IAM) are skipped for GKE/AKS. |
+| **install-tools** | manual | ~30 min | Bootstrap agent with runtimes, CLIs, scanners |
+| **cluster-bootstrap** | manual | ~4 hrs | 6-phase full cluster bring-up (phases 1–6) |
+| **k8s-infra** | manual | ~90 min | Provision / destroy EKS / GKE / AKS via Terraform |
 | **gitops** | manual | ~20 min | Install ArgoCD, Flux, Argo Rollouts, KEDA, Velero |
-| **security** | manual | ~30 min | Install Vault, Keycloak, Falco, Kyverno, cert-manager |
+| **security** | manual | ~30 min | Install Vault, Keycloak, Falco, Kyverno, cert-manager, Teleport |
 | **observability** | manual | ~30 min | Install Prometheus, Grafana, Loki, Jaeger, OTel |
 | **messaging** | manual | ~20 min | Install Kafka, RabbitMQ, NATS + create 20 topics |
 | **networking** | manual | ~25 min | Install Istio, Traefik, Cilium, Consul |
 | **registry** | manual | ~20 min | Install Harbor, Nexus + provision cloud registry |
-| **install-tools** | manual | ~30 min | Bootstrap agent with runtimes, CLIs, scanners |
-| **cluster-bootstrap** | manual | ~4 hrs | 6-phase full cluster bring-up (phases 1–6) |
+| **databases** | manual | ~25 min | Install Postgres, MongoDB, Redis, Cassandra, ClickHouse, et al. |
+| **streaming** | manual | ~15 min | Deploy Debezium CDC connectors and Apache Flink jobs |
+| **tooling** | manual | ~35 min | Developer tools: pgAdmin, Superset, MLflow, Botkube, OpenCost, etc. |
+| **pre-deploy** | manual/webhook | ~20 min | Git fetch → secret scan → SAST → SCA → compile → docker build → image scan → sign → push → GitOps update |
+| **deploy** | manual/ArgoCD | ~10 min | Verify image in Harbor → ArgoCD sync → rollout status → healthz check |
+| **post-deploy** | manual | ~45 min | Smoke tests → integration → Hurl → Pact → ZAP DAST → Nuclei → k6 → Locust → Gatling → SLO |
+| **api-quality** | manual | ~30 min | Spectral OpenAPI lint → Hurl HTTP flows → Pact publish → Terrascan IaC |
+| **reports** | manual | ~10 min | Build and deploy Reports Portal web app (central report aggregator) |
 
 ---
 

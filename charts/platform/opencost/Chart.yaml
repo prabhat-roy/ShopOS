@@ -1,0 +1,17 @@
+apiVersion: v2
+name: opencost
+description: OpenCost — real-time Kubernetes cost monitoring and attribution
+type: application
+version: 1.43.2
+appVersion: "1.112.0"
+keywords:
+  - opencost
+  - kubernetes
+  - cost
+  - finops
+home: https://opencost.io
+sources:
+  - https://github.com/opencost/opencost
+maintainers:
+  - name: ShopOS Platform Team
+    email: platform@shopos.io

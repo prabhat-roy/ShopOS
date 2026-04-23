@@ -1,0 +1,67 @@
+replicaCount: 1
+
+image:
+  repository: public.ecr.aws/gravitational/teleport-distroless
+  tag: "16.4.7"
+  pullPolicy: IfNotPresent
+
+clusterName: teleport.shopos.internal
+
+teleport:
+  # Proxy service (web UI + SSH proxy)
+  proxy:
+    enabled: true
+    publicAddr: teleport.shopos.internal:443
+    webPort: 3080
+    sshPort: 3023
+    tunnelPort: 3024
+
+  # Auth service
+  auth:
+    enabled: true
+    port: 3025
+
+  # Kubernetes access
+  kubernetes:
+    enabled: true
+    listenAddr: "0.0.0.0:3026"
+    publicAddr: teleport.shopos.internal:3026
+
+  # SSH node service
+  ssh:
+    enabled: false
+
+storage:
+  type: kubernetes
+  # For production: use etcd or DynamoDB
+  # type: etcd
+
+service:
+  type: LoadBalancer
+  annotations: {}
+
+persistence:
+  enabled: true
+  size: 10Gi
+  storageClass: ""
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 256Mi
+  limits:
+    cpu: 500m
+    memory: 512Mi
+
+podAnnotations:
+  prometheus.io/scrape: "true"
+  prometheus.io/port: "3000"
+  prometheus.io/path: "/metrics"
+
+# RBAC for Kubernetes integration
+rbac:
+  create: true
+
+serviceAccount:
+  create: true
+  name: teleport

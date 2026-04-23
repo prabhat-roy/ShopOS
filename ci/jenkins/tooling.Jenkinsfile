@@ -229,9 +229,7 @@ pipeline {
             steps {
                 catchError(buildResult: 'UNSTABLE', stageResult: 'FAILURE') {
                     sh """
-                        helm repo add botkube https://charts.botkube.io --force-update || true
-                        helm repo update botkube || true
-                        helm upgrade --install botkube botkube/botkube \
+                        helm upgrade --install botkube charts/platform/botkube \
                             --namespace botkube --create-namespace \
                             --values kubernetes/botkube/botkube-values.yaml \
                             --wait --timeout=5m
@@ -246,13 +244,10 @@ pipeline {
             steps {
                 catchError(buildResult: 'UNSTABLE', stageResult: 'FAILURE') {
                     sh """
-                        helm repo add k8sgpt https://charts.k8sgpt.ai --force-update || true
-                        helm repo update k8sgpt || true
-                        helm upgrade --install k8sgpt-operator k8sgpt/k8sgpt-operator \
+                        helm upgrade --install k8sgpt-operator charts/platform/k8sgpt \
                             --namespace k8sgpt-operator-system --create-namespace \
                             --values kubernetes/k8sgpt/k8sgpt-operator-values.yaml \
                             --wait --timeout=5m
-                        kubectl apply -f kubernetes/k8sgpt/k8sgpt-cr.yaml || true
                         echo "k8sGPT operator installed — Kubernetes diagnostics active"
                     """
                 }
@@ -264,10 +259,7 @@ pipeline {
             steps {
                 catchError(buildResult: 'UNSTABLE', stageResult: 'FAILURE') {
                     sh """
-                        helm repo add opencost https://opencost.github.io/opencost-helm-chart --force-update || true
-                        helm repo update opencost || true
-                        kubectl apply -f kubernetes/opencost/opencost-serviceaccount.yaml || true
-                        helm upgrade --install opencost opencost/opencost \
+                        helm upgrade --install opencost charts/platform/opencost \
                             --namespace monitoring --create-namespace \
                             --values kubernetes/opencost/opencost-values.yaml \
                             --wait --timeout=5m
@@ -284,9 +276,7 @@ pipeline {
             steps {
                 catchError(buildResult: 'UNSTABLE', stageResult: 'FAILURE') {
                     sh """
-                        helm repo add teleport https://charts.releases.teleport.dev --force-update || true
-                        helm repo update teleport || true
-                        helm upgrade --install teleport teleport/teleport-cluster \
+                        helm upgrade --install teleport charts/security/teleport \
                             --namespace teleport-cluster --create-namespace \
                             --values security/teleport/teleport-values.yaml \
                             --wait --timeout=10m

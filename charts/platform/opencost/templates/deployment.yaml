@@ -1,0 +1,115 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: opencost
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: opencost
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      app: opencost
+  template:
+    metadata:
+      labels:
+        app: opencost
+      annotations:
+        {{- with .Values.podAnnotations }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+    spec:
+      serviceAccountName: opencost
+      containers:
+        - name: opencost
+          image: "{{ .Values.opencost.image.registry }}/{{ .Values.opencost.image.repository }}:{{ .Values.opencost.image.tag }}"
+          imagePullPolicy: {{ .Values.opencost.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: 9003
+            - name: model
+              containerPort: 9090
+          env:
+            - name: PROMETHEUS_SERVER_ENDPOINT
+              value: "http://{{ .Values.opencost.prometheus.internal.serviceName }}.{{ .Values.opencost.prometheus.internal.namespaceName }}.svc.cluster.local:{{ .Values.opencost.prometheus.internal.port }}"
+            - name: CLOUD_PROVIDER_API_KEY
+              value: ""
+            - name: CLUSTER_ID
+              value: "shopos-cluster"
+          resources:
+            {{- toYaml .Values.opencost.resources | nindent 12 }}
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: 9003
+            initialDelaySeconds: 30
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: 9003
+            initialDelaySeconds: 10
+            periodSeconds: 5
+        {{- if .Values.opencost.ui.enabled }}
+        - name: opencost-ui
+          image: "{{ .Values.opencost.ui.image.registry }}/{{ .Values.opencost.ui.image.repository }}:{{ .Values.opencost.ui.image.tag }}"
+          imagePullPolicy: {{ .Values.opencost.image.pullPolicy }}
+          ports:
+            - name: ui
+              containerPort: 9090
+        {{- end }}
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: opencost
+  namespace: {{ .Release.Namespace }}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: opencost
+rules:
+  - apiGroups: [""]
+    resources: ["pods", "nodes", "namespaces", "persistentvolumes", "persistentvolumeclaims", "services"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["apps"]
+    resources: ["deployments", "statefulsets", "daemonsets", "replicasets"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["storage.k8s.io"]
+    resources: ["storageclasses"]
+    verbs: ["get", "list", "watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: opencost
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: opencost
+subjects:
+  - kind: ServiceAccount
+    name: opencost
+    namespace: {{ .Release.Namespace }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: opencost
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: opencost
+spec:
+  type: {{ .Values.service.type }}
+  ports:
+    - name: http
+      port: {{ .Values.service.port }}
+      targetPort: 9003
+    {{- if .Values.opencost.ui.enabled }}
+    - name: ui
+      port: {{ .Values.service.uiPort }}
+      targetPort: 9090
+    {{- end }}
+  selector:
+    app: opencost

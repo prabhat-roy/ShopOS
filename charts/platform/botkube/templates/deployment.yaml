@@ -1,0 +1,51 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: botkube
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: botkube
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      app: botkube
+  template:
+    metadata:
+      labels:
+        app: botkube
+    spec:
+      serviceAccountName: {{ .Values.serviceAccount.name }}
+      containers:
+        - name: botkube
+          image: "{{ .Values.image.registry }}/{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          env:
+            - name: BOTKUBE_SETTINGS_CLUSTER__NAME
+              value: {{ .Values.settings.clusterName | quote }}
+            - name: BOTKUBE_SETTINGS_LOG_LEVEL
+              value: {{ .Values.settings.log.level | quote }}
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+          volumeMounts:
+            - name: config
+              mountPath: /config
+              readOnly: true
+      volumes:
+        - name: config
+          configMap:
+            name: botkube-configmap
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: botkube-configmap
+  namespace: {{ .Release.Namespace }}
+data:
+  config.yaml: |
+    settings:
+      clusterName: {{ .Values.settings.clusterName }}
+      upgradeNotifier: {{ .Values.settings.upgradeNotifier }}
+      log:
+        level: {{ .Values.settings.log.level }}
+        formatter: {{ .Values.settings.log.formatter }}

@@ -1,0 +1,18 @@
+apiVersion: v2
+name: teleport
+description: Teleport — zero-trust access platform for SSH, Kubernetes, databases, and web apps
+type: application
+version: 16.4.7
+appVersion: "16.4.7"
+keywords:
+  - teleport
+  - zero-trust
+  - ssh
+  - kubernetes
+  - access
+home: https://goteleport.com
+sources:
+  - https://github.com/gravitational/teleport
+maintainers:
+  - name: ShopOS Platform Team
+    email: platform@shopos.io

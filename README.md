@@ -122,7 +122,7 @@ An enterprise-grade, cloud-native commerce platform — 262 services, 22 domains
 |---|---|---|
 | Docker | latest | Container runtime, multi-stage builds |
 | Kubernetes | 1.31 | Container orchestration |
-| Helm | 3.x | 230 per-service charts + 30+ tool charts |
+| Helm | 3.x | 263 per-service charts + tool charts (all vendored, no internet at deploy time) |
 | KEDA | 2.15 | Kafka/Redis-driven autoscaling (alongside HPA) |
 | Velero | 7.x | Kubernetes backup and restore |
 | Skaffold | latest | Local dev hot-reload |
@@ -142,7 +142,7 @@ An enterprise-grade, cloud-native commerce platform — 262 services, 22 domains
 | Crossplane | 1.17 | Kubernetes-native IaC — database and cloud resource claims |
 | Ansible | 2.17 | Kubernetes node bootstrapping |
 | Terrascan | latest | IaC security scanning — Terraform + Helm |
-| Docker Compose | v2 | Full local stack (230 services + infra) |
+| Docker Compose | v2 | Full local stack (263 services + infra) |
 
 ### CI/CD
 

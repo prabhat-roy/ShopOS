@@ -1,0 +1,19 @@
+apiVersion: v2
+name: availability-calendar-service
+description: ShopOS availability-calendar-service — Item availability calendar and conflict detection
+type: application
+version: 0.1.0
+appVersion: "1.0.0"
+keywords:
+  - shopos
+  - availability-calendar-service
+  - rental
+home: https://github.com/your-org/shopos
+sources:
+  - https://github.com/your-org/shopos/tree/main/src/rental/availability-calendar-service
+maintainers:
+  - name: ShopOS Rental Team
+    email: rental@shopos.io
+annotations:
+  app.kubernetes.io/domain: rental
+  app.kubernetes.io/language: Go

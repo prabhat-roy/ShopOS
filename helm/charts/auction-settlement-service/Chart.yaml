@@ -1,0 +1,19 @@
+apiVersion: v2
+name: auction-settlement-service
+description: ShopOS auction-settlement-service — Post-auction winner settlement and invoicing
+type: application
+version: 0.1.0
+appVersion: "1.0.0"
+keywords:
+  - shopos
+  - auction-settlement-service
+  - auction
+home: https://github.com/your-org/shopos
+sources:
+  - https://github.com/your-org/shopos/tree/main/src/auction/auction-settlement-service
+maintainers:
+  - name: ShopOS Auction Team
+    email: auction@shopos.io
+annotations:
+  app.kubernetes.io/domain: auction
+  app.kubernetes.io/language: Java

@@ -1,0 +1,19 @@
+apiVersion: v2
+name: mobile-flutter-service
+description: ShopOS mobile-flutter-service — Flutter cross-platform mobile application
+type: application
+version: 0.1.0
+appVersion: "1.0.0"
+keywords:
+  - shopos
+  - mobile-flutter-service
+  - web
+home: https://github.com/your-org/shopos
+sources:
+  - https://github.com/your-org/shopos/tree/main/src/web/mobile-flutter-service
+maintainers:
+  - name: ShopOS Mobile Team
+    email: web@shopos.io
+annotations:
+  app.kubernetes.io/domain: web
+  app.kubernetes.io/language: Dart

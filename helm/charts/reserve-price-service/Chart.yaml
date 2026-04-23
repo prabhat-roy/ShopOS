@@ -1,0 +1,19 @@
+apiVersion: v2
+name: reserve-price-service
+description: ShopOS reserve-price-service — Auction reserve price management
+type: application
+version: 0.1.0
+appVersion: "1.0.0"
+keywords:
+  - shopos
+  - reserve-price-service
+  - auction
+home: https://github.com/your-org/shopos
+sources:
+  - https://github.com/your-org/shopos/tree/main/src/auction/reserve-price-service
+maintainers:
+  - name: ShopOS Auction Team
+    email: auction@shopos.io
+annotations:
+  app.kubernetes.io/domain: auction
+  app.kubernetes.io/language: Go

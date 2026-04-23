@@ -1,0 +1,19 @@
+apiVersion: v2
+name: rental-service
+description: ShopOS rental-service — Rental listing and booking orchestration
+type: application
+version: 0.1.0
+appVersion: "1.0.0"
+keywords:
+  - shopos
+  - rental-service
+  - rental
+home: https://github.com/your-org/shopos
+sources:
+  - https://github.com/your-org/shopos/tree/main/src/rental/rental-service
+maintainers:
+  - name: ShopOS Rental Team
+    email: rental@shopos.io
+annotations:
+  app.kubernetes.io/domain: rental
+  app.kubernetes.io/language: Go

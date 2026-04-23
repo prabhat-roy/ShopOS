@@ -1,0 +1,60 @@
+replicaCount: 1
+
+image:
+  registry: ghcr.io
+  repository: kubeshop/botkube
+  tag: v1.13.0
+  pullPolicy: IfNotPresent
+
+serviceAccount:
+  create: true
+  name: botkube
+
+rbac:
+  create: true
+
+communications:
+  slack:
+    enabled: false
+    token: ""
+    botID: ""
+    appToken: ""
+    channels: {}
+
+settings:
+  clusterName: shopos-cluster
+  upgradeNotifier: false
+  log:
+    level: info
+    formatter: json
+
+executors:
+  kubectl:
+    enabled: true
+    namespaces:
+      include: [".*"]
+    commands:
+      verbs: ["get", "logs", "describe", "top"]
+      resources: ["pods", "deployments", "services", "nodes"]
+
+sources:
+  kubernetes:
+    enabled: true
+    namespaces:
+      include: [".*"]
+    events:
+      - type: error
+      - type: warning
+    resources:
+      - type: v1/pods
+      - type: v1/services
+      - type: apps/v1/deployments
+      - type: apps/v1/statefulsets
+
+resources:
+  requests:
+    cpu: 50m
+    memory: 64Mi
+  limits:
+    cpu: 200m
+    memory: 256Mi

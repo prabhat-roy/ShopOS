@@ -1,0 +1,19 @@
+apiVersion: v2
+name: zone-pricing-service
+description: ShopOS zone-pricing-service — Geographic zone-based shipping pricing
+type: application
+version: 0.1.0
+appVersion: "1.0.0"
+keywords:
+  - shopos
+  - zone-pricing-service
+  - supply-chain
+home: https://github.com/your-org/shopos
+sources:
+  - https://github.com/your-org/shopos/tree/main/src/supply-chain/zone-pricing-service
+maintainers:
+  - name: ShopOS Supply Chain Team
+    email: supply-chain@shopos.io
+annotations:
+  app.kubernetes.io/domain: supply-chain
+  app.kubernetes.io/language: Go

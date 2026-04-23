@@ -1,0 +1,52 @@
+replicaCount: 1
+
+opencost:
+  image:
+    registry: ghcr.io
+    repository: opencost/opencost
+    tag: 1.112.0
+    pullPolicy: IfNotPresent
+
+  # Cloud provider pricing: aws, gcp, azure, or custom
+  cloudProvider: aws
+
+  # Prometheus endpoint for metrics
+  prometheus:
+    internal:
+      enabled: true
+      serviceName: prometheus-kube-prometheus-prometheus
+      namespaceName: monitoring
+      port: 9090
+
+  ui:
+    enabled: true
+    image:
+      registry: ghcr.io
+      repository: opencost/opencost-ui
+      tag: 1.112.0
+
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 1Gi
+
+service:
+  type: ClusterIP
+  port: 9003
+  uiPort: 9090
+
+serviceMonitor:
+  enabled: true
+  interval: 60s
+
+# Namespace cost labels
+namespaceLabels:
+  enabled: true
+
+podAnnotations:
+  prometheus.io/scrape: "true"
+  prometheus.io/port: "9003"
+  prometheus.io/path: "/metrics"

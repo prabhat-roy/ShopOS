@@ -1,0 +1,43 @@
+apiVersion: core.k8sgpt.ai/v1alpha1
+kind: K8sGPT
+metadata:
+  name: k8sgpt
+  namespace: {{ .Release.Namespace }}
+spec:
+  ai:
+    backend: {{ .Values.k8sgpt.backend }}
+    model: {{ .Values.k8sgpt.model }}
+    {{- if .Values.k8sgpt.secretRef }}
+    secret:
+      name: {{ .Values.k8sgpt.secretRef }}
+      key: openai-api-key
+    {{- end }}
+  noCache: {{ .Values.k8sgpt.noCache }}
+  filters:
+    {{- range .Values.k8sgpt.filters }}
+    - {{ . }}
+    {{- end }}
+  anonymize: {{ .Values.k8sgpt.anonymize }}
+  language: {{ .Values.k8sgpt.language }}
+  sink:
+    type: slack
+    endpoint: ""
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: {{ .Values.serviceAccount.name }}
+  namespace: {{ .Release.Namespace }}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: k8sgpt
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: view
+subjects:
+  - kind: ServiceAccount
+    name: {{ .Values.serviceAccount.name }}
+    namespace: {{ .Release.Namespace }}
