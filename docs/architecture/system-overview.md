@@ -1,6 +1,6 @@
 # System Overview — ShopOS
 
-ShopOS is an enterprise-grade, cloud-native commerce platform comprising **154 microservices** across **13 business domains**, written in **8 programming languages**. Services communicate via **gRPC** (synchronous reads/commands) and **Apache Kafka** (asynchronous domain events). Every service owns its own dedicated database — no shared data stores.
+ShopOS is an enterprise-grade, cloud-native commerce platform comprising **224 microservices + 6 frontend apps (230 total)** across **19 domains**, written in **13 programming languages**. Services communicate via **gRPC** (synchronous reads/commands) and **Apache Kafka** (asynchronous domain events). Every service owns its own dedicated database — no shared data stores.
 
 ---
 
@@ -158,7 +158,7 @@ ShopOS is an enterprise-grade, cloud-native commerce platform comprising **154 m
 ║  ┌────────────────────────────────────────────────────────────────────┐ ║
 ║  │              OBSERVABILITY STACK                                     │ ║
 ║  │                                                                      │ ║
-║  │  OpenTelemetry (all 8 languages auto-instrumented)                 │ ║
+║  │  OpenTelemetry (all 13 languages auto-instrumented)                 │ ║
 ║  │  Prometheus + Thanos + VictoriaMetrics (metrics)                   │ ║
 ║  │  Grafana (dashboards) + Alertmanager (routing to PagerDuty/Slack)  │ ║
 ║  │  Jaeger + Grafana Tempo + Zipkin (distributed tracing)             │ ║
@@ -184,7 +184,7 @@ ShopOS is an enterprise-grade, cloud-native commerce platform comprising **154 m
 ║  │              GITOPS & CI/CD                                          │ ║
 ║  │                                                                      │ ║
 ║  │  Jenkins + Drone CI + Dagger (build / test / scan / publish)       │ ║
-║  │  ArgoCD (App-of-Apps → 154 Applications) + Flux CD                │ ║
+║  │  ArgoCD (App-of-Apps → 230 Applications) + Flux CD                │ ║
 ║  │  Argo Rollouts (canary 10%→25%→50%→100%)                          │ ║
 ║  │  Argo Events (GitHub webhook → pipeline trigger)                   │ ║
 ║  │  Harbor + Nexus + Gitea (registry / artifact / git)                │ ║
@@ -214,19 +214,26 @@ ShopOS is an enterprise-grade, cloud-native commerce platform comprising **154 m
 
 | # | Domain | Services | Languages | Core Responsibility |
 |---|---|---|---|---|
-| 1 | Platform | 22 | Go, Java, Python | API gateways, BFFs, event store, saga orchestration, Temporal workflows |
-| 2 | Identity | 8 | Rust, Java, Go | Auth, users, sessions, MFA, GDPR, SPIFFE workload identity |
-| 3 | Catalog | 12 | Go, Java, Kotlin, Python, Node.js | Products, pricing, inventory, search |
-| 4 | Commerce | 23 | Go, Kotlin, Java, C#, Rust, Python, Node.js | Cart, checkout, orders, payments, promotions, BNPL, flash sales |
-| 5 | Supply Chain | 13 | Go, Java, Kotlin, Python, Node.js | Vendors, warehouses, fulfilment, tracking, cold chain |
-| 6 | Financial | 11 | Java, Kotlin, Go | Invoicing, accounting, payouts, compliance, chargebacks |
-| 7 | Customer Experience | 14 | Go, Java, Node.js | Reviews, support, wishlists, price alerts, gift registry |
-| 8 | Communications | 9 | Node.js, Python, Go | Email, SMS, push, in-app, WhatsApp, chatbot |
-| 9 | Content | 8 | Go, Java, Python, Node.js | Media, CMS, documents, i18n, video |
+| 1 | Platform | 27 | Go, Java, Python | API gateways, BFFs, event store, saga orchestration, Temporal workflows |
+| 2 | Identity | 11 | Rust, Java, Go | Auth, users, sessions, MFA, GDPR, SSO, bot detection |
+| 3 | Catalog | 15 | Go, Java, Kotlin, Python, Node.js | Products, pricing, inventory, variants, search |
+| 4 | Commerce | 28 | Go, Kotlin, Java, C#, Rust, Python, Node.js | Cart, checkout, orders, payments, promotions, BNPL, flash sales |
+| 5 | Supply Chain | 17 | Go, Java, Kotlin, Python, Node.js | Vendors, warehouses, fulfilment, tracking, cold chain, routing |
+| 6 | Financial | 15 | Java, Kotlin, Go | Invoicing, accounting, payouts, compliance, forex, dunning |
+| 7 | Customer Experience | 17 | Go, Java, Node.js | Reviews, support, wishlists, price alerts, gift registry, loyalty tiers |
+| 8 | Communications | 12 | Node.js, Python, Go | Email, SMS, push, in-app, WhatsApp, Telegram, voice, chatbot |
+| 9 | Content | 9 | Go, Java, Python, Node.js | Media, CMS, documents, i18n, video, A/B content |
 | 10 | Analytics & AI | 13 | Python, Scala, Java | Events, ML, recommendations, attribution, CLV, Flink stream jobs |
-| 11 | B2B | 7 | Java, Kotlin, Go | Organisations, contracts, procurement, EDI, marketplace seller |
-| 12 | Integrations | 10 | Java, Go, Node.js | ERP, CRM, marketplace, payment gateway, CDP adapters |
-| 13 | Affiliate | 4 | Go | Affiliate, referral, influencer, commissions |
+| 11 | B2B | 10 | Java, Kotlin, Go | Organisations, contracts, procurement, EDI, RFP, vendor onboarding |
+| 12 | Integrations | 14 | Java, Go, Python | ERP, CRM, marketplace, payment gateway, CDP, ETL, iPaaS |
+| 13 | Affiliate | 6 | Go | Affiliate, referral, influencer, commissions, fraud prevention |
+| 14 | Marketplace | 8 | Go, Java, Node.js | Seller registration, listing approval, commissions, disputes |
+| 15 | Gamification | 6 | Go | Points, badges, leaderboards, challenges, streaks |
+| 16 | Developer Platform | 6 | Go, Node.js | API management, sandboxes, OAuth, developer analytics |
+| 17 | Compliance | 5 | Go, Java | Data retention, consent audit, privacy requests, data lineage |
+| 18 | Sustainability | 5 | Go | Carbon tracking, eco scoring, green shipping, offset |
+| 19 | Web (Frontends) | 6 | TS/Next.js, React, Vue, Angular, React Native | Storefront, Admin, Seller, Partner, Mobile, Dev portals |
+| **Total** | **19 domains** | **230** | **13 languages** | |
 
 ---
 
@@ -320,7 +327,7 @@ Browser                 Traefik          API Gateway         Services
 | **CQRS** | `order-service`, `accounting-service` | High-read reporting queries must not compete with write transactions |
 | **Event Sourcing** | `event-store-service` (Postgres, append-only) | Full audit trail; enables replay and temporal queries |
 | **Saga** | `saga-orchestrator` (choreography) + Temporal (orchestration) | Distributed transactions across services without 2PC; each step is compensatable |
-| **Database-per-service** | 154 separate databases | No coupling between services; each chooses the optimal store for its access pattern |
+| **Database-per-service** | 230 service-owned databases | No coupling between services; each chooses the optimal store for its access pattern |
 | **Outbox pattern** | Services write to outbox table → Debezium CDC → Kafka | Guarantees at-least-once event delivery even if Kafka is briefly unavailable |
 | **CQRS read models** | Debezium → ClickHouse / Elasticsearch / OpenSearch | Reporting queries run against optimised read stores, not transactional databases |
 | **Stream processing** | Apache Flink (Kafka → stateful jobs → Kafka/ClickHouse) | Fraud detection and analytics require windowed aggregations across millions of events |
