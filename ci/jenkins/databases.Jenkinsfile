@@ -116,16 +116,17 @@ pipeline {
                         helm repo add temporal https://go.temporal.io/helm-charts || true
                         helm repo update
                         kubectl create namespace temporal-system --dry-run=client -o yaml | kubectl apply -f -
+                        helm uninstall temporal -n temporal-system --ignore-not-found || true
+                        kubectl delete pvc --all -n temporal-system --ignore-not-found || true
                         helm upgrade --install temporal temporal/temporal \
-                            --version 0.74.0 \
+                            --version 0.73.2 \
                             --namespace temporal-system \
                             --set server.replicaCount=1 \
                             --set cassandra.config.cluster_size=1 \
                             --set elasticsearch.enabled=false \
                             --set grafana.enabled=false \
                             --set prometheus.enabled=false \
-                            --set schema.setup.enabled=false \
-                            --set schema.update.enabled=false
+                            --wait --timeout=10m
                         kubectl apply -f workflow/temporal/ -n temporal-system 2>/dev/null || true
                         echo "Temporal installed"
                     """
