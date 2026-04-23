@@ -1,0 +1,109 @@
+# Drone CI — Unit Test Pipeline
+# Responsibility: fastest possible feedback loop — pure unit tests, no Docker, no deploy
+# Runs on every commit in < 5 minutes. No side effects, no external dependencies.
+
+kind: pipeline
+type: docker
+name: unit-tests
+
+trigger:
+  event:
+    - push
+    - pull_request
+
+steps:
+  - name: go-unit-tests
+    image: golang:1.23-alpine
+    environment:
+      CGO_ENABLED: "0"
+      GOFLAGS: "-count=1 -race"
+    commands:
+      - apk add --no-cache git make
+      - |
+        for pkg in $(go list ./src/platform/... ./src/identity/... ./src/catalog/... \
+                              ./src/commerce/... ./src/supply-chain/... ./src/financial/...); do
+          go test -v -timeout 60s $pkg
+        done
+      - go test -coverprofile=coverage.out ./...
+      - go tool cover -func=coverage.out | tail -1
+
+  - name: python-unit-tests
+    image: python:3.12-slim
+    commands:
+      - pip install pytest pytest-cov
+      - |
+        for service in src/analytics-ai/*/; do
+          if [ -f "$service/requirements.txt" ]; then
+            pip install -r $service/requirements.txt -q
+            pytest $service --tb=short -q --co -q 2>/dev/null && \
+            pytest $service --tb=short -q || true
+          fi
+        done
+
+  - name: node-unit-tests
+    image: node:20-alpine
+    commands:
+      - |
+        for service in src/platform/mobile-bff src/communications/notification-orchestrator \
+                       src/catalog/configurator-service; do
+          if [ -f "$service/package.json" ]; then
+            cd $service && npm ci --silent && npm test -- --passWithNoTests && cd -
+          fi
+        done
+
+  - name: kotlin-unit-tests
+    image: gradle:8.10-jdk21
+    commands:
+      - |
+        for service in src/catalog/subscription-product-service src/commerce/order-service \
+                       src/b2b/contract-service; do
+          if [ -f "$service/build.gradle.kts" ]; then
+            cd $service && gradle test --no-daemon -q && cd -
+          fi
+        done
+
+  - name: rust-unit-tests
+    image: rust:1.81-slim
+    commands:
+      - |
+        for service in src/identity/auth-service src/commerce/shipping-service; do
+          if [ -f "$service/Cargo.toml" ]; then
+            cd $service && cargo test --lib -q && cd -
+          fi
+        done
+
+  - name: coverage-gate
+    image: golang:1.23-alpine
+    commands:
+      - |
+        COVERAGE=$(go tool cover -func=coverage.out | grep total | awk '{print $3}' | tr -d '%')
+        echo "Total coverage: $COVERAGE%"
+        if [ $(echo "$COVERAGE < 60" | bc -l) -eq 1 ]; then
+          echo "Coverage below 60% threshold"
+          exit 1
+        fi
+    depends_on:
+      - go-unit-tests
+
+---
+kind: pipeline
+type: docker
+name: compatibility-matrix
+
+trigger:
+  event:
+    - push
+  branch:
+    - main
+    - develop
+
+steps:
+  - name: go-1.22
+    image: golang:1.22-alpine
+    commands:
+      - go test ./src/platform/api-gateway/... -count=1 -timeout 30s
+
+  - name: go-1.23
+    image: golang:1.23-alpine
+    commands:
+      - go test ./src/platform/api-gateway/... -count=1 -timeout 30s

@@ -1,0 +1,113 @@
+# Woodpecker CI — Frontend Pipeline
+# Responsibility: all frontend-specific workflows (Next.js, React, Vue, Angular, React Native, Flutter)
+# Playwright E2E, Lighthouse CI, Storybook builds, accessibility checks, bundle analysis
+
+when:
+  path:
+    - src/web/**
+
+steps:
+  storefront-build:
+    image: node:20-alpine
+    directory: src/web/storefront-service
+    commands:
+      - npm ci
+      - npm run type-check
+      - npm run lint
+      - npm run build
+      - npm run test:unit -- --coverage
+
+  admin-dashboard-build:
+    image: node:20-alpine
+    directory: src/web/admin-dashboard-service
+    commands:
+      - npm ci
+      - npm run type-check
+      - npm run lint
+      - npm run build
+      - npm run test
+
+  seller-portal-build:
+    image: node:20-alpine
+    directory: src/web/seller-portal-service
+    commands:
+      - npm ci
+      - npx vue-tsc --noEmit
+      - npm run lint
+      - npm run build
+      - npm run test:unit
+
+  partner-portal-build:
+    image: node:20-alpine
+    directory: src/web/partner-portal-service
+    commands:
+      - npm ci
+      - npx ng build --configuration=production
+      - npx ng test --watch=false --browsers=ChromeHeadless
+
+  storybook:
+    image: node:20-alpine
+    directory: src/web/storefront-service
+    depends_on: [storefront-build]
+    commands:
+      - npm ci
+      - npm run build-storybook
+      - npx storybook-static-to-htmlproofer
+
+  playwright-e2e:
+    image: mcr.microsoft.com/playwright:v1.48.0-jammy
+    depends_on: [storefront-build]
+    environment:
+      BASE_URL: http://localhost:3000
+    commands:
+      - cd src/web/storefront-service
+      - npm ci
+      - npx playwright install --with-deps chromium firefox webkit
+      - npx playwright test --reporter=html
+    volumes:
+      - /dev/shm:/dev/shm
+
+  lighthouse-ci:
+    image: node:20-alpine
+    depends_on: [storefront-build]
+    commands:
+      - npm install -g @lhci/cli
+      - |
+        lhci autorun \
+          --upload.target=temporary-public-storage \
+          --collect.url=http://localhost:3000 \
+          --assert.preset=lighthouse:recommended \
+          --assert.assertions.categories:performance=["error",{"minScore":0.9}] \
+          --assert.assertions.categories:accessibility=["error",{"minScore":0.95}]
+
+  bundle-analysis:
+    image: node:20-alpine
+    depends_on: [storefront-build]
+    directory: src/web/storefront-service
+    commands:
+      - npm run build -- --analyze
+      - npx bundlesize
+
+  axe-accessibility:
+    image: node:20-alpine
+    depends_on: [storefront-build]
+    commands:
+      - npm install -g @axe-core/cli
+      - axe http://localhost:3000 --exit
+
+  react-native-build:
+    image: node:20-alpine
+    directory: src/web/mobile-app-service
+    commands:
+      - npm ci
+      - npx expo export --platform all --output-dir dist
+      - npx jest --coverage --passWithNoTests
+
+  flutter-build:
+    image: ghcr.io/cirruslabs/flutter:stable
+    directory: src/web/mobile-flutter-service
+    commands:
+      - flutter pub get
+      - flutter analyze
+      - flutter test --coverage
+      - flutter build apk --release

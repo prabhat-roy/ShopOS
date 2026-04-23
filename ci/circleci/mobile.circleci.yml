@@ -1,0 +1,173 @@
+# CircleCI — Mobile Build Pipeline
+# Responsibility: iOS + Android native builds requiring macOS runners and mobile SDKs
+# React Native (Expo) iOS/Android, Flutter iOS/Android, code signing, TestFlight/Play Store upload
+
+version: 2.1
+
+orbs:
+  android: circleci/android@2.5
+  node: circleci/node@5.2
+  ruby: circleci/ruby@2.1
+
+executors:
+  macos-executor:
+    macos:
+      xcode: "16.0"
+    resource_class: macos.m1.medium.gen1
+  android-executor:
+    docker:
+      - image: cimg/android:2024.01
+    resource_class: large
+
+jobs:
+  react-native-ios:
+    executor: macos-executor
+    working_directory: ~/project/src/web/mobile-app-service
+    steps:
+      - checkout:
+          path: ~/project
+      - node/install:
+          node-version: "20"
+      - restore_cache:
+          keys:
+            - node-deps-{{ checksum "package-lock.json" }}
+      - run: npm ci
+      - save_cache:
+          key: node-deps-{{ checksum "package-lock.json" }}
+          paths:
+            - node_modules
+      - restore_cache:
+          keys:
+            - pods-{{ checksum "ios/Podfile.lock" }}
+      - run:
+          name: Install CocoaPods
+          command: cd ios && pod install --repo-update
+      - save_cache:
+          key: pods-{{ checksum "ios/Podfile.lock" }}
+          paths:
+            - ios/Pods
+      - run:
+          name: Set up code signing
+          command: |
+            echo $KEYCHAIN_PASSWORD | base64 --decode > /tmp/keychain_password
+            echo $CERTIFICATE_P12 | base64 --decode > /tmp/certificate.p12
+            security create-keychain -p $(cat /tmp/keychain_password) build.keychain
+            security import /tmp/certificate.p12 -k build.keychain -P $P12_PASSWORD -T /usr/bin/codesign
+            security list-keychains -s build.keychain
+            security default-keychain -s build.keychain
+            security unlock-keychain -p $(cat /tmp/keychain_password) build.keychain
+      - run:
+          name: Build iOS Release
+          command: |
+            xcodebuild -workspace ios/ShopOS.xcworkspace \
+              -scheme ShopOS \
+              -configuration Release \
+              -sdk iphoneos \
+              -archivePath /tmp/ShopOS.xcarchive \
+              archive
+            xcodebuild -exportArchive \
+              -archivePath /tmp/ShopOS.xcarchive \
+              -exportOptionsPlist ios/ExportOptions.plist \
+              -exportPath /tmp/ShopOS-ipa
+      - run:
+          name: Upload to TestFlight
+          command: |
+            xcrun altool --upload-app \
+              --type ios \
+              --file /tmp/ShopOS-ipa/ShopOS.ipa \
+              --username $APPLE_ID \
+              --password $APP_SPECIFIC_PASSWORD
+          environment:
+            FASTLANE_APPLE_APPLICATION_SPECIFIC_PASSWORD: $APP_SPECIFIC_PASSWORD
+
+  react-native-android:
+    executor: android-executor
+    working_directory: ~/project/src/web/mobile-app-service
+    steps:
+      - checkout:
+          path: ~/project
+      - node/install:
+          node-version: "20"
+      - run: npm ci
+      - run:
+          name: Set up Android signing
+          command: |
+            echo $ANDROID_KEYSTORE | base64 --decode > android/app/release.keystore
+      - android/run-tests:
+          test-command: ./gradlew test
+      - run:
+          name: Build Android Release AAB
+          command: |
+            cd android && ./gradlew bundleRelease \
+              -Pandroid.injected.signing.store.file=app/release.keystore \
+              -Pandroid.injected.signing.store.password=$KEYSTORE_PASSWORD \
+              -Pandroid.injected.signing.key.alias=$KEY_ALIAS \
+              -Pandroid.injected.signing.key.password=$KEY_PASSWORD
+      - run:
+          name: Upload to Google Play Internal Track
+          command: |
+            npx @play-store/upload \
+              --packageName com.shopos.app \
+              --aab android/app/build/outputs/bundle/release/app-release.aab \
+              --track internal \
+              --serviceAccountJsonPath $GOOGLE_SERVICE_ACCOUNT_JSON
+
+  flutter-ios:
+    executor: macos-executor
+    working_directory: ~/project/src/web/mobile-flutter-service
+    steps:
+      - checkout:
+          path: ~/project
+      - run:
+          name: Install Flutter
+          command: |
+            git clone https://github.com/flutter/flutter.git -b stable /opt/flutter
+            echo 'export PATH="$PATH:/opt/flutter/bin"' >> $BASH_ENV
+      - run: flutter pub get
+      - run: flutter test --coverage
+      - run: flutter build ios --release --no-codesign
+      - run:
+          name: Archive and sign
+          command: |
+            xcodebuild -workspace ios/Runner.xcworkspace \
+              -scheme Runner \
+              -configuration Release \
+              -sdk iphoneos \
+              -archivePath /tmp/ShopOSFlutter.xcarchive \
+              archive
+
+  flutter-android:
+    executor: android-executor
+    working_directory: ~/project/src/web/mobile-flutter-service
+    steps:
+      - checkout:
+          path: ~/project
+      - run:
+          name: Install Flutter SDK
+          command: |
+            wget -q https://storage.googleapis.com/flutter_infra_release/releases/stable/linux/flutter_linux_3.24.0-stable.tar.xz
+            tar xf flutter_linux_3.24.0-stable.tar.xz -C /opt/
+            echo 'export PATH="$PATH:/opt/flutter/bin"' >> $BASH_ENV
+      - run: flutter pub get
+      - run: flutter test
+      - run: flutter build appbundle --release
+
+workflows:
+  mobile-pipeline:
+    jobs:
+      - react-native-ios:
+          filters:
+            branches:
+              only: [main, release/*]
+      - react-native-android:
+          filters:
+            branches:
+              only: [main, release/*]
+      - flutter-ios:
+          filters:
+            branches:
+              only: [main, release/*]
+      - flutter-android:
+          filters:
+            branches:
+              only: [main, release/*]

@@ -1,0 +1,149 @@
+# GoCD — Release Pipeline with Manual Promotion Gates
+# Responsibility: controlled promotion from dev → staging → production
+# Humans approve each stage. Full rollback pipeline included. Value stream map.
+
+format_version: 10
+
+pipelines:
+  shopos-release:
+    group: release
+    label_template: "release-${COUNT}-${git[:8]}"
+    lock_behavior: lockOnFailure
+
+    environment_variables:
+      ARTIFACT_REGISTRY: harbor.shopos.internal
+
+    materials:
+      git:
+        git: https://github.com/prabhat-roy/ShopOS.git
+        branch: main
+        shallow_clone: true
+
+    stages:
+
+      - prepare-release:
+          approval: success
+          jobs:
+            validate-release-candidate:
+              tasks:
+                - exec:
+                    command: bash
+                    arguments:
+                      - -c
+                      - |
+                        for service in $(cat .release-manifest.txt); do
+                          docker manifest inspect harbor.shopos.internal/shopos/$service:${GO_REVISION_GIT_SHORT} || exit 1
+                        done
+                - exec:
+                    command: bash
+                    arguments:
+                      - -c
+                      - |
+                        docker run --rm pactfoundation/pact-cli:latest \
+                          broker can-i-deploy \
+                          --pacticipant shopos-order-service \
+                          --version ${GO_REVISION_GIT_SHORT} \
+                          --to production \
+                          --broker-base-url https://pact.shopos.internal
+
+      - deploy-dev:
+          approval: success
+          jobs:
+            deploy-to-dev:
+              tasks:
+                - exec:
+                    command: bash
+                    arguments:
+                      - -c
+                      - |
+                        export KUBECONFIG=/etc/gocd/.kube/dev-config
+                        for service in $(cat .release-manifest.txt); do
+                          helm upgrade --install $service helm/services/$service \
+                            --namespace shopos-dev \
+                            --set image.tag=${GO_REVISION_GIT_SHORT} \
+                            --wait --timeout=5m
+                        done
+                - exec:
+                    command: bash
+                    arguments:
+                      - -c
+                      - npx hurl tests/smoke/dev.hurl --variable host=https://dev.shopos.internal
+
+      - deploy-staging:
+          approval:
+            type: manual
+            roles:
+              - release-engineer
+          jobs:
+            deploy-to-staging:
+              tasks:
+                - exec:
+                    command: bash
+                    arguments:
+                      - -c
+                      - |
+                        export KUBECONFIG=/etc/gocd/.kube/staging-config
+                        for service in $(cat .release-manifest.txt); do
+                          helm upgrade --install $service helm/services/$service \
+                            --namespace shopos-staging \
+                            --set image.tag=${GO_REVISION_GIT_SHORT} \
+                            --set replicaCount=2 \
+                            --wait --timeout=10m
+                        done
+
+      - load-test-staging:
+          approval: success
+          jobs:
+            k6-load-test:
+              tasks:
+                - exec:
+                    command: bash
+                    arguments:
+                      - -c
+                      - |
+                        docker run --rm grafana/k6:latest run \
+                          -e BASE_URL=https://staging.shopos.internal \
+                          --vus 100 --duration 10m \
+                          load-testing/k6/checkout-flow.js
+
+      - deploy-production:
+          approval:
+            type: manual
+            roles:
+              - release-manager
+              - sre-oncall
+          jobs:
+            canary-deploy:
+              tasks:
+                - exec:
+                    command: bash
+                    arguments:
+                      - -c
+                      - |
+                        export KUBECONFIG=/etc/gocd/.kube/prod-config
+                        for service in $(cat .release-critical.txt); do
+                          kubectl argo rollouts set image $service \
+                            $service=harbor.shopos.internal/shopos/$service:${GO_REVISION_GIT_SHORT} \
+                            --namespace shopos-prod
+                        done
+                        sleep 600
+                        kubectl argo rollouts promote $service -n shopos-prod
+
+      - rollback:
+          approval:
+            type: manual
+            roles:
+              - release-engineer
+              - sre-oncall
+          jobs:
+            execute-rollback:
+              tasks:
+                - exec:
+                    command: bash
+                    arguments:
+                      - -c
+                      - |
+                        export KUBECONFIG=/etc/gocd/.kube/prod-config
+                        for service in $(cat .release-critical.txt); do
+                          kubectl argo rollouts undo $service -n shopos-prod
+                        done

@@ -1,0 +1,196 @@
+# Azure DevOps — C# / .NET Service Pipeline
+# Responsibility: Windows-specific builds for C# services (cart-service, return-refund-service)
+# Uses Windows agents, .NET SDK, Azure-native tooling (ACR, AKS, Key Vault)
+
+trigger:
+  branches:
+    include:
+      - main
+      - develop
+  paths:
+    include:
+      - src/commerce/cart-service/**
+      - src/commerce/return-refund-service/**
+
+pool:
+  vmImage: windows-latest
+
+variables:
+  DOTNET_VERSION: '8.x'
+  ACR_NAME: shoposacrprod
+  AKS_CLUSTER: shopos-aks-prod
+  AKS_RESOURCE_GROUP: shopos-prod-rg
+  AZURE_SUBSCRIPTION: $(AZURE_SUBSCRIPTION_ID)
+
+stages:
+  - stage: Build
+    displayName: Build and Test
+    jobs:
+      - job: BuildCartService
+        displayName: Build cart-service (.NET 8)
+        steps:
+          - task: UseDotNet@2
+            inputs:
+              version: $(DOTNET_VERSION)
+              includePreviewVersions: false
+
+          - task: DotNetCoreCLI@2
+            displayName: Restore NuGet packages
+            inputs:
+              command: restore
+              projects: src/commerce/cart-service/*.csproj
+              feedsToUse: select
+              vstsFeed: shopos-nuget-feed
+
+          - task: DotNetCoreCLI@2
+            displayName: Build cart-service
+            inputs:
+              command: build
+              projects: src/commerce/cart-service/*.csproj
+              arguments: --configuration Release --no-restore
+
+          - task: DotNetCoreCLI@2
+            displayName: Run unit tests
+            inputs:
+              command: test
+              projects: src/commerce/cart-service/**/*Tests.csproj
+              arguments: >
+                --configuration Release
+                --no-build
+                --collect:"XPlat Code Coverage"
+                --results-directory $(Agent.TempDirectory)
+              publishTestResults: true
+
+          - task: PublishCodeCoverageResults@2
+            inputs:
+              summaryFileLocation: $(Agent.TempDirectory)/**/coverage.cobertura.xml
+              codecoverageTool: Cobertura
+
+      - job: BuildReturnRefundService
+        displayName: Build return-refund-service (.NET 8)
+        steps:
+          - task: UseDotNet@2
+            inputs:
+              version: $(DOTNET_VERSION)
+
+          - task: DotNetCoreCLI@2
+            displayName: Restore
+            inputs:
+              command: restore
+              projects: src/commerce/return-refund-service/*.csproj
+
+          - task: DotNetCoreCLI@2
+            displayName: Build
+            inputs:
+              command: build
+              projects: src/commerce/return-refund-service/*.csproj
+              arguments: --configuration Release --no-restore
+
+          - task: DotNetCoreCLI@2
+            displayName: Test
+            inputs:
+              command: test
+              projects: src/commerce/return-refund-service/**/*Tests.csproj
+              arguments: --configuration Release --no-build --collect:"XPlat Code Coverage"
+
+  - stage: SecurityScan
+    displayName: Security Scanning
+    dependsOn: Build
+    jobs:
+      - job: SnykScan
+        displayName: Snyk .NET dependency scan
+        steps:
+          - task: SnykSecurityScan@1
+            inputs:
+              serviceConnectionEndpoint: snyk-connection
+              testType: app
+              targetFile: src/commerce/cart-service/CartService.csproj
+              failOnIssues: true
+              monitorWhenFail: false
+
+      - job: WhiteSourceScan
+        displayName: OWASP Dependency Check
+        steps:
+          - task: dependency-check-build-task@6
+            inputs:
+              projectName: shopos-csharp
+              scanPath: src/commerce/
+              format: HTML,JUNIT
+
+  - stage: ContainerBuild
+    displayName: Build and Push Docker Images
+    dependsOn: SecurityScan
+    jobs:
+      - job: BuildAndPushACR
+        displayName: Build images and push to Azure Container Registry
+        steps:
+          - task: AzureCLI@2
+            displayName: Login to ACR
+            inputs:
+              azureSubscription: $(AZURE_SUBSCRIPTION)
+              scriptType: bash
+              scriptLocation: inlineScript
+              inlineScript: az acr login --name $(ACR_NAME)
+
+          - task: Docker@2
+            displayName: Build cart-service image
+            inputs:
+              command: buildAndPush
+              repository: $(ACR_NAME).azurecr.io/shopos/cart-service
+              dockerfile: src/commerce/cart-service/Dockerfile
+              tags: |
+                $(Build.BuildId)
+                latest
+
+          - task: Docker@2
+            displayName: Build return-refund-service image
+            inputs:
+              command: buildAndPush
+              repository: $(ACR_NAME).azurecr.io/shopos/return-refund-service
+              dockerfile: src/commerce/return-refund-service/Dockerfile
+              tags: |
+                $(Build.BuildId)
+                latest
+
+  - stage: DeployAKS
+    displayName: Deploy to Azure AKS
+    dependsOn: ContainerBuild
+    condition: and(succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/main'))
+    jobs:
+      - deployment: DeployToAKS
+        displayName: Deploy C# services to AKS
+        environment: production
+        strategy:
+          runOnce:
+            deploy:
+              steps:
+                - task: AzureCLI@2
+                  displayName: Get AKS credentials
+                  inputs:
+                    azureSubscription: $(AZURE_SUBSCRIPTION)
+                    scriptType: bash
+                    scriptLocation: inlineScript
+                    inlineScript: |
+                      az aks get-credentials \
+                        --resource-group $(AKS_RESOURCE_GROUP) \
+                        --name $(AKS_CLUSTER) \
+                        --overwrite-existing
+
+                - task: HelmDeploy@0
+                  displayName: Deploy cart-service via Helm
+                  inputs:
+                    connectionType: Kubernetes Service Connection
+                    command: upgrade
+                    chartType: FilePath
+                    chartPath: helm/services/cart-service
+                    releaseName: cart-service
+                    namespace: shopos-commerce
+                    overrideValues: image.tag=$(Build.BuildId),image.repository=$(ACR_NAME).azurecr.io/shopos/cart-service
+                    waitForExecution: true
+
+                - task: AzureKeyVault@2
+                  displayName: Fetch secrets from Azure Key Vault
+                  inputs:
+                    azureSubscription: $(AZURE_SUBSCRIPTION)
+                    KeyVaultName: shopos-kv-prod
+                    SecretsFilter: cart-service-*, return-refund-*

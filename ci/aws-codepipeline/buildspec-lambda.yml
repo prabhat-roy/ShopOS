@@ -1,0 +1,166 @@
+# AWS CodePipeline — Serverless / Lambda Pipeline
+# Responsibility: AWS-native deployments — Lambda functions, ECR push, ECS Fargate fallback,
+# S3 static deployments, CloudFormation stacks, SSM parameter management
+# Uses AWS-native tooling: SAM CLI, CDK, CloudFormation, SSM, Secrets Manager
+
+version: 0.2
+
+env:
+  variables:
+    AWS_REGION: us-east-1
+    ECR_REGISTRY: 123456789012.dkr.ecr.us-east-1.amazonaws.com
+    SAM_BUCKET: shopos-sam-artifacts-prod
+  parameter-store:
+    SLACK_WEBHOOK: /shopos/prod/slack-webhook
+    DB_PASSWORD: /shopos/prod/db-password
+  secrets-manager:
+    STRIPE_API_KEY: shopos/prod/stripe:api_key
+    SENDGRID_API_KEY: shopos/prod/sendgrid:api_key
+
+phases:
+  install:
+    runtime-versions:
+      python: 3.12
+      nodejs: 20
+    commands:
+      - pip install aws-sam-cli awscli boto3
+      - npm install -g aws-cdk@2
+      - curl -sL https://deb.nodesource.com/setup_20.x | bash -
+      - apt-get install -y jq
+
+  pre_build:
+    commands:
+      - echo "Logging in to Amazon ECR..."
+      - aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $ECR_REGISTRY
+
+      - echo "Verifying SSM parameters exist..."
+      - aws ssm get-parameter --name /shopos/prod/db-password --with-decryption > /dev/null
+
+      - echo "Running pre-deployment Lambda smoke tests..."
+      - aws lambda invoke --function-name shopos-healthcheck-prod /tmp/response.json
+      - cat /tmp/response.json | jq -e '.statusCode == 200'
+
+  build:
+    commands:
+      # Build and package Lambda functions (Go binary for arm64)
+      - echo "Building Lambda functions..."
+      - |
+        for fn_dir in src/platform/scheduler-service src/platform/worker-job-queue src/communications/email-service; do
+          FN_NAME=$(basename $fn_dir)
+          echo "Building $FN_NAME for Lambda..."
+          cd $fn_dir
+          GOOS=linux GOARCH=arm64 CGO_ENABLED=0 go build -o bootstrap -ldflags="-s -w" .
+          zip -j /tmp/${FN_NAME}.zip bootstrap
+          cd -
+        done
+
+      # SAM build and package for event-driven functions
+      - echo "SAM build..."
+      - sam build --use-container --build-image amazon/aws-sam-build-image-go1.x
+
+      - echo "SAM package..."
+      - sam package \
+          --s3-bucket $SAM_BUCKET \
+          --s3-prefix $CODEBUILD_BUILD_ID \
+          --output-template-file packaged-template.yaml \
+          --region $AWS_REGION
+
+      # Build and push to ECR (ECS Fargate fallback services)
+      - echo "Building ECS images..."
+      - |
+        for service in fraud-detection-service demand-forecast-service; do
+          docker build -t $ECR_REGISTRY/shopos/$service:$CODEBUILD_RESOLVED_SOURCE_VERSION \
+            src/$(find src -name "$service" -type d | head -1 | cut -d/ -f2)/$service/
+          docker push $ECR_REGISTRY/shopos/$service:$CODEBUILD_RESOLVED_SOURCE_VERSION
+          docker tag $ECR_REGISTRY/shopos/$service:$CODEBUILD_RESOLVED_SOURCE_VERSION \
+                     $ECR_REGISTRY/shopos/$service:latest
+          docker push $ECR_REGISTRY/shopos/$service:latest
+        done
+
+      # Deploy S3 static assets (storefront CDN artifacts)
+      - echo "Building storefront for S3/CloudFront..."
+      - cd src/web/storefront-service
+      - npm ci --silent
+      - NEXT_PUBLIC_API_URL=https://api.shopos.com npm run build
+      - aws s3 sync out/ s3://shopos-storefront-prod/ --delete --cache-control max-age=31536000
+      - aws cloudfront create-invalidation --distribution-id $CF_DISTRIBUTION_ID --paths "/*"
+      - cd -
+
+  post_build:
+    commands:
+      # SAM deploy
+      - echo "Deploying SAM application..."
+      - sam deploy \
+          --template-file packaged-template.yaml \
+          --stack-name shopos-serverless-prod \
+          --capabilities CAPABILITY_IAM CAPABILITY_AUTO_EXPAND \
+          --parameter-overrides \
+            Environment=production \
+            DbPassword=$DB_PASSWORD \
+          --no-fail-on-empty-changeset \
+          --region $AWS_REGION
+
+      # Update Lambda function code directly for rapid deploys
+      - echo "Updating Lambda functions..."
+      - |
+        for fn in scheduler-service worker-job-queue email-service; do
+          aws lambda update-function-code \
+            --function-name shopos-${fn}-prod \
+            --zip-file fileb:///tmp/${fn}.zip \
+            --architectures arm64 \
+            --region $AWS_REGION
+          aws lambda wait function-updated \
+            --function-name shopos-${fn}-prod
+          aws lambda publish-version \
+            --function-name shopos-${fn}-prod \
+            --description "Build $CODEBUILD_BUILD_NUMBER - $CODEBUILD_RESOLVED_SOURCE_VERSION"
+        done
+
+      # Update ECS services
+      - echo "Updating ECS services..."
+      - |
+        for service in fraud-detection-service demand-forecast-service; do
+          aws ecs update-service \
+            --cluster shopos-prod \
+            --service $service \
+            --force-new-deployment \
+            --region $AWS_REGION
+        done
+
+      # SSM parameter updates
+      - echo "Updating SSM parameters..."
+      - aws ssm put-parameter \
+          --name /shopos/prod/last-deploy-sha \
+          --value $CODEBUILD_RESOLVED_SOURCE_VERSION \
+          --type String \
+          --overwrite
+
+      # Post-deploy smoke test via Lambda
+      - echo "Running post-deploy smoke tests..."
+      - |
+        aws lambda invoke \
+          --function-name shopos-smoke-test-prod \
+          --payload '{"test_suite":"post_deploy"}' \
+          --cli-binary-format raw-in-base64-out \
+          /tmp/smoke-result.json
+        cat /tmp/smoke-result.json | jq -e '.all_passed == true'
+
+      - echo "Build and deploy completed successfully"
+
+artifacts:
+  files:
+    - packaged-template.yaml
+    - /tmp/*.zip
+  name: shopos-lambda-artifacts-$CODEBUILD_BUILD_ID
+
+reports:
+  LambdaTestResults:
+    files:
+      - /tmp/smoke-result.json
+    file-format: JSON
+
+cache:
+  paths:
+    - /root/.cache/pip/**/*
+    - /root/.npm/**/*
+    - /root/go/pkg/mod/**/*

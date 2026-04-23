@@ -1,0 +1,151 @@
+# Travis CI — Multi-Version Compatibility Matrix
+# Responsibility: test services across multiple language runtime versions and operating systems
+# Not for primary CI — purely for ensuring forward/backward compatibility
+
+language: minimal
+
+jobs:
+  include:
+    # Go version matrix
+    - name: "Go 1.21 — core services"
+      language: go
+      go: "1.21"
+      os: linux
+      script:
+        - go test ./src/platform/api-gateway/... -count=1 -timeout 60s
+        - go test ./src/identity/auth-service/... -count=1 -timeout 60s
+        - go test ./src/commerce/cart-service/... -count=1 -timeout 60s
+
+    - name: "Go 1.22 — core services"
+      language: go
+      go: "1.22"
+      os: linux
+      script:
+        - go test ./src/platform/api-gateway/... -count=1 -timeout 60s
+        - go test ./src/identity/auth-service/... -count=1 -timeout 60s
+
+    - name: "Go 1.23 — core services"
+      language: go
+      go: "1.23"
+      os: linux
+      script:
+        - go test ./src/platform/api-gateway/... -count=1 -timeout 60s
+        - go test ./src/identity/auth-service/... -count=1 -timeout 60s
+
+    # Go on macOS
+    - name: "Go 1.23 — macOS compatibility"
+      language: go
+      go: "1.23"
+      os: osx
+      osx_image: xcode15
+      script:
+        - go build ./src/platform/api-gateway/...
+        - go build ./src/commerce/checkout-service/...
+
+    # Python version matrix
+    - name: "Python 3.11 — analytics-ai services"
+      language: python
+      python: "3.11"
+      os: linux
+      install:
+        - pip install -r src/analytics-ai/recommendation-service/requirements.txt
+        - pip install -r src/analytics-ai/fraud-detection-service/requirements.txt
+      script:
+        - pytest src/analytics-ai/recommendation-service --tb=short -q
+        - pytest src/analytics-ai/fraud-detection-service --tb=short -q
+
+    - name: "Python 3.12 — analytics-ai services"
+      language: python
+      python: "3.12"
+      os: linux
+      install:
+        - pip install -r src/analytics-ai/recommendation-service/requirements.txt
+      script:
+        - pytest src/analytics-ai/recommendation-service --tb=short -q
+
+    # Node.js LTS matrix
+    - name: "Node.js 20 LTS — communications services"
+      language: node_js
+      node_js: "20"
+      os: linux
+      script:
+        - cd src/communications/notification-orchestrator && npm ci && npm test
+
+    - name: "Node.js 22 — communications services"
+      language: node_js
+      node_js: "22"
+      os: linux
+      script:
+        - cd src/communications/notification-orchestrator && npm ci && npm test
+
+    # Java LTS matrix
+    - name: "Java 21 LTS — payment/financial services"
+      language: java
+      jdk: openjdk21
+      os: linux
+      script:
+        - cd src/commerce/payment-service && mvn test -q
+
+    - name: "Java 23 — payment/financial services"
+      language: java
+      jdk: openjdk23
+      os: linux
+      script:
+        - cd src/commerce/payment-service && mvn test -q
+
+    # Kotlin/Gradle matrix
+    - name: "Kotlin + Gradle 8.8 — order service"
+      language: java
+      jdk: openjdk21
+      os: linux
+      before_install:
+        - sdk install gradle 8.8
+      script:
+        - cd src/commerce/order-service && gradle test --no-daemon
+
+    - name: "Kotlin + Gradle 8.10 — order service"
+      language: java
+      jdk: openjdk21
+      os: linux
+      before_install:
+        - sdk install gradle 8.10
+      script:
+        - cd src/commerce/order-service && gradle test --no-daemon
+
+    # Rust edition matrix
+    - name: "Rust stable — auth-service"
+      language: rust
+      rust: stable
+      os: linux
+      script:
+        - cd src/identity/auth-service && cargo test --lib
+
+    - name: "Rust beta — auth-service"
+      language: rust
+      rust: beta
+      os: linux
+      script:
+        - cd src/identity/auth-service && cargo test --lib
+      allow_failures: true
+
+    # ARM64 compatibility
+    - name: "Go 1.23 — ARM64 build"
+      language: go
+      go: "1.23"
+      arch: arm64
+      os: linux
+      script:
+        - GOARCH=arm64 go build ./...
+
+  allow_failures:
+    - rust: beta
+    - node_js: "22"
+
+  fast_finish: true
+
+notifications:
+  slack:
+    rooms:
+      - shopos-ci
+    on_success: change
+    on_failure: always

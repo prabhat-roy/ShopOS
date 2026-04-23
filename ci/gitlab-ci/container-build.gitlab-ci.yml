@@ -1,0 +1,125 @@
+# GitLab CI — Container Image Pipeline
+# Responsibility: image build → SBOM generation → Cosign signing → Harbor push → Clair scan → DefectDojo report
+# This is GitLab CI's primary specialization: supply-chain-secure image delivery
+
+stages:
+  - build
+  - sbom
+  - sign
+  - push
+  - scan
+  - report
+
+variables:
+  REGISTRY: harbor.shopos.internal
+  COSIGN_EXPERIMENTAL: "1"
+  SYFT_VERSION: "1.4.1"
+
+.image-job:
+  image: docker:27
+  services:
+    - docker:27-dind
+  before_script:
+    - docker login -u $HARBOR_USER -p $HARBOR_PASSWORD $REGISTRY
+
+kaniko-build:
+  stage: build
+  image:
+    name: gcr.io/kaniko-project/executor:debug
+    entrypoint: [""]
+  script:
+    - |
+      for SERVICE_DIR in src/*/*; do
+        SERVICE=$(basename $SERVICE_DIR)
+        /kaniko/executor \
+          --context=$SERVICE_DIR \
+          --dockerfile=$SERVICE_DIR/Dockerfile \
+          --destination=$REGISTRY/shopos/$SERVICE:$CI_COMMIT_SHORT_SHA \
+          --no-push \
+          --tarPath=/tmp/$SERVICE.tar
+      done
+  artifacts:
+    paths:
+      - /tmp/*.tar
+
+generate-sbom:
+  stage: sbom
+  image: anchore/syft:$SYFT_VERSION
+  script:
+    - |
+      for TAR in /tmp/*.tar; do
+        SERVICE=$(basename $TAR .tar)
+        syft oci-archive:$TAR -o cyclonedx-json > sbom-$SERVICE.json
+        syft oci-archive:$TAR -o spdx-json > spdx-$SERVICE.json
+      done
+  artifacts:
+    paths:
+      - sbom-*.json
+      - spdx-*.json
+    reports:
+      cyclonedx: sbom-*.json
+
+cosign-sign:
+  stage: sign
+  image: gcr.io/projectsigstore/cosign:v2
+  script:
+    - |
+      for SERVICE_DIR in src/*/*; do
+        SERVICE=$(basename $SERVICE_DIR)
+        cosign sign --yes $REGISTRY/shopos/$SERVICE:$CI_COMMIT_SHORT_SHA
+        cosign attest --yes \
+          --predicate sbom-$SERVICE.json \
+          --type cyclonedx \
+          $REGISTRY/shopos/$SERVICE:$CI_COMMIT_SHORT_SHA
+      done
+
+push-to-harbor:
+  stage: push
+  extends: .image-job
+  script:
+    - |
+      for TAR in /tmp/*.tar; do
+        SERVICE=$(basename $TAR .tar)
+        docker load < $TAR
+        docker push $REGISTRY/shopos/$SERVICE:$CI_COMMIT_SHORT_SHA
+        docker tag $REGISTRY/shopos/$SERVICE:$CI_COMMIT_SHORT_SHA \
+                   $REGISTRY/shopos/$SERVICE:latest
+        docker push $REGISTRY/shopos/$SERVICE:latest
+      done
+
+clair-scan:
+  stage: scan
+  image: quay.io/projectquay/clair:4.7
+  script:
+    - |
+      for SERVICE_DIR in src/*/*; do
+        SERVICE=$(basename $SERVICE_DIR)
+        clair-scanner \
+          --ip=$(hostname -I | awk '{print $1}') \
+          --reportAll=true \
+          --reportPath=clair-$SERVICE.json \
+          $REGISTRY/shopos/$SERVICE:$CI_COMMIT_SHORT_SHA || true
+      done
+  artifacts:
+    reports:
+      container_scanning: clair-*.json
+
+upload-to-defectdojo:
+  stage: report
+  image: python:3.12-slim
+  script:
+    - pip install requests
+    - |
+      python3 - << 'PYEOF'
+      import requests, os, glob
+      dojo_url = os.environ['DEFECTDOJO_URL']
+      api_key  = os.environ['DEFECTDOJO_API_KEY']
+      for f in glob.glob('sbom-*.json') + glob.glob('clair-*.json'):
+          scan_type = 'CycloneDX Scan' if 'sbom' in f else 'Clair Scan'
+          requests.post(f'{dojo_url}/api/v2/import-scan/', 
+              headers={'Authorization': f'Token {api_key}'},
+              data={'scan_type': scan_type, 'engagement': 1, 'active': True},
+              files={'file': open(f)})
+      PYEOF
+  only:
+    - main

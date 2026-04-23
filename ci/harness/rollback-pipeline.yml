@@ -1,0 +1,220 @@
+# Harness CI/CD — Automated Rollback Pipeline
+# Responsibility: SLO-based automatic rollback, deployment verification, error budget enforcement
+# Harness's primary strength: enterprise rollback policies with ML-driven anomaly detection
+
+pipeline:
+  name: shopos-rollback-policy
+  identifier: shopos_rollback_policy
+  projectIdentifier: shopos
+  orgIdentifier: default
+  tags:
+    team: sre
+    criticality: high
+
+  stages:
+    - stage:
+        name: Deployment Verification
+        identifier: deployment_verification
+        type: Deployment
+        spec:
+          serviceConfig:
+            serviceRef: shopos-services
+            serviceDefinition:
+              type: Kubernetes
+              spec:
+                variables:
+                  - name: image_tag
+                    type: String
+                    value: <+trigger.commitSha>
+
+          infrastructure:
+            environmentRef: production
+            infrastructureDefinition:
+              type: KubernetesDirect
+              spec:
+                connectorRef: k8s-prod-cluster
+                namespace: shopos-prod
+
+          execution:
+            steps:
+              - step:
+                  name: Canary Deployment
+                  identifier: canary_deployment
+                  type: K8sCanaryDeploy
+                  timeout: 10m
+                  spec:
+                    instanceSelection:
+                      type: Count
+                      spec:
+                        count: 1
+                    skipDryRun: false
+
+              - step:
+                  name: Verify Canary Health
+                  identifier: verify_canary
+                  type: Verify
+                  timeout: 15m
+                  spec:
+                    type: Canary
+                    monitoredService:
+                      type: Default
+                    healthSources:
+                      - identifier: prometheus
+                        name: Prometheus
+                        type: Prometheus
+                        spec:
+                          connectorRef: prometheus-prod
+                          metricDefinitions:
+                            - identifier: error_rate
+                              metricName: Error Rate
+                              riskProfile:
+                                category: Errors
+                                metricType: ERROR
+                              analysis:
+                                liveMonitoring:
+                                  enabled: true
+                                deploymentVerification:
+                                  serviceInstanceFieldName: pod
+                                  metricPackIdentifiers:
+                                    - Errors
+                              sli:
+                                enabled: true
+                              query: rate(http_requests_total{status=~"5..",job="$service"}[5m]) / rate(http_requests_total{job="$service"}[5m])
+                              groupName: HTTP Errors
+
+                            - identifier: p99_latency
+                              metricName: P99 Latency
+                              riskProfile:
+                                category: Performance
+                                metricType: RESP_TIME
+                              query: histogram_quantile(0.99, rate(http_request_duration_seconds_bucket{job="$service"}[5m]))
+                              groupName: Latency
+
+                    failOnNoData: true
+                    spec:
+                      sensitivity: HIGH
+                      duration: 10m
+                      deploymentTag: <+serviceConfig.artifacts.primary.tag>
+
+              - step:
+                  name: SLO Error Budget Check
+                  identifier: slo_error_budget
+                  type: Http
+                  spec:
+                    url: https://prometheus.shopos.internal/api/v1/query
+                    method: GET
+                    requestBody: 'query=slo:error_budget_remaining:ratio{service="<+service.name>"} < 0.1'
+                    assertion: <+httpResponseBody>.data.result.length == 0
+                    outputVariables:
+                      - name: budget_remaining
+                        value: <+httpResponseBody>.data.result[0].value[1]
+                        type: String
+
+              - step:
+                  name: Promote to 100%
+                  identifier: promote_canary
+                  type: K8sCanaryDelete
+                  spec:
+                    skipDryRun: false
+
+              - step:
+                  name: Rolling Deploy Remaining
+                  identifier: rolling_deploy
+                  type: K8sRollingDeploy
+                  timeout: 20m
+                  spec:
+                    skipDryRun: false
+                    pruningEnabled: true
+
+            rollbackSteps:
+              - step:
+                  name: Automated Rollback
+                  identifier: automated_rollback
+                  type: K8sRollingRollback
+                  timeout: 10m
+                  spec: {}
+
+              - step:
+                  name: Notify SRE Team
+                  identifier: notify_rollback
+                  type: Http
+                  spec:
+                    url: <+secrets.getValue("slack_webhook_sre")>
+                    method: POST
+                    requestBody: |
+                      {
+                        "text": "🚨 AUTOMATED ROLLBACK triggered for *<+service.name>* in production",
+                        "attachments": [{
+                          "color": "danger",
+                          "fields": [
+                            {"title": "Service", "value": "<+service.name>", "short": true},
+                            {"title": "Failed Tag", "value": "<+serviceConfig.artifacts.primary.tag>", "short": true},
+                            {"title": "Error Budget Remaining", "value": "<+pipeline.stages.deployment_verification.spec.execution.steps.slo_error_budget.output.outputVariables.budget_remaining>", "short": true},
+                            {"title": "Pipeline", "value": "<+pipeline.executionUrl>", "short": false}
+                          ]
+                        }]
+                      }
+
+              - step:
+                  name: Create Incident in PagerDuty
+                  identifier: create_incident
+                  type: Http
+                  spec:
+                    url: https://events.pagerduty.com/v2/enqueue
+                    method: POST
+                    headers:
+                      - key: Content-Type
+                        value: application/json
+                    requestBody: |
+                      {
+                        "routing_key": "<+secrets.getValue('pagerduty_routing_key')>",
+                        "event_action": "trigger",
+                        "payload": {
+                          "summary": "Production rollback: <+service.name> deployment failed",
+                          "severity": "critical",
+                          "source": "harness-cd",
+                          "custom_details": {
+                            "service": "<+service.name>",
+                            "tag": "<+serviceConfig.artifacts.primary.tag>",
+                            "pipeline_url": "<+pipeline.executionUrl>"
+                          }
+                        }
+                      }
+
+    - stage:
+        name: Post-Rollback Validation
+        identifier: post_rollback_validation
+        type: Custom
+        spec:
+          execution:
+            steps:
+              - step:
+                  name: Smoke Tests After Rollback
+                  identifier: smoke_tests
+                  type: Run
+                  spec:
+                    connectorRef: k8s-prod-cluster
+                    image: alpine/curl:8
+                    command: |
+                      echo "Running smoke tests to confirm rollback success..."
+                      curl -f https://api.shopos.com/healthz || exit 1
+                      curl -f https://api.shopos.com/api/v1/health/deep || exit 1
+
+              - step:
+                  name: Update Status Page
+                  identifier: update_cachet
+                  type: Http
+                  spec:
+                    url: https://status.shopos.com/api/v1/incidents
+                    method: POST
+                    headers:
+                      - key: X-Cachet-Token
+                        value: <+secrets.getValue("cachet_api_token")>
+                    requestBody: |
+                      {
+                        "name": "Deployment rollback completed — service restored",
+                        "status": 4,
+                        "visible": 1,
+                        "component_id": 1,
+                        "component_status": 1
+                      }

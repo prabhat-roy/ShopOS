@@ -1,0 +1,174 @@
+# GCP Cloud Build — GKE Deployment Pipeline
+# Responsibility: GCP-native builds — GKE deployments, Artifact Registry, Cloud Run,
+# BigQuery schema migrations, Cloud Spanner, Pub/Sub topic management
+# Uses GCP-native tooling: gcloud, Cloud Deploy, Cloud Run, BigQuery CLI
+
+steps:
+  # Step 1: Authenticate and set project
+  - name: gcr.io/google.com/cloudsdktool/cloud-sdk:alpine
+    id: setup
+    entrypoint: bash
+    args:
+      - -c
+      - |
+        gcloud config set project $$CLOUDSDK_CORE_PROJECT
+        gcloud config set compute/zone $$GKE_ZONE
+        gcloud container clusters get-credentials $$GKE_CLUSTER --zone $$GKE_ZONE
+
+  # Step 2: Build and push to Artifact Registry (not Docker Hub / ECR)
+  - name: gcr.io/cloud-builders/docker
+    id: build-images
+    entrypoint: bash
+    args:
+      - -c
+      - |
+        REGION=us-central1
+        REGISTRY=${REGION}-docker.pkg.dev/$$CLOUDSDK_CORE_PROJECT/shopos
+
+        for service_dir in src/analytics-ai/*/; do
+          SERVICE=$(basename $service_dir)
+          echo "Building $SERVICE..."
+          docker build \
+            -t $REGISTRY/$SERVICE:$COMMIT_SHA \
+            -t $REGISTRY/$SERVICE:latest \
+            --cache-from $REGISTRY/$SERVICE:latest \
+            --build-arg BUILDKIT_INLINE_CACHE=1 \
+            $service_dir
+          docker push $REGISTRY/$SERVICE:$COMMIT_SHA
+          docker push $REGISTRY/$SERVICE:latest
+        done
+
+  # Step 3: BigQuery schema migrations (GCP-specific workload)
+  - name: gcr.io/google.com/cloudsdktool/cloud-sdk:alpine
+    id: bigquery-migrations
+    entrypoint: bash
+    args:
+      - -c
+      - |
+        echo "Running BigQuery schema migrations..."
+        for schema_file in databases/bigquery/migrations/*.sql; do
+          echo "Applying $schema_file..."
+          bq query \
+            --use_legacy_sql=false \
+            --project_id=$$CLOUDSDK_CORE_PROJECT \
+            < $schema_file
+        done
+
+        echo "Updating BigQuery authorized views..."
+        bq update --view \
+          "SELECT user_id, SUM(order_total) as ltv, COUNT(*) as orders
+           FROM shopos_analytics.orders
+           WHERE created_at > TIMESTAMP_SUB(CURRENT_TIMESTAMP(), INTERVAL 365 DAY)
+           GROUP BY user_id" \
+          $$CLOUDSDK_CORE_PROJECT:shopos_analytics.customer_ltv_view
+
+  # Step 4: Deploy to GKE via Cloud Deploy
+  - name: gcr.io/google.com/cloudsdktool/cloud-sdk:alpine
+    id: cloud-deploy
+    entrypoint: bash
+    args:
+      - -c
+      - |
+        echo "Creating Cloud Deploy release..."
+        gcloud deploy releases create shopos-release-$SHORT_SHA \
+          --delivery-pipeline=shopos-pipeline \
+          --region=us-central1 \
+          --images=analytics-service=us-central1-docker.pkg.dev/$$CLOUDSDK_CORE_PROJECT/shopos/analytics-service:$COMMIT_SHA,recommendation-service=us-central1-docker.pkg.dev/$$CLOUDSDK_CORE_PROJECT/shopos/recommendation-service:$COMMIT_SHA \
+          --annotations=commit=$COMMIT_SHA,build=$BUILD_ID
+
+  # Step 5: Deploy ML serving to Cloud Run (serverless inference)
+  - name: gcr.io/google.com/cloudsdktool/cloud-sdk:alpine
+    id: cloud-run-ml
+    entrypoint: bash
+    args:
+      - -c
+      - |
+        echo "Deploying ML models to Cloud Run..."
+
+        # Deploy recommendation model server (stateless, scales to zero)
+        gcloud run deploy recommendation-model-server \
+          --image us-central1-docker.pkg.dev/$$CLOUDSDK_CORE_PROJECT/shopos/recommendation-service:$COMMIT_SHA \
+          --platform managed \
+          --region us-central1 \
+          --memory 4Gi \
+          --cpu 2 \
+          --concurrency 10 \
+          --min-instances 1 \
+          --max-instances 50 \
+          --set-env-vars MODEL_PATH=gs://shopos-models/recommendation/latest \
+          --service-account recommendation-service@$$CLOUDSDK_CORE_PROJECT.iam.gserviceaccount.com \
+          --allow-unauthenticated=false \
+          --ingress=internal
+
+        # Deploy fraud detection model server
+        gcloud run deploy fraud-detection-model-server \
+          --image us-central1-docker.pkg.dev/$$CLOUDSDK_CORE_PROJECT/shopos/fraud-detection-service:$COMMIT_SHA \
+          --platform managed \
+          --region us-central1 \
+          --memory 2Gi \
+          --cpu 1 \
+          --max-instances 100 \
+          --set-env-vars MODEL_BUCKET=shopos-models \
+          --service-account fraud-detection@$$CLOUDSDK_CORE_PROJECT.iam.gserviceaccount.com
+
+  # Step 6: Cloud Spanner schema updates (GCP-native distributed SQL)
+  - name: gcr.io/google.com/cloudsdktool/cloud-sdk:alpine
+    id: spanner-migrations
+    entrypoint: bash
+    args:
+      - -c
+      - |
+        if ls databases/spanner/migrations/*.sql 2>/dev/null; then
+          for ddl_file in databases/spanner/migrations/*.sql; do
+            echo "Applying Spanner DDL: $ddl_file"
+            gcloud spanner databases ddl update shopos-db \
+              --instance=shopos-spanner-prod \
+              --ddl-file=$ddl_file \
+              --project=$$CLOUDSDK_CORE_PROJECT
+          done
+        fi
+
+  # Step 7: Pub/Sub topic and subscription management
+  - name: gcr.io/google.com/cloudsdktool/cloud-sdk:alpine
+    id: pubsub-setup
+    entrypoint: bash
+    args:
+      - -c
+      - |
+        echo "Ensuring Pub/Sub topics exist..."
+        for topic in commerce-orders analytics-events fraud-signals; do
+          gcloud pubsub topics describe shopos-$topic 2>/dev/null || \
+          gcloud pubsub topics create shopos-$topic \
+            --message-retention-duration=7d \
+            --project=$$CLOUDSDK_CORE_PROJECT
+        done
+
+  # Step 8: Post-deploy GKE health verification
+  - name: gcr.io/google.com/cloudsdktool/cloud-sdk:alpine
+    id: verify-deployment
+    entrypoint: bash
+    args:
+      - -c
+      - |
+        echo "Verifying GKE deployment health..."
+        kubectl rollout status deployment/analytics-service -n shopos-analytics --timeout=5m
+        kubectl rollout status deployment/recommendation-service -n shopos-analytics --timeout=5m
+
+        echo "Checking Cloud Run services..."
+        STATUS=$(gcloud run services describe recommendation-model-server \
+          --region=us-central1 --format="value(status.conditions[0].status)")
+        [ "$STATUS" = "True" ] || exit 1
+
+substitutions:
+  _GKE_CLUSTER: shopos-gke-prod
+  _GKE_ZONE: us-central1-a
+
+options:
+  machineType: E2_HIGHCPU_8
+  logging: CLOUD_LOGGING_ONLY
+  env:
+    - CLOUDSDK_CORE_PROJECT=$PROJECT_ID
+    - GKE_CLUSTER=$_GKE_CLUSTER
+    - GKE_ZONE=$_GKE_ZONE
+
+timeout: 3600s
