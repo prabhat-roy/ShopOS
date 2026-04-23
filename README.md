@@ -1,6 +1,6 @@
 # ShopOS — Enterprise Commerce Platform
 
-An enterprise-grade, cloud-native commerce platform — 262 services, 22 domains, 19 languages, full open source stack.
+An enterprise-grade, cloud-native commerce platform — 263 services, 22 domains, 19 languages, full open source stack.
 
 ---
 
@@ -30,7 +30,7 @@ An enterprise-grade, cloud-native commerce platform — 262 services, 22 domains
 | 20 | Events & Ticketing | 6 |
 | 21 | Auction | 4 |
 | 22 | Rental | 4 |
-| | **Total** | **262** |
+| | **Total** | **263** |
 
 ---
 

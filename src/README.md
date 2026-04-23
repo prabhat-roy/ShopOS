@@ -1,6 +1,6 @@
 # Services — ShopOS
 
-262 services (255 backend microservices + 7 frontend) across 22 business domains. Each service
+263 services (256 backend microservices + 7 frontend) across 22 business domains. Each service
 is a self-contained unit with its own codebase, database, Dockerfile, Helm chart, and CI pipeline.
 
 ---
@@ -31,7 +31,7 @@ is a self-contained unit with its own codebase, database, Dockerfile, Helm chart
 | 20 | Auction | `auction/` | 4 | Go, Java, Elixir |
 | 21 | Rental | `rental/` | 4 | Go, Kotlin |
 | 22 | Web (Frontend) | `web/` | 7 | Next.js, React, Vue.js, Angular, React Native, Flutter, Dart |
-| | **Total** | | **262** | **19 languages** |
+| | **Total** | | **263** | **19 languages** |
 
 ---
 
