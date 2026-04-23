@@ -48,9 +48,7 @@ pipeline {
             steps {
                 sh """
                     kubectl create namespace flink-system --dry-run=client -o yaml | kubectl apply -f -
-                    helm repo add flink-operator https://downloads.apache.org/flink/flink-kubernetes-operator-1.9.0/ || true
-                    helm repo update
-                    helm upgrade --install flink-operator flink-operator/flink-kubernetes-operator \
+                    helm upgrade --install flink-operator streaming/flink/charts/flink-kubernetes-operator \
                         --namespace flink-system \
                         --set webhook.create=false \
                         --wait --timeout=5m
