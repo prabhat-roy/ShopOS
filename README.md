@@ -148,25 +148,24 @@ An enterprise-grade, cloud-native commerce platform — 263 services, 22 domains
 
 | Tool | Pipelines | Role |
 |---|---|---|
-| Jenkins | 14 | Primary CI server — build, test, security, quality, tooling pipelines |
-| Drone CI | 12 | Mirror of Jenkins — same stages, Drone syntax |
-| Woodpecker CI | 12 | Drone-compatible fork — drop-in replacement |
-| Dagger | 12 | Portable Go SDK pipelines — run anywhere |
-| Tekton | 12 | Kubernetes-native CRD-based pipelines |
-| Concourse CI | 12 | DAG resource/job pipelines |
-| GitLab CI | 12 | `.gitlab-ci.yml` pipelines for GitLab SCM |
-| GitHub Actions | 12 | `ci/github-actions/` — auto-trigger disabled |
-| CircleCI | 12 | `version: 2.1` orb-based pipelines |
-| GoCD | 12 | Stage/job pipelines with manual approval gates |
-| Travis CI | 12 | Stage-based pipelines with branch filters |
-| Harness CI | 12 | Enterprise CI/CD with built-in CD stages |
-| Azure DevOps | 12 | `azure-pipelines.yml` — native Azure integration |
-| AWS CodePipeline | 12 | `buildspec.yml` + CodePipeline JSON definitions |
-| GCP Cloud Build | 12 | `cloudbuild.yaml` — native GCP integration |
+| Jenkins | 15 | Primary CI server — build, test, security, quality, tooling pipelines |
+| Drone CI | 15 | Mirror of Jenkins — same stages, Drone syntax |
+| Woodpecker CI | 15 | Drone-compatible fork — drop-in replacement |
+| Dagger | 15 | Portable Go SDK pipelines — run anywhere |
+| Tekton | 15 | Kubernetes-native CRD-based pipelines |
+| Concourse CI | 15 | DAG resource/job pipelines |
+| GitLab CI | 15 | `.gitlab-ci.yml` pipelines for GitLab SCM |
+| GitHub Actions | 15 | `ci/github-actions/` — auto-trigger disabled |
+| CircleCI | 15 | `version: 2.1` orb-based pipelines |
+| GoCD | 15 | Stage/job pipelines with manual approval gates |
+| Travis CI | 15 | Stage-based pipelines with branch filters |
+| Harness CI | 15 | Enterprise CI/CD with built-in CD stages |
+| Azure DevOps | 15 | `azure-pipelines.yml` — native Azure integration |
+| AWS CodePipeline | 15 | `buildspec.yml` + CodePipeline JSON definitions |
+| GCP Cloud Build | 15 | `cloudbuild.yaml` — native GCP integration |
 | Argo Workflows | — | Kubernetes-native CI + ML training DAGs |
 | Argo Events | — | GitHub webhook → pipeline triggers |
 
-Jenkins pipelines: `build.Jenkinsfile`, `test.Jenkinsfile`, `security.Jenkinsfile`, `gitops.Jenkinsfile`, `databases.Jenkinsfile`, `messaging.Jenkinsfile`, `observability.Jenkinsfile`, `registry.Jenkinsfile`, `infra.Jenkinsfile`, `install-tools.Jenkinsfile`, `deploy.Jenkinsfile`, `teardown.Jenkinsfile`, `tooling.Jenkinsfile`, `api-quality.Jenkinsfile`
 
 ### GitOps
 
