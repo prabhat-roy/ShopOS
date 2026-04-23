@@ -46,11 +46,9 @@ pipeline {
             steps {
                 catchError(buildResult: 'UNSTABLE', stageResult: 'FAILURE') {
                     sh """
-                        helm repo add pascaliske https://charts.pascaliske.dev || true
-                        helm repo update
                         helm uninstall clickhouse -n databases --ignore-not-found || true
                         kubectl delete pvc -l app.kubernetes.io/instance=clickhouse -n databases --ignore-not-found || true
-                        helm upgrade --install clickhouse pascaliske/clickhouse \
+                        helm upgrade --install clickhouse charts/databases/clickhouse \
                             --namespace databases \
                             --set image.tag=24.8-alpine \
                             --set persistentVolumeClaim.size=20Gi \
@@ -70,9 +68,7 @@ pipeline {
             steps {
                 catchError(buildResult: 'UNSTABLE', stageResult: 'FAILURE') {
                     sh """
-                        helm repo add weaviate https://weaviate.github.io/weaviate-helm || true
-                        helm repo update
-                        helm upgrade --install weaviate weaviate/weaviate \
+                        helm upgrade --install weaviate charts/databases/weaviate \
                             --namespace databases \
                             --set initContainers.sysctlInitContainer.enabled=false \
                             --set persistence.size=10Gi \
@@ -92,9 +88,7 @@ pipeline {
             steps {
                 catchError(buildResult: 'UNSTABLE', stageResult: 'FAILURE') {
                     sh """
-                        helm repo add neo4j https://helm.neo4j.com/neo4j || true
-                        helm repo update
-                        helm upgrade --install neo4j neo4j/neo4j \
+                        helm upgrade --install neo4j charts/databases/neo4j \
                             --namespace databases \
                             --set neo4j.name=shopos-neo4j \
                             --set volumes.data.mode=defaultStorageClass \
@@ -113,13 +107,10 @@ pipeline {
             steps {
                 catchError(buildResult: 'UNSTABLE', stageResult: 'FAILURE') {
                     sh """
-                        helm repo add temporal https://go.temporal.io/helm-charts || true
-                        helm repo update
                         kubectl create namespace temporal-system --dry-run=client -o yaml | kubectl apply -f -
                         helm uninstall temporal -n temporal-system --ignore-not-found || true
                         kubectl delete pvc --all -n temporal-system --ignore-not-found || true
-                        helm upgrade --install temporal temporal/temporal \
-                            --version 0.73.2 \
+                        helm upgrade --install temporal charts/databases/temporal \
                             --namespace temporal-system \
                             --set server.replicaCount=1 \
                             --set cassandra.config.cluster_size=1 \

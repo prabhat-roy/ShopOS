@@ -1,0 +1,41 @@
+annotations:
+  artifacthub.io/changes: |
+    - kind: changed
+      description: 'Support specifying container-level security context.'
+    - kind: added
+      description: 'Support custom nodeSelector block.'
+    - kind: added
+      description: 'Support specifying image pull secrets.'
+    - kind: added
+      description: 'Support specifying priority class name.'
+    - kind: added
+      description: 'Support specifying extra containers.'
+    - kind: added
+      description: 'Support specifying extra init containers.'
+    - kind: added
+      description: 'Support specifying extra volumes and volume mounts.'
+    - kind: added
+      description: 'Support creation of extra templated objects.'
+    - kind: added
+      description: 'Support valueFrom syntax in environment variables.'
+apiVersion: v2
+appVersion: 24.12.6.70-alpine
+dependencies:
+- name: base
+  repository: https://charts.pascaliske.dev
+  version: 1.3.0
+description: A Helm chart for ClickHouse
+home: https://charts.pascaliske.dev/charts/clickhouse/
+keywords:
+- clickhouse
+maintainers:
+- email: info@pascaliske.dev
+  name: pascaliske
+  url: https://pascaliske.dev
+name: clickhouse
+sources:
+- https://github.com/pascaliske/helm-charts
+- https://github.com/clickhouse/clickhouse
+- https://clickhouse.com
+type: application
+version: 1.0.0
