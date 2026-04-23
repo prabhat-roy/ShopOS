@@ -13,9 +13,9 @@ matrix:
   fast_finish: true
   include:
     # Harbor Helm chart lint across Helm versions
-    - env: REG_TOOL=helm HELM_VERSION=3.15.4 TARGET=registry/charts/harbor
+    - env: REG_TOOL=helm HELM_VERSION=3.15.4 TARGET=helm/infra/registry/harbor
       name: "Helm 3.15 / harbor chart lint"
-    - env: REG_TOOL=helm HELM_VERSION=3.16.2 TARGET=registry/charts/harbor
+    - env: REG_TOOL=helm HELM_VERSION=3.16.2 TARGET=helm/infra/registry/harbor
       name: "Helm 3.16 / harbor chart lint"
 
     # Docker manifest validation across Docker versions

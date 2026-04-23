@@ -96,7 +96,7 @@ spec:
     - name: install-nats
       image: alpine/helm:3.16.2
       script: |
-        helm repo add nats https://nats-io.github.io/k8s/helm/charts/ --force-update
+        helm repo add nats https://nats-io.github.io/k8s/helm/infra/messaging/ --force-update
         helm upgrade --install nats nats/nats \
           --namespace $(params.namespace) \
           --create-namespace \

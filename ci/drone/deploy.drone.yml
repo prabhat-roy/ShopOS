@@ -39,7 +39,7 @@ steps:
       - |
         for svc in api-gateway web-bff mobile-bff partner-bff graphql-gateway tenant-service; do
           echo "=== Deploying platform/$svc → $NAMESPACE ==="
-          helm upgrade --install "$svc" "helm/charts/$svc" \
+          helm upgrade --install "$svc" "helm/services/$svc" \
             --namespace platform --create-namespace \
             --set image.repository="$HARBOR_REGISTRY/shopos/$svc" \
             --set image.tag="$IMAGE_TAG" \
@@ -63,7 +63,7 @@ steps:
       - |
         for svc in cart-service checkout-service order-service payment-service; do
           echo "=== Deploying commerce/$svc → $NAMESPACE ==="
-          helm upgrade --install "$svc" "helm/charts/$svc" \
+          helm upgrade --install "$svc" "helm/services/$svc" \
             --namespace commerce --create-namespace \
             --set image.repository="$HARBOR_REGISTRY/shopos/$svc" \
             --set image.tag="$IMAGE_TAG" \

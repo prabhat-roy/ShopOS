@@ -384,7 +384,7 @@ pipeline {
         // ── GITOPS UPDATE & SYNC ──────────────────────────────────────────────
 
         stage('Update GitOps Manifests') {
-            // Updates Helm values image tags in both helm/charts/ and gitops/argocd/
+            // Updates Helm values image tags in both helm/services/ and gitops/argocd/
             // Commits and pushes the change so ArgoCD detects drift automatically
             when { expression { !params.SKIP_GITOPS } }
             steps {
@@ -392,7 +392,7 @@ pipeline {
                     env.SERVICES.split(',').each { svc ->
                         svc = svc.trim()
                         def image      = "${env.HARBOR_URL}/${env.REGISTRY_PROJECT}/${svc}"
-                        def valuesFile = "helm/charts/${svc}/values-${params.ENVIRONMENT}.yaml"
+                        def valuesFile = "helm/services/${svc}/values-${params.ENVIRONMENT}.yaml"
                         sh """
                             echo "=== Updating GitOps values: ${svc} → ${env.IMAGE_TAG} ==="
                             if [ -f ${valuesFile} ]; then
@@ -408,7 +408,7 @@ pipeline {
                     sh """
                         git config user.email "jenkins@shopos.local"
                         git config user.name  "Jenkins CI"
-                        git add helm/charts/ gitops/ 2>/dev/null || true
+                        git add helm/services/ gitops/ 2>/dev/null || true
                         git diff --staged --quiet || \
                             git commit -m "ci: bump images to ${env.IMAGE_TAG} for ${params.ENVIRONMENT} [skip ci]"
                         git push origin ${env.GIT_BRANCH_NAME} 2>/dev/null || true

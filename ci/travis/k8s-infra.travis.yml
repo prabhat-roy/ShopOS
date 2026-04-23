@@ -49,11 +49,11 @@ matrix:
       name: "kubectl 1.31 dry-run validate / kubernetes manifests"
 
     # Helm chart validation — multiple Helm versions
-    - env: TF_TOOL=helm HELM_VERSION=3.15.4 CHART_PATH=helm/charts/api-gateway
+    - env: TF_TOOL=helm HELM_VERSION=3.15.4 CHART_PATH=helm/services/api-gateway
       name: "Helm 3.15 lint / api-gateway chart"
-    - env: TF_TOOL=helm HELM_VERSION=3.16.2 CHART_PATH=helm/charts/api-gateway
+    - env: TF_TOOL=helm HELM_VERSION=3.16.2 CHART_PATH=helm/services/api-gateway
       name: "Helm 3.16 lint / api-gateway chart"
-    - env: TF_TOOL=helm HELM_VERSION=3.16.2 CHART_PATH=helm/charts/order-service
+    - env: TF_TOOL=helm HELM_VERSION=3.16.2 CHART_PATH=helm/services/order-service
       name: "Helm 3.16 lint / order-service chart"
 
 install:

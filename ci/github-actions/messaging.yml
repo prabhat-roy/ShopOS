@@ -9,9 +9,9 @@ on:
     branches: [develop, main]
     paths:
       - 'messaging/**'
-      - 'helm/charts/kafka/**'
-      - 'helm/charts/rabbitmq/**'
-      - 'helm/charts/nats/**'
+      - 'helm/infra/messaging/kafka/**'
+      - 'helm/infra/messaging/rabbitmq/**'
+      - 'helm/infra/messaging/nats/**'
   push:
     tags: ['v*']
   workflow_dispatch:

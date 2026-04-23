@@ -132,12 +132,12 @@ steps:
       - mkdir -p ~/.kube
       - echo "$KUBECONFIG_CONTENT" | base64 -d > ~/.kube/config
       - |
-        helm upgrade --install "$SERVICE_NAME" "helm/charts/$SERVICE_NAME" \
+        helm upgrade --install "$SERVICE_NAME" "helm/services/$SERVICE_NAME" \
           --namespace "$DOMAIN" \
           --set image.repository="$HARBOR_REGISTRY/$DOMAIN/$SERVICE_NAME" \
           --set image.tag="$IMAGE_TAG" \
           --set environment="$ENVIRONMENT" \
-          -f "helm/charts/$SERVICE_NAME/values-$ENVIRONMENT.yaml" \
+          -f "helm/services/$SERVICE_NAME/values-$ENVIRONMENT.yaml" \
           --wait --timeout 5m
       - kubectl rollout status deploy/"$SERVICE_NAME" -n "$DOMAIN" --timeout=120s
     depends_on: [cosign-sign]

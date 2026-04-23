@@ -38,7 +38,7 @@ pipelines:
                         TAG="${GO_DEPENDENCY_LABEL_UPSTREAM}"
                         echo "=== Deploying critical services to $ENVIRONMENT ==="
                         for SVC in api-gateway auth-service payment-service order-service; do
-                          helm upgrade --install "$SVC" "helm/charts/$SVC" \
+                          helm upgrade --install "$SVC" "helm/services/$SVC" \
                             --namespace "$K8S_NAMESPACE" --create-namespace \
                             --set image.repository="$HARBOR_REGISTRY/shopos/$SVC" \
                             --set image.tag="$TAG" \
@@ -218,8 +218,8 @@ pipelines:
                           for dir in src/$DOMAIN/*/; do
                             [ -d "$dir" ] || continue
                             SVC=$(basename "$dir")
-                            [ -d "helm/charts/$SVC" ] || continue
-                            helm upgrade --install "$SVC" "helm/charts/$SVC" \
+                            [ -d "helm/services/$SVC" ] || continue
+                            helm upgrade --install "$SVC" "helm/services/$SVC" \
                               --namespace "$K8S_NAMESPACE" --create-namespace \
                               --set image.repository="$HARBOR_REGISTRY/shopos/$SVC" \
                               --set image.tag="$TAG" \
@@ -310,8 +310,8 @@ pipelines:
                           for dir in src/$DOMAIN/*/; do
                             [ -d "$dir" ] || continue
                             SVC=$(basename "$dir")
-                            [ -d "helm/charts/$SVC" ] || continue
-                            helm upgrade --install "$SVC" "helm/charts/$SVC" \
+                            [ -d "helm/services/$SVC" ] || continue
+                            helm upgrade --install "$SVC" "helm/services/$SVC" \
                               --namespace "$K8S_NAMESPACE" --create-namespace \
                               --set image.repository="$HARBOR_REGISTRY/shopos/$SVC" \
                               --set image.tag="$TAG" \

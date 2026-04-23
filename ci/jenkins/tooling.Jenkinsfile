@@ -62,7 +62,7 @@ pipeline {
             steps {
                 catchError(buildResult: 'UNSTABLE', stageResult: 'FAILURE') {
                     sh """
-                        helm upgrade --install pgadmin charts/db-management/pgadmin \
+                        helm upgrade --install pgadmin helm/infra/db-tools/pgadmin \
                             --namespace tooling \
                             --set env.email=admin@shopos.dev \
                             --set env.password=admin \
@@ -79,7 +79,7 @@ pipeline {
             steps {
                 catchError(buildResult: 'UNSTABLE', stageResult: 'FAILURE') {
                     sh """
-                        helm upgrade --install mongo-express charts/db-management/mongo-express \
+                        helm upgrade --install mongo-express helm/infra/db-tools/mongo-express \
                             --namespace tooling \
                             --set env.mongodbServer=mongodb.default.svc.cluster.local \
                             --wait --timeout=5m
@@ -94,7 +94,7 @@ pipeline {
             steps {
                 catchError(buildResult: 'UNSTABLE', stageResult: 'FAILURE') {
                     sh """
-                        helm upgrade --install redis-commander charts/db-management/redis-commander \
+                        helm upgrade --install redis-commander helm/infra/db-tools/redis-commander \
                             --namespace tooling \
                             --set env.redisHosts=local:redis.default.svc.cluster.local:6379 \
                             --wait --timeout=5m
@@ -109,7 +109,7 @@ pipeline {
             steps {
                 catchError(buildResult: 'UNSTABLE', stageResult: 'FAILURE') {
                     sh """
-                        helm upgrade --install bytebase charts/db-management/bytebase \
+                        helm upgrade --install bytebase helm/infra/db-tools/bytebase \
                             --namespace tooling \
                             --set env.pgUrl=postgresql://postgres:postgres@postgres.default.svc.cluster.local/bytebase?sslmode=disable \
                             --set persistence.size=5Gi \
@@ -127,7 +127,7 @@ pipeline {
             steps {
                 catchError(buildResult: 'UNSTABLE', stageResult: 'FAILURE') {
                     sh """
-                        helm upgrade --install superset charts/analytics/superset \
+                        helm upgrade --install superset helm/infra/data/superset \
                             --namespace data-platform \
                             --set env.secretKey=shopos-superset-secret \
                             --set env.databaseUrl=postgresql+psycopg2://postgres:postgres@postgres.default.svc.cluster.local/superset \
@@ -145,14 +145,14 @@ pipeline {
             steps {
                 catchError(buildResult: 'UNSTABLE', stageResult: 'FAILURE') {
                     sh """
-                        helm upgrade --install marquez charts/data-lineage/marquez \
+                        helm upgrade --install marquez helm/infra/data/marquez \
                             --namespace data-platform \
                             --set env.postgresHost=postgres.default.svc.cluster.local \
                             --set env.postgresUser=postgres \
                             --set env.postgresPassword=postgres \
                             --set env.postgresDb=marquez \
                             --wait --timeout=5m
-                        helm upgrade --install marquez-web charts/data-lineage/marquez-web \
+                        helm upgrade --install marquez-web helm/infra/data/marquez-web \
                             --namespace data-platform \
                             --set env.marquezHost=marquez.data-platform.svc.cluster.local \
                             --set env.marquezPort=5000 \
@@ -169,7 +169,7 @@ pipeline {
             steps {
                 catchError(buildResult: 'UNSTABLE', stageResult: 'FAILURE') {
                     sh """
-                        helm upgrade --install great-expectations charts/data-quality/great-expectations \
+                        helm upgrade --install great-expectations helm/infra/data/great-expectations \
                             --namespace data-platform \
                             --set persistence.size=2Gi \
                             --wait --timeout=5m
@@ -187,7 +187,7 @@ pipeline {
             steps {
                 catchError(buildResult: 'UNSTABLE', stageResult: 'FAILURE') {
                     sh """
-                        helm upgrade --install apache-atlas charts/data-catalog/apache-atlas \
+                        helm upgrade --install apache-atlas helm/infra/data/apache-atlas \
                             --namespace data-platform \
                             --set resources.requests.memory=1Gi \
                             --set resources.limits.memory=2Gi \
@@ -206,7 +206,7 @@ pipeline {
             steps {
                 catchError(buildResult: 'UNSTABLE', stageResult: 'FAILURE') {
                     sh """
-                        helm upgrade --install pact-broker charts/testing/pact-broker \
+                        helm upgrade --install pact-broker helm/infra/testing/pact-broker \
                             --namespace contract-testing \
                             --set env.databaseUrl=postgres://postgres:postgres@postgres.default.svc.cluster.local/pact_broker \
                             --set env.basicAuthUsername=admin \
@@ -229,7 +229,7 @@ pipeline {
             steps {
                 catchError(buildResult: 'UNSTABLE', stageResult: 'FAILURE') {
                     sh """
-                        helm upgrade --install botkube charts/platform/botkube \
+                        helm upgrade --install botkube helm/infra/platform/botkube \
                             --namespace botkube --create-namespace \
                             --values kubernetes/botkube/botkube-values.yaml \
                             --wait --timeout=5m
@@ -244,7 +244,7 @@ pipeline {
             steps {
                 catchError(buildResult: 'UNSTABLE', stageResult: 'FAILURE') {
                     sh """
-                        helm upgrade --install k8sgpt-operator charts/platform/k8sgpt \
+                        helm upgrade --install k8sgpt-operator helm/infra/platform/k8sgpt \
                             --namespace k8sgpt-operator-system --create-namespace \
                             --values kubernetes/k8sgpt/k8sgpt-operator-values.yaml \
                             --wait --timeout=5m
@@ -259,7 +259,7 @@ pipeline {
             steps {
                 catchError(buildResult: 'UNSTABLE', stageResult: 'FAILURE') {
                     sh """
-                        helm upgrade --install opencost charts/platform/opencost \
+                        helm upgrade --install opencost helm/infra/platform/opencost \
                             --namespace monitoring --create-namespace \
                             --values kubernetes/opencost/opencost-values.yaml \
                             --wait --timeout=5m
@@ -276,7 +276,7 @@ pipeline {
             steps {
                 catchError(buildResult: 'UNSTABLE', stageResult: 'FAILURE') {
                     sh """
-                        helm upgrade --install teleport charts/security/teleport \
+                        helm upgrade --install teleport helm/infra/security/teleport \
                             --namespace teleport-cluster --create-namespace \
                             --values security/teleport/teleport-values.yaml \
                             --wait --timeout=10m
@@ -294,7 +294,7 @@ pipeline {
             steps {
                 catchError(buildResult: 'UNSTABLE', stageResult: 'FAILURE') {
                     sh """
-                        helm upgrade --install conduktor-gateway charts/messaging/conduktor-gateway \
+                        helm upgrade --install conduktor-gateway helm/infra/messaging/conduktor-gateway \
                             --namespace messaging --create-namespace \
                             --set env.kafkaBootstrapServers=kafka.default.svc.cluster.local:9092 \
                             --wait --timeout=5m

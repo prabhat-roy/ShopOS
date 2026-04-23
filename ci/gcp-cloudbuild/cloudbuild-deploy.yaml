@@ -99,13 +99,13 @@ steps:
         mkdir -p ~/.kube
         echo "$$KUBECONFIG_CONTENT" | base64 -d > ~/.kube/config
         IMAGE_TAG=$(cat /workspace/image_tag)
-        helm upgrade --install ${_SERVICE_NAME} helm/charts/${_SERVICE_NAME} \
+        helm upgrade --install ${_SERVICE_NAME} helm/services/${_SERVICE_NAME} \
           --namespace ${_DOMAIN} --create-namespace \
           --set image.repository="${_ARTIFACT_REGISTRY}/${PROJECT_ID}/shopos/${_SERVICE_NAME}" \
           --set image.tag="${IMAGE_TAG}" \
           --set environment="${_ENVIRONMENT}" \
           --set persistence.storageClass=standard-rwo \
-          -f helm/charts/${_SERVICE_NAME}/values-${_ENVIRONMENT}.yaml \
+          -f helm/services/${_SERVICE_NAME}/values-${_ENVIRONMENT}.yaml \
           --wait --timeout 10m
     waitFor: [get-credentials, trivy-scan]
 

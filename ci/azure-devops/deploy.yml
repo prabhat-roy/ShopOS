@@ -95,7 +95,7 @@ stages:
                     namespace: ${{ parameters.domain }}
                     command: upgrade
                     chartType: FilePath
-                    chartPath: helm/charts/${{ parameters.serviceName }}
+                    chartPath: helm/services/${{ parameters.serviceName }}
                     releaseName: ${{ parameters.serviceName }}
                     install: true
                     arguments: >-
@@ -104,7 +104,7 @@ stages:
                       --set image.tag=$(IMAGE_TAG)
                       --set environment=dev
                       --set persistence.storageClass=managed-premium
-                      -f helm/charts/${{ parameters.serviceName }}/values-dev.yaml
+                      -f helm/services/${{ parameters.serviceName }}/values-dev.yaml
                       --wait --timeout 10m
 
                 - task: AzureCLI@2
@@ -149,7 +149,7 @@ stages:
                     namespace: ${{ parameters.domain }}
                     command: upgrade
                     chartType: FilePath
-                    chartPath: helm/charts/${{ parameters.serviceName }}
+                    chartPath: helm/services/${{ parameters.serviceName }}
                     releaseName: ${{ parameters.serviceName }}
                     install: true
                     arguments: >-
@@ -159,7 +159,7 @@ stages:
                       --set environment=staging
                       --set replicaCount=2
                       --set persistence.storageClass=managed-premium
-                      -f helm/charts/${{ parameters.serviceName }}/values-staging.yaml
+                      -f helm/services/${{ parameters.serviceName }}/values-staging.yaml
                       --wait --timeout 10m
 
   - stage: DeployProd
@@ -199,7 +199,7 @@ stages:
                     namespace: ${{ parameters.domain }}
                     command: upgrade
                     chartType: FilePath
-                    chartPath: helm/charts/${{ parameters.serviceName }}
+                    chartPath: helm/services/${{ parameters.serviceName }}
                     releaseName: ${{ parameters.serviceName }}
                     install: true
                     arguments: >-
@@ -211,7 +211,7 @@ stages:
                       --set resources.requests.cpu=200m
                       --set resources.requests.memory=256Mi
                       --set persistence.storageClass=managed-premium
-                      -f helm/charts/${{ parameters.serviceName }}/values-prod.yaml
+                      -f helm/services/${{ parameters.serviceName }}/values-prod.yaml
                       --wait --timeout 15m
             postRouteTraffic:
               steps:

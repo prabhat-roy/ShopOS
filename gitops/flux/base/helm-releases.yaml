@@ -8,7 +8,7 @@ spec:
   interval: 5m
   chart:
     spec:
-      chart: helm/charts/api-gateway
+      chart: helm/services/api-gateway
       sourceRef:
         kind: GitRepository
         name: shopos
@@ -28,7 +28,7 @@ spec:
   interval: 5m
   chart:
     spec:
-      chart: helm/charts/web-bff
+      chart: helm/services/web-bff
       sourceRef:
         kind: GitRepository
         name: shopos
@@ -48,7 +48,7 @@ spec:
   interval: 5m
   chart:
     spec:
-      chart: helm/charts/mobile-bff
+      chart: helm/services/mobile-bff
       sourceRef:
         kind: GitRepository
         name: shopos
@@ -68,7 +68,7 @@ spec:
   interval: 5m
   chart:
     spec:
-      chart: helm/charts/partner-bff
+      chart: helm/services/partner-bff
       sourceRef:
         kind: GitRepository
         name: shopos
@@ -88,7 +88,7 @@ spec:
   interval: 5m
   chart:
     spec:
-      chart: helm/charts/config-service
+      chart: helm/services/config-service
       sourceRef:
         kind: GitRepository
         name: shopos
@@ -108,7 +108,7 @@ spec:
   interval: 5m
   chart:
     spec:
-      chart: helm/charts/feature-flag-service
+      chart: helm/services/feature-flag-service
       sourceRef:
         kind: GitRepository
         name: shopos
@@ -128,7 +128,7 @@ spec:
   interval: 5m
   chart:
     spec:
-      chart: helm/charts/rate-limiter-service
+      chart: helm/services/rate-limiter-service
       sourceRef:
         kind: GitRepository
         name: shopos
@@ -148,7 +148,7 @@ spec:
   interval: 5m
   chart:
     spec:
-      chart: helm/charts/health-check-service
+      chart: helm/services/health-check-service
       sourceRef:
         kind: GitRepository
         name: shopos
@@ -168,7 +168,7 @@ spec:
   interval: 5m
   chart:
     spec:
-      chart: helm/charts/saga-orchestrator
+      chart: helm/services/saga-orchestrator
       sourceRef:
         kind: GitRepository
         name: shopos
@@ -188,7 +188,7 @@ spec:
   interval: 5m
   chart:
     spec:
-      chart: helm/charts/event-store-service
+      chart: helm/services/event-store-service
       sourceRef:
         kind: GitRepository
         name: shopos
@@ -208,7 +208,7 @@ spec:
   interval: 5m
   chart:
     spec:
-      chart: helm/charts/cache-warming-service
+      chart: helm/services/cache-warming-service
       sourceRef:
         kind: GitRepository
         name: shopos
@@ -228,7 +228,7 @@ spec:
   interval: 5m
   chart:
     spec:
-      chart: helm/charts/webhook-service
+      chart: helm/services/webhook-service
       sourceRef:
         kind: GitRepository
         name: shopos
@@ -248,7 +248,7 @@ spec:
   interval: 5m
   chart:
     spec:
-      chart: helm/charts/scheduler-service
+      chart: helm/services/scheduler-service
       sourceRef:
         kind: GitRepository
         name: shopos
@@ -268,7 +268,7 @@ spec:
   interval: 5m
   chart:
     spec:
-      chart: helm/charts/worker-job-queue
+      chart: helm/services/worker-job-queue
       sourceRef:
         kind: GitRepository
         name: shopos
@@ -288,7 +288,7 @@ spec:
   interval: 5m
   chart:
     spec:
-      chart: helm/charts/audit-service
+      chart: helm/services/audit-service
       sourceRef:
         kind: GitRepository
         name: shopos
@@ -308,7 +308,7 @@ spec:
   interval: 5m
   chart:
     spec:
-      chart: helm/charts/load-generator
+      chart: helm/services/load-generator
       sourceRef:
         kind: GitRepository
         name: shopos
@@ -328,7 +328,7 @@ spec:
   interval: 5m
   chart:
     spec:
-      chart: helm/charts/admin-portal
+      chart: helm/services/admin-portal
       sourceRef:
         kind: GitRepository
         name: shopos
@@ -348,7 +348,7 @@ spec:
   interval: 5m
   chart:
     spec:
-      chart: helm/charts/graphql-gateway
+      chart: helm/services/graphql-gateway
       sourceRef:
         kind: GitRepository
         name: shopos
@@ -368,7 +368,7 @@ spec:
   interval: 5m
   chart:
     spec:
-      chart: helm/charts/dead-letter-service
+      chart: helm/services/dead-letter-service
       sourceRef:
         kind: GitRepository
         name: shopos
@@ -388,7 +388,7 @@ spec:
   interval: 5m
   chart:
     spec:
-      chart: helm/charts/geolocation-service
+      chart: helm/services/geolocation-service
       sourceRef:
         kind: GitRepository
         name: shopos
@@ -408,7 +408,7 @@ spec:
   interval: 5m
   chart:
     spec:
-      chart: helm/charts/event-replay-service
+      chart: helm/services/event-replay-service
       sourceRef:
         kind: GitRepository
         name: shopos
@@ -428,7 +428,7 @@ spec:
   interval: 5m
   chart:
     spec:
-      chart: helm/charts/tenant-service
+      chart: helm/services/tenant-service
       sourceRef:
         kind: GitRepository
         name: shopos
@@ -448,7 +448,7 @@ spec:
   interval: 5m
   chart:
     spec:
-      chart: helm/charts/notification-preferences-service
+      chart: helm/services/notification-preferences-service
       sourceRef:
         kind: GitRepository
         name: shopos
@@ -468,7 +468,7 @@ spec:
   interval: 5m
   chart:
     spec:
-      chart: helm/charts/circuit-breaker-service
+      chart: helm/services/circuit-breaker-service
       sourceRef:
         kind: GitRepository
         name: shopos
@@ -488,7 +488,7 @@ spec:
   interval: 5m
   chart:
     spec:
-      chart: helm/charts/idempotency-service
+      chart: helm/services/idempotency-service
       sourceRef:
         kind: GitRepository
         name: shopos
@@ -508,7 +508,7 @@ spec:
   interval: 5m
   chart:
     spec:
-      chart: helm/charts/correlation-id-service
+      chart: helm/services/correlation-id-service
       sourceRef:
         kind: GitRepository
         name: shopos
@@ -528,7 +528,7 @@ spec:
   interval: 5m
   chart:
     spec:
-      chart: helm/charts/data-masking-service
+      chart: helm/services/data-masking-service
       sourceRef:
         kind: GitRepository
         name: shopos
@@ -548,7 +548,7 @@ spec:
   interval: 5m
   chart:
     spec:
-      chart: helm/charts/auth-service
+      chart: helm/services/auth-service
       sourceRef:
         kind: GitRepository
         name: shopos
@@ -568,7 +568,7 @@ spec:
   interval: 5m
   chart:
     spec:
-      chart: helm/charts/user-service
+      chart: helm/services/user-service
       sourceRef:
         kind: GitRepository
         name: shopos
@@ -588,7 +588,7 @@ spec:
   interval: 5m
   chart:
     spec:
-      chart: helm/charts/session-service
+      chart: helm/services/session-service
       sourceRef:
         kind: GitRepository
         name: shopos
@@ -608,7 +608,7 @@ spec:
   interval: 5m
   chart:
     spec:
-      chart: helm/charts/permission-service
+      chart: helm/services/permission-service
       sourceRef:
         kind: GitRepository
         name: shopos
@@ -628,7 +628,7 @@ spec:
   interval: 5m
   chart:
     spec:
-      chart: helm/charts/mfa-service
+      chart: helm/services/mfa-service
       sourceRef:
         kind: GitRepository
         name: shopos
@@ -648,7 +648,7 @@ spec:
   interval: 5m
   chart:
     spec:
-      chart: helm/charts/gdpr-service
+      chart: helm/services/gdpr-service
       sourceRef:
         kind: GitRepository
         name: shopos
@@ -668,7 +668,7 @@ spec:
   interval: 5m
   chart:
     spec:
-      chart: helm/charts/api-key-service
+      chart: helm/services/api-key-service
       sourceRef:
         kind: GitRepository
         name: shopos
@@ -688,7 +688,7 @@ spec:
   interval: 5m
   chart:
     spec:
-      chart: helm/charts/device-fingerprint-service
+      chart: helm/services/device-fingerprint-service
       sourceRef:
         kind: GitRepository
         name: shopos
@@ -708,7 +708,7 @@ spec:
   interval: 5m
   chart:
     spec:
-      chart: helm/charts/sso-service
+      chart: helm/services/sso-service
       sourceRef:
         kind: GitRepository
         name: shopos
@@ -728,7 +728,7 @@ spec:
   interval: 5m
   chart:
     spec:
-      chart: helm/charts/password-policy-service
+      chart: helm/services/password-policy-service
       sourceRef:
         kind: GitRepository
         name: shopos
@@ -748,7 +748,7 @@ spec:
   interval: 5m
   chart:
     spec:
-      chart: helm/charts/bot-detection-service
+      chart: helm/services/bot-detection-service
       sourceRef:
         kind: GitRepository
         name: shopos
@@ -768,7 +768,7 @@ spec:
   interval: 5m
   chart:
     spec:
-      chart: helm/charts/product-catalog-service
+      chart: helm/services/product-catalog-service
       sourceRef:
         kind: GitRepository
         name: shopos
@@ -788,7 +788,7 @@ spec:
   interval: 5m
   chart:
     spec:
-      chart: helm/charts/category-service
+      chart: helm/services/category-service
       sourceRef:
         kind: GitRepository
         name: shopos
@@ -808,7 +808,7 @@ spec:
   interval: 5m
   chart:
     spec:
-      chart: helm/charts/brand-service
+      chart: helm/services/brand-service
       sourceRef:
         kind: GitRepository
         name: shopos
@@ -828,7 +828,7 @@ spec:
   interval: 5m
   chart:
     spec:
-      chart: helm/charts/pricing-service
+      chart: helm/services/pricing-service
       sourceRef:
         kind: GitRepository
         name: shopos
@@ -848,7 +848,7 @@ spec:
   interval: 5m
   chart:
     spec:
-      chart: helm/charts/inventory-service
+      chart: helm/services/inventory-service
       sourceRef:
         kind: GitRepository
         name: shopos
@@ -868,7 +868,7 @@ spec:
   interval: 5m
   chart:
     spec:
-      chart: helm/charts/bundle-service
+      chart: helm/services/bundle-service
       sourceRef:
         kind: GitRepository
         name: shopos
@@ -888,7 +888,7 @@ spec:
   interval: 5m
   chart:
     spec:
-      chart: helm/charts/configurator-service
+      chart: helm/services/configurator-service
       sourceRef:
         kind: GitRepository
         name: shopos
@@ -908,7 +908,7 @@ spec:
   interval: 5m
   chart:
     spec:
-      chart: helm/charts/subscription-product-service
+      chart: helm/services/subscription-product-service
       sourceRef:
         kind: GitRepository
         name: shopos
@@ -928,7 +928,7 @@ spec:
   interval: 5m
   chart:
     spec:
-      chart: helm/charts/search-service
+      chart: helm/services/search-service
       sourceRef:
         kind: GitRepository
         name: shopos
@@ -948,7 +948,7 @@ spec:
   interval: 5m
   chart:
     spec:
-      chart: helm/charts/seo-service
+      chart: helm/services/seo-service
       sourceRef:
         kind: GitRepository
         name: shopos
@@ -968,7 +968,7 @@ spec:
   interval: 5m
   chart:
     spec:
-      chart: helm/charts/product-import-service
+      chart: helm/services/product-import-service
       sourceRef:
         kind: GitRepository
         name: shopos
@@ -988,7 +988,7 @@ spec:
   interval: 5m
   chart:
     spec:
-      chart: helm/charts/price-list-service
+      chart: helm/services/price-list-service
       sourceRef:
         kind: GitRepository
         name: shopos
@@ -1008,7 +1008,7 @@ spec:
   interval: 5m
   chart:
     spec:
-      chart: helm/charts/product-label-service
+      chart: helm/services/product-label-service
       sourceRef:
         kind: GitRepository
         name: shopos
@@ -1028,7 +1028,7 @@ spec:
   interval: 5m
   chart:
     spec:
-      chart: helm/charts/variant-service
+      chart: helm/services/variant-service
       sourceRef:
         kind: GitRepository
         name: shopos
@@ -1048,7 +1048,7 @@ spec:
   interval: 5m
   chart:
     spec:
-      chart: helm/charts/stock-reservation-service
+      chart: helm/services/stock-reservation-service
       sourceRef:
         kind: GitRepository
         name: shopos
@@ -1068,7 +1068,7 @@ spec:
   interval: 5m
   chart:
     spec:
-      chart: helm/charts/cart-service
+      chart: helm/services/cart-service
       sourceRef:
         kind: GitRepository
         name: shopos
@@ -1088,7 +1088,7 @@ spec:
   interval: 5m
   chart:
     spec:
-      chart: helm/charts/checkout-service
+      chart: helm/services/checkout-service
       sourceRef:
         kind: GitRepository
         name: shopos
@@ -1108,7 +1108,7 @@ spec:
   interval: 5m
   chart:
     spec:
-      chart: helm/charts/order-service
+      chart: helm/services/order-service
       sourceRef:
         kind: GitRepository
         name: shopos
@@ -1128,7 +1128,7 @@ spec:
   interval: 5m
   chart:
     spec:
-      chart: helm/charts/payment-service
+      chart: helm/services/payment-service
       sourceRef:
         kind: GitRepository
         name: shopos
@@ -1148,7 +1148,7 @@ spec:
   interval: 5m
   chart:
     spec:
-      chart: helm/charts/shipping-service
+      chart: helm/services/shipping-service
       sourceRef:
         kind: GitRepository
         name: shopos
@@ -1168,7 +1168,7 @@ spec:
   interval: 5m
   chart:
     spec:
-      chart: helm/charts/currency-service
+      chart: helm/services/currency-service
       sourceRef:
         kind: GitRepository
         name: shopos
@@ -1188,7 +1188,7 @@ spec:
   interval: 5m
   chart:
     spec:
-      chart: helm/charts/tax-service
+      chart: helm/services/tax-service
       sourceRef:
         kind: GitRepository
         name: shopos
@@ -1208,7 +1208,7 @@ spec:
   interval: 5m
   chart:
     spec:
-      chart: helm/charts/promotions-service
+      chart: helm/services/promotions-service
       sourceRef:
         kind: GitRepository
         name: shopos
@@ -1228,7 +1228,7 @@ spec:
   interval: 5m
   chart:
     spec:
-      chart: helm/charts/loyalty-service
+      chart: helm/services/loyalty-service
       sourceRef:
         kind: GitRepository
         name: shopos
@@ -1248,7 +1248,7 @@ spec:
   interval: 5m
   chart:
     spec:
-      chart: helm/charts/return-refund-service
+      chart: helm/services/return-refund-service
       sourceRef:
         kind: GitRepository
         name: shopos
@@ -1268,7 +1268,7 @@ spec:
   interval: 5m
   chart:
     spec:
-      chart: helm/charts/subscription-billing-service
+      chart: helm/services/subscription-billing-service
       sourceRef:
         kind: GitRepository
         name: shopos
@@ -1288,7 +1288,7 @@ spec:
   interval: 5m
   chart:
     spec:
-      chart: helm/charts/fraud-detection-service
+      chart: helm/services/fraud-detection-service
       sourceRef:
         kind: GitRepository
         name: shopos
@@ -1308,7 +1308,7 @@ spec:
   interval: 5m
   chart:
     spec:
-      chart: helm/charts/wallet-service
+      chart: helm/services/wallet-service
       sourceRef:
         kind: GitRepository
         name: shopos
@@ -1328,7 +1328,7 @@ spec:
   interval: 5m
   chart:
     spec:
-      chart: helm/charts/ab-testing-service
+      chart: helm/services/ab-testing-service
       sourceRef:
         kind: GitRepository
         name: shopos
@@ -1348,7 +1348,7 @@ spec:
   interval: 5m
   chart:
     spec:
-      chart: helm/charts/gift-card-service
+      chart: helm/services/gift-card-service
       sourceRef:
         kind: GitRepository
         name: shopos
@@ -1368,7 +1368,7 @@ spec:
   interval: 5m
   chart:
     spec:
-      chart: helm/charts/address-validation-service
+      chart: helm/services/address-validation-service
       sourceRef:
         kind: GitRepository
         name: shopos
@@ -1388,7 +1388,7 @@ spec:
   interval: 5m
   chart:
     spec:
-      chart: helm/charts/digital-goods-service
+      chart: helm/services/digital-goods-service
       sourceRef:
         kind: GitRepository
         name: shopos
@@ -1408,7 +1408,7 @@ spec:
   interval: 5m
   chart:
     spec:
-      chart: helm/charts/voucher-service
+      chart: helm/services/voucher-service
       sourceRef:
         kind: GitRepository
         name: shopos
@@ -1428,7 +1428,7 @@ spec:
   interval: 5m
   chart:
     spec:
-      chart: helm/charts/pre-order-service
+      chart: helm/services/pre-order-service
       sourceRef:
         kind: GitRepository
         name: shopos
@@ -1448,7 +1448,7 @@ spec:
   interval: 5m
   chart:
     spec:
-      chart: helm/charts/backorder-service
+      chart: helm/services/backorder-service
       sourceRef:
         kind: GitRepository
         name: shopos
@@ -1468,7 +1468,7 @@ spec:
   interval: 5m
   chart:
     spec:
-      chart: helm/charts/waitlist-service
+      chart: helm/services/waitlist-service
       sourceRef:
         kind: GitRepository
         name: shopos
@@ -1488,7 +1488,7 @@ spec:
   interval: 5m
   chart:
     spec:
-      chart: helm/charts/flash-sale-service
+      chart: helm/services/flash-sale-service
       sourceRef:
         kind: GitRepository
         name: shopos
@@ -1508,7 +1508,7 @@ spec:
   interval: 5m
   chart:
     spec:
-      chart: helm/charts/bnpl-service
+      chart: helm/services/bnpl-service
       sourceRef:
         kind: GitRepository
         name: shopos
@@ -1528,7 +1528,7 @@ spec:
   interval: 5m
   chart:
     spec:
-      chart: helm/charts/split-payment-service
+      chart: helm/services/split-payment-service
       sourceRef:
         kind: GitRepository
         name: shopos
@@ -1548,7 +1548,7 @@ spec:
   interval: 5m
   chart:
     spec:
-      chart: helm/charts/installment-service
+      chart: helm/services/installment-service
       sourceRef:
         kind: GitRepository
         name: shopos
@@ -1568,7 +1568,7 @@ spec:
   interval: 5m
   chart:
     spec:
-      chart: helm/charts/dynamic-pricing-service
+      chart: helm/services/dynamic-pricing-service
       sourceRef:
         kind: GitRepository
         name: shopos
@@ -1588,7 +1588,7 @@ spec:
   interval: 5m
   chart:
     spec:
-      chart: helm/charts/coupon-service
+      chart: helm/services/coupon-service
       sourceRef:
         kind: GitRepository
         name: shopos
@@ -1608,7 +1608,7 @@ spec:
   interval: 5m
   chart:
     spec:
-      chart: helm/charts/order-amendment-service
+      chart: helm/services/order-amendment-service
       sourceRef:
         kind: GitRepository
         name: shopos
@@ -1628,7 +1628,7 @@ spec:
   interval: 5m
   chart:
     spec:
-      chart: helm/charts/vendor-service
+      chart: helm/services/vendor-service
       sourceRef:
         kind: GitRepository
         name: shopos
@@ -1648,7 +1648,7 @@ spec:
   interval: 5m
   chart:
     spec:
-      chart: helm/charts/purchase-order-service
+      chart: helm/services/purchase-order-service
       sourceRef:
         kind: GitRepository
         name: shopos
@@ -1668,7 +1668,7 @@ spec:
   interval: 5m
   chart:
     spec:
-      chart: helm/charts/warehouse-service
+      chart: helm/services/warehouse-service
       sourceRef:
         kind: GitRepository
         name: shopos
@@ -1688,7 +1688,7 @@ spec:
   interval: 5m
   chart:
     spec:
-      chart: helm/charts/fulfillment-service
+      chart: helm/services/fulfillment-service
       sourceRef:
         kind: GitRepository
         name: shopos
@@ -1708,7 +1708,7 @@ spec:
   interval: 5m
   chart:
     spec:
-      chart: helm/charts/tracking-service
+      chart: helm/services/tracking-service
       sourceRef:
         kind: GitRepository
         name: shopos
@@ -1728,7 +1728,7 @@ spec:
   interval: 5m
   chart:
     spec:
-      chart: helm/charts/label-service
+      chart: helm/services/label-service
       sourceRef:
         kind: GitRepository
         name: shopos
@@ -1748,7 +1748,7 @@ spec:
   interval: 5m
   chart:
     spec:
-      chart: helm/charts/carrier-integration-service
+      chart: helm/services/carrier-integration-service
       sourceRef:
         kind: GitRepository
         name: shopos
@@ -1768,7 +1768,7 @@ spec:
   interval: 5m
   chart:
     spec:
-      chart: helm/charts/demand-forecast-service
+      chart: helm/services/demand-forecast-service
       sourceRef:
         kind: GitRepository
         name: shopos
@@ -1788,7 +1788,7 @@ spec:
   interval: 5m
   chart:
     spec:
-      chart: helm/charts/customs-duties-service
+      chart: helm/services/customs-duties-service
       sourceRef:
         kind: GitRepository
         name: shopos
@@ -1808,7 +1808,7 @@ spec:
   interval: 5m
   chart:
     spec:
-      chart: helm/charts/returns-logistics-service
+      chart: helm/services/returns-logistics-service
       sourceRef:
         kind: GitRepository
         name: shopos
@@ -1828,7 +1828,7 @@ spec:
   interval: 5m
   chart:
     spec:
-      chart: helm/charts/supplier-portal-service
+      chart: helm/services/supplier-portal-service
       sourceRef:
         kind: GitRepository
         name: shopos
@@ -1848,7 +1848,7 @@ spec:
   interval: 5m
   chart:
     spec:
-      chart: helm/charts/cold-chain-service
+      chart: helm/services/cold-chain-service
       sourceRef:
         kind: GitRepository
         name: shopos
@@ -1868,7 +1868,7 @@ spec:
   interval: 5m
   chart:
     spec:
-      chart: helm/charts/supplier-rating-service
+      chart: helm/services/supplier-rating-service
       sourceRef:
         kind: GitRepository
         name: shopos
@@ -1888,7 +1888,7 @@ spec:
   interval: 5m
   chart:
     spec:
-      chart: helm/charts/route-optimization-service
+      chart: helm/services/route-optimization-service
       sourceRef:
         kind: GitRepository
         name: shopos
@@ -1908,7 +1908,7 @@ spec:
   interval: 5m
   chart:
     spec:
-      chart: helm/charts/packaging-service
+      chart: helm/services/packaging-service
       sourceRef:
         kind: GitRepository
         name: shopos
@@ -1928,7 +1928,7 @@ spec:
   interval: 5m
   chart:
     spec:
-      chart: helm/charts/cross-dock-service
+      chart: helm/services/cross-dock-service
       sourceRef:
         kind: GitRepository
         name: shopos
@@ -1948,7 +1948,7 @@ spec:
   interval: 5m
   chart:
     spec:
-      chart: helm/charts/duty-drawback-service
+      chart: helm/services/duty-drawback-service
       sourceRef:
         kind: GitRepository
         name: shopos
@@ -1968,7 +1968,7 @@ spec:
   interval: 5m
   chart:
     spec:
-      chart: helm/charts/invoice-service
+      chart: helm/services/invoice-service
       sourceRef:
         kind: GitRepository
         name: shopos
@@ -1988,7 +1988,7 @@ spec:
   interval: 5m
   chart:
     spec:
-      chart: helm/charts/accounting-service
+      chart: helm/services/accounting-service
       sourceRef:
         kind: GitRepository
         name: shopos
@@ -2008,7 +2008,7 @@ spec:
   interval: 5m
   chart:
     spec:
-      chart: helm/charts/payout-service
+      chart: helm/services/payout-service
       sourceRef:
         kind: GitRepository
         name: shopos
@@ -2028,7 +2028,7 @@ spec:
   interval: 5m
   chart:
     spec:
-      chart: helm/charts/reconciliation-service
+      chart: helm/services/reconciliation-service
       sourceRef:
         kind: GitRepository
         name: shopos
@@ -2048,7 +2048,7 @@ spec:
   interval: 5m
   chart:
     spec:
-      chart: helm/charts/tax-reporting-service
+      chart: helm/services/tax-reporting-service
       sourceRef:
         kind: GitRepository
         name: shopos
@@ -2068,7 +2068,7 @@ spec:
   interval: 5m
   chart:
     spec:
-      chart: helm/charts/expense-management-service
+      chart: helm/services/expense-management-service
       sourceRef:
         kind: GitRepository
         name: shopos
@@ -2088,7 +2088,7 @@ spec:
   interval: 5m
   chart:
     spec:
-      chart: helm/charts/credit-service
+      chart: helm/services/credit-service
       sourceRef:
         kind: GitRepository
         name: shopos
@@ -2108,7 +2108,7 @@ spec:
   interval: 5m
   chart:
     spec:
-      chart: helm/charts/kyc-aml-service
+      chart: helm/services/kyc-aml-service
       sourceRef:
         kind: GitRepository
         name: shopos
@@ -2128,7 +2128,7 @@ spec:
   interval: 5m
   chart:
     spec:
-      chart: helm/charts/budget-service
+      chart: helm/services/budget-service
       sourceRef:
         kind: GitRepository
         name: shopos
@@ -2148,7 +2148,7 @@ spec:
   interval: 5m
   chart:
     spec:
-      chart: helm/charts/chargeback-service
+      chart: helm/services/chargeback-service
       sourceRef:
         kind: GitRepository
         name: shopos
@@ -2168,7 +2168,7 @@ spec:
   interval: 5m
   chart:
     spec:
-      chart: helm/charts/revenue-recognition-service
+      chart: helm/services/revenue-recognition-service
       sourceRef:
         kind: GitRepository
         name: shopos
@@ -2188,7 +2188,7 @@ spec:
   interval: 5m
   chart:
     spec:
-      chart: helm/charts/escrow-service
+      chart: helm/services/escrow-service
       sourceRef:
         kind: GitRepository
         name: shopos
@@ -2208,7 +2208,7 @@ spec:
   interval: 5m
   chart:
     spec:
-      chart: helm/charts/forex-service
+      chart: helm/services/forex-service
       sourceRef:
         kind: GitRepository
         name: shopos
@@ -2228,7 +2228,7 @@ spec:
   interval: 5m
   chart:
     spec:
-      chart: helm/charts/audit-trail-service
+      chart: helm/services/audit-trail-service
       sourceRef:
         kind: GitRepository
         name: shopos
@@ -2248,7 +2248,7 @@ spec:
   interval: 5m
   chart:
     spec:
-      chart: helm/charts/dunning-service
+      chart: helm/services/dunning-service
       sourceRef:
         kind: GitRepository
         name: shopos
@@ -2268,7 +2268,7 @@ spec:
   interval: 5m
   chart:
     spec:
-      chart: helm/charts/review-rating-service
+      chart: helm/services/review-rating-service
       sourceRef:
         kind: GitRepository
         name: shopos
@@ -2288,7 +2288,7 @@ spec:
   interval: 5m
   chart:
     spec:
-      chart: helm/charts/qa-service
+      chart: helm/services/qa-service
       sourceRef:
         kind: GitRepository
         name: shopos
@@ -2308,7 +2308,7 @@ spec:
   interval: 5m
   chart:
     spec:
-      chart: helm/charts/wishlist-service
+      chart: helm/services/wishlist-service
       sourceRef:
         kind: GitRepository
         name: shopos
@@ -2328,7 +2328,7 @@ spec:
   interval: 5m
   chart:
     spec:
-      chart: helm/charts/compare-service
+      chart: helm/services/compare-service
       sourceRef:
         kind: GitRepository
         name: shopos
@@ -2348,7 +2348,7 @@ spec:
   interval: 5m
   chart:
     spec:
-      chart: helm/charts/recently-viewed-service
+      chart: helm/services/recently-viewed-service
       sourceRef:
         kind: GitRepository
         name: shopos
@@ -2368,7 +2368,7 @@ spec:
   interval: 5m
   chart:
     spec:
-      chart: helm/charts/support-ticket-service
+      chart: helm/services/support-ticket-service
       sourceRef:
         kind: GitRepository
         name: shopos
@@ -2388,7 +2388,7 @@ spec:
   interval: 5m
   chart:
     spec:
-      chart: helm/charts/live-chat-service
+      chart: helm/services/live-chat-service
       sourceRef:
         kind: GitRepository
         name: shopos
@@ -2408,7 +2408,7 @@ spec:
   interval: 5m
   chart:
     spec:
-      chart: helm/charts/consent-management-service
+      chart: helm/services/consent-management-service
       sourceRef:
         kind: GitRepository
         name: shopos
@@ -2428,7 +2428,7 @@ spec:
   interval: 5m
   chart:
     spec:
-      chart: helm/charts/age-verification-service
+      chart: helm/services/age-verification-service
       sourceRef:
         kind: GitRepository
         name: shopos
@@ -2448,7 +2448,7 @@ spec:
   interval: 5m
   chart:
     spec:
-      chart: helm/charts/survey-service
+      chart: helm/services/survey-service
       sourceRef:
         kind: GitRepository
         name: shopos
@@ -2468,7 +2468,7 @@ spec:
   interval: 5m
   chart:
     spec:
-      chart: helm/charts/feedback-service
+      chart: helm/services/feedback-service
       sourceRef:
         kind: GitRepository
         name: shopos
@@ -2488,7 +2488,7 @@ spec:
   interval: 5m
   chart:
     spec:
-      chart: helm/charts/price-alert-service
+      chart: helm/services/price-alert-service
       sourceRef:
         kind: GitRepository
         name: shopos
@@ -2508,7 +2508,7 @@ spec:
   interval: 5m
   chart:
     spec:
-      chart: helm/charts/back-in-stock-service
+      chart: helm/services/back-in-stock-service
       sourceRef:
         kind: GitRepository
         name: shopos
@@ -2528,7 +2528,7 @@ spec:
   interval: 5m
   chart:
     spec:
-      chart: helm/charts/gift-registry-service
+      chart: helm/services/gift-registry-service
       sourceRef:
         kind: GitRepository
         name: shopos
@@ -2548,7 +2548,7 @@ spec:
   interval: 5m
   chart:
     spec:
-      chart: helm/charts/loyalty-tier-service
+      chart: helm/services/loyalty-tier-service
       sourceRef:
         kind: GitRepository
         name: shopos
@@ -2568,7 +2568,7 @@ spec:
   interval: 5m
   chart:
     spec:
-      chart: helm/charts/accessibility-service
+      chart: helm/services/accessibility-service
       sourceRef:
         kind: GitRepository
         name: shopos
@@ -2588,7 +2588,7 @@ spec:
   interval: 5m
   chart:
     spec:
-      chart: helm/charts/return-portal-service
+      chart: helm/services/return-portal-service
       sourceRef:
         kind: GitRepository
         name: shopos
@@ -2608,7 +2608,7 @@ spec:
   interval: 5m
   chart:
     spec:
-      chart: helm/charts/notification-orchestrator
+      chart: helm/services/notification-orchestrator
       sourceRef:
         kind: GitRepository
         name: shopos
@@ -2628,7 +2628,7 @@ spec:
   interval: 5m
   chart:
     spec:
-      chart: helm/charts/email-service
+      chart: helm/services/email-service
       sourceRef:
         kind: GitRepository
         name: shopos
@@ -2648,7 +2648,7 @@ spec:
   interval: 5m
   chart:
     spec:
-      chart: helm/charts/sms-service
+      chart: helm/services/sms-service
       sourceRef:
         kind: GitRepository
         name: shopos
@@ -2668,7 +2668,7 @@ spec:
   interval: 5m
   chart:
     spec:
-      chart: helm/charts/push-notification-service
+      chart: helm/services/push-notification-service
       sourceRef:
         kind: GitRepository
         name: shopos
@@ -2688,7 +2688,7 @@ spec:
   interval: 5m
   chart:
     spec:
-      chart: helm/charts/template-service
+      chart: helm/services/template-service
       sourceRef:
         kind: GitRepository
         name: shopos
@@ -2708,7 +2708,7 @@ spec:
   interval: 5m
   chart:
     spec:
-      chart: helm/charts/in-app-notification-service
+      chart: helm/services/in-app-notification-service
       sourceRef:
         kind: GitRepository
         name: shopos
@@ -2728,7 +2728,7 @@ spec:
   interval: 5m
   chart:
     spec:
-      chart: helm/charts/digest-service
+      chart: helm/services/digest-service
       sourceRef:
         kind: GitRepository
         name: shopos
@@ -2748,7 +2748,7 @@ spec:
   interval: 5m
   chart:
     spec:
-      chart: helm/charts/whatsapp-service
+      chart: helm/services/whatsapp-service
       sourceRef:
         kind: GitRepository
         name: shopos
@@ -2768,7 +2768,7 @@ spec:
   interval: 5m
   chart:
     spec:
-      chart: helm/charts/chatbot-service
+      chart: helm/services/chatbot-service
       sourceRef:
         kind: GitRepository
         name: shopos
@@ -2788,7 +2788,7 @@ spec:
   interval: 5m
   chart:
     spec:
-      chart: helm/charts/telegram-service
+      chart: helm/services/telegram-service
       sourceRef:
         kind: GitRepository
         name: shopos
@@ -2808,7 +2808,7 @@ spec:
   interval: 5m
   chart:
     spec:
-      chart: helm/charts/voice-service
+      chart: helm/services/voice-service
       sourceRef:
         kind: GitRepository
         name: shopos
@@ -2828,7 +2828,7 @@ spec:
   interval: 5m
   chart:
     spec:
-      chart: helm/charts/webhook-delivery-service
+      chart: helm/services/webhook-delivery-service
       sourceRef:
         kind: GitRepository
         name: shopos
@@ -2848,7 +2848,7 @@ spec:
   interval: 5m
   chart:
     spec:
-      chart: helm/charts/media-asset-service
+      chart: helm/services/media-asset-service
       sourceRef:
         kind: GitRepository
         name: shopos
@@ -2868,7 +2868,7 @@ spec:
   interval: 5m
   chart:
     spec:
-      chart: helm/charts/image-processing-service
+      chart: helm/services/image-processing-service
       sourceRef:
         kind: GitRepository
         name: shopos
@@ -2888,7 +2888,7 @@ spec:
   interval: 5m
   chart:
     spec:
-      chart: helm/charts/document-service
+      chart: helm/services/document-service
       sourceRef:
         kind: GitRepository
         name: shopos
@@ -2908,7 +2908,7 @@ spec:
   interval: 5m
   chart:
     spec:
-      chart: helm/charts/cms-service
+      chart: helm/services/cms-service
       sourceRef:
         kind: GitRepository
         name: shopos
@@ -2928,7 +2928,7 @@ spec:
   interval: 5m
   chart:
     spec:
-      chart: helm/charts/video-service
+      chart: helm/services/video-service
       sourceRef:
         kind: GitRepository
         name: shopos
@@ -2948,7 +2948,7 @@ spec:
   interval: 5m
   chart:
     spec:
-      chart: helm/charts/sitemap-service
+      chart: helm/services/sitemap-service
       sourceRef:
         kind: GitRepository
         name: shopos
@@ -2968,7 +2968,7 @@ spec:
   interval: 5m
   chart:
     spec:
-      chart: helm/charts/i18n-l10n-service
+      chart: helm/services/i18n-l10n-service
       sourceRef:
         kind: GitRepository
         name: shopos
@@ -2988,7 +2988,7 @@ spec:
   interval: 5m
   chart:
     spec:
-      chart: helm/charts/data-export-service
+      chart: helm/services/data-export-service
       sourceRef:
         kind: GitRepository
         name: shopos
@@ -3008,7 +3008,7 @@ spec:
   interval: 5m
   chart:
     spec:
-      chart: helm/charts/ab-content-service
+      chart: helm/services/ab-content-service
       sourceRef:
         kind: GitRepository
         name: shopos
@@ -3028,7 +3028,7 @@ spec:
   interval: 5m
   chart:
     spec:
-      chart: helm/charts/analytics-service
+      chart: helm/services/analytics-service
       sourceRef:
         kind: GitRepository
         name: shopos
@@ -3048,7 +3048,7 @@ spec:
   interval: 5m
   chart:
     spec:
-      chart: helm/charts/reporting-service
+      chart: helm/services/reporting-service
       sourceRef:
         kind: GitRepository
         name: shopos
@@ -3068,7 +3068,7 @@ spec:
   interval: 5m
   chart:
     spec:
-      chart: helm/charts/recommendation-service
+      chart: helm/services/recommendation-service
       sourceRef:
         kind: GitRepository
         name: shopos
@@ -3088,7 +3088,7 @@ spec:
   interval: 5m
   chart:
     spec:
-      chart: helm/charts/sentiment-analysis-service
+      chart: helm/services/sentiment-analysis-service
       sourceRef:
         kind: GitRepository
         name: shopos
@@ -3108,7 +3108,7 @@ spec:
   interval: 5m
   chart:
     spec:
-      chart: helm/charts/price-optimization-service
+      chart: helm/services/price-optimization-service
       sourceRef:
         kind: GitRepository
         name: shopos
@@ -3128,7 +3128,7 @@ spec:
   interval: 5m
   chart:
     spec:
-      chart: helm/charts/ml-feature-store
+      chart: helm/services/ml-feature-store
       sourceRef:
         kind: GitRepository
         name: shopos
@@ -3148,7 +3148,7 @@ spec:
   interval: 5m
   chart:
     spec:
-      chart: helm/charts/personalization-service
+      chart: helm/services/personalization-service
       sourceRef:
         kind: GitRepository
         name: shopos
@@ -3168,7 +3168,7 @@ spec:
   interval: 5m
   chart:
     spec:
-      chart: helm/charts/data-pipeline-service
+      chart: helm/services/data-pipeline-service
       sourceRef:
         kind: GitRepository
         name: shopos
@@ -3188,7 +3188,7 @@ spec:
   interval: 5m
   chart:
     spec:
-      chart: helm/charts/ad-service
+      chart: helm/services/ad-service
       sourceRef:
         kind: GitRepository
         name: shopos
@@ -3208,7 +3208,7 @@ spec:
   interval: 5m
   chart:
     spec:
-      chart: helm/charts/event-tracking-service
+      chart: helm/services/event-tracking-service
       sourceRef:
         kind: GitRepository
         name: shopos
@@ -3228,7 +3228,7 @@ spec:
   interval: 5m
   chart:
     spec:
-      chart: helm/charts/attribution-service
+      chart: helm/services/attribution-service
       sourceRef:
         kind: GitRepository
         name: shopos
@@ -3248,7 +3248,7 @@ spec:
   interval: 5m
   chart:
     spec:
-      chart: helm/charts/clv-service
+      chart: helm/services/clv-service
       sourceRef:
         kind: GitRepository
         name: shopos
@@ -3268,7 +3268,7 @@ spec:
   interval: 5m
   chart:
     spec:
-      chart: helm/charts/search-analytics-service
+      chart: helm/services/search-analytics-service
       sourceRef:
         kind: GitRepository
         name: shopos
@@ -3288,7 +3288,7 @@ spec:
   interval: 5m
   chart:
     spec:
-      chart: helm/charts/organization-service
+      chart: helm/services/organization-service
       sourceRef:
         kind: GitRepository
         name: shopos
@@ -3308,7 +3308,7 @@ spec:
   interval: 5m
   chart:
     spec:
-      chart: helm/charts/contract-service
+      chart: helm/services/contract-service
       sourceRef:
         kind: GitRepository
         name: shopos
@@ -3328,7 +3328,7 @@ spec:
   interval: 5m
   chart:
     spec:
-      chart: helm/charts/quote-rfq-service
+      chart: helm/services/quote-rfq-service
       sourceRef:
         kind: GitRepository
         name: shopos
@@ -3348,7 +3348,7 @@ spec:
   interval: 5m
   chart:
     spec:
-      chart: helm/charts/approval-workflow-service
+      chart: helm/services/approval-workflow-service
       sourceRef:
         kind: GitRepository
         name: shopos
@@ -3368,7 +3368,7 @@ spec:
   interval: 5m
   chart:
     spec:
-      chart: helm/charts/b2b-credit-limit-service
+      chart: helm/services/b2b-credit-limit-service
       sourceRef:
         kind: GitRepository
         name: shopos
@@ -3388,7 +3388,7 @@ spec:
   interval: 5m
   chart:
     spec:
-      chart: helm/charts/edi-service
+      chart: helm/services/edi-service
       sourceRef:
         kind: GitRepository
         name: shopos
@@ -3408,7 +3408,7 @@ spec:
   interval: 5m
   chart:
     spec:
-      chart: helm/charts/marketplace-seller-service
+      chart: helm/services/marketplace-seller-service
       sourceRef:
         kind: GitRepository
         name: shopos
@@ -3428,7 +3428,7 @@ spec:
   interval: 5m
   chart:
     spec:
-      chart: helm/charts/rfp-service
+      chart: helm/services/rfp-service
       sourceRef:
         kind: GitRepository
         name: shopos
@@ -3448,7 +3448,7 @@ spec:
   interval: 5m
   chart:
     spec:
-      chart: helm/charts/vendor-onboarding-service
+      chart: helm/services/vendor-onboarding-service
       sourceRef:
         kind: GitRepository
         name: shopos
@@ -3468,7 +3468,7 @@ spec:
   interval: 5m
   chart:
     spec:
-      chart: helm/charts/purchase-requisition-service
+      chart: helm/services/purchase-requisition-service
       sourceRef:
         kind: GitRepository
         name: shopos
@@ -3488,7 +3488,7 @@ spec:
   interval: 5m
   chart:
     spec:
-      chart: helm/charts/erp-integration-service
+      chart: helm/services/erp-integration-service
       sourceRef:
         kind: GitRepository
         name: shopos
@@ -3508,7 +3508,7 @@ spec:
   interval: 5m
   chart:
     spec:
-      chart: helm/charts/marketplace-connector-service
+      chart: helm/services/marketplace-connector-service
       sourceRef:
         kind: GitRepository
         name: shopos
@@ -3528,7 +3528,7 @@ spec:
   interval: 5m
   chart:
     spec:
-      chart: helm/charts/social-commerce-service
+      chart: helm/services/social-commerce-service
       sourceRef:
         kind: GitRepository
         name: shopos
@@ -3548,7 +3548,7 @@ spec:
   interval: 5m
   chart:
     spec:
-      chart: helm/charts/crm-integration-service
+      chart: helm/services/crm-integration-service
       sourceRef:
         kind: GitRepository
         name: shopos
@@ -3568,7 +3568,7 @@ spec:
   interval: 5m
   chart:
     spec:
-      chart: helm/charts/payment-gateway-integration
+      chart: helm/services/payment-gateway-integration
       sourceRef:
         kind: GitRepository
         name: shopos
@@ -3588,7 +3588,7 @@ spec:
   interval: 5m
   chart:
     spec:
-      chart: helm/charts/logistics-provider-integration
+      chart: helm/services/logistics-provider-integration
       sourceRef:
         kind: GitRepository
         name: shopos
@@ -3608,7 +3608,7 @@ spec:
   interval: 5m
   chart:
     spec:
-      chart: helm/charts/tax-provider-integration
+      chart: helm/services/tax-provider-integration
       sourceRef:
         kind: GitRepository
         name: shopos
@@ -3628,7 +3628,7 @@ spec:
   interval: 5m
   chart:
     spec:
-      chart: helm/charts/pim-integration-service
+      chart: helm/services/pim-integration-service
       sourceRef:
         kind: GitRepository
         name: shopos
@@ -3648,7 +3648,7 @@ spec:
   interval: 5m
   chart:
     spec:
-      chart: helm/charts/cdp-integration-service
+      chart: helm/services/cdp-integration-service
       sourceRef:
         kind: GitRepository
         name: shopos
@@ -3668,7 +3668,7 @@ spec:
   interval: 5m
   chart:
     spec:
-      chart: helm/charts/accounting-integration-service
+      chart: helm/services/accounting-integration-service
       sourceRef:
         kind: GitRepository
         name: shopos
@@ -3688,7 +3688,7 @@ spec:
   interval: 5m
   chart:
     spec:
-      chart: helm/charts/webhook-ingestion-service
+      chart: helm/services/webhook-ingestion-service
       sourceRef:
         kind: GitRepository
         name: shopos
@@ -3708,7 +3708,7 @@ spec:
   interval: 5m
   chart:
     spec:
-      chart: helm/charts/etl-service
+      chart: helm/services/etl-service
       sourceRef:
         kind: GitRepository
         name: shopos
@@ -3728,7 +3728,7 @@ spec:
   interval: 5m
   chart:
     spec:
-      chart: helm/charts/data-sync-service
+      chart: helm/services/data-sync-service
       sourceRef:
         kind: GitRepository
         name: shopos
@@ -3748,7 +3748,7 @@ spec:
   interval: 5m
   chart:
     spec:
-      chart: helm/charts/ipaas-connector-service
+      chart: helm/services/ipaas-connector-service
       sourceRef:
         kind: GitRepository
         name: shopos
@@ -3768,7 +3768,7 @@ spec:
   interval: 5m
   chart:
     spec:
-      chart: helm/charts/affiliate-service
+      chart: helm/services/affiliate-service
       sourceRef:
         kind: GitRepository
         name: shopos
@@ -3788,7 +3788,7 @@ spec:
   interval: 5m
   chart:
     spec:
-      chart: helm/charts/referral-service
+      chart: helm/services/referral-service
       sourceRef:
         kind: GitRepository
         name: shopos
@@ -3808,7 +3808,7 @@ spec:
   interval: 5m
   chart:
     spec:
-      chart: helm/charts/influencer-service
+      chart: helm/services/influencer-service
       sourceRef:
         kind: GitRepository
         name: shopos
@@ -3828,7 +3828,7 @@ spec:
   interval: 5m
   chart:
     spec:
-      chart: helm/charts/commission-payout-service
+      chart: helm/services/commission-payout-service
       sourceRef:
         kind: GitRepository
         name: shopos
@@ -3848,7 +3848,7 @@ spec:
   interval: 5m
   chart:
     spec:
-      chart: helm/charts/click-tracking-service
+      chart: helm/services/click-tracking-service
       sourceRef:
         kind: GitRepository
         name: shopos
@@ -3868,7 +3868,7 @@ spec:
   interval: 5m
   chart:
     spec:
-      chart: helm/charts/fraud-prevention-affiliate-service
+      chart: helm/services/fraud-prevention-affiliate-service
       sourceRef:
         kind: GitRepository
         name: shopos
@@ -3888,7 +3888,7 @@ spec:
   interval: 5m
   chart:
     spec:
-      chart: helm/charts/seller-registration-service
+      chart: helm/services/seller-registration-service
       sourceRef:
         kind: GitRepository
         name: shopos
@@ -3908,7 +3908,7 @@ spec:
   interval: 5m
   chart:
     spec:
-      chart: helm/charts/listing-approval-service
+      chart: helm/services/listing-approval-service
       sourceRef:
         kind: GitRepository
         name: shopos
@@ -3928,7 +3928,7 @@ spec:
   interval: 5m
   chart:
     spec:
-      chart: helm/charts/marketplace-commission-service
+      chart: helm/services/marketplace-commission-service
       sourceRef:
         kind: GitRepository
         name: shopos
@@ -3948,7 +3948,7 @@ spec:
   interval: 5m
   chart:
     spec:
-      chart: helm/charts/dispute-resolution-service
+      chart: helm/services/dispute-resolution-service
       sourceRef:
         kind: GitRepository
         name: shopos
@@ -3968,7 +3968,7 @@ spec:
   interval: 5m
   chart:
     spec:
-      chart: helm/charts/seller-analytics-service
+      chart: helm/services/seller-analytics-service
       sourceRef:
         kind: GitRepository
         name: shopos
@@ -3988,7 +3988,7 @@ spec:
   interval: 5m
   chart:
     spec:
-      chart: helm/charts/product-syndication-service
+      chart: helm/services/product-syndication-service
       sourceRef:
         kind: GitRepository
         name: shopos
@@ -4008,7 +4008,7 @@ spec:
   interval: 5m
   chart:
     spec:
-      chart: helm/charts/storefront-service
+      chart: helm/services/storefront-service
       sourceRef:
         kind: GitRepository
         name: shopos
@@ -4028,7 +4028,7 @@ spec:
   interval: 5m
   chart:
     spec:
-      chart: helm/charts/seller-payout-service
+      chart: helm/services/seller-payout-service
       sourceRef:
         kind: GitRepository
         name: shopos
@@ -4048,7 +4048,7 @@ spec:
   interval: 5m
   chart:
     spec:
-      chart: helm/charts/points-service
+      chart: helm/services/points-service
       sourceRef:
         kind: GitRepository
         name: shopos
@@ -4068,7 +4068,7 @@ spec:
   interval: 5m
   chart:
     spec:
-      chart: helm/charts/badge-service
+      chart: helm/services/badge-service
       sourceRef:
         kind: GitRepository
         name: shopos
@@ -4088,7 +4088,7 @@ spec:
   interval: 5m
   chart:
     spec:
-      chart: helm/charts/leaderboard-service
+      chart: helm/services/leaderboard-service
       sourceRef:
         kind: GitRepository
         name: shopos
@@ -4108,7 +4108,7 @@ spec:
   interval: 5m
   chart:
     spec:
-      chart: helm/charts/challenge-service
+      chart: helm/services/challenge-service
       sourceRef:
         kind: GitRepository
         name: shopos
@@ -4128,7 +4128,7 @@ spec:
   interval: 5m
   chart:
     spec:
-      chart: helm/charts/reward-redemption-service
+      chart: helm/services/reward-redemption-service
       sourceRef:
         kind: GitRepository
         name: shopos
@@ -4148,7 +4148,7 @@ spec:
   interval: 5m
   chart:
     spec:
-      chart: helm/charts/streak-service
+      chart: helm/services/streak-service
       sourceRef:
         kind: GitRepository
         name: shopos
@@ -4168,7 +4168,7 @@ spec:
   interval: 5m
   chart:
     spec:
-      chart: helm/charts/api-management-service
+      chart: helm/services/api-management-service
       sourceRef:
         kind: GitRepository
         name: shopos
@@ -4188,7 +4188,7 @@ spec:
   interval: 5m
   chart:
     spec:
-      chart: helm/charts/sandbox-service
+      chart: helm/services/sandbox-service
       sourceRef:
         kind: GitRepository
         name: shopos
@@ -4208,7 +4208,7 @@ spec:
   interval: 5m
   chart:
     spec:
-      chart: helm/charts/developer-portal-backend
+      chart: helm/services/developer-portal-backend
       sourceRef:
         kind: GitRepository
         name: shopos
@@ -4228,7 +4228,7 @@ spec:
   interval: 5m
   chart:
     spec:
-      chart: helm/charts/oauth-client-service
+      chart: helm/services/oauth-client-service
       sourceRef:
         kind: GitRepository
         name: shopos
@@ -4248,7 +4248,7 @@ spec:
   interval: 5m
   chart:
     spec:
-      chart: helm/charts/api-analytics-service
+      chart: helm/services/api-analytics-service
       sourceRef:
         kind: GitRepository
         name: shopos
@@ -4268,7 +4268,7 @@ spec:
   interval: 5m
   chart:
     spec:
-      chart: helm/charts/webhook-management-service
+      chart: helm/services/webhook-management-service
       sourceRef:
         kind: GitRepository
         name: shopos
@@ -4288,7 +4288,7 @@ spec:
   interval: 5m
   chart:
     spec:
-      chart: helm/charts/data-retention-service
+      chart: helm/services/data-retention-service
       sourceRef:
         kind: GitRepository
         name: shopos
@@ -4308,7 +4308,7 @@ spec:
   interval: 5m
   chart:
     spec:
-      chart: helm/charts/consent-audit-service
+      chart: helm/services/consent-audit-service
       sourceRef:
         kind: GitRepository
         name: shopos
@@ -4328,7 +4328,7 @@ spec:
   interval: 5m
   chart:
     spec:
-      chart: helm/charts/privacy-request-service
+      chart: helm/services/privacy-request-service
       sourceRef:
         kind: GitRepository
         name: shopos
@@ -4348,7 +4348,7 @@ spec:
   interval: 5m
   chart:
     spec:
-      chart: helm/charts/compliance-reporting-service
+      chart: helm/services/compliance-reporting-service
       sourceRef:
         kind: GitRepository
         name: shopos
@@ -4368,7 +4368,7 @@ spec:
   interval: 5m
   chart:
     spec:
-      chart: helm/charts/data-lineage-service
+      chart: helm/services/data-lineage-service
       sourceRef:
         kind: GitRepository
         name: shopos
@@ -4388,7 +4388,7 @@ spec:
   interval: 5m
   chart:
     spec:
-      chart: helm/charts/carbon-tracker-service
+      chart: helm/services/carbon-tracker-service
       sourceRef:
         kind: GitRepository
         name: shopos
@@ -4408,7 +4408,7 @@ spec:
   interval: 5m
   chart:
     spec:
-      chart: helm/charts/eco-score-service
+      chart: helm/services/eco-score-service
       sourceRef:
         kind: GitRepository
         name: shopos
@@ -4428,7 +4428,7 @@ spec:
   interval: 5m
   chart:
     spec:
-      chart: helm/charts/green-shipping-service
+      chart: helm/services/green-shipping-service
       sourceRef:
         kind: GitRepository
         name: shopos
@@ -4448,7 +4448,7 @@ spec:
   interval: 5m
   chart:
     spec:
-      chart: helm/charts/sustainability-reporting-service
+      chart: helm/services/sustainability-reporting-service
       sourceRef:
         kind: GitRepository
         name: shopos
@@ -4468,7 +4468,7 @@ spec:
   interval: 5m
   chart:
     spec:
-      chart: helm/charts/offset-service
+      chart: helm/services/offset-service
       sourceRef:
         kind: GitRepository
         name: shopos
@@ -4488,7 +4488,7 @@ spec:
   interval: 5m
   chart:
     spec:
-      chart: helm/charts/storefront
+      chart: helm/services/storefront
       sourceRef:
         kind: GitRepository
         name: shopos
@@ -4508,7 +4508,7 @@ spec:
   interval: 5m
   chart:
     spec:
-      chart: helm/charts/admin-dashboard
+      chart: helm/services/admin-dashboard
       sourceRef:
         kind: GitRepository
         name: shopos
@@ -4528,7 +4528,7 @@ spec:
   interval: 5m
   chart:
     spec:
-      chart: helm/charts/seller-portal
+      chart: helm/services/seller-portal
       sourceRef:
         kind: GitRepository
         name: shopos
@@ -4548,7 +4548,7 @@ spec:
   interval: 5m
   chart:
     spec:
-      chart: helm/charts/partner-portal
+      chart: helm/services/partner-portal
       sourceRef:
         kind: GitRepository
         name: shopos
@@ -4568,7 +4568,7 @@ spec:
   interval: 5m
   chart:
     spec:
-      chart: helm/charts/mobile-app
+      chart: helm/services/mobile-app
       sourceRef:
         kind: GitRepository
         name: shopos
@@ -4588,7 +4588,7 @@ spec:
   interval: 5m
   chart:
     spec:
-      chart: helm/charts/developer-portal-ui
+      chart: helm/services/developer-portal-ui
       sourceRef:
         kind: GitRepository
         name: shopos

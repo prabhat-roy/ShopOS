@@ -186,7 +186,7 @@ pipeline {
                     env.SERVICES.split(',').each { svc ->
                         svc = svc.trim()
                         def image      = "${env.HARBOR_URL}/${env.REGISTRY_PROJECT}/${svc}"
-                        def valuesFile = "helm/charts/${svc}/values-${params.ENVIRONMENT}.yaml"
+                        def valuesFile = "helm/services/${svc}/values-${params.ENVIRONMENT}.yaml"
                         sh """
                             echo "=== Ensuring GitOps tag: ${svc} → ${env.IMAGE_TAG} ==="
                             if [ -f ${valuesFile} ]; then
@@ -201,7 +201,7 @@ pipeline {
                     sh """
                         git config user.email "jenkins@shopos.local"
                         git config user.name  "Jenkins CI"
-                        git add helm/charts/ gitops/ 2>/dev/null || true
+                        git add helm/services/ gitops/ 2>/dev/null || true
                         git diff --staged --quiet || \
                             git commit -m "deploy: ${params.DOMAIN} → ${env.IMAGE_TAG} (${params.ENVIRONMENT}) [skip ci]"
                         git push origin ${env.GIT_BRANCH_NAME} 2>/dev/null || true

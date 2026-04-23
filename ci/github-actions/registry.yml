@@ -8,8 +8,8 @@ on:
     branches: [develop, main]
     paths:
       - 'registry/**'
-      - 'helm/charts/harbor/**'
-      - 'helm/charts/minio/**'
+      - 'helm/infra/registry/harbor/**'
+      - 'helm/infra/registry/minio/**'
   push:
     tags: ['v*']
   workflow_dispatch:

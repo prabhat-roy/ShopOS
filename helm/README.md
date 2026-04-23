@@ -1,8 +1,7 @@
 # Helm Charts — ShopOS
 
-ShopOS uses Helm 3 to package, template, and deploy all 263 services onto Kubernetes.
-Each service has its own self-contained chart under `helm/charts/` with per-environment
-value overrides.
+All Helm charts live under `helm/` — no external `helm repo add` required at deploy time.
+Every chart is vendored in-repo.
 
 ---
 
@@ -10,33 +9,143 @@ value overrides.
 
 ```
 helm/
-└── charts/                         ← 263 individual service charts
-    ├── api-gateway/
-    │   ├── Chart.yaml
-    │   ├── values.yaml             ← Defaults (1 replica, debug logging, minimal resources)
-    │   ├── values-dev.yaml         ← Local kind/minikube overrides
-    │   ├── values-staging.yaml     ← Staging cluster — production-like, reduced replicas
-    │   ├── values-prod.yaml        ← Production — full replicas, HPA, PDB, strict resources
-    │   └── templates/
-    │       ├── deployment.yaml
-    │       ├── service.yaml
-    │       ├── hpa.yaml
-    │       ├── serviceaccount.yaml
-    │       ├── configmap.yaml
-    │       ├── servicemonitor.yaml ← Prometheus ServiceMonitor
-    │       └── _helpers.tpl
-    ├── order-service/
-    ├── cart-service/
-    ├── payment-service/
-    ├── auth-service/
-    └── ... (150 more charts)
+├── services/                       ← 263 per-service charts (one per microservice/frontend)
+│   ├── api-gateway/
+│   ├── order-service/
+│   ├── cart-service/
+│   ├── payment-service/
+│   └── ... (259 more)
+│
+└── infra/                          ← Infrastructure tool charts (vendored, zero internet needed)
+    ├── databases/                  ← 14 charts
+    │   ├── clickhouse/             ← OLAP analytics
+    │   ├── cockroachdb/            ← Distributed PostgreSQL
+    │   ├── dragonfly/              ← Redis-compatible (high throughput)
+    │   ├── eventstore/             ← Event sourcing DB
+    │   ├── manticore-search/       ← Full-text search
+    │   ├── meilisearch/            ← Typo-tolerant search
+    │   ├── memcached/              ← Key-value cache
+    │   ├── neo4j/                  ← Graph database
+    │   ├── patroni/                ← HA PostgreSQL
+    │   ├── pgbouncer/              ← Connection pooler
+    │   ├── scylladb/               ← High-throughput time-series
+    │   ├── surrealdb/              ← Multi-model DB
+    │   ├── temporal/               ← Workflow orchestration
+    │   ├── timescaledb/            ← Time-series
+    │   ├── typesense/              ← Instant search
+    │   ├── valkey/                 ← Redis-compatible (Linux Foundation)
+    │   └── weaviate/               ← Vector database
+    │
+    ├── db-tools/                   ← 4 charts
+    │   ├── pgadmin/
+    │   ├── mongo-express/
+    │   ├── redis-commander/
+    │   └── bytebase/
+    │
+    ├── data/                       ← 9 charts (analytics, API management, lineage, quality)
+    │   ├── superset/               ← BI dashboards
+    │   ├── apisix/                 ← API gateway
+    │   ├── hasura/                 ← GraphQL engine
+    │   ├── tyk/                    ← API management
+    │   ├── apache-atlas/           ← Data catalog
+    │   ├── marquez/                ← Data lineage (server)
+    │   ├── marquez-web/            ← Data lineage (UI)
+    │   ├── great-expectations/     ← Data quality
+    │   └── openlineage/            ← Lineage emitter
+    │
+    ├── gitops/                     ← 13 charts
+    │   ├── argocd/
+    │   ├── fluxcd/
+    │   ├── argo-rollouts/
+    │   ├── argo-workflows/
+    │   ├── argo-events/
+    │   ├── keda/
+    │   ├── velero/
+    │   ├── flagger/
+    │   ├── atlantis/
+    │   ├── infracost/
+    │   ├── driftctl/
+    │   ├── crossplane/
+    │   └── backstage/
+    │
+    ├── messaging/                  ← 1 chart
+    │   └── conduktor-gateway/      ← Kafka policy enforcement
+    │
+    ├── observability/              ← 6 charts
+    │   ├── grafana-mimir/
+    │   ├── kiali/
+    │   ├── signoz/
+    │   ├── netdata/
+    │   ├── perses/
+    │   └── victoria-logs/
+    │
+    ├── platform/                   ← 14 charts
+    │   ├── botkube/                ← Slack K8s alerts
+    │   ├── k8sgpt/                 ← AI K8s diagnostics
+    │   ├── opencost/               ← Cost attribution
+    │   ├── unleash/                ← Feature flags
+    │   ├── cachet/                 ← Status page
+    │   ├── grafana-oncall/         ← On-call scheduling
+    │   ├── nomad/                  ← Workload orchestrator
+    │   ├── atlantis/               ← Terraform GitOps
+    │   ├── dagster/                ← Data orchestration
+    │   ├── prefect/                ← Workflow orchestration
+    │   ├── apache-camel/           ← Enterprise integration
+    │   ├── pomerium/               ← Zero-trust access proxy
+    │   ├── devpod/                 ← Dev environments
+    │   └── score/                  ← Cloud-agnostic workload spec
+    │
+    ├── registry/                   ← 31 charts
+    │   ├── harbor/
+    │   ├── nexus/
+    │   ├── gitea/
+    │   ├── sonarqube/
+    │   ├── chartmuseum/
+    │   ├── zot/
+    │   └── ... (25 more)
+    │
+    ├── security/                   ← 7 charts
+    │   ├── teleport/               ← Zero-trust SSH + K8s access
+    │   ├── defectdojo/             ← Vulnerability management
+    │   ├── dependency-track/       ← SBOM + CVE correlation
+    │   ├── wazuh/                  ← SIEM + HIDS
+    │   ├── external-secrets/       ← Sync secrets from Vault/AWS SSM
+    │   ├── sealed-secrets/         ← Encrypt secrets for GitOps
+    │   └── pomerium/               ← Identity-aware proxy
+    │
+    └── testing/                    ← 4 charts
+        ├── pact-broker/
+        ├── wiremock/
+        ├── k6-operator/
+        └── toxiproxy/
+```
+
+---
+
+## Service Chart Layout
+
+Every service chart under `helm/services/<name>/` follows the same layout:
+
+```
+helm/services/<service-name>/
+├── Chart.yaml
+├── values.yaml             ← Defaults (1 replica, debug logging, minimal resources)
+├── values-dev.yaml         ← Local kind/minikube overrides
+├── values-staging.yaml     ← Staging — production-like, reduced replicas
+├── values-prod.yaml        ← Production — full replicas, HPA, PDB, strict resources
+└── templates/
+    ├── deployment.yaml
+    ├── service.yaml
+    ├── hpa.yaml
+    ├── serviceaccount.yaml
+    ├── configmap.yaml
+    ├── servicemonitor.yaml ← Prometheus ServiceMonitor
+    └── _helpers.tpl
 ```
 
 ---
 
 ## Environment Value Overrides
-
-Each chart ships four value files:
 
 | File | Replicas | Resources | HPA | Logging |
 |---|---|---|---|---|
@@ -45,29 +154,6 @@ Each chart ships four value files:
 | `values-staging.yaml` | 2 | production-like | disabled | info |
 | `values-prod.yaml` | 3+ | full | enabled | warn |
 
-**Example diff for `order-service`:**
-
-```yaml
-# values.yaml (defaults)
-replicaCount: 1
-resources:
-  requests: { cpu: 100m, memory: 128Mi }
-  limits:   { cpu: 500m, memory: 512Mi }
-autoscaling:
-  enabled: false
-
-# values-prod.yaml
-replicaCount: 3
-resources:
-  requests: { cpu: 500m, memory: 512Mi }
-  limits:   { cpu: 2000m, memory: 2Gi }
-autoscaling:
-  enabled: true
-  minReplicas: 3
-  maxReplicas: 20
-  targetCPUUtilizationPercentage: 60
-```
-
 ---
 
 ## Common Commands
@@ -75,71 +161,71 @@ autoscaling:
 ### Install a Service
 
 ```bash
-# Install order-service in its own namespace
-helm install order-service helm/charts/order-service \
+helm install order-service helm/services/order-service \
   --namespace order-service \
   --create-namespace \
-  -f helm/charts/order-service/values-staging.yaml
+  -f helm/services/order-service/values-staging.yaml
 
-# Install with a specific image tag
-helm install order-service helm/charts/order-service \
+helm install order-service helm/services/order-service \
   --namespace order-service \
   --create-namespace \
-  -f helm/charts/order-service/values-staging.yaml \
+  -f helm/services/order-service/values-staging.yaml \
   --set image.tag=v1.4.2
 ```
 
 ### Upgrade a Service
 
 ```bash
-helm upgrade order-service helm/charts/order-service \
+helm upgrade order-service helm/services/order-service \
   --namespace order-service \
-  -f helm/charts/order-service/values-prod.yaml \
+  -f helm/services/order-service/values-prod.yaml \
   --set image.tag=v1.5.0 \
   --atomic \
   --timeout 5m
 ```
 
+### Install an Infrastructure Tool
+
+```bash
+# ClickHouse
+helm upgrade --install clickhouse helm/infra/databases/clickhouse \
+  --namespace databases --create-namespace
+
+# Harbor registry
+helm upgrade --install harbor helm/infra/registry/harbor \
+  --namespace registry --create-namespace
+
+# ArgoCD
+helm upgrade --install argocd helm/infra/gitops/argocd \
+  --namespace argocd --create-namespace
+```
+
 ### Rollback
 
 ```bash
-# View release history
 helm history order-service -n order-service
-
-# Roll back to previous revision
 helm rollback order-service 2 -n order-service
-
-# Roll back to a specific revision
-helm rollback order-service 5 -n order-service --wait
 ```
 
 ### Deploy All Services (via Make)
 
 ```bash
-# Deploy all 263 services — each to its own namespace
-make deploy-local
-
-# Deploy a single service
+make deploy-local          # All 263 services to their own namespaces
 make deploy-svc SVC=order-service
-
-# Deploy with a custom image tag
 make deploy-local TAG=v1.5.0
 ```
 
 ### Inspect and Debug
 
 ```bash
-# Render templates without applying
-helm template order-service helm/charts/order-service \
-  -f helm/charts/order-service/values-prod.yaml
+helm template order-service helm/services/order-service \
+  -f helm/services/order-service/values-prod.yaml
 
-# Lint a chart
-helm lint helm/charts/order-service
+helm lint helm/services/order-service
 
-# Diff before upgrade (requires helm-diff plugin)
-helm diff upgrade order-service helm/charts/order-service \
+helm diff upgrade order-service helm/services/order-service \
   --namespace order-service \
-  -f helm/charts/order-service/values-prod.yaml \
+  -f helm/services/order-service/values-prod.yaml \
   --set image.tag=v1.5.0
 ```
 
@@ -147,64 +233,66 @@ helm diff upgrade order-service helm/charts/order-service \
 
 ## Namespace Convention
 
-Every service is deployed to its **own namespace** matching the service name:
+Every service is deployed to its own namespace matching the service name:
 
 ```
 order-service      → namespace: order-service
 cart-service       → namespace: cart-service
 payment-service    → namespace: payment-service
-auth-service       → namespace: auth-service
 ```
 
-Helm creates the namespace automatically via `--create-namespace`. This isolates services
-at the network policy level and allows independent RBAC per service.
+Infrastructure tools go into dedicated namespaces:
+
+```
+helm/infra/databases/*    → namespace: databases
+helm/infra/registry/*     → namespace: registry
+helm/infra/gitops/*       → namespace: argocd / flux-system
+helm/infra/security/*     → namespace: security
+helm/infra/observability/*→ namespace: observability
+```
 
 ---
 
 ## Chart Conventions
 
 - Every chart generates a dedicated `ServiceAccount` — never uses `default`
-- `HorizontalPodAutoscaler` is always templated, disabled by default, enabled via `autoscaling.enabled: true`
+- `HorizontalPodAutoscaler` always templated, disabled by default, enabled via `autoscaling.enabled: true`
 - All environment variables reference a `Secret` or `ConfigMap` — no hardcoded values
-- Image is always `{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}`
+- Image: `{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}`
 - Readiness and liveness probes always point to `/healthz`
-- Prometheus `ServiceMonitor` is included (enabled via `metrics.enabled: true`)
+- Prometheus `ServiceMonitor` included (enabled via `metrics.enabled: true`)
 - Non-root user enforced via `securityContext.runAsNonRoot: true`
+
+---
+
+## ArgoCD Integration
+
+Service charts are referenced by ArgoCD ApplicationSet in `gitops/argocd/applicationsets/all-services.yaml`:
+
+```yaml
+spec:
+  source:
+    repoURL: https://gitea.shopos.internal/shopos/shopos.git
+    path: helm/services/{{service}}
+    helm:
+      valueFiles:
+        - values-prod.yaml
+  destination:
+    namespace: '{{service}}'
+```
+
+Infrastructure tools are managed separately via individual ArgoCD Applications in `gitops/argocd/applications/`.
 
 ---
 
 ## Packaging and Publishing Charts
 
 ```bash
-# Package a chart
-helm package helm/charts/order-service --destination .helm-packages/
-
-# Push to Harbor OCI registry
+helm package helm/services/order-service --destination .helm-packages/
 helm push .helm-packages/order-service-1.5.0.tgz oci://harbor.shopos.internal/charts
 
-# Push to ChartMuseum
 curl --data-binary "@.helm-packages/order-service-1.5.0.tgz" \
   http://chartmuseum.shopos.internal/api/charts
-```
-
----
-
-## ArgoCD Integration
-
-Each service chart is referenced by an ArgoCD `Application` in [gitops/argocd/](../gitops/argocd/).
-ArgoCD watches the chart + values files in git and auto-syncs on changes.
-
-```yaml
-# gitops/argocd/applications/order-service.yaml (excerpt)
-spec:
-  source:
-    repoURL: https://gitea.shopos.internal/shopos/shopos.git
-    path: helm/charts/order-service
-    helm:
-      valueFiles:
-        - values-prod.yaml
-  destination:
-    namespace: order-service
 ```
 
 ---

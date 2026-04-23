@@ -49,13 +49,13 @@ phases:
       - docker tag ${IMAGE} ${ECR_REGISTRY}/shopos/${SERVICE_NAME}:latest
       - docker push ${ECR_REGISTRY}/shopos/${SERVICE_NAME}:latest
       - |
-        helm upgrade --install ${SERVICE_NAME} helm/charts/${SERVICE_NAME} \
+        helm upgrade --install ${SERVICE_NAME} helm/services/${SERVICE_NAME} \
           --namespace ${DOMAIN} --create-namespace \
           --set image.repository=${ECR_REGISTRY}/shopos/${SERVICE_NAME} \
           --set image.tag=${IMAGE_TAG} \
           --set environment=${ENVIRONMENT} \
           --set persistence.storageClass=gp3 \
-          -f helm/charts/${SERVICE_NAME}/values-${ENVIRONMENT}.yaml \
+          -f helm/services/${SERVICE_NAME}/values-${ENVIRONMENT}.yaml \
           --wait --timeout 10m
 
   post_build:

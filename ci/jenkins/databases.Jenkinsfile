@@ -48,7 +48,7 @@ pipeline {
                     sh """
                         helm uninstall clickhouse -n databases --ignore-not-found || true
                         kubectl delete pvc -l app.kubernetes.io/instance=clickhouse -n databases --ignore-not-found || true
-                        helm upgrade --install clickhouse charts/databases/clickhouse \
+                        helm upgrade --install clickhouse helm/infra/databases/clickhouse \
                             --namespace databases \
                             --set image.tag=24.8-alpine \
                             --set persistentVolumeClaim.size=20Gi \
@@ -68,7 +68,7 @@ pipeline {
             steps {
                 catchError(buildResult: 'UNSTABLE', stageResult: 'FAILURE') {
                     sh """
-                        helm upgrade --install weaviate charts/databases/weaviate \
+                        helm upgrade --install weaviate helm/infra/databases/weaviate \
                             --namespace databases \
                             --set initContainers.sysctlInitContainer.enabled=false \
                             --set persistence.size=10Gi \
@@ -88,7 +88,7 @@ pipeline {
             steps {
                 catchError(buildResult: 'UNSTABLE', stageResult: 'FAILURE') {
                     sh """
-                        helm upgrade --install neo4j charts/databases/neo4j \
+                        helm upgrade --install neo4j helm/infra/databases/neo4j \
                             --namespace databases \
                             --set neo4j.name=shopos-neo4j \
                             --set volumes.data.mode=defaultStorageClass \
@@ -110,7 +110,7 @@ pipeline {
                         kubectl create namespace temporal-system --dry-run=client -o yaml | kubectl apply -f -
                         helm uninstall temporal -n temporal-system --ignore-not-found || true
                         kubectl delete pvc --all -n temporal-system --ignore-not-found || true
-                        helm upgrade --install temporal charts/databases/temporal \
+                        helm upgrade --install temporal helm/infra/databases/temporal \
                             --namespace temporal-system \
                             --set server.replicaCount=1 \
                             --set cassandra.config.cluster_size=1 \
@@ -130,7 +130,7 @@ pipeline {
             steps {
                 catchError(buildResult: 'UNSTABLE', stageResult: 'FAILURE') {
                     sh """
-                        helm upgrade --install memcached charts/databases/memcached \
+                        helm upgrade --install memcached helm/infra/databases/memcached \
                             --namespace databases \
                             --set replicaCount=3 \
                             --set resources.requests.memory=256Mi \
@@ -148,7 +148,7 @@ pipeline {
             steps {
                 catchError(buildResult: 'UNSTABLE', stageResult: 'FAILURE') {
                     sh """
-                        helm upgrade --install timescaledb charts/databases/timescaledb \
+                        helm upgrade --install timescaledb helm/infra/databases/timescaledb \
                             --namespace databases \
                             --set image.tag=2.15-pg16-alpine \
                             --set persistence.size=20Gi \

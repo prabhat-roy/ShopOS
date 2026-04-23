@@ -9,8 +9,8 @@ on:
     branches: [develop, main]
     paths:
       - 'networking/**'
-      - 'helm/charts/traefik/**'
-      - 'helm/charts/istio/**'
+      - 'helm/infra/networking/traefik/**'
+      - 'helm/infra/networking/istio/**'
   push:
     tags: ['v*']
   workflow_dispatch:

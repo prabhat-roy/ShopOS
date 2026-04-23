@@ -75,7 +75,7 @@ pipeline {
             steps {
                 sh """
                     helm upgrade --install reports-portal-service \
-                        helm/charts/reports-portal-service \
+                        helm/services/reports-portal-service \
                         --namespace platform \
                         --create-namespace \
                         --set image.repository=${env.REGISTRY}/${env.REGISTRY_PROJECT}/reports-portal-service \

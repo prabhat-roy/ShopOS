@@ -116,7 +116,7 @@ spec:
       script: |
         cp /root/.kube/config /root/.kube/kubeconfig 2>/dev/null || true
         helm upgrade --install $(params.service-name) \
-          /workspace/source/helm/charts/$(params.service-name) \
+          /workspace/source/helm/services/$(params.service-name) \
           --namespace $(params.namespace) \
           --create-namespace \
           --set image.repository=$(params.registry)/shopos/$(params.service-name) \

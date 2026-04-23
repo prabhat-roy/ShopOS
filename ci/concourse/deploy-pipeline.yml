@@ -62,7 +62,7 @@ jobs:
                 IMAGE_TAG=$(cat harbor-image/digest | cut -c8-15 2>/dev/null || echo "latest")
                 echo "=== Deploying $SERVICE_NAME → $NAMESPACE ($ENVIRONMENT) ==="
                 helm upgrade --install "$SERVICE_NAME" \
-                  "shopos-repo/helm/charts/$SERVICE_NAME" \
+                  "shopos-repo/helm/services/$SERVICE_NAME" \
                   --namespace "$NAMESPACE" --create-namespace \
                   --set image.repository="$HARBOR_REGISTRY/shopos/$SERVICE_NAME" \
                   --set image.tag="$IMAGE_TAG" \

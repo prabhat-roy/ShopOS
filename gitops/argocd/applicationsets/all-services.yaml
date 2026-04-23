@@ -834,7 +834,7 @@ spec:
       source:
         repoURL: https://github.com/prabhat-roy/ShopOS.git
         targetRevision: HEAD
-        path: 'helm/charts/{{service}}'
+        path: 'helm/services/{{service}}'
       destination:
         server: https://kubernetes.default.svc
         namespace: '{{namespace}}'

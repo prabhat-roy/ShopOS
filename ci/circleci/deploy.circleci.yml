@@ -38,7 +38,7 @@ jobs:
             TAG="${IMAGE_TAG:-latest}"
             REGISTRY="${HARBOR_REGISTRY:-harbor.shopos.internal}"
             helm upgrade --install "$SERVICE" \
-              "helm/charts/$SERVICE" \
+              "helm/services/$SERVICE" \
               --namespace staging \
               --create-namespace \
               --set image.repository="$REGISTRY/shopos/$SERVICE" \
@@ -105,7 +105,7 @@ jobs:
             REGISTRY="${HARBOR_REGISTRY:-harbor.shopos.internal}"
             # Canary: deploy with 20% weight initially
             helm upgrade --install "$SERVICE" \
-              "helm/charts/$SERVICE" \
+              "helm/services/$SERVICE" \
               --namespace production \
               --create-namespace \
               --set image.repository="$REGISTRY/shopos/$SERVICE" \

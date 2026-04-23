@@ -84,7 +84,7 @@ deploy-dev:
     - echo "$KUBECONFIG_CONTENT" | base64 -d > ~/.kube/config
   script:
     - |
-      helm upgrade --install "$SERVICE_NAME" "helm/charts/$SERVICE_NAME" \
+      helm upgrade --install "$SERVICE_NAME" "helm/services/$SERVICE_NAME" \
         --namespace "$DOMAIN" --create-namespace \
         --set image.repository="$HARBOR_REGISTRY/$REGISTRY_PROJECT/$SERVICE_NAME" \
         --set image.tag="$IMAGE_TAG" \
@@ -126,7 +126,7 @@ deploy-staging:
     - echo "$KUBECONFIG_CONTENT" | base64 -d > ~/.kube/config
   script:
     - |
-      helm upgrade --install "$SERVICE_NAME" "helm/charts/$SERVICE_NAME" \
+      helm upgrade --install "$SERVICE_NAME" "helm/services/$SERVICE_NAME" \
         --namespace "$DOMAIN" --create-namespace \
         --set image.repository="$HARBOR_REGISTRY/$REGISTRY_PROJECT/$SERVICE_NAME" \
         --set image.tag="$IMAGE_TAG" \
@@ -151,7 +151,7 @@ deploy-prod:
     - echo "$KUBECONFIG_CONTENT" | base64 -d > ~/.kube/config
   script:
     - |
-      helm upgrade --install "$SERVICE_NAME" "helm/charts/$SERVICE_NAME" \
+      helm upgrade --install "$SERVICE_NAME" "helm/services/$SERVICE_NAME" \
         --namespace "$DOMAIN" --create-namespace \
         --set image.repository="$HARBOR_REGISTRY/$REGISTRY_PROJECT/$SERVICE_NAME" \
         --set image.tag="$IMAGE_TAG" \
