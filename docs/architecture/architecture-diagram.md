@@ -8,7 +8,7 @@
 
 ```mermaid
 graph TB
-    classDef user      fill:#4A90D9,stroke:#2C5F8A,color:#fff,rx:8
+    classDef user      fill:#4A90D9,stroke:#2C5F8A,color:#fff
     classDef edge      fill:#E8724A,stroke:#B54A22,color:#fff
     classDef frontend  fill:#7B68EE,stroke:#4B38BE,color:#fff
     classDef gateway   fill:#F5A623,stroke:#C07800,color:#fff
@@ -421,44 +421,44 @@ graph TB
     classDef search fill:#50C878,stroke:#2A8A4A,color:#fff
     classDef olap   fill:#9370DB,stroke:#5B20AB,color:#fff
     classDef obj    fill:#F5A623,stroke:#C07800,color:#fff
-    classDef graph  fill:#20B2AA,stroke:#008080,color:#fff
+    classDef graphdb  fill:#20B2AA,stroke:#008080,color:#fff
     classDef stream fill:#FF69B4,stroke:#C0396A,color:#fff
     classDef ml     fill:#32CD32,stroke:#006400,color:#fff
 
     subgraph OLTP["🔷  Transactional (OLTP)"]
-        PG["PostgreSQL 16\nPatroni 3-node HA\nPgBouncer pool\n→ identity · commerce\nfinancial · platform"]:::oltp
-        TS["TimescaleDB\nTime-series extension\n→ metrics · inventory\npage views"]:::oltp
+        PG["PostgreSQL 16\nPatroni 3-node HA\nPgBouncer pool\nidentity · commerce\nfinancial · platform"]:::oltp
+        TS["TimescaleDB\nTime-series extension\nmetrics · inventory\npage views"]:::oltp
     end
 
     subgraph DOC["🟠  Document Stores"]
-        MONGO["MongoDB 8.0\n→ product catalog\ncms · reviews · tracking"]:::doc
+        MONGO["MongoDB 8.0\nproduct catalog\ncms · reviews · tracking"]:::doc
     end
 
     subgraph CACHE["🔴  Cache & Session"]
-        REDIS["Redis 7\n→ sessions · cart\nrate limits · pub/sub"]:::cache
+        REDIS["Redis 7\nsessions · cart\nrate limits · pub/sub"]:::cache
         DRAG["Dragonfly\nRedis-compatible\n4× throughput"]:::cache
         MEM["Memcached 1.6\nSimple high-throughput\ncaching"]:::cache
     end
 
     subgraph SEARCH["🟢  Search Engines"]
-        ES["Elasticsearch 8\n→ product search\nfull-text · facets"]:::search
-        OS["OpenSearch 2.17\n→ log analytics\naudit trails"]:::search
+        ES["Elasticsearch 8\nproduct search\nfull-text · facets"]:::search
+        OS["OpenSearch 2.17\nlog analytics\naudit trails"]:::search
         MEILI["Meilisearch\nTypo-tolerant\nproduct search"]:::search
     end
 
     subgraph OLAP["🟣  Analytics (OLAP)"]
-        CH["ClickHouse 24\n→ order analytics\nrevenue reports\nMaterialized views"]:::olap
-        CASS["Cassandra 5\n→ analytics events\npage views · clicks"]:::olap
+        CH["ClickHouse 24\norder analytics\nrevenue reports\nMaterialized views"]:::olap
+        CASS["Cassandra 5\nanalytics events\npage views · clicks"]:::olap
         SCYLLA["ScyllaDB 6\nHigh-throughput\nCassandra-compatible"]:::olap
     end
 
     subgraph OBJ["🟡  Object Storage"]
-        MINIO["MinIO\n→ product images\nvideos · PDFs\nexports"]:::obj
+        MINIO["MinIO\nproduct images\nvideos · PDFs\nexports"]:::obj
     end
 
     subgraph GRAPH["🔵  Specialized"]
-        NEO["Neo4j 5\nGraph DB\n→ product recommendations\ncollaborative filtering"]:::graph
-        WEAV["Weaviate 1.26\nVector DB\n→ semantic search\nAI embeddings"]:::ml
+        NEO["Neo4j 5\nGraph DB\nproduct recommendations\ncollaborative filtering"]:::graphdb
+        WEAV["Weaviate 1.26\nVector DB\nsemantic search\nAI embeddings"]:::ml
     end
 
     subgraph STREAM["🔄  Streaming & CDC"]
