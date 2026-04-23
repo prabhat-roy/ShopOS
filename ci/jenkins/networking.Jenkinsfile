@@ -14,11 +14,11 @@ pipeline {
             choices: ['INSTALL', 'UNINSTALL'],
             description: 'INSTALL — deploy selected networking tools. UNINSTALL — remove selected.'
         )
-        booleanParam(name: 'CILIUM',          defaultValue: true,  description: 'Cilium — eBPF-based CNI with NetworkPolicy and observability')
-        booleanParam(name: 'CALICO',          defaultValue: true,  description: 'Calico — BGP-based CNI with NetworkPolicy')
-        booleanParam(name: 'FLANNEL',         defaultValue: false, description: 'Flannel — simple overlay CNI (disable when Cilium/Calico active)')
-        booleanParam(name: 'WEAVE_NET',       defaultValue: false, description: 'Weave Net — mesh overlay CNI')
-        booleanParam(name: 'ANTREA',          defaultValue: false, description: 'Antrea — OVS-based CNI')
+        booleanParam(name: 'CILIUM',          defaultValue: true,  description: 'Cilium — eBPF-based CNI with NetworkPolicy and observability (select only ONE CNI)')
+        booleanParam(name: 'CALICO',          defaultValue: false, description: 'Calico — BGP-based CNI with NetworkPolicy (mutually exclusive with Cilium)')
+        booleanParam(name: 'FLANNEL',         defaultValue: false, description: 'Flannel — simple overlay CNI (mutually exclusive with Cilium/Calico)')
+        booleanParam(name: 'WEAVE_NET',       defaultValue: false, description: 'Weave Net — mesh overlay CNI (mutually exclusive with other CNIs)')
+        booleanParam(name: 'ANTREA',          defaultValue: false, description: 'Antrea — OVS-based CNI (mutually exclusive with other CNIs)')
         booleanParam(name: 'NGINX_INGRESS',   defaultValue: true,  description: 'Nginx Ingress — standard ingress controller')
         booleanParam(name: 'TRAEFIK',         defaultValue: true,  description: 'Traefik — edge router with automatic service discovery')
         booleanParam(name: 'HAPROXY_INGRESS', defaultValue: true,  description: 'HAProxy Ingress — high-performance load balancer')

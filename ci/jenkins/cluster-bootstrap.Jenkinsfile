@@ -155,7 +155,12 @@ pipeline {
                 build job: 'registry',
                     wait: true,
                     parameters: [
-                        string(name: 'ACTION', value: 'INSTALL')
+                        string(name: 'ACTION', value: 'INSTALL'),
+                        booleanParam(name: 'HARBOR',       value: true),
+                        booleanParam(name: 'NEXUS',        value: true),
+                        booleanParam(name: 'GITEA',        value: true),
+                        booleanParam(name: 'CHARTMUSEUM',  value: true),
+                        booleanParam(name: 'ZOT',          value: true)
                     ]
             }
         }
@@ -185,7 +190,10 @@ pipeline {
                 build job: 'streaming',
                     wait: true,
                     parameters: [
-                        string(name: 'ACTION', value: 'INSTALL')
+                        string(name: 'ACTION', value: 'INSTALL'),
+                        booleanParam(name: 'FLINK',             value: true),
+                        booleanParam(name: 'DEBEZIUM_POSTGRES', value: true),
+                        booleanParam(name: 'DEBEZIUM_MONGODB',  value: true)
                     ]
             }
         }
@@ -216,7 +224,7 @@ pipeline {
     Databases    : ClickHouse + Weaviate + Neo4j + ScyllaDB + Temporal
     Streaming    : Flink + Debezium (Postgres + MongoDB CDC)
 
-  Next step: trigger deploy.Jenkinsfile to deploy all 224 services.
+  Next step: trigger deploy.Jenkinsfile to deploy all 230 services.
 ==========================================================
                 """
             }

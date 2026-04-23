@@ -14,9 +14,9 @@ pipeline {
             choices: ['INSTALL', 'UNINSTALL'],
             description: 'INSTALL — deploy selected streaming tools. UNINSTALL — remove selected.'
         )
-        booleanParam(name: 'FLINK',             defaultValue: true, description: 'Apache Flink — real-time stream processing operator + jobs')
-        booleanParam(name: 'DEBEZIUM_POSTGRES', defaultValue: true, description: 'Debezium Postgres CDC — change data capture from PostgreSQL')
-        booleanParam(name: 'DEBEZIUM_MONGODB',  defaultValue: true, description: 'Debezium MongoDB CDC — change data capture from MongoDB')
+        booleanParam(name: 'FLINK',             defaultValue: false, description: 'Apache Flink — real-time stream processing operator + jobs')
+        booleanParam(name: 'DEBEZIUM_POSTGRES', defaultValue: false, description: 'Debezium Postgres CDC — change data capture from PostgreSQL')
+        booleanParam(name: 'DEBEZIUM_MONGODB',  defaultValue: false, description: 'Debezium MongoDB CDC — change data capture from MongoDB')
     }
 
     stages {
@@ -48,6 +48,7 @@ pipeline {
             steps {
                 sh """
                     kubectl create namespace flink-system --dry-run=client -o yaml | kubectl apply -f -
+                    kubectl create namespace analytics-ai --dry-run=client -o yaml | kubectl apply -f -
                     helm upgrade --install flink-operator streaming/flink/charts/flink-kubernetes-operator \
                         --namespace flink-system \
                         --set webhook.create=false \
@@ -61,10 +62,16 @@ pipeline {
             when { expression { params.ACTION == 'INSTALL' && params.FLINK } }
             steps {
                 sh """
-                    kubectl create namespace streaming --dry-run=client -o yaml | kubectl apply -f -
-                    kubectl apply -f streaming/flink/order-analytics-job.yaml -n streaming
-                    kubectl apply -f streaming/flink/fraud-detection-job.yaml -n streaming
-                    kubectl rollout status deployment/flink-jobmanager -n streaming --timeout=120s || true
+                    # Create flink ServiceAccount in analytics-ai namespace
+                    kubectl create serviceaccount flink -n analytics-ai --dry-run=client -o yaml | kubectl apply -f -
+
+                    # Apply FlinkDeployment CRDs — namespace comes from the YAML (analytics-ai)
+                    kubectl apply -f streaming/flink/order-analytics-job.yaml
+                    kubectl apply -f streaming/flink/fraud-detection-job.yaml
+
+                    # Wait for jobmanager deployments created by the Flink operator
+                    kubectl rollout status deployment/order-analytics-job -n analytics-ai --timeout=120s || true
+                    kubectl rollout status deployment/fraud-detection-job  -n analytics-ai --timeout=120s || true
                     echo "Flink jobs submitted"
                 """
             }
@@ -74,17 +81,15 @@ pipeline {
             when { expression { params.ACTION == 'INSTALL' && params.DEBEZIUM_POSTGRES } }
             steps {
                 sh """
-                    # Wait for Kafka Connect to be available
-                    KAFKA_CONNECT_URL=\$(kubectl get svc kafka-connect -n shopos-infra -o jsonpath='{.spec.clusterIP}' 2>/dev/null || echo 'kafka-connect.shopos-infra.svc.cluster.local')
-                    echo "Registering Postgres CDC connector..."
-                    kubectl run debezium-reg-postgres --image=curlimages/curl:8.10.1 --restart=Never \
-                        --env="KAFKA_CONNECT_URL=\${KAFKA_CONNECT_URL}" \
-                        --command -- /bin/sh -c "
-                            sleep 10
-                            curl -sf -X POST http://\${KAFKA_CONNECT_URL}:8083/connectors \
-                              -H 'Content-Type: application/json' \
-                              -d @/dev/stdin < /streaming/debezium/postgres-orders-connector.json || echo 'Connector may already exist'
-                        " 2>/dev/null || true
+                    echo "Registering Postgres CDC connector via port-forward..."
+                    kubectl port-forward svc/kafka-connect 18083:8083 -n shopos-infra &
+                    PF_PID=\$!
+                    sleep 8
+                    curl -sf -X POST http://localhost:18083/connectors \
+                        -H 'Content-Type: application/json' \
+                        -d @streaming/debezium/postgres-orders-connector.json \
+                        || echo 'Connector may already exist'
+                    kill \$PF_PID 2>/dev/null || true
                     echo "Postgres CDC connector registered"
                 """
             }
@@ -94,30 +99,38 @@ pipeline {
             when { expression { params.ACTION == 'INSTALL' && params.DEBEZIUM_MONGODB } }
             steps {
                 sh """
-                    KAFKA_CONNECT_URL=\$(kubectl get svc kafka-connect -n shopos-infra -o jsonpath='{.spec.clusterIP}' 2>/dev/null || echo 'kafka-connect.shopos-infra.svc.cluster.local')
-                    echo "Registering MongoDB CDC connector..."
-                    kubectl run debezium-reg-mongo --image=curlimages/curl:8.10.1 --restart=Never \
-                        --env="KAFKA_CONNECT_URL=\${KAFKA_CONNECT_URL}" \
-                        --command -- /bin/sh -c "
-                            sleep 10
-                            curl -sf -X POST http://\${KAFKA_CONNECT_URL}:8083/connectors \
-                              -H 'Content-Type: application/json' \
-                              -d @/dev/stdin < /streaming/debezium/mongodb-catalog-connector.json || echo 'Connector may already exist'
-                        " 2>/dev/null || true
+                    echo "Registering MongoDB CDC connector via port-forward..."
+                    kubectl port-forward svc/kafka-connect 18083:8083 -n shopos-infra &
+                    PF_PID=\$!
+                    sleep 8
+                    curl -sf -X POST http://localhost:18083/connectors \
+                        -H 'Content-Type: application/json' \
+                        -d @streaming/debezium/mongodb-catalog-connector.json \
+                        || echo 'Connector may already exist'
+                    kill \$PF_PID 2>/dev/null || true
                     echo "MongoDB CDC connector registered"
                 """
             }
         }
 
         stage('Verify Streaming') {
-            when { expression { params.ACTION == 'INSTALL' && params.DEBEZIUM_MONGODB } }
+            when { expression { params.ACTION == 'INSTALL' && (params.FLINK || params.DEBEZIUM_POSTGRES || params.DEBEZIUM_MONGODB) } }
             steps {
                 sh """
-                    echo "=== Flink deployments ==="
-                    kubectl get flinkdeployment -n streaming 2>/dev/null || kubectl get pods -n streaming
-                    echo "=== Kafka Connect connectors ==="
-                    KAFKA_CONNECT_URL=\$(kubectl get svc kafka-connect -n shopos-infra -o jsonpath='{.spec.clusterIP}' 2>/dev/null || echo 'kafka-connect.shopos-infra.svc.cluster.local')
-                    curl -sf http://\${KAFKA_CONNECT_URL}:8083/connectors 2>/dev/null || echo "Connect not yet available — connectors queued"
+                    if ${params.FLINK}; then
+                        echo "=== Flink deployments (analytics-ai) ==="
+                        kubectl get flinkdeployment -n analytics-ai 2>/dev/null || kubectl get pods -n analytics-ai
+                    fi
+
+                    if ${params.DEBEZIUM_POSTGRES} || ${params.DEBEZIUM_MONGODB}; then
+                        echo "=== Kafka Connect connectors ==="
+                        kubectl port-forward svc/kafka-connect 18083:8083 -n shopos-infra &
+                        PF_PID=\$!
+                        sleep 8
+                        curl -sf http://localhost:18083/connectors 2>/dev/null \
+                            || echo "Connect not yet available — connectors queued"
+                        kill \$PF_PID 2>/dev/null || true
+                    fi
                 """
             }
         }
@@ -128,21 +141,30 @@ pipeline {
             when { expression { params.ACTION == 'UNINSTALL' && params.FLINK } }
             steps {
                 sh """
-                    kubectl delete -f streaming/flink/order-analytics-job.yaml -n streaming --ignore-not-found
-                    kubectl delete -f streaming/flink/fraud-detection-job.yaml -n streaming --ignore-not-found
+                    # Namespace comes from the YAML (analytics-ai) — no -n flag override
+                    kubectl delete -f streaming/flink/order-analytics-job.yaml --ignore-not-found
+                    kubectl delete -f streaming/flink/fraud-detection-job.yaml --ignore-not-found
                     echo "Flink jobs removed"
                 """
             }
         }
 
         stage('Uninstall Debezium Connectors') {
-            when { expression { params.ACTION == 'UNINSTALL' && params.DEBEZIUM_POSTGRES } }
+            when { expression { params.ACTION == 'UNINSTALL' && (params.DEBEZIUM_POSTGRES || params.DEBEZIUM_MONGODB) } }
             steps {
                 sh """
-                    KAFKA_CONNECT_URL=\$(kubectl get svc kafka-connect -n shopos-infra -o jsonpath='{.spec.clusterIP}' 2>/dev/null || echo 'kafka-connect.shopos-infra.svc.cluster.local')
-                    curl -sf -X DELETE http://\${KAFKA_CONNECT_URL}:8083/connectors/postgres-orders-connector || true
-                    curl -sf -X DELETE http://\${KAFKA_CONNECT_URL}:8083/connectors/mongodb-catalog-connector || true
-                    echo "Debezium connectors removed"
+                    kubectl port-forward svc/kafka-connect 18083:8083 -n shopos-infra &
+                    PF_PID=\$!
+                    sleep 8
+                    if ${params.DEBEZIUM_POSTGRES}; then
+                        curl -sf -X DELETE http://localhost:18083/connectors/postgres-orders-connector || true
+                        echo "Postgres CDC connector removed"
+                    fi
+                    if ${params.DEBEZIUM_MONGODB}; then
+                        curl -sf -X DELETE http://localhost:18083/connectors/mongodb-catalog-connector || true
+                        echo "MongoDB CDC connector removed"
+                    fi
+                    kill \$PF_PID 2>/dev/null || true
                 """
             }
         }

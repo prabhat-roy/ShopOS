@@ -480,7 +480,7 @@ pipeline {
         // ── CLI Tool Images (no K8s enhancements — not deployed to cluster) ───
 
         stage('Pull SAST CLI Images') {
-            when { expression { params.ACTION == 'INSTALL' && params.DEFECTDOJO } }
+            when { expression { params.ACTION == 'INSTALL' } }
             steps {
                 sh 'docker pull python:3.13-slim'
                 sh 'docker pull node:22-alpine'
@@ -494,7 +494,7 @@ pipeline {
         }
 
         stage('Pull Dependency Scanner Images') {
-            when { expression { params.ACTION == 'INSTALL' && params.DEFECTDOJO } }
+            when { expression { params.ACTION == 'INSTALL' } }
             steps {
                 sh 'docker pull owasp/dependency-check:latest'
                 sh 'docker pull aquasec/trivy:latest'
@@ -508,7 +508,7 @@ pipeline {
         }
 
         stage('Pull Secret Scanner Images') {
-            when { expression { params.ACTION == 'INSTALL' && params.DEFECTDOJO } }
+            when { expression { params.ACTION == 'INSTALL' } }
             steps {
                 sh 'docker pull gcr.io/projectsigstore/cosign:latest'
                 sh 'docker pull gitguardian/ggshield:latest'
@@ -518,7 +518,7 @@ pipeline {
         }
 
         stage('Pull IaC Scanner Images') {
-            when { expression { params.ACTION == 'INSTALL' && params.DEFECTDOJO } }
+            when { expression { params.ACTION == 'INSTALL' } }
             steps {
                 sh 'docker pull checkmarx/kics:latest'
                 sh 'docker pull tenable/terrascan:latest'
@@ -528,7 +528,7 @@ pipeline {
         }
 
         stage('Pull K8s Security CLI Images') {
-            when { expression { params.ACTION == 'INSTALL' && params.DEFECTDOJO } }
+            when { expression { params.ACTION == 'INSTALL' } }
             steps {
                 sh 'docker pull aquasec/kube-bench:latest'
                 sh 'docker pull aquasec/kube-hunter:latest'
@@ -904,7 +904,7 @@ pipeline {
         }
 
         stage('Remove CLI Tool Images') {
-            when { expression { params.ACTION == 'UNINSTALL' && params.KEYCLOAK } }
+            when { expression { params.ACTION == 'UNINSTALL' } }
             steps {
                 sh 'docker rmi python:3.13-slim node:22-alpine golangci/golangci-lint:latest koalaman/shellcheck:stable presidentbeef/brakeman:latest semgrep/semgrep:latest stoplight/spectral:latest snyk/snyk:latest || true'
                 sh 'docker rmi owasp/dependency-check:latest aquasec/trivy:latest anchore/grype:latest anchore/syft:latest docker/scout-cli:latest fossas/fossa-cli:latest vuls/vuls:latest openscap/openscap:latest || true'

@@ -18,7 +18,8 @@ pipeline {
             name: 'DOMAIN',
             choices: ['commerce','platform','identity','catalog','supply-chain','financial',
                       'customer-experience','communications','content','analytics-ai','b2b',
-                      'integrations','affiliate'],
+                      'integrations','affiliate','marketplace','gamification','developer-platform',
+                      'compliance','sustainability','web'],
             description: 'Kubernetes namespace / business domain of the service'
         )
         choice(
@@ -123,8 +124,8 @@ pipeline {
             steps {
                 script {
                     env.TEST_SERVICE   = params.SERVICE_NAME.trim()
-                    // Each service lives in its own namespace (= service name)
-                    env.TEST_NAMESPACE = params.SERVICE_NAME.trim()
+                    // Services are deployed to their domain namespace
+                    env.TEST_NAMESPACE = params.DOMAIN
                     env.TEST_DOMAIN    = params.DOMAIN
                     env.LOAD_PROFILE   = params.LOAD_PROFILE
                     env.LOAD_VUS       = params.LOAD_VUS

@@ -18,7 +18,8 @@ pipeline {
             name: 'DOMAIN',
             choices: ['platform','identity','catalog','commerce','supply-chain','financial',
                       'customer-experience','communications','content','analytics-ai','b2b',
-                      'integrations','affiliate'],
+                      'integrations','affiliate','marketplace','gamification','developer-platform',
+                      'compliance','sustainability','web'],
             description: 'Business domain containing the service(s)'
         )
         choice(
@@ -144,8 +145,9 @@ pipeline {
                     if (params.SERVICE_NAME?.trim()) {
                         env.SERVICES = params.SERVICE_NAME.trim()
                     } else {
+                        def srcPath = params.DOMAIN == 'web' ? "src/web" : "src/${params.DOMAIN}"
                         def svcList = sh(
-                            script: "ls src/${params.DOMAIN}/ 2>/dev/null | tr '\\n' ','",
+                            script: "ls ${srcPath}/ 2>/dev/null | tr '\\n' ','",
                             returnStdout: true
                         ).trim().replaceAll(/,$/, '')
                         env.SERVICES = svcList
@@ -265,6 +267,7 @@ pipeline {
                     env.SERVICES.split(',').each { svc ->
                         svc = svc.trim()
                         def image = "${env.HARBOR_URL}/${env.REGISTRY_PROJECT}/${svc}:${env.IMAGE_TAG}"
+                        def ctxDir = env.BUILD_DOMAIN == 'web' ? "src/web/${svc}/" : "src/${env.BUILD_DOMAIN}/${svc}/"
                         sh """
                             echo "=== Building: ${image} ==="
                             docker build \
@@ -273,7 +276,7 @@ pipeline {
                                 --label "domain=${env.BUILD_DOMAIN}" \
                                 --label "environment=${env.BUILD_ENV}" \
                                 -t ${image} \
-                                src/${env.BUILD_DOMAIN}/${svc}/
+                                ${ctxDir}
                         """
                     }
                 }
