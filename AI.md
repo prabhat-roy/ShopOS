@@ -415,3 +415,29 @@ Each cloud is designed independently. All three run the same Kubernetes-native M
 **Month 8 — Full operations.** All agents deployed and tuned. Third consolidation review (target: 238 down to 120 to 150 active agents). Begin fine-tuning local models on ShopOS agent interaction data. Comprehensive ROI measurement: MTTR target under 1 hour (from 4 to 6 hours baseline), deployment frequency target 5 to 10 per day (from 2 to 3 per week), change failure rate target under 5% (from 15 to 20%), PR review turnaround target under 30 minutes (from 4 to 8 hours), security patch time target under 4 hours (from 2 to 5 days).
 
 **Cost at full operations:** $3,100 to $5,500 per month for all GPU compute, agent infrastructure, and storage. Zero paid subscriptions. Equivalent human team cost for the same coverage: approximately $32,000 per month (2 DevOps engineers, 1 security engineer, 1 ML engineer). Agent team cost is 10 to 17% of the human equivalent with 24/7 coverage and broader scope.
+
+---
+
+## 11. Sibling Platform Adoption
+
+The Paperclip orchestrator, OpenClaw agent platform, and NemoClaw sandbox defined here are **shared across all 15 sibling projects** in this monorepo group. Each sibling has its own `AI_PLAN.md` describing the project-specific adoption — domain use cases, hierarchical agent architecture (Tier 0 architect → Tier 1 division leads → Tier 2 per-language/tool/service → Tier 3 ephemeral workers), separate AI infrastructure namespace and GPU pool, and project-specific compliance constraints (HIPAA, PCI-DSS, NIST 800-53, EU AI Act high-risk, ISA/IEC 62443, NERC CIP, DRM/content licensing, etc.).
+
+| Project | AI plane | Headline AI surfaces | Primary regulatory constraint |
+|---|---|---|---|
+| [CivicLink](../CivicLink/AI_PLAN.md) | `civic-ai-*` | Citizen voice assistant, doc-AI, fraud detection | NIST 800-53, India IT Act, GDPR |
+| [EstateIQ](../EstateIQ/AI_PLAN.md) | `estate-ai-*` | AVM, demand heatmap, KYC doc-AI | AML/KYC, GDPR/CCPA, RICS |
+| [FactoryMind](../FactoryMind/AI_PLAN.md) | `factory-ai-*` (+ edge) | Predictive maintenance, defect CV, scheduling | ISA/IEC 62443, ISO 9001 |
+| [FarmPulse](../FarmPulse/AI_PLAN.md) | `farm-ai-*` (+ mobile/edge) | Crop disease CV, yield, voice advisor | DGCA/FAA, GDPR/DPDP |
+| [FreightForce](../FreightForce/AI_PLAN.md) | `freight-ai-*` (+ edge) | Routing, ETA, customs doc-AI, yard CV | C-TPAT/AEO, FMCSA HoS, GDPR |
+| [GridForge](../GridForge/AI_PLAN.md) | `grid-ai-*` (+ edge) | Load forecast, SCADA anomaly, theft detection | NERC CIP, IEC 61850/62443 |
+| [HelixCare](../HelixCare/AI_PLAN.md) | `helix-ai-*` (HIPAA-region) | CDS, imaging triage, ambient scribe | HIPAA, MDR/IVDR, FDA SaMD |
+| [LedgerX](../LedgerX/AI_PLAN.md) | `ledger-ai-*` (PCI-segmented) | Fraud, AML graph, credit, robo-advisor | PCI-DSS, SOX, SR 11-7, MAR |
+| [MatchDay](../MatchDay/AI_PLAN.md) | `match-ai-*` (+ edge) | Win-prob, tracking CV, highlights | Sports licensing, COPPA |
+| [RiskShield](../RiskShield/AI_PLAN.md) | `risk-ai-*` (+ air-gap option) | SIEM triage, malware CV, underwriting | ISO 27001, MITRE D3FEND |
+| [ScholarPath](../ScholarPath/AI_PLAN.md) | `scholar-ai-*` | AI tutor, essay scoring, plagiarism | COPPA, FERPA, GDPR-K |
+| [SignalGrid](../SignalGrid/AI_PLAN.md) | `signal-ai-*` (+ MEC) | Network anomaly, RAN energy, fraud | GSMA NESAS, ETSI ZSM |
+| [StayNest](../StayNest/AI_PLAN.md) | `stay-ai-*` | Demand forecast, dynamic pricing, concierge | PCI-DSS, GDPR, HTNG |
+| [StreamVault](../StreamVault/AI_PLAN.md) | `stream-ai-*` (+ encode pool) | Recs, encode, captions, moderation | DRM, geo-licensing, CVAA/EAA |
+| [TalentBridge](../TalentBridge/AI_PLAN.md) | `talent-ai-*` (region-sharded) | CV parsing, attrition, pay-equity | EU AI Act high-risk, GDPR, EEOC |
+
+The agent-platform code (Paperclip, OpenClaw, NemoClaw) is built once in ShopOS and consumed as a versioned Helm chart by each sibling. Project-specific guardrail policies (clinical-safe, financial-safe, youth-safe, etc.) are implemented as NemoClaw policy bundles per sibling and never cross project boundaries.
