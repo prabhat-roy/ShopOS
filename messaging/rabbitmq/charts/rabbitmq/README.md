@@ -1,4 +1,4 @@
-<!--- app-name: RabbitMQ -->
+﻿<!--- app-name: RabbitMQ -->
 
 # Bitnami package for RabbitMQ
 
@@ -18,13 +18,13 @@ helm install my-release oci://registry-1.docker.io/bitnamicharts/rabbitmq
 
 Looking to use RabbitMQ in production? Try [VMware Tanzu Application Catalog](https://bitnami.com/enterprise), the commercial edition of the Bitnami catalog.
 
-## ⚠️ Important Notice: Upcoming changes to the Bitnami Catalog
+## âš ï¸ Important Notice: Upcoming changes to the Bitnami Catalog
 
 Beginning August 28th, 2025, Bitnami will evolve its public catalog to offer a curated set of hardened, security-focused images under the new [Bitnami Secure Images initiative](https://news.broadcom.com/app-dev/broadcom-introduces-bitnami-secure-images-for-production-ready-containerized-applications). As part of this transition:
 
 - Granting community users access for the first time to security-optimized versions of popular container images.
-- Bitnami will begin deprecating support for non-hardened, Debian-based software images in its free tier and will gradually remove non-latest tags from the public catalog. As a result, community users will have access to a reduced number of hardened images. These images are published only under the “latest” tag and are intended for development purposes
-- Starting August 28th, over two weeks, all existing container images, including older or versioned tags (e.g., 2.50.0, 10.6), will be migrated from the public catalog (docker.io/bitnami) to the “Bitnami Legacy” repository (docker.io/bitnamilegacy), where they will no longer receive updates.
+- Bitnami will begin deprecating support for non-hardened, Debian-based software images in its free tier and will gradually remove non-latest tags from the public catalog. As a result, community users will have access to a reduced number of hardened images. These images are published only under the â€œlatestâ€ tag and are intended for development purposes
+- Starting August 28th, over two weeks, all existing container images, including older or versioned tags (e.g., 2.50.0, 10.6), will be migrated from the public catalog (docker.io/bitnami) to the â€œBitnami Legacyâ€ repository (docker.io/bitnamilegacy), where they will no longer receive updates.
 - For production workloads and long-term support, users are encouraged to adopt Bitnami Secure Images, which include hardened containers, smaller attack surfaces, CVE transparency (via VEX/KEV), SBOMs, and enterprise support.
 
 These changes aim to improve the security posture of all Bitnami users by promoting best practices for software supply chain integrity and up-to-date deployments. For more details, visit the [Bitnami Secure Images announcement](https://github.com/bitnami/containers/issues/83267).
@@ -51,7 +51,7 @@ helm install my-release oci://REGISTRY_NAME/REPOSITORY_NAME/rabbitmq
 
 The command deploys RabbitMQ on the Kubernetes cluster in the default configuration. The [Parameters](#parameters) section lists the parameters that can be configured during installation.
 
-> **Tip**: List all releases using `helm list`
+> Tip: List all releases using `helm list`
 
 ## Configuration and installation details
 
@@ -327,7 +327,7 @@ To learn more, please consult RabbitMQ documentation guides:
 
 #### Do Not Force Boot Nodes on a Regular Basis
 
-Note that forcing nodes to boot is **not a solution** and doing so **can be dangerous**. Forced booting is a last resort mechanism in RabbitMQ that helps make remaining cluster nodes recover and rejoin each other after a permanent loss of some of their former peers. In other words, forced booting a node is an emergency event recovery procedure.
+Note that forcing nodes to boot is not a solution and doing so can be dangerous. Forced booting is a last resort mechanism in RabbitMQ that helps make remaining cluster nodes recover and rejoin each other after a permanent loss of some of their former peers. In other words, forced booting a node is an emergency event recovery procedure.
 
 ### Known issues
 
@@ -783,7 +783,7 @@ helm install my-release -f values.yaml oci://REGISTRY_NAME/REPOSITORY_NAME/rabbi
 ```
 
 > Note: You need to substitute the placeholders `REGISTRY_NAME` and `REPOSITORY_NAME` with a reference to your Helm chart registry and repository. For example, in the case of Bitnami, you need to use `REGISTRY_NAME=registry-1.docker.io` and `REPOSITORY_NAME=bitnamicharts`.
-> **Tip**: You can use the default [values.yaml](https://github.com/bitnami/charts/tree/main/bitnami/rabbitmq/values.yaml)
+> Tip: You can use the default [values.yaml](https://github.com/bitnami/charts/tree/main/bitnami/rabbitmq/values.yaml)
 
 ## Troubleshooting
 

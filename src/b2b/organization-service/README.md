@@ -1,4 +1,4 @@
-# organization-service
+﻿# organization-service
 
 > Manages B2B organization profiles, company hierarchies, and member invitations.
 
@@ -65,15 +65,15 @@ graph TD
 
 ## Dependencies
 
-**Upstream (calls this service)**
-- `partner-bff` — org profile and member management
-- `contract-service` — resolves org identity for contracts
-- `b2b-credit-limit-service` — fetches org for credit assignment
-- `approval-workflow-service` — fetches members for approval chain resolution
+Upstream (calls this service)
+- `partner-bff` â€” org profile and member management
+- `contract-service` â€” resolves org identity for contracts
+- `b2b-credit-limit-service` â€” fetches org for credit assignment
+- `approval-workflow-service` â€” fetches members for approval chain resolution
 
-**Downstream (this service calls)**
-- `user-service` — validates user existence before membership assignment
-- `permission-service` — grants org-scoped roles upon member acceptance
+Downstream (this service calls)
+- `user-service` â€” validates user existence before membership assignment
+- `permission-service` â€” grants org-scoped roles upon member acceptance
 
 ## Environment Variables
 
@@ -84,7 +84,7 @@ graph TD
 | `DB_PORT` | `5432` | PostgreSQL port |
 | `DB_NAME` | `organization_db` | Database name |
 | `DB_USER` | `org_user` | Database username |
-| `DB_PASSWORD` | — | Database password (required) |
+| `DB_PASSWORD` | â€” | Database password (required) |
 | `KAFKA_BOOTSTRAP_SERVERS` | `localhost:9092` | Kafka broker addresses |
 | `USER_SERVICE_ADDR` | `user-service:50061` | Address of user-service |
 | `PERMISSION_SERVICE_ADDR` | `permission-service:50063` | Address of permission-service |
@@ -99,6 +99,6 @@ docker-compose up organization-service
 
 ## Health Check
 
-`GET /healthz` → `{"status":"ok"}`
+`GET /healthz` â†’ `{"status":"ok"}`
 
-gRPC health: `grpc.health.v1.Health/Check` → `SERVING`
+gRPC health: `grpc.health.v1.Health/Check` â†’ `SERVING`

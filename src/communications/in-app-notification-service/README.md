@@ -1,4 +1,4 @@
-# in-app-notification-service
+﻿# in-app-notification-service
 
 > Real-time in-app notifications delivered via WebSocket with Redis pub/sub for horizontal scaling.
 
@@ -43,9 +43,9 @@ graph LR
 
 ## API / Interface
 
-**WebSocket endpoint:** `ws://<host>/notifications` (port 50132)
+WebSocket endpoint: `ws://<host>/notifications` (port 50132)
 
-**gRPC service:** `InAppNotificationService` (port 50132)
+gRPC service: `InAppNotificationService` (port 50132)
 
 | Method | Request | Response | Description |
 |---|---|---|---|
@@ -66,12 +66,12 @@ graph LR
 
 ## Dependencies
 
-**Upstream (callers / sends to)**
-- `api-gateway` — proxies WebSocket upgrades and gRPC `MarkRead` calls from the frontend
+Upstream (callers / sends to)
+- `api-gateway` â€” proxies WebSocket upgrades and gRPC `MarkRead` calls from the frontend
 
-**Downstream (calls)**
-- `auth-service` — validates JWT during WebSocket handshake
-- `notification-orchestrator` — source of notification events via Kafka
+Downstream (calls)
+- `auth-service` â€” validates JWT during WebSocket handshake
+- `notification-orchestrator` â€” source of notification events via Kafka
 
 ## Environment Variables
 
@@ -96,4 +96,4 @@ docker-compose up in-app-notification-service
 
 ## Health Check
 
-`GET /healthz` → `{"status":"ok"}`
+`GET /healthz` â†’ `{"status":"ok"}`

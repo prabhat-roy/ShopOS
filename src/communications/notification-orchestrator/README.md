@@ -1,4 +1,4 @@
-# notification-orchestrator
+﻿# notification-orchestrator
 
 > Fan-out router that consumes `notification.*` Kafka topics and dispatches to email, SMS, and push channels.
 
@@ -50,7 +50,7 @@ graph LR
 
 ## API / Interface
 
-This service has no gRPC or HTTP API — it operates exclusively as a Kafka consumer/producer.
+This service has no gRPC or HTTP API â€” it operates exclusively as a Kafka consumer/producer.
 
 ## Kafka Topics
 
@@ -66,13 +66,13 @@ This service has no gRPC or HTTP API — it operates exclusively as a Kafka cons
 
 ## Dependencies
 
-**Upstream (consumes from)**
+Upstream (consumes from)
 - All domain services that publish `notification.*` events
 
-**Downstream (calls)**
-- `user-service` — resolves notification channel preferences
-- `consent-management-service` — validates marketing consent before fan-out
-- `email-service`, `sms-service`, `push-notification-service` — downstream delivery via Kafka
+Downstream (calls)
+- `user-service` â€” resolves notification channel preferences
+- `consent-management-service` â€” validates marketing consent before fan-out
+- `email-service`, `sms-service`, `push-notification-service` â€” downstream delivery via Kafka
 
 ## Environment Variables
 
@@ -93,4 +93,4 @@ docker-compose up notification-orchestrator
 
 ## Health Check
 
-`GET /healthz` → `{"status":"ok"}`
+`GET /healthz` â†’ `{"status":"ok"}`

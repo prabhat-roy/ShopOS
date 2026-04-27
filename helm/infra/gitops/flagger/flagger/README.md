@@ -1,4 +1,4 @@
-# Flagger
+﻿# Flagger
 
 [Flagger](https://github.com/fluxcd/flagger) is a progressive delivery tool that automates the release process
 for applications running on Kubernetes. It reduces the risk of introducing a new software version in production
@@ -28,7 +28,7 @@ Install Flagger's custom resource definitions:
 $ kubectl apply -f https://raw.githubusercontent.com/fluxcd/flagger/main/artifacts/flagger/crd.yaml
 ```
 
-To install Flagger for **Istio**:
+To install Flagger for Istio:
 
 ```console
 $ helm upgrade -i flagger flagger/flagger \
@@ -37,7 +37,7 @@ $ helm upgrade -i flagger flagger/flagger \
     --set metricsServer=http://prometheus:9090
 ```
 
-To install Flagger for **Linkerd** (requires Linkerd Viz extension):
+To install Flagger for Linkerd (requires Linkerd Viz extension):
 
 ```console
 # Note that linkerdAuthPolicy.create=true is only required for Linkerd 2.12 and
@@ -49,7 +49,7 @@ $ helm upgrade -i flagger flagger/flagger \
     --set linkerdAuthPolicy.create=true
 ```
 
-To install Flagger for **AWS App Mesh**:
+To install Flagger for AWS App Mesh:
 
 ```console
 $ helm upgrade -i flagger flagger/flagger \
@@ -59,7 +59,7 @@ $ helm upgrade -i flagger flagger/flagger \
 ```
 
 
-To install Flagger for **Kuma Service Mesh** (requires Kuma to have been installed with Prometheus):
+To install Flagger for Kuma Service Mesh (requires Kuma to have been installed with Prometheus):
 
 ```console
 $ helm upgrade -i flagger flagger/flagger \
@@ -68,7 +68,7 @@ $ helm upgrade -i flagger flagger/flagger \
     --set metricsServer=http://prometheus-server.kuma-metrics:80
 ```
 
-To install Flagger and Prometheus for **NGINX** Ingress (requires controller metrics enabled):
+To install Flagger and Prometheus for NGINX Ingress (requires controller metrics enabled):
 
 ```console
 $ helm upgrade -i flagger flagger/flagger \
@@ -77,7 +77,7 @@ $ helm upgrade -i flagger flagger/flagger \
     --set prometheus.install=true
 ```
 
-To install Flagger and Prometheus for **Gloo** (no longer requires Gloo discovery):
+To install Flagger and Prometheus for Gloo (no longer requires Gloo discovery):
 
 ```console
 $ helm upgrade -i flagger flagger/flagger \
@@ -86,7 +86,7 @@ $ helm upgrade -i flagger flagger/flagger \
     --set prometheus.install=true
 ```
 
-To install Flagger and Prometheus for **Contour**:
+To install Flagger and Prometheus for Contour:
 
 ```console
 $ helm upgrade -i flagger flagger/flagger \
@@ -96,7 +96,7 @@ $ helm upgrade -i flagger flagger/flagger \
     --set prometheus.install=true
 ```
 
-To install Flagger and Prometheus for **Traefik**:
+To install Flagger and Prometheus for Traefik:
 
 ```console
 $ helm upgrade -i flagger flagger/flagger \
@@ -208,4 +208,4 @@ $ helm upgrade -i flagger flagger/flagger \
   -f values.yaml
 ```
 
-> **Tip**: You can use the default [values.yaml](values.yaml)
+> Tip: You can use the default [values.yaml](values.yaml)

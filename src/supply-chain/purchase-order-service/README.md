@@ -1,4 +1,4 @@
-# purchase-order-service
+﻿# purchase-order-service
 
 > Creates, routes for approval, and tracks the lifecycle of purchase orders sent to vendors.
 
@@ -66,13 +66,13 @@ service PurchaseOrderService {
 
 ## Dependencies
 
-**Upstream (callers)**
-- `approval-workflow-service` (b2b domain) — drives approval state machine
-- `supplier-portal-service` — vendor-facing PO reads
+Upstream (callers)
+- `approval-workflow-service` (b2b domain) â€” drives approval state machine
+- `supplier-portal-service` â€” vendor-facing PO reads
 
-**Downstream (calls out to)**
-- `vendor-service` — validates vendor exists and is active
-- `inventory-service` (catalog domain) — updates expected stock on PO approval
+Downstream (calls out to)
+- `vendor-service` â€” validates vendor exists and is active
+- `inventory-service` (catalog domain) â€” updates expected stock on PO approval
 
 ## Environment Variables
 
@@ -83,7 +83,7 @@ service PurchaseOrderService {
 | `DB_PORT` | `5432` | PostgreSQL port |
 | `DB_NAME` | `purchase_order_db` | Database name |
 | `DB_USER` | `po_svc` | Database user |
-| `DB_PASSWORD` | — | Database password (required) |
+| `DB_PASSWORD` | â€” | Database password (required) |
 | `KAFKA_BROKERS` | `localhost:9092` | Comma-separated Kafka broker list |
 | `VENDOR_GRPC_ADDR` | `vendor-service:50100` | Address of vendor-service |
 | `APPROVAL_VALUE_THRESHOLD` | `10000` | PO value (USD cents) requiring L2 approval |
@@ -97,6 +97,6 @@ docker-compose up purchase-order-service
 
 ## Health Check
 
-`GET /healthz` → `{"status":"ok"}`
+`GET /healthz` â†’ `{"status":"ok"}`
 
-gRPC health: `grpc.health.v1.Health/Check` → `SERVING`
+gRPC health: `grpc.health.v1.Health/Check` â†’ `SERVING`

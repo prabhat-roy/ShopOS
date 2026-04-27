@@ -1,4 +1,4 @@
-<!--- app-name: PostgreSQL -->
+﻿<!--- app-name: PostgreSQL -->
 
 # PostgreSQL packaged by Bitnami
 
@@ -39,7 +39,7 @@ helm install my-release my-repo/postgresql
 
 The command deploys PostgreSQL on the Kubernetes cluster in the default configuration. The [Parameters](#parameters) section lists the parameters that can be configured during installation.
 
-> **Tip**: List all releases using `helm list`
+> Tip: List all releases using `helm list`
 
 ## Uninstalling the Chart
 
@@ -57,7 +57,7 @@ To delete the PVC's associated with `my-release`:
 kubectl delete pvc -l release=my-release
 ```
 
-> **Note**: Deleting the PVC's will delete postgresql data as well. Please be cautious before doing it.
+> Note: Deleting the PVC's will delete postgresql data as well. Please be cautious before doing it.
 
 ## Parameters
 
@@ -474,7 +474,7 @@ The above command sets the PostgreSQL `postgres` account password to `secretpass
 
 > NOTE: Once this chart is deployed, it is not possible to change the application's access credentials, such as usernames or passwords, using Helm. To change these application credentials after deployment, delete any persistent volumes (PVs) used by the chart and re-deploy it, or use the application's built-in administrative tools if available.
 
-> **Warning** Setting a password will be ignored on new installation in case when previous Posgresql release was deleted through the helm command. In that case, old PVC will have an old password, and setting it through helm won't take effect. Deleting persistent volumes (PVs) will solve the issue. Refer to [issue 2061](https://github.com/bitnami/charts/issues/2061) for more details
+> Warning Setting a password will be ignored on new installation in case when previous Posgresql release was deleted through the helm command. In that case, old PVC will have an old password, and setting it through helm won't take effect. Deleting persistent volumes (PVs) will solve the issue. Refer to [issue 2061](https://github.com/bitnami/charts/issues/2061) for more details
 
 Alternatively, a YAML file that specifies the values for the parameters can be provided while installing the chart. For example,
 
@@ -482,7 +482,7 @@ Alternatively, a YAML file that specifies the values for the parameters can be p
 helm install my-release -f values.yaml my-repo/postgresql
 ```
 
-> **Tip**: You can use the default [values.yaml](values.yaml)
+> Tip: You can use the default [values.yaml](values.yaml)
 
 ## Configuration and installation details
 

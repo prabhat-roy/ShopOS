@@ -1,4 +1,4 @@
-# Fluent Bit Loki chart
+﻿# Fluent Bit Loki chart
 
 DEPRECATED. Please use the official Fluent-Bit chart at https://github.com/fluent/helm-charts.
 
@@ -36,7 +36,7 @@ helm upgrade --install my-release grafana/fluent-bit \
     --set loki.user=2830,loki.password=1234
 ```
 
-> **Tip**: List all releases using `helm list`
+> Tip: List all releases using `helm list`
 
 To install a custom tag use the following command:
 

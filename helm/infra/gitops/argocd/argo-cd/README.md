@@ -1,4 +1,4 @@
-# Argo CD Chart
+﻿# Argo CD Chart
 
 A Helm chart for Argo CD, a declarative, GitOps continuous delivery tool for Kubernetes.
 
@@ -7,7 +7,7 @@ Source code can be found here:
 * <https://github.com/argoproj/argo-cd>
 * <https://github.com/argoproj/argo-helm/tree/main/charts/argo-cd>
 
-This is a **community maintained** chart. This chart installs [argo-cd](https://argo-cd.readthedocs.io/en/stable/), a declarative, GitOps continuous delivery tool for Kubernetes.
+This is a community maintained chart. This chart installs [argo-cd](https://argo-cd.readthedocs.io/en/stable/), a declarative, GitOps continuous delivery tool for Kubernetes.
 
 The default installation is intended to be similar to the provided Argo CD [releases](https://github.com/argoproj/argo-cd/releases).
 
@@ -19,7 +19,7 @@ For instance, rather than adding repositories and their keys in your Helm values
 This chart installs the non-HA version of Argo CD by default. If you want to run Argo CD in HA mode, you can use one of the example values in the next sections.
 Please also have a look into the upstream [Operator Manual regarding High Availability](https://argo-cd.readthedocs.io/en/stable/operator-manual/high_availability/) to understand how scaling of Argo CD works in detail.
 
-> **Warning:**
+> Warning:
 > You need at least 3 worker nodes as the HA mode of redis enforces Pods to run on separate nodes.
 
 ### HA mode with autoscaling
@@ -114,7 +114,7 @@ server:
         secretName: wildcard-tls
 ```
 
-> **Note:**
+> Note:
 > If you don't plan on using a wildcard certificate it's also possible to use `tls: true` without `extraTls` section.
 
 ### Multiple ingress resources for gRPC protocol support
@@ -171,7 +171,7 @@ server:
 Refer to the Operator Manual for [AWS Application Load Balancer mode](https://argo-cd.readthedocs.io/en/stable/operator-manual/ingress/#aws-application-load-balancers-albs-and-classic-elb-http-mode).
 The provided example assumes you are using TLS off-loading via AWS ACM service.
 
-> **Note:**
+> Note:
 > Using `controller: aws` creates additional service for gRPC traffic and it's no longer need to use `ingressGrpc` configuration section.
 
 ```yaml
@@ -268,8 +268,8 @@ server:
 
 The Gateway API provides a modern, extensible way to configure ingress traffic routing. This chart supports HTTPRoute resources as an alternative to traditional Ingress.
 
-> **Note:**
-> Gateway API support is **EXPERIMENTAL**. Support depends on your Gateway controller implementation. Some controllers may require additional configuration (e.g., BackendTLSPolicy for HTTPS backends). Refer to [Gateway API implementations](https://gateway-api.sigs.k8s.io/implementations/) for controller-specific details.
+> Note:
+> Gateway API support is EXPERIMENTAL. Support depends on your Gateway controller implementation. Some controllers may require additional configuration (e.g., BackendTLSPolicy for HTTPS backends). Refer to [Gateway API implementations](https://gateway-api.sigs.k8s.io/implementations/) for controller-specific details.
 
 ```yaml
 global:
@@ -309,8 +309,8 @@ server:
 
 For HTTPS backends with Gateway API, you may need to configure BackendTLSPolicy (experimental, v1alpha3):
 
-> **Warning:**
-> BackendTLSPolicy is in **EXPERIMENTAL** status. Not all Gateway controllers support this resource (e.g., Cilium does not yet support it).
+> Warning:
+> BackendTLSPolicy is in EXPERIMENTAL status. Not all Gateway controllers support this resource (e.g., Cilium does not yet support it).
 
 ```yaml
 configs:
@@ -332,7 +332,7 @@ server:
 
 ## Setting the initial admin password via Argo CD Application CR
 
-> **Note:** When deploying the `argo-cd` chart via an Argo CD `Application` CR, define your bcrypt-hashed admin password under `helm.values`—not `helm.parameters`—because Argo CD performs variable substitution on `parameters`, which will mangle any `$…` in your hash.
+> Note: When deploying the `argo-cd` chart via an Argo CD `Application` CR, define your bcrypt-hashed admin password under `helm.values`â€”not `helm.parameters`â€”because Argo CD performs variable substitution on `parameters`, which will mangle any `$â€¦` in your hash.
 
 ```yaml
 apiVersion: argoproj.io/v1alpha1
@@ -409,9 +409,9 @@ This issue was reported [here](https://github.com/argoproj/argo-helm/issues/3571
 We have removed all parameters under `.Values.configs.params` in this release, with the exception of `create` and `annotations`.
 This is to ensure better alignment with the upstream project, as tracking changes to their default values within the Helm chart has become challenging.
 
-**Though we removed the parameters from values.yaml in argo-helm, we keep providing the interface to override `.Values.configs.params` as the same way. **
+Though we removed the parameters from values.yaml in argo-helm, we keep providing the interface to override `.Values.configs.params` as the same way. 
 
-**Breaking change**
+Breaking change
 
 Please be aware that the default value for `applicationsetcontroller.policy` has been updated to match the upstream default. The chart's default was previously `'sync'`, while the upstream default is `""` (an empty string).
 If you rely on the previous behavior, you will need to update your values.yaml.
@@ -437,7 +437,7 @@ Chart versions from >= 7.7.2 and < 7.9.0 are using a Redis version which is no l
 Thus we downgraded Redis to latest available 7.2 (from 7.4) to be in-line with upstream manifests and fully honor
 [CNCF Allowlist License Policy].
 
-**Users using redis-ha may encounter issues** which can be resolved by either deleting all redis-ha pods after the
+Users using redis-ha may encounter issues which can be resolved by either deleting all redis-ha pods after the
 deployment/upgrade:
 
 ```bash
@@ -499,7 +499,7 @@ Steps to rotate the secret when using the helm chart (bold step is additional to
   ```bash
   kubectl delete secret argocd-redis -n <argocd namespace>
   ```
-* **Perform a helm upgrade**
+* Perform a helm upgrade
   ```bash
   helm upgrade argocd argo/argo-cd --reuse-values --wait
   ```
@@ -536,14 +536,14 @@ Added support for global domain used by all components.
 
 ### 6.0.0
 
-This version **removes support for**:
+This version removes support for:
 
 * deprecated component options `logLevel` and `logFormat`
 * deprecated component arguments `<components>.args.<feature>` that were replaced with `configs.params`
 * deprecated configuration `server.config` that was replaced with `configs.cm`
 * deprecated configuration `server.rbacConfig` that was replaced with `configs.rbac`
 
-Major version also contains breaking **changes related to Argo CD Ingress** resources that were hard to extend and maintain for various ingress controller implementations.
+Major version also contains breaking changes related to Argo CD Ingress resources that were hard to extend and maintain for various ingress controller implementations.
 Please review your setup and adjust to new configuration options:
 
 * catch all rule was removed for security reasons. If you need this please use `server.ingress.extraRules` to provide ingress rule without hostname
@@ -647,7 +647,7 @@ done
 
 ### 5.0.0
 
-This version **removes support for**:
+This version removes support for:
 
 - deprecated repository credentials (parameter `configs.repositoryCredentials`)
 - option to run application controller as a Deployment
@@ -741,7 +741,7 @@ With this minor version, the notification notifier's `service.slack` is no longe
 
 ### 4.0.0 and above
 
-This helm chart version deploys Argo CD v2.3. The Argo CD Notifications and ApplicationSet are part of Argo CD now. You no longer need to install them separately. The Notifications and ApplicationSet components **are bundled into default** Argo CD installation.
+This helm chart version deploys Argo CD v2.3. The Argo CD Notifications and ApplicationSet are part of Argo CD now. You no longer need to install them separately. The Notifications and ApplicationSet components are bundled into default Argo CD installation.
 Please read the [v2.2 to 2.3 upgrade instructions] in the upstream repository.
 
 ### 3.13.0
@@ -779,12 +779,12 @@ server:
     name: "" # or <nil>
 ```
 
-Please check if you are affected by one of these cases **before you upgrade**, especially when you use **cloud IAM roles for service accounts.** (eg. IRSA on AWS or Workload Identity for GKE)
+Please check if you are affected by one of these cases before you upgrade, especially when you use cloud IAM roles for service accounts. (eg. IRSA on AWS or Workload Identity for GKE)
 
 ### 3.2.*
 
 With this minor version we introduced the evaluation for the ingress manifest (depending on the capabilities version), See [Pull Request](https://github.com/argoproj/argo-helm/pull/637).
-[Issue 703](https://github.com/argoproj/argo-helm/issues/703) reported that the capabilities evaluation is **not handled correctly when deploying the chart via an Argo CD instance**,
+[Issue 703](https://github.com/argoproj/argo-helm/issues/703) reported that the capabilities evaluation is not handled correctly when deploying the chart via an Argo CD instance,
 especially deploying on clusters running a cluster version prior to `1.19` (which misses  `Ingress` on apiVersion `networking.k8s.io/v1`).
 
 If you are running a cluster version prior to `1.19` you can avoid this issue by directly installing chart version `3.6.0` and setting `kubeVersionOverride` like:
@@ -867,7 +867,7 @@ NAME: my-release
 
 ## Global Configs
 
-> **Note:**
+> Note:
 > Any values you put under `.Values.configs.cm` are passed to argocd-cm ConfigMap, and under `.Values.configs.params` are passed to argocd-params-cm ConfigMap.
 
 | Key | Type | Default | Description |
@@ -1017,7 +1017,7 @@ NAME: my-release
 | controller.metrics.serviceMonitor.additionalLabels | object | `{}` | Prometheus ServiceMonitor labels |
 | controller.metrics.serviceMonitor.annotations | object | `{}` | Prometheus ServiceMonitor annotations |
 | controller.metrics.serviceMonitor.enabled | bool | `false` | Enable a prometheus ServiceMonitor |
-| controller.metrics.serviceMonitor.honorLabels | bool | `false` | When true, honorLabels preserves the metric’s labels when they collide with the target’s labels. |
+| controller.metrics.serviceMonitor.honorLabels | bool | `false` | When true, honorLabels preserves the metricâ€™s labels when they collide with the targetâ€™s labels. |
 | controller.metrics.serviceMonitor.interval | string | `"30s"` | Prometheus ServiceMonitor interval |
 | controller.metrics.serviceMonitor.metricRelabelings | list | `[]` | Prometheus [MetricRelabelConfigs] to apply to samples before ingestion |
 | controller.metrics.serviceMonitor.namespace | string | `""` | Prometheus ServiceMonitor namespace |
@@ -1124,7 +1124,7 @@ NAME: my-release
 | repoServer.metrics.serviceMonitor.additionalLabels | object | `{}` | Prometheus ServiceMonitor labels |
 | repoServer.metrics.serviceMonitor.annotations | object | `{}` | Prometheus ServiceMonitor annotations |
 | repoServer.metrics.serviceMonitor.enabled | bool | `false` | Enable a prometheus ServiceMonitor |
-| repoServer.metrics.serviceMonitor.honorLabels | bool | `false` | When true, honorLabels preserves the metric’s labels when they collide with the target’s labels. |
+| repoServer.metrics.serviceMonitor.honorLabels | bool | `false` | When true, honorLabels preserves the metricâ€™s labels when they collide with the targetâ€™s labels. |
 | repoServer.metrics.serviceMonitor.interval | string | `"30s"` | Prometheus ServiceMonitor interval |
 | repoServer.metrics.serviceMonitor.metricRelabelings | list | `[]` | Prometheus [MetricRelabelConfigs] to apply to samples before ingestion |
 | repoServer.metrics.serviceMonitor.namespace | string | `""` | Prometheus ServiceMonitor namespace |
@@ -1303,7 +1303,7 @@ NAME: my-release
 | server.metrics.serviceMonitor.additionalLabels | object | `{}` | Prometheus ServiceMonitor labels |
 | server.metrics.serviceMonitor.annotations | object | `{}` | Prometheus ServiceMonitor annotations |
 | server.metrics.serviceMonitor.enabled | bool | `false` | Enable a prometheus ServiceMonitor |
-| server.metrics.serviceMonitor.honorLabels | bool | `false` | When true, honorLabels preserves the metric’s labels when they collide with the target’s labels. |
+| server.metrics.serviceMonitor.honorLabels | bool | `false` | When true, honorLabels preserves the metricâ€™s labels when they collide with the targetâ€™s labels. |
 | server.metrics.serviceMonitor.interval | string | `"30s"` | Prometheus ServiceMonitor interval |
 | server.metrics.serviceMonitor.metricRelabelings | list | `[]` | Prometheus [MetricRelabelConfigs] to apply to samples before ingestion |
 | server.metrics.serviceMonitor.namespace | string | `""` | Prometheus ServiceMonitor namespace |
@@ -1421,7 +1421,7 @@ NAME: my-release
 | dex.metrics.serviceMonitor.additionalLabels | object | `{}` | Prometheus ServiceMonitor labels |
 | dex.metrics.serviceMonitor.annotations | object | `{}` | Prometheus ServiceMonitor annotations |
 | dex.metrics.serviceMonitor.enabled | bool | `false` | Enable a prometheus ServiceMonitor |
-| dex.metrics.serviceMonitor.honorLabels | bool | `false` | When true, honorLabels preserves the metric’s labels when they collide with the target’s labels. |
+| dex.metrics.serviceMonitor.honorLabels | bool | `false` | When true, honorLabels preserves the metricâ€™s labels when they collide with the targetâ€™s labels. |
 | dex.metrics.serviceMonitor.interval | string | `"30s"` | Prometheus ServiceMonitor interval |
 | dex.metrics.serviceMonitor.metricRelabelings | list | `[]` | Prometheus [MetricRelabelConfigs] to apply to samples before ingestion |
 | dex.metrics.serviceMonitor.namespace | string | `""` | Prometheus ServiceMonitor namespace |
@@ -1531,7 +1531,7 @@ NAME: my-release
 | redis.metrics.serviceMonitor.additionalLabels | object | `{}` | Prometheus ServiceMonitor labels |
 | redis.metrics.serviceMonitor.annotations | object | `{}` | Prometheus ServiceMonitor annotations |
 | redis.metrics.serviceMonitor.enabled | bool | `false` | Enable a prometheus ServiceMonitor |
-| redis.metrics.serviceMonitor.honorLabels | bool | `false` | When true, honorLabels preserves the metric’s labels when they collide with the target’s labels. |
+| redis.metrics.serviceMonitor.honorLabels | bool | `false` | When true, honorLabels preserves the metricâ€™s labels when they collide with the targetâ€™s labels. |
 | redis.metrics.serviceMonitor.interval | string | `"30s"` | Interval at which metrics should be scraped |
 | redis.metrics.serviceMonitor.metricRelabelings | list | `[]` | Prometheus [MetricRelabelConfigs] to apply to samples before ingestion |
 | redis.metrics.serviceMonitor.namespace | string | `""` | Prometheus ServiceMonitor namespace |
@@ -1734,7 +1734,7 @@ If you use an External Redis (See Option 3 above), this Job is not deployed.
 | applicationSet.metrics.serviceMonitor.additionalLabels | object | `{}` | Prometheus ServiceMonitor labels |
 | applicationSet.metrics.serviceMonitor.annotations | object | `{}` | Prometheus ServiceMonitor annotations |
 | applicationSet.metrics.serviceMonitor.enabled | bool | `false` | Enable a prometheus ServiceMonitor |
-| applicationSet.metrics.serviceMonitor.honorLabels | bool | `false` | When true, honorLabels preserves the metric’s labels when they collide with the target’s labels. |
+| applicationSet.metrics.serviceMonitor.honorLabels | bool | `false` | When true, honorLabels preserves the metricâ€™s labels when they collide with the targetâ€™s labels. |
 | applicationSet.metrics.serviceMonitor.interval | string | `"30s"` | Prometheus ServiceMonitor interval |
 | applicationSet.metrics.serviceMonitor.metricRelabelings | list | `[]` | Prometheus [MetricRelabelConfigs] to apply to samples before ingestion |
 | applicationSet.metrics.serviceMonitor.namespace | string | `""` | Prometheus ServiceMonitor namespace |
@@ -1827,7 +1827,7 @@ If you use an External Redis (See Option 3 above), this Job is not deployed.
 | notifications.metrics.serviceMonitor.additionalLabels | object | `{}` | Prometheus ServiceMonitor labels |
 | notifications.metrics.serviceMonitor.annotations | object | `{}` | Prometheus ServiceMonitor annotations |
 | notifications.metrics.serviceMonitor.enabled | bool | `false` | Enable a prometheus ServiceMonitor |
-| notifications.metrics.serviceMonitor.honorLabels | bool | `false` | When true, honorLabels preserves the metric’s labels when they collide with the target’s labels. |
+| notifications.metrics.serviceMonitor.honorLabels | bool | `false` | When true, honorLabels preserves the metricâ€™s labels when they collide with the targetâ€™s labels. |
 | notifications.metrics.serviceMonitor.metricRelabelings | list | `[]` | Prometheus [MetricRelabelConfigs] to apply to samples before ingestion |
 | notifications.metrics.serviceMonitor.relabelings | list | `[]` | Prometheus [RelabelConfigs] to apply to samples before scraping |
 | notifications.metrics.serviceMonitor.scheme | string | `""` | Prometheus ServiceMonitor scheme |

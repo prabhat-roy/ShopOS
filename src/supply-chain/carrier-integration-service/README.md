@@ -1,4 +1,4 @@
-# carrier-integration-service
+﻿# carrier-integration-service
 
 > Provides a unified adapter layer over carrier APIs (FedEx, UPS, DHL) for rate quoting, booking, and tracking polls.
 
@@ -54,17 +54,17 @@ service CarrierIntegrationService {
 
 ## Kafka Topics
 
-No Kafka topics — this is a synchronous adapter service.
+No Kafka topics â€” this is a synchronous adapter service.
 
 ## Dependencies
 
-**Upstream (callers)**
-- `fulfillment-service` — shipment booking
-- `label-service` — carrier account validation
-- `tracking-service` — on-demand tracking polls
-- `customs-duties-service` — carrier rate queries for customs cost estimation
+Upstream (callers)
+- `fulfillment-service` â€” shipment booking
+- `label-service` â€” carrier account validation
+- `tracking-service` â€” on-demand tracking polls
+- `customs-duties-service` â€” carrier rate queries for customs cost estimation
 
-**Downstream (calls out to)**
+Downstream (calls out to)
 - FedEx Shipping API (external)
 - UPS Developer API (external)
 - DHL Express API (external)
@@ -74,14 +74,14 @@ No Kafka topics — this is a synchronous adapter service.
 | Variable | Default | Description |
 |---|---|---|
 | `GRPC_PORT` | `50106` | Port the gRPC server listens on |
-| `FEDEX_API_KEY` | — | FedEx API key (required if FedEx enabled) |
-| `FEDEX_API_SECRET` | — | FedEx API secret |
-| `FEDEX_ACCOUNT_NUMBER` | — | FedEx account number |
-| `UPS_CLIENT_ID` | — | UPS OAuth client ID |
-| `UPS_CLIENT_SECRET` | — | UPS OAuth client secret |
-| `UPS_ACCOUNT_NUMBER` | — | UPS shipper account number |
-| `DHL_API_KEY` | — | DHL Express API key |
-| `DHL_ACCOUNT_NUMBER` | — | DHL account number |
+| `FEDEX_API_KEY` | â€” | FedEx API key (required if FedEx enabled) |
+| `FEDEX_API_SECRET` | â€” | FedEx API secret |
+| `FEDEX_ACCOUNT_NUMBER` | â€” | FedEx account number |
+| `UPS_CLIENT_ID` | â€” | UPS OAuth client ID |
+| `UPS_CLIENT_SECRET` | â€” | UPS OAuth client secret |
+| `UPS_ACCOUNT_NUMBER` | â€” | UPS shipper account number |
+| `DHL_API_KEY` | â€” | DHL Express API key |
+| `DHL_ACCOUNT_NUMBER` | â€” | DHL account number |
 | `CARRIER_TIMEOUT_SECONDS` | `10` | Per-carrier API call timeout |
 | `CARRIER_RETRY_ATTEMPTS` | `3` | Number of retries on transient failures |
 | `LOG_LEVEL` | `info` | Logging level |
@@ -94,6 +94,6 @@ docker-compose up carrier-integration-service
 
 ## Health Check
 
-`GET /healthz` → `{"status":"ok"}`
+`GET /healthz` â†’ `{"status":"ok"}`
 
-gRPC health: `grpc.health.v1.Health/Check` → `SERVING`
+gRPC health: `grpc.health.v1.Health/Check` â†’ `SERVING`

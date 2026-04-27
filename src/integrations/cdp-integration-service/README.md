@@ -1,4 +1,4 @@
-# cdp-integration-service
+﻿# cdp-integration-service
 
 > Forwards customer behavioural events to Customer Data Platform endpoints (Segment-compatible). Consumes analytics.* Kafka topics and emits to CDP webhook.
 
@@ -48,21 +48,21 @@ graph TD
 
 ## Dependencies
 
-**Upstream (callers)**
+Upstream (callers)
 - Kafka topics produced by `event-tracking-service` and `analytics-service`
 
-**Downstream (calls out to)**
+Downstream (calls out to)
 - External CDP HTTP webhook (Segment / RudderStack / June / PostHog)
 
 ## Environment Variables
 
 | Variable | Default | Description |
 |---|---|---|
-| `CDP_WEBHOOK_URL` | — | CDP webhook endpoint URL (required) |
-| `CDP_WRITE_KEY` | — | CDP write/API key for authentication (required) |
+| `CDP_WEBHOOK_URL` | â€” | CDP webhook endpoint URL (required) |
+| `CDP_WRITE_KEY` | â€” | CDP write/API key for authentication (required) |
 | `KAFKA_BROKERS` | `localhost:9092` | Comma-separated Kafka broker list |
 | `KAFKA_CONSUMER_GROUP` | `cdp-integration-service` | Kafka consumer group ID |
-| `KAFKA_TOPICS` | — | Comma-separated list of topics to consume |
+| `KAFKA_TOPICS` | â€” | Comma-separated list of topics to consume |
 | `HTTP_PORT` | `8080` | Port for the health check HTTP server |
 | `WEBHOOK_RETRY_MAX` | `3` | Maximum webhook delivery retry attempts |
 | `WEBHOOK_RETRY_BACKOFF_MS` | `500` | Initial retry back-off in milliseconds |
@@ -76,4 +76,4 @@ docker-compose up cdp-integration-service
 
 ## Health Check
 
-`GET /healthz` → `{"status":"ok"}`
+`GET /healthz` â†’ `{"status":"ok"}`

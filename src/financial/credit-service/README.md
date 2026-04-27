@@ -1,4 +1,4 @@
-# credit-service
+﻿# credit-service
 
 > Manages buyer credit limits, credit scoring, and credit utilization across B2B and consumer accounts.
 
@@ -68,12 +68,12 @@ service CreditService {
 
 ## Dependencies
 
-**Upstream (callers)**
-- `checkout-service` (commerce domain) — real-time credit availability check
-- `b2b-credit-limit-service` (b2b domain) — B2B credit score queries
+Upstream (callers)
+- `checkout-service` (commerce domain) â€” real-time credit availability check
+- `b2b-credit-limit-service` (b2b domain) â€” B2B credit score queries
 
-**Downstream (calls out to)**
-- `kyc-aml-service` — risk rating for credit score calculation
+Downstream (calls out to)
+- `kyc-aml-service` â€” risk rating for credit score calculation
 
 ## Environment Variables
 
@@ -84,7 +84,7 @@ service CreditService {
 | `DB_PORT` | `5432` | PostgreSQL port |
 | `DB_NAME` | `credit_db` | Database name |
 | `DB_USER` | `credit_svc` | Database user |
-| `DB_PASSWORD` | — | Database password (required) |
+| `DB_PASSWORD` | â€” | Database password (required) |
 | `KAFKA_BROKERS` | `localhost:9092` | Comma-separated Kafka broker list |
 | `KYC_AML_GRPC_ADDR` | `kyc-aml-service:50116` | Address of kyc-aml-service |
 | `DEFAULT_CONSUMER_LIMIT_CENTS` | `0` | Default credit limit for new consumer accounts |
@@ -100,6 +100,6 @@ docker-compose up credit-service
 
 ## Health Check
 
-`GET /healthz` → `{"status":"ok"}`
+`GET /healthz` â†’ `{"status":"ok"}`
 
-gRPC health: `grpc.health.v1.Health/Check` → `SERVING`
+gRPC health: `grpc.health.v1.Health/Check` â†’ `SERVING`

@@ -1,6 +1,6 @@
-# CI Pipelines — ShopOS
+﻿# CI Pipelines â€” ShopOS
 
-ShopOS ships **17 pipelines** implemented across **15 CI/CD platforms**. Jenkins is the primary
+ShopOS ships 17 pipelines implemented across 15 CI/CD platforms. Jenkins is the primary
 CI server with 17 Jenkinsfiles; all other platforms mirror the same pipeline set.
 
 ---
@@ -12,18 +12,18 @@ CI server with 17 Jenkinsfiles; all other platforms mirror the same pipeline set
 | Jenkins | `jenkins/` | 17 Jenkinsfiles | Primary CI server; declarative pipeline syntax |
 | Drone CI | `drone/` | 12 YAML | Drone v2; mirrors core Jenkins pipelines |
 | Woodpecker CI | `woodpecker/` | 12 YAML | Drone-compatible fork; drop-in replacement |
-| Dagger | `dagger/` | 12 Go modules | Portable Go SDK — run on any CI or locally |
+| Dagger | `dagger/` | 12 Go modules | Portable Go SDK â€” run on any CI or locally |
 | Tekton | `tekton/` | 12 YAML | Kubernetes CRD-native (Task + Pipeline + PipelineRun) |
 | Concourse CI | `concourse/` | 12 YAML | Resource/job DAG pipelines |
-| GitLab CI | `gitlab-ci/` | 12 YAML | `.gitlab-ci.yml` — native GitLab SCM integration |
-| GitHub Actions | `github-actions/` | 12 YAML | Stored in `ci/github-actions/` — **not** in `.github/` so auto-triggering is disabled |
+| GitLab CI | `gitlab-ci/` | 12 YAML | `.gitlab-ci.yml` â€” native GitLab SCM integration |
+| GitHub Actions | `github-actions/` | 12 YAML | Stored in `ci/github-actions/` â€” not in `.github/` so auto-triggering is disabled |
 | CircleCI | `circleci/` | 12 YAML | `version: 2.1` orb-based pipelines |
 | GoCD | `gocd/` | 12 YAML | Stage/job pipelines with manual approval gates |
 | Travis CI | `travis/` | 12 YAML | Stage-based pipelines with branch filters |
 | Harness CI | `harness/` | 12 YAML | Enterprise CI/CD with built-in CD stages |
-| Azure DevOps | `azure-devops/` | 12 YAML | `azure-pipelines.yml` — native Azure integration |
+| Azure DevOps | `azure-devops/` | 12 YAML | `azure-pipelines.yml` â€” native Azure integration |
 | AWS CodePipeline | `aws-codepipeline/` | 12 YAML | `buildspec.yml` + CodePipeline JSON definitions |
-| GCP Cloud Build | `gcp-cloudbuild/` | 12 YAML | `cloudbuild.yaml` — native GCP integration |
+| GCP Cloud Build | `gcp-cloudbuild/` | 12 YAML | `cloudbuild.yaml` â€” native GCP integration |
 
 ---
 
@@ -31,79 +31,79 @@ CI server with 17 Jenkinsfiles; all other platforms mirror the same pipeline set
 
 ```
 ci/
-├── jenkins/                          ← 17 Jenkinsfiles (primary)
-│   ├── install-tools.Jenkinsfile     ← Bootstrap agent runtimes and CLIs
-│   ├── cluster-bootstrap.Jenkinsfile ← Full cluster bring-up (6 phases)
-│   ├── k8s-infra.Jenkinsfile         ← Terraform EKS/GKE/AKS provisioning
-│   ├── gitops.Jenkinsfile            ← ArgoCD, Flux, Argo Rollouts, KEDA, Velero
-│   ├── security.Jenkinsfile          ← Vault, Keycloak, Falco, Kyverno, cert-manager
-│   ├── observability.Jenkinsfile     ← Prometheus, Grafana, Loki, Jaeger, OTel
-│   ├── messaging.Jenkinsfile         ← Kafka, RabbitMQ, NATS, schema registry
-│   ├── networking.Jenkinsfile        ← Istio, Traefik, Cilium, Consul
-│   ├── registry.Jenkinsfile          ← Harbor, Nexus + cloud registry provisioning
-│   ├── databases.Jenkinsfile         ← Postgres, MongoDB, Redis, Cassandra, ClickHouse
-│   ├── streaming.Jenkinsfile         ← Debezium CDC, Apache Flink jobs
-│   ├── tooling.Jenkinsfile           ← Developer tools (pgAdmin, Superset, MLflow, etc.)
-│   ├── pre-deploy.Jenkinsfile        ← Git fetch → scan → compile → docker build → push
-│   ├── deploy.Jenkinsfile            ← GitOps trigger → ArgoCD sync → rollout verify
-│   ├── post-deploy.Jenkinsfile       ← Smoke tests → DAST → load tests → SLO validate
-│   ├── api-quality.Jenkinsfile       ← Spectral lint → Hurl → Pact → Terrascan
-│   └── reports.Jenkinsfile           ← Build/deploy Reports Portal web app
-│
-├── drone/                            ← Drone CI (same 12 pipelines, *.drone.yml)
-├── woodpecker/                       ← Woodpecker CI (same 12 pipelines, *.woodpecker.yml)
-├── gitlab-ci/                        ← GitLab CI (same 12 pipelines, *.gitlab-ci.yml)
-│
-├── github-actions/                   ← GitHub Actions (same 12 pipelines, *.yml)
-│   │                                   Stored here (NOT in .github/) — auto-triggering disabled.
-│   │                                   To enable: copy files to .github/workflows/ and add secrets.
-│   ├── deploy.yml
-│   ├── post-deploy.yml
-│   ├── k8s-infra.yml
-│   ├── gitops.yml
-│   ├── security.yml
-│   ├── observability.yml
-│   ├── messaging.yml
-│   ├── networking.yml
-│   ├── registry.yml
-│   ├── install-tools.yml
-│   └── cluster-bootstrap.yml
-│
-├── dagger/                           ← Dagger Go SDK — one subdirectory per pipeline
-│   ├── go.mod / main.go              ← root module (shared utilities)
-│   ├── deploy/main.go
-│   ├── security/main.go
-│   ├── networking/main.go
-│   ├── observability/main.go
-│   ├── messaging/main.go
-│   ├── k8s-infra/main.go
-│   ├── gitops/main.go
-│   ├── registry/main.go
-│   ├── install-tools/main.go
-│   ├── cluster-bootstrap/main.go
-│   └── post-deploy/main.go
-│
-├── tekton/                           ← Tekton Pipelines (Kubernetes CRDs)
-│   ├── deploy-pipeline.yml
-│   ├── security-pipeline.yml
-│   ├── networking-pipeline.yml
-│   ├── observability-pipeline.yml
-│   ├── messaging-pipeline.yml
-│   ├── k8s-infra-pipeline.yml
-│   ├── gitops-pipeline.yml
-│   ├── registry-pipeline.yml
-│   ├── install-tools-pipeline.yml
-│   ├── cluster-bootstrap-pipeline.yml
-│   └── post-deploy-pipeline.yml
-│
-├── concourse/                        ← Concourse CI (*-pipeline.yml)
-├── circleci/                         ← CircleCI version: 2.1 (*.circleci.yml)
-├── gocd/                             ← GoCD format_version: 10 (*.gocd.yml)
-├── travis/                           ← Travis CI (*.travis.yml)
-├── harness/                          ← Harness CI/CD (*-pipeline.yml)
-├── azure-devops/                     ← Azure Pipelines (*.yml)
-├── aws-codepipeline/                 ← AWS CodeBuild buildspecs (buildspec-*.yml)
-└── gcp-cloudbuild/                   ← GCP Cloud Build (cloudbuild-*.yaml)
+â”œâ”€â”€ jenkins/                          â† 17 Jenkinsfiles (primary)
+â”‚   â”œâ”€â”€ install-tools.Jenkinsfile     â† Bootstrap agent runtimes and CLIs
+â”‚   â”œâ”€â”€ cluster-bootstrap.Jenkinsfile â† Full cluster bring-up (6 phases)
+â”‚   â”œâ”€â”€ k8s-infra.Jenkinsfile         â† Terraform EKS/GKE/AKS provisioning
+â”‚   â”œâ”€â”€ gitops.Jenkinsfile            â† ArgoCD, Flux, Argo Rollouts, KEDA, Velero
+â”‚   â”œâ”€â”€ security.Jenkinsfile          â† Vault, Keycloak, Falco, Kyverno, cert-manager
+â”‚   â”œâ”€â”€ observability.Jenkinsfile     â† Prometheus, Grafana, Loki, Jaeger, OTel
+â”‚   â”œâ”€â”€ messaging.Jenkinsfile         â† Kafka, RabbitMQ, NATS, schema registry
+â”‚   â”œâ”€â”€ networking.Jenkinsfile        â† Istio, Traefik, Cilium, Consul
+â”‚   â”œâ”€â”€ registry.Jenkinsfile          â† Harbor, Nexus + cloud registry provisioning
+â”‚   â”œâ”€â”€ databases.Jenkinsfile         â† Postgres, MongoDB, Redis, Cassandra, ClickHouse
+â”‚   â”œâ”€â”€ streaming.Jenkinsfile         â† Debezium CDC, Apache Flink jobs
+â”‚   â”œâ”€â”€ tooling.Jenkinsfile           â† Developer tools (pgAdmin, Superset, MLflow, etc.)
+â”‚   â”œâ”€â”€ pre-deploy.Jenkinsfile        â† Git fetch â†’ scan â†’ compile â†’ docker build â†’ push
+â”‚   â”œâ”€â”€ deploy.Jenkinsfile            â† GitOps trigger â†’ ArgoCD sync â†’ rollout verify
+â”‚   â”œâ”€â”€ post-deploy.Jenkinsfile       â† Smoke tests â†’ DAST â†’ load tests â†’ SLO validate
+â”‚   â”œâ”€â”€ api-quality.Jenkinsfile       â† Spectral lint â†’ Hurl â†’ Pact â†’ Terrascan
+â”‚   â””â”€â”€ reports.Jenkinsfile           â† Build/deploy Reports Portal web app
+â”‚
+â”œâ”€â”€ drone/                            â† Drone CI (same 12 pipelines, *.drone.yml)
+â”œâ”€â”€ woodpecker/                       â† Woodpecker CI (same 12 pipelines, *.woodpecker.yml)
+â”œâ”€â”€ gitlab-ci/                        â† GitLab CI (same 12 pipelines, *.gitlab-ci.yml)
+â”‚
+â”œâ”€â”€ github-actions/                   â† GitHub Actions (same 12 pipelines, *.yml)
+â”‚   â”‚                                   Stored here (NOT in .github/) â€” auto-triggering disabled.
+â”‚   â”‚                                   To enable: copy files to .github/workflows/ and add secrets.
+â”‚   â”œâ”€â”€ deploy.yml
+â”‚   â”œâ”€â”€ post-deploy.yml
+â”‚   â”œâ”€â”€ k8s-infra.yml
+â”‚   â”œâ”€â”€ gitops.yml
+â”‚   â”œâ”€â”€ security.yml
+â”‚   â”œâ”€â”€ observability.yml
+â”‚   â”œâ”€â”€ messaging.yml
+â”‚   â”œâ”€â”€ networking.yml
+â”‚   â”œâ”€â”€ registry.yml
+â”‚   â”œâ”€â”€ install-tools.yml
+â”‚   â””â”€â”€ cluster-bootstrap.yml
+â”‚
+â”œâ”€â”€ dagger/                           â† Dagger Go SDK â€” one subdirectory per pipeline
+â”‚   â”œâ”€â”€ go.mod / main.go              â† root module (shared utilities)
+â”‚   â”œâ”€â”€ deploy/main.go
+â”‚   â”œâ”€â”€ security/main.go
+â”‚   â”œâ”€â”€ networking/main.go
+â”‚   â”œâ”€â”€ observability/main.go
+â”‚   â”œâ”€â”€ messaging/main.go
+â”‚   â”œâ”€â”€ k8s-infra/main.go
+â”‚   â”œâ”€â”€ gitops/main.go
+â”‚   â”œâ”€â”€ registry/main.go
+â”‚   â”œâ”€â”€ install-tools/main.go
+â”‚   â”œâ”€â”€ cluster-bootstrap/main.go
+â”‚   â””â”€â”€ post-deploy/main.go
+â”‚
+â”œâ”€â”€ tekton/                           â† Tekton Pipelines (Kubernetes CRDs)
+â”‚   â”œâ”€â”€ deploy-pipeline.yml
+â”‚   â”œâ”€â”€ security-pipeline.yml
+â”‚   â”œâ”€â”€ networking-pipeline.yml
+â”‚   â”œâ”€â”€ observability-pipeline.yml
+â”‚   â”œâ”€â”€ messaging-pipeline.yml
+â”‚   â”œâ”€â”€ k8s-infra-pipeline.yml
+â”‚   â”œâ”€â”€ gitops-pipeline.yml
+â”‚   â”œâ”€â”€ registry-pipeline.yml
+â”‚   â”œâ”€â”€ install-tools-pipeline.yml
+â”‚   â”œâ”€â”€ cluster-bootstrap-pipeline.yml
+â”‚   â””â”€â”€ post-deploy-pipeline.yml
+â”‚
+â”œâ”€â”€ concourse/                        â† Concourse CI (*-pipeline.yml)
+â”œâ”€â”€ circleci/                         â† CircleCI version: 2.1 (*.circleci.yml)
+â”œâ”€â”€ gocd/                             â† GoCD format_version: 10 (*.gocd.yml)
+â”œâ”€â”€ travis/                           â† Travis CI (*.travis.yml)
+â”œâ”€â”€ harness/                          â† Harness CI/CD (*-pipeline.yml)
+â”œâ”€â”€ azure-devops/                     â† Azure Pipelines (*.yml)
+â”œâ”€â”€ aws-codepipeline/                 â† AWS CodeBuild buildspecs (buildspec-*.yml)
+â””â”€â”€ gcp-cloudbuild/                   â† GCP Cloud Build (cloudbuild-*.yaml)
 ```
 
 ---
@@ -112,23 +112,23 @@ ci/
 
 | Pipeline | Trigger | Est. Duration | Purpose |
 |---|---|---|---|
-| **install-tools** | manual | ~30 min | Bootstrap agent with runtimes, CLIs, scanners |
-| **cluster-bootstrap** | manual | ~4 hrs | 6-phase full cluster bring-up (phases 1–6) |
-| **k8s-infra** | manual | ~90 min | Provision / destroy EKS / GKE / AKS via Terraform |
-| **gitops** | manual | ~20 min | Install ArgoCD, Flux, Argo Rollouts, KEDA, Velero |
-| **security** | manual | ~30 min | Install Vault, Keycloak, Falco, Kyverno, cert-manager, Teleport |
-| **observability** | manual | ~30 min | Install Prometheus, Grafana, Loki, Jaeger, OTel |
-| **messaging** | manual | ~20 min | Install Kafka, RabbitMQ, NATS + create 20 topics |
-| **networking** | manual | ~25 min | Install Istio, Traefik, Cilium, Consul |
-| **registry** | manual | ~20 min | Install Harbor, Nexus + provision cloud registry |
-| **databases** | manual | ~25 min | Install Postgres, MongoDB, Redis, Cassandra, ClickHouse, et al. |
-| **streaming** | manual | ~15 min | Deploy Debezium CDC connectors and Apache Flink jobs |
-| **tooling** | manual | ~35 min | Developer tools: pgAdmin, Superset, MLflow, Botkube, OpenCost, etc. |
-| **pre-deploy** | manual/webhook | ~20 min | Git fetch → secret scan → SAST → SCA → compile → docker build → image scan → sign → push → GitOps update |
-| **deploy** | manual/ArgoCD | ~10 min | Verify image in Harbor → ArgoCD sync → rollout status → healthz check |
-| **post-deploy** | manual | ~45 min | Smoke tests → integration → Hurl → Pact → ZAP DAST → Nuclei → k6 → Locust → Gatling → SLO |
-| **api-quality** | manual | ~30 min | Spectral OpenAPI lint → Hurl HTTP flows → Pact publish → Terrascan IaC |
-| **reports** | manual | ~10 min | Build and deploy Reports Portal web app (central report aggregator) |
+| install-tools | manual | ~30 min | Bootstrap agent with runtimes, CLIs, scanners |
+| cluster-bootstrap | manual | ~4 hrs | 6-phase full cluster bring-up (phases 1â€“6) |
+| k8s-infra | manual | ~90 min | Provision / destroy EKS / GKE / AKS via Terraform |
+| gitops | manual | ~20 min | Install ArgoCD, Flux, Argo Rollouts, KEDA, Velero |
+| security | manual | ~30 min | Install Vault, Keycloak, Falco, Kyverno, cert-manager, Teleport |
+| observability | manual | ~30 min | Install Prometheus, Grafana, Loki, Jaeger, OTel |
+| messaging | manual | ~20 min | Install Kafka, RabbitMQ, NATS + create 20 topics |
+| networking | manual | ~25 min | Install Istio, Traefik, Cilium, Consul |
+| registry | manual | ~20 min | Install Harbor, Nexus + provision cloud registry |
+| databases | manual | ~25 min | Install Postgres, MongoDB, Redis, Cassandra, ClickHouse, et al. |
+| streaming | manual | ~15 min | Deploy Debezium CDC connectors and Apache Flink jobs |
+| tooling | manual | ~35 min | Developer tools: pgAdmin, Superset, MLflow, Botkube, OpenCost, etc. |
+| pre-deploy | manual/webhook | ~20 min | Git fetch â†’ secret scan â†’ SAST â†’ SCA â†’ compile â†’ docker build â†’ image scan â†’ sign â†’ push â†’ GitOps update |
+| deploy | manual/ArgoCD | ~10 min | Verify image in Harbor â†’ ArgoCD sync â†’ rollout status â†’ healthz check |
+| post-deploy | manual | ~45 min | Smoke tests â†’ integration â†’ Hurl â†’ Pact â†’ ZAP DAST â†’ Nuclei â†’ k6 â†’ Locust â†’ Gatling â†’ SLO |
+| api-quality | manual | ~30 min | Spectral OpenAPI lint â†’ Hurl HTTP flows â†’ Pact publish â†’ Terrascan IaC |
+| reports | manual | ~10 min | Build and deploy Reports Portal web app (central report aggregator) |
 
 ---
 
@@ -141,12 +141,12 @@ and on every pull request.
 
 ```
 git push / PR
-  └─ tests (Go · Java · Kotlin · Python · Node.js · Rust · C# · Scala)
-       └─ secret-scan (Gitleaks)
-            └─ sast (Semgrep)
-                 └─ sca (Trivy filesystem)
-                      └─ iac-scan (Checkov)
-                           └─ notify-slack
+  â””â”€ tests (Go Â· Java Â· Kotlin Â· Python Â· Node.js Â· Rust Â· C# Â· Scala)
+       â””â”€ secret-scan (Gitleaks)
+            â””â”€ sast (Semgrep)
+                 â””â”€ sca (Trivy filesystem)
+                      â””â”€ iac-scan (Checkov)
+                           â””â”€ notify-slack
 ```
 
 ### Language Test Mapping
@@ -166,7 +166,7 @@ git push / PR
 
 ## Deploy Pipeline
 
-Triggered manually per service. Performs the full build → scan → sign → push → deploy cycle.
+Triggered manually per service. Performs the full build â†’ scan â†’ sign â†’ push â†’ deploy cycle.
 
 | Stage | Tool | Blocking? |
 |---|---|---|
@@ -176,7 +176,7 @@ Triggered manually per service. Performs the full build → scan → sign → pu
 | docker-build | Docker multi-stage | Yes |
 | image-scan | Trivy (CRITICAL exit-1) | No (warn) |
 | docker-push | Harbor registry | Yes |
-| cosign-sign | Cosign keyless → Rekor | No (warn) |
+| cosign-sign | Cosign keyless â†’ Rekor | No (warn) |
 | helm-deploy | `helm upgrade --install` | Yes |
 | notify-slack | curl webhook | No |
 
@@ -204,12 +204,12 @@ production-ready state. Each phase waits for the previous to complete.
 
 | Phase | Tools Installed |
 |---|---|
-| 1 — Networking | Cilium CNI, Istio service mesh, Traefik edge router |
-| 2 — Security | cert-manager, HashiCorp Vault, Keycloak, Kyverno, Falco |
-| 3 — Observability | Prometheus stack, Grafana, Loki, Jaeger, OTel Collector |
-| 4 — Messaging | ZooKeeper, Kafka, RabbitMQ, NATS JetStream + 20 topics |
-| 5 — Registry | MinIO, Harbor, Nexus + 8 MinIO buckets |
-| 6 — GitOps | ArgoCD, Argo Rollouts, Argo Workflows, KEDA, Velero |
+| 1 â€” Networking | Cilium CNI, Istio service mesh, Traefik edge router |
+| 2 â€” Security | cert-manager, HashiCorp Vault, Keycloak, Kyverno, Falco |
+| 3 â€” Observability | Prometheus stack, Grafana, Loki, Jaeger, OTel Collector |
+| 4 â€” Messaging | ZooKeeper, Kafka, RabbitMQ, NATS JetStream + 20 topics |
+| 5 â€” Registry | MinIO, Harbor, Nexus + 8 MinIO buckets |
+| 6 â€” GitOps | ArgoCD, Argo Rollouts, Argo Workflows, KEDA, Velero |
 
 Run with `START_PHASE` and `END_PHASE` env vars to resume from a specific phase.
 
@@ -217,8 +217,8 @@ Run with `START_PHASE` and `END_PHASE` env vars to resume from a specific phase.
 
 ## Supply Chain Security
 
-All images are signed with **Cosign** (keyless via OIDC) and the signature is recorded in
-**Rekor**. Kyverno enforces signature verification at admission time.
+All images are signed with Cosign (keyless via OIDC) and the signature is recorded in
+Rekor. Kyverno enforces signature verification at admission time.
 
 ```bash
 # Verify an image manually
@@ -230,7 +230,7 @@ cosign verify \
 
 ---
 
-## Dagger — Running Locally
+## Dagger â€” Running Locally
 
 Dagger pipelines are plain Go programs and run without any CI server.
 
@@ -266,7 +266,7 @@ dagger run go run main.go
 | Merge to `main` | `main-{sha8}` |
 | Release tag (`v*`) | `{tag}` + `latest` |
 
-Images are immutable — each environment pins the exact SHA-tagged image built for that commit.
+Images are immutable â€” each environment pins the exact SHA-tagged image built for that commit.
 
 ---
 

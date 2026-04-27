@@ -1,4 +1,4 @@
-# pricing-service
+﻿# pricing-service
 
 > Price rules, customer-group pricing, and tiered volume pricing.
 
@@ -6,7 +6,7 @@
 
 The pricing-service resolves the effective price for any product/SKU given a buyer context
 (customer group, channel, currency, and quantity). It evaluates a priority-ordered stack of
-price rules — base price, customer-group overrides, volume tiers, promotional adjustments —
+price rules â€” base price, customer-group overrides, volume tiers, promotional adjustments â€”
 and returns the final unit price along with the applied rule chain for transparency. This
 service works closely with the promotions-service for discount stacking and the
 price-list-service for channel-specific pricing.
@@ -99,23 +99,23 @@ service PricingService {
 
 ## Dependencies
 
-**Upstream** (calls these):
-- `promotions-service` — fetch applicable discount rules during price resolution
-- `price-list-service` — fetch channel-specific price list overrides
-- `currency-service` — convert Money amounts across currencies
+Upstream (calls these):
+- `promotions-service` â€” fetch applicable discount rules during price resolution
+- `price-list-service` â€” fetch channel-specific price list overrides
+- `currency-service` â€” convert Money amounts across currencies
 
-**Downstream** (called by these):
-- `cart-service` — `GetEffectivePriceBatch` on every cart update
-- `checkout-service` — `GetEffectivePriceBatch` for order total calculation
-- `web-bff` — display prices on product listing and detail pages
+Downstream (called by these):
+- `cart-service` â€” `GetEffectivePriceBatch` on every cart update
+- `checkout-service` â€” `GetEffectivePriceBatch` for order total calculation
+- `web-bff` â€” display prices on product listing and detail pages
 
 ## Environment Variables
 
 | Variable | Default | Description |
 |---|---|---|
-| `SPRING_DATASOURCE_URL` | — | PostgreSQL JDBC URL |
-| `SPRING_DATASOURCE_USERNAME` | — | DB username |
-| `SPRING_DATASOURCE_PASSWORD` | — | DB password |
+| `SPRING_DATASOURCE_URL` | â€” | PostgreSQL JDBC URL |
+| `SPRING_DATASOURCE_USERNAME` | â€” | DB username |
+| `SPRING_DATASOURCE_PASSWORD` | â€” | DB password |
 | `GRPC_PORT` | `50073` | gRPC server port |
 | `PROMOTIONS_SERVICE_ADDR` | `promotions-service:50087` | Promotions service address |
 | `PRICE_LIST_SERVICE_ADDR` | `price-list-service:50181` | Price list service address |
@@ -130,6 +130,6 @@ docker-compose up pricing-service
 
 ## Health Check
 
-`GET /healthz` — `{"status":"ok"}`
+`GET /healthz` â€” `{"status":"ok"}`
 
 gRPC health protocol: `grpc.health.v1.Health/Check` on port `50073`

@@ -1,4 +1,4 @@
-# ingress-nginx
+﻿# ingress-nginx
 
 [ingress-nginx](https://github.com/kubernetes/ingress-nginx) Ingress controller for Kubernetes using NGINX as a reverse proxy and load balancer
 
@@ -21,7 +21,7 @@ helm repo update
 
 ## Install Chart
 
-**Important:** only helm3 is supported
+Important: only helm3 is supported
 
 ```console
 helm install [RELEASE_NAME] ingress-nginx/ingress-nginx
@@ -198,7 +198,7 @@ Optionally you can set `controller.service.loadBalancerIP` if you need a static 
 ### Ingress Admission Webhooks
 
 With nginx-ingress-controller version 0.25+, the Ingress-Nginx Controller pod exposes an endpoint that will integrate with the `validatingwebhookconfiguration` Kubernetes feature to prevent bad ingress from being added to the cluster.
-**This feature is enabled by default since 0.31.0.**
+This feature is enabled by default since 0.31.0.
 
 With nginx-ingress-controller in 0.25.* work only with kubernetes 1.14+, 0.26 fix [this issue](https://github.com/kubernetes/ingress-nginx/pull/4521)
 

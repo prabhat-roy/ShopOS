@@ -1,8 +1,8 @@
-# ADR-003: Polyglot Programming — Language per Domain
+﻿# ADR-003: Polyglot Programming â€” Language per Domain
 
-**Status:** Accepted  
-**Date:** 2024-01-20  
-**Deciders:** Platform Architecture Team, Domain Leads
+Status: Accepted  
+Date: 2024-01-20  
+Deciders: Platform Architecture Team, Domain Leads
 
 ---
 
@@ -20,33 +20,33 @@ Each service uses the language best suited to its domain, fixed in the service r
 
 | Language | Version | Domains / Rationale |
 |---|---|---|
-| **Go** | 1.24 | Platform, API gateways, supply chain — high concurrency, low memory, fast startup |
-| **Java** | 21 LTS | Financial, B2B, integrations — Spring ecosystem, JPA, transaction management |
-| **Kotlin** | 2.1 | Orders, financial workflows — JVM with concise syntax and coroutines |
-| **Python** | 3.13 | All ML/AI, analytics, data pipelines — PyTorch, scikit-learn, no equivalent elsewhere |
-| **Node.js** | 22 LTS | BFF layers, communications — non-blocking I/O, event-driven patterns |
-| **C# / .NET** | 9 | Cart, returns — team expertise, high-performance collections |
-| **Rust** | 1.82+ | Auth, shipping — memory safety without GC, cryptographic operations |
-| **Scala** | 3.x | Batch reporting — Spark integration, functional stream processing |
+| Go | 1.24 | Platform, API gateways, supply chain â€” high concurrency, low memory, fast startup |
+| Java | 21 LTS | Financial, B2B, integrations â€” Spring ecosystem, JPA, transaction management |
+| Kotlin | 2.1 | Orders, financial workflows â€” JVM with concise syntax and coroutines |
+| Python | 3.13 | All ML/AI, analytics, data pipelines â€” PyTorch, scikit-learn, no equivalent elsewhere |
+| Node.js | 22 LTS | BFF layers, communications â€” non-blocking I/O, event-driven patterns |
+| C# / .NET | 9 | Cart, returns â€” team expertise, high-performance collections |
+| Rust | 1.82+ | Auth, shipping â€” memory safety without GC, cryptographic operations |
+| Scala | 3.x | Batch reporting â€” Spark integration, functional stream processing |
 
 ---
 
 ## Rationale
 
-**Go** suits platform infrastructure: goroutines handle thousands of concurrent connections with minimal memory. The API gateway, rate limiter, and saga orchestrator all benefit from this.
+Go suits platform infrastructure: goroutines handle thousands of concurrent connections with minimal memory. The API gateway, rate limiter, and saga orchestrator all benefit from this.
 
-**Rust** is used only where memory safety and zero-cost abstractions are critical. The auth-service handles cryptographic token signing and validation — Rust's borrow checker eliminates entire classes of security vulnerabilities without a GC pause.
+Rust is used only where memory safety and zero-cost abstractions are critical. The auth-service handles cryptographic token signing and validation â€” Rust's borrow checker eliminates entire classes of security vulnerabilities without a GC pause.
 
-**Python** is unavoidable for ML/AI. PyTorch, scikit-learn, and the broader ML ecosystem have no Go or Java equivalents at the same maturity level.
+Python is unavoidable for ML/AI. PyTorch, scikit-learn, and the broader ML ecosystem have no Go or Java equivalents at the same maturity level.
 
-**Java/Kotlin** suit the financial domain: Spring's `@Transactional`, JPA for complex queries, and the JVM's mature JIT for long-running batch processes.
+Java/Kotlin suit the financial domain: Spring's `@Transactional`, JPA for complex queries, and the JVM's mature JIT for long-running batch processes.
 
 ---
 
 ## Consequences
 
-**Positive:** Each team uses optimal tooling; Rust provides memory safety for security-critical paths; Python enables state-of-the-art ML without compromising other services.
+Positive: Each team uses optimal tooling; Rust provides memory safety for security-critical paths; Python enables state-of-the-art ML without compromising other services.
 
-**Negative:** CI must support 8 toolchains; onboarding requires breadth; dependency scanning covers 8 package ecosystems.
+Negative: CI must support 8 toolchains; onboarding requires breadth; dependency scanning covers 8 package ecosystems.
 
-**Mitigations:** Backstage surfaces each service's language; per-language Dockerfile patterns are standardised; CI auto-selects the right image based on detected language; gRPC contracts make language choice invisible at the service boundary.
+Mitigations: Backstage surfaces each service's language; per-language Dockerfile patterns are standardised; CI auto-selects the right image based on detected language; gRPC contracts make language choice invisible at the service boundary.

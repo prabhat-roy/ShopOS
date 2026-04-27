@@ -1,18 +1,18 @@
-# Strimzi: Apache Kafka on Kubernetes
+﻿# Strimzi: Apache Kafka on Kubernetes
 
-Strimzi provides a way to run an [Apache Kafka®](https://kafka.apache.org) cluster on
+Strimzi provides a way to run an [Apache KafkaÂ®](https://kafka.apache.org) cluster on
 [Kubernetes](https://kubernetes.io/) or [OpenShift](https://www.openshift.com/) in various deployment configurations.
 See our [website](https://strimzi.io) for more details about the project.
 
-**!!! IMPORTANT !!!**
+!!! IMPORTANT !!!
 
-**From Strimzi 0.51 on, we support only Kubernetes 1.30 and newer.**
-**Kubernetes 1.27, 1.28, and 1.29 are not supported anymore.**
+From Strimzi 0.51 on, we support only Kubernetes 1.30 and newer.
+Kubernetes 1.27, 1.28, and 1.29 are not supported anymore.
 
-**Strimzi 0.49.0 introduced new API version `v1` to all Strimzi custom resources.**
-**Make sure to [upgrade the CRDs](#upgrading-your-clusters) as part of the Strimzi upgrade as well.**
-**The old API versions (`v1alpha1`, `v1beta1`, and `v1beta2`) will continue to be supported until Strimzi 1.0.0 / 0.52.0.**
-**Before upgrading to Strimzi 0.49.0 or newer, make sure that you update your `KafkaUser` resources to [use the `.spec.authorization.acls[]operations` field instead of the deprecated `.spec.authorization.acls[]operation`](https://strimzi.io/docs/operators/0.49.0/deploying.html#con-api-conversion-v1-str).**
+Strimzi 0.49.0 introduced new API version `v1` to all Strimzi custom resources.
+Make sure to [upgrade the CRDs](#upgrading-your-clusters) as part of the Strimzi upgrade as well.
+The old API versions (`v1alpha1`, `v1beta1`, and `v1beta2`) will continue to be supported until Strimzi 1.0.0 / 0.52.0.
+Before upgrading to Strimzi 0.49.0 or newer, make sure that you update your `KafkaUser` resources to [use the `.spec.authorization.acls[]operations` field instead of the deprecated `.spec.authorization.acls[]operation`](https://strimzi.io/docs/operators/0.49.0/deploying.html#con-api-conversion-v1-str).
 For more details about the migration to the `v1` API and CRD upgrades, see the [documentation](https://strimzi.io/docs/operators/0.51.0/deploying.html#assembly-api-conversion-str).
 
 ## Introduction
@@ -23,25 +23,25 @@ cluster using the [Helm](https://helm.sh) package manager.
 
 ### Supported Features
 
-* **Manages the Kafka Cluster** - Deploys and manages all of the components of this complex application, including dependencies like Apache ZooKeeper® that are traditionally hard to administer.
-* **KRaft support** - Allows running Apache Kafka clusters in the KRaft mode (without ZooKeeper).
-* **Includes Kafka Connect** - Allows for configuration of common data sources and sinks to move data into and out of the Kafka cluster.
-* **Topic Management** - Creates and manages Kafka Topics within the cluster.
-* **User Management** - Creates and manages Kafka Users within the cluster.
-* **Connector Management** - Creates and manages Kafka Connect connectors.
-* **Includes Kafka MirrorMaker** - Allows for mirroring data between different Apache Kafka® clusters.
-* **Includes HTTP Kafka Bridge** - Allows clients to send and receive messages through an Apache Kafka® cluster via the HTTP protocol.
-* **Includes Cruise Control** - Automates the process of balancing partitions across an Apache Kafka® cluster.
-* **Auto-rebalancing when scaling** - Automatically rebalance the Kafka cluster after a scale-up or before a scale-down.
-* **Tiered storage** - Offloads older, less critical data to a lower-cost, lower-performance storage tier, such as object storage.
-* **Prometheus monitoring** - Built-in support for monitoring using Prometheus.
-* **Grafana Dashboards** - Built-in support for loading Grafana® dashboards via the grafana_sidecar
+* Manages the Kafka Cluster - Deploys and manages all of the components of this complex application, including dependencies like Apache ZooKeeperÂ® that are traditionally hard to administer.
+* KRaft support - Allows running Apache Kafka clusters in the KRaft mode (without ZooKeeper).
+* Includes Kafka Connect - Allows for configuration of common data sources and sinks to move data into and out of the Kafka cluster.
+* Topic Management - Creates and manages Kafka Topics within the cluster.
+* User Management - Creates and manages Kafka Users within the cluster.
+* Connector Management - Creates and manages Kafka Connect connectors.
+* Includes Kafka MirrorMaker - Allows for mirroring data between different Apache KafkaÂ® clusters.
+* Includes HTTP Kafka Bridge - Allows clients to send and receive messages through an Apache KafkaÂ® cluster via the HTTP protocol.
+* Includes Cruise Control - Automates the process of balancing partitions across an Apache KafkaÂ® cluster.
+* Auto-rebalancing when scaling - Automatically rebalance the Kafka cluster after a scale-up or before a scale-down.
+* Tiered storage - Offloads older, less critical data to a lower-cost, lower-performance storage tier, such as object storage.
+* Prometheus monitoring - Built-in support for monitoring using Prometheus.
+* Grafana Dashboards - Built-in support for loading GrafanaÂ® dashboards via the grafana_sidecar
 
 ### Upgrading your Clusters
 
 To upgrade the Strimzi operator, you can use the `helm upgrade` command.
-**The `helm upgrade` command does not upgrade the [Custom Resource Definitions](https://helm.sh/docs/chart_best_practices/custom_resource_definitions/).**
-**Update the CRDs manually after upgrading the Cluster Operator.**
+The `helm upgrade` command does not upgrade the [Custom Resource Definitions](https://helm.sh/docs/chart_best_practices/custom_resource_definitions/).
+Update the CRDs manually after upgrading the Cluster Operator.
 You can access the CRDs from our [GitHub release page](https://github.com/strimzi/strimzi-kafka-operator/releases) or find them in the `crd` subdirectory inside the Helm Chart.
 For example, when upgrading to Strimzi 0.51.0, you can do:
 

@@ -1,4 +1,4 @@
-# High Availability
+﻿# High Availability
 
 All components (in-memory DB, volume/asset storage, code indexer) used by Gitea must be deployed in a HA-ready fashion to achieve a full HA-ready Gitea deployment.
 The following document explains how to achieve this for all individual components.
@@ -109,7 +109,7 @@ By default the chart provisions a single RWO volume to store everything (repos, 
 This volume cannot be mounted by multiple pods.
 Hence, a RWX volume is required and (optionally) an external HA-ready object storage.
 
-> **Note:** Double-check that the file permissions are set correctly on the RWX volume! That is everything should be owned by the `git` user which usually has `uid=1000` and `gid=1000`.
+> Note: Double-check that the file permissions are set correctly on the RWX volume! That is everything should be owned by the `git` user which usually has `uid=1000` and `gid=1000`.
 
 To use `minio` you need to deploy and configure an external `minio` instance yourself and explicitly define the `STORAGE_TYPE` values as shown below.
 

@@ -1,4 +1,4 @@
-<!--- app-name: Apache Kafka -->
+﻿<!--- app-name: Apache Kafka -->
 
 # Bitnami package for Apache Kafka
 
@@ -18,13 +18,13 @@ helm install my-release oci://registry-1.docker.io/bitnamicharts/kafka
 
 Looking to use Apache Kafka in production? Try [VMware Tanzu Application Catalog](https://bitnami.com/enterprise), the commercial edition of the Bitnami catalog.
 
-## ⚠️ Important Notice: Upcoming changes to the Bitnami Catalog
+## âš ï¸ Important Notice: Upcoming changes to the Bitnami Catalog
 
 Beginning August 28th, 2025, Bitnami will evolve its public catalog to offer a curated set of hardened, security-focused images under the new [Bitnami Secure Images initiative](https://news.broadcom.com/app-dev/broadcom-introduces-bitnami-secure-images-for-production-ready-containerized-applications). As part of this transition:
 
 - Granting community users access for the first time to security-optimized versions of popular container images.
-- Bitnami will begin deprecating support for non-hardened, Debian-based software images in its free tier and will gradually remove non-latest tags from the public catalog. As a result, community users will have access to a reduced number of hardened images. These images are published only under the “latest” tag and are intended for development purposes
-- Starting August 28th, over two weeks, all existing container images, including older or versioned tags (e.g., 2.50.0, 10.6), will be migrated from the public catalog (docker.io/bitnami) to the “Bitnami Legacy” repository (docker.io/bitnamilegacy), where they will no longer receive updates.
+- Bitnami will begin deprecating support for non-hardened, Debian-based software images in its free tier and will gradually remove non-latest tags from the public catalog. As a result, community users will have access to a reduced number of hardened images. These images are published only under the â€œlatestâ€ tag and are intended for development purposes
+- Starting August 28th, over two weeks, all existing container images, including older or versioned tags (e.g., 2.50.0, 10.6), will be migrated from the public catalog (docker.io/bitnami) to the â€œBitnami Legacyâ€ repository (docker.io/bitnamilegacy), where they will no longer receive updates.
 - For production workloads and long-term support, users are encouraged to adopt Bitnami Secure Images, which include hardened containers, smaller attack surfaces, CVE transparency (via VEX/KEV), SBOMs, and enterprise support.
 
 These changes aim to improve the security posture of all Bitnami users by promoting best practices for software supply chain integrity and up-to-date deployments. For more details, visit the [Bitnami Secure Images announcement](https://github.com/bitnami/containers/issues/83267).
@@ -51,7 +51,7 @@ helm install my-release oci://REGISTRY_NAME/REPOSITORY_NAME/kafka
 
 These commands deploy Kafka on the Kubernetes cluster in the default configuration. The [Parameters](#parameters) section lists the parameters that can be configured during installation.
 
-> **Tip**: List all releases using `helm list`
+> Tip: List all releases using `helm list`
 
 ## Configuration and installation details
 
@@ -86,9 +86,9 @@ If you enabled SASL authentication on any listener, you can set the SASL credent
 - `sasl.interbroker.user`/`sasl.interbroker.password`:  when enabling SASL authentication for inter-broker communications.
 - `sasl.controller.user`/`sasl.controller.password`:  when enabling SASL authentication for controller communications.
 
-In order to configure TLS authentication/encryption, you **can** create a secret per Kafka node you have in the cluster containing the Java Key Stores (JKS) files: the truststore (`kafka.truststore.jks`) and the keystore (`kafka.keystore.jks`). Then, you need pass the secret names with the `tls.existingSecret` parameter when deploying the chart.
+In order to configure TLS authentication/encryption, you can create a secret per Kafka node you have in the cluster containing the Java Key Stores (JKS) files: the truststore (`kafka.truststore.jks`) and the keystore (`kafka.keystore.jks`). Then, you need pass the secret names with the `tls.existingSecret` parameter when deploying the chart.
 
-> **Note**: If the JKS files are password protected (recommended), you will need to provide the password to get access to the keystores. To do so, use the `tls.keystorePassword` and `tls.truststorePassword` parameters to provide your passwords.
+> Note: If the JKS files are password protected (recommended), you will need to provide the password to get access to the keystores. To do so, use the `tls.keystorePassword` and `tls.truststorePassword` parameters to provide your passwords.
 
 For instance, to configure TLS authentication on a Kafka cluster with 2 Kafka nodes use the commands below to create the secrets:
 
@@ -97,15 +97,15 @@ kubectl create secret generic kafka-jks-0 --from-file=kafka.truststore.jks=./kaf
 kubectl create secret generic kafka-jks-1 --from-file=kafka.truststore.jks=./kafka.truststore.jks --from-file=kafka.keystore.jks=./kafka-1.keystore.jks
 ```
 
-> **Note**: the command above assumes you already created the truststore and keystores files. This [script](https://raw.githubusercontent.com/confluentinc/confluent-platform-security-tools/master/kafka-generate-ssl.sh) can help you with the JKS files generation.
+> Note: the command above assumes you already created the truststore and keystores files. This [script](https://raw.githubusercontent.com/confluentinc/confluent-platform-security-tools/master/kafka-generate-ssl.sh) can help you with the JKS files generation.
 
 If, for some reason (like using CertManager) you can not use the default JKS secret scheme, you can use the additional parameters:
 
-- `tls.jksTruststoreSecret` to define additional secret, where the `kafka.truststore.jks` is being kept. The truststore password **must** be the same as in `tls.truststorePassword`
+- `tls.jksTruststoreSecret` to define additional secret, where the `kafka.truststore.jks` is being kept. The truststore password must be the same as in `tls.truststorePassword`
 - `tls.jksTruststoreKey` to overwrite the default value of the truststore key (`kafka.truststore.jks`).
 
-> **Note**: If you are using CertManager, particularly when an ACME issuer is used, the `ca.crt` field is not put in the `Secret` that CertManager creates. To handle this, the `tls.pemChainIncluded` property can be set to `true` and the initContainer created by this Chart will attempt to extract the intermediate certs from the `tls.crt` field of the secret (which is a PEM chain)
-> **Note**: The truststore/keystore from above **must** be protected with the same passwords set in the `tls.keystorePassword` and `tls.truststorePassword` parameters.
+> Note: If you are using CertManager, particularly when an ACME issuer is used, the `ca.crt` field is not put in the `Secret` that CertManager creates. To handle this, the `tls.pemChainIncluded` property can be set to `true` and the initContainer created by this Chart will attempt to extract the intermediate certs from the `tls.crt` field of the secret (which is a PEM chain)
+> Note: The truststore/keystore from above must be protected with the same passwords set in the `tls.keystorePassword` and `tls.truststorePassword` parameters.
 
 You can deploy the chart with authentication using the following parameters:
 
@@ -142,7 +142,7 @@ There are three ways of configuring external access. Using LoadBalancer services
 
 You have two alternatives to use LoadBalancer services:
 
-- Option A) Use random load balancer IPs using an **initContainer** that waits for the IPs to be ready and discover them automatically.
+- Option A) Use random load balancer IPs using an initContainer that waits for the IPs to be ready and discover them automatically.
 
 ```console
 externalAccess.enabled=true
@@ -181,7 +181,7 @@ Following the aforementioned steps will also allow to connect the brokers from t
 
 You have two alternatives to use NodePort services:
 
-- Option A) Use random node ports using an **initContainer** that discover them automatically.
+- Option A) Use random node ports using an initContainer that discover them automatically.
 
   ```console
   externalAccess.enabled=true
@@ -1068,7 +1068,7 @@ helm install my-release -f values.yaml oci://REGISTRY_NAME/REPOSITORY_NAME/kafka
 ```
 
 > Note: You need to substitute the placeholders `REGISTRY_NAME` and `REPOSITORY_NAME` with a reference to your Helm chart registry and repository. For example, in the case of Bitnami, you need to use `REGISTRY_NAME=registry-1.docker.io` and `REPOSITORY_NAME=bitnamicharts`.
-> **Tip**: You can use the default [values.yaml](https://github.com/bitnami/charts/tree/main/bitnami/kafka/values.yaml)
+> Tip: You can use the default [values.yaml](https://github.com/bitnami/charts/tree/main/bitnami/kafka/values.yaml)
 
 ## Troubleshooting
 
@@ -1087,7 +1087,7 @@ For more information please check [Kafka documentation](https://kafka.apache.org
 
 ### To 32.0.0
 
-This major release bumps Kafka major version to `4.y.z` series. This version implies a significant milestone given now Kafka operates operate entirely without Apache ZooKeeper, running in KRaft mode by default. As a consequence, **ZooKeeper is no longer a chart dependency and every related parameter has been removed.**. Upgrading from `31.y.z` chart version is not supported unless KRaft mode was already enabled.
+This major release bumps Kafka major version to `4.y.z` series. This version implies a significant milestone given now Kafka operates operate entirely without Apache ZooKeeper, running in KRaft mode by default. As a consequence, ZooKeeper is no longer a chart dependency and every related parameter has been removed.. Upgrading from `31.y.z` chart version is not supported unless KRaft mode was already enabled.
 
 Also, some KRaft-related parameters have been renamed or removed:
 
@@ -1212,7 +1212,7 @@ The changes introduced in this version are:
   - Controller pods will not configure externalAccess unless either:
     - `controller.controllerOnly=false` (default), meaning the pods are running as 'controller+broker' nodes; or
     - `externalAccess.controller.service.forceExpose=true`, for use cases where controller-only nodes want to be exposed externally.
-- TLS certificates value `tls.existingSecret` no longer supports an array of secrets (1 secret per node). It now accepts a single secret containing multiple certificates named `kafka-<role>-<pod-number>` for each Kafka pod, or alternatively, a single certificate shared by all Kafka nodes using wildcard CN and/or SubjectAltNames. **NOTE**: If using CertManager to automatically generate the certificate secrets, only the single certificate approach would be supported.
+- TLS certificates value `tls.existingSecret` no longer supports an array of secrets (1 secret per node). It now accepts a single secret containing multiple certificates named `kafka-<role>-<pod-number>` for each Kafka pod, or alternatively, a single certificate shared by all Kafka nodes using wildcard CN and/or SubjectAltNames. NOTE: If using CertManager to automatically generate the certificate secrets, only the single certificate approach would be supported.
 
 #### Upgrading from Kraft mode
 
@@ -1293,7 +1293,7 @@ This guide is an adaptation from upstream documentation: [Migrate from ZooKeeper
     [2023-07-13 13:07:45,226] INFO [QuorumController id=1] Transitioning ZK migration state from MIGRATION to POST_MIGRATION (org.apache.kafka.controller.FeatureControlManager)
     ```
 
-6. (**Optional**) If you would like to switch to a non-dedicated cluster, set `controller.controllerOnly=false`. This will cause controller-only nodes to switch to controller+broker nodes.
+6. (Optional) If you would like to switch to a non-dedicated cluster, set `controller.controllerOnly=false`. This will cause controller-only nodes to switch to controller+broker nodes.
 
     At that point, you could manually decommission broker-only nodes by reassigning its partitions to controller-eligible nodes.
 
@@ -1303,7 +1303,7 @@ This guide is an adaptation from upstream documentation: [Migrate from ZooKeeper
 
 When upgrading the Kafka chart, you may want to retain your existing data. To do so, we recommend following this guide:
 
-**NOTE**: This guide requires the binaries 'kubectl' and 'jq'.
+NOTE: This guide requires the binaries 'kubectl' and 'jq'.
 
 ```console
 # Env variables

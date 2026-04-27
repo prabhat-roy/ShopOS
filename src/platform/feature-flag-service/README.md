@@ -1,4 +1,4 @@
-# Feature Flag Service
+﻿# Feature Flag Service
 
 > Centralised feature toggle management for controlled rollouts and A/B experiments.
 
@@ -50,17 +50,17 @@ graph LR
 
 ## Kafka Topics
 
-N/A — the Feature Flag Service notifies dependents via gRPC streaming watch, not Kafka.
+N/A â€” the Feature Flag Service notifies dependents via gRPC streaming watch, not Kafka.
 
 ## Dependencies
 
-**Upstream** (services this calls):
-- `PostgreSQL` — flag definitions and targeting rule persistence
+Upstream (services this calls):
+- `PostgreSQL` â€” flag definitions and targeting rule persistence
 
-**Downstream** (services that call this):
-- `web-bff` (platform) — feature gating for web UI flows
-- `mobile-bff` (platform) — feature gating for mobile app flows
-- `ab-testing-service` (commerce) — experiment flag evaluation
+Downstream (services that call this):
+- `web-bff` (platform) â€” feature gating for web UI flows
+- `mobile-bff` (platform) â€” feature gating for mobile app flows
+- `ab-testing-service` (commerce) â€” experiment flag evaluation
 - Any microservice requiring feature-controlled code paths
 
 ## Environment Variables
@@ -87,4 +87,4 @@ skaffold dev --module=feature-flag-service
 
 ## Health Check
 
-`GET /healthz` → `{"status":"ok"}`
+`GET /healthz` â†’ `{"status":"ok"}`

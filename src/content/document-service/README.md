@@ -1,4 +1,4 @@
-# document-service
+﻿# document-service
 
 > PDF and Word document storage with version control and access control backed by MinIO.
 
@@ -61,9 +61,9 @@ service DocumentService {
 
 ## Dependencies
 
-**Upstream:** invoice-service, contract-service, order-service, data-export-service
+Upstream: invoice-service, contract-service, order-service, data-export-service
 
-**Downstream:** permission-service (access control), MinIO (storage)
+Downstream: permission-service (access control), MinIO (storage)
 
 ## Environment Variables
 
@@ -71,12 +71,12 @@ service DocumentService {
 |---|---|---|
 | `GRPC_PORT` | `50142` | gRPC server port |
 | `MINIO_ENDPOINT` | `minio:9000` | MinIO endpoint |
-| `MINIO_ACCESS_KEY` | — | MinIO access key |
-| `MINIO_SECRET_KEY` | — | MinIO secret key |
+| `MINIO_ACCESS_KEY` | â€” | MinIO access key |
+| `MINIO_SECRET_KEY` | â€” | MinIO secret key |
 | `MINIO_BUCKET` | `documents` | MinIO bucket for documents |
-| `SPRING_DATASOURCE_URL` | — | PostgreSQL JDBC URL |
-| `SPRING_DATASOURCE_USERNAME` | — | PostgreSQL username |
-| `SPRING_DATASOURCE_PASSWORD` | — | PostgreSQL password |
+| `SPRING_DATASOURCE_URL` | â€” | PostgreSQL JDBC URL |
+| `SPRING_DATASOURCE_USERNAME` | â€” | PostgreSQL username |
+| `SPRING_DATASOURCE_PASSWORD` | â€” | PostgreSQL password |
 | `PRESIGNED_URL_TTL_SECONDS` | `3600` | Download URL expiry |
 | `PERMISSION_SERVICE_ADDR` | `permission-service:50063` | Permission service address |
 | `MAX_DOCUMENT_SIZE_MB` | `100` | Maximum document upload size |
@@ -89,4 +89,4 @@ docker-compose up document-service
 
 ## Health Check
 
-`GET /healthz` → `{"status":"ok"}`
+`GET /healthz` â†’ `{"status":"ok"}`

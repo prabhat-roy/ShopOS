@@ -1,6 +1,6 @@
-# influencer-service
+﻿# influencer-service
 
-> Manages influencer marketing campaigns — tracks UTM-tagged links, measures reach and conversion, stores campaign creative assets, and calculates performance-based compensation.
+> Manages influencer marketing campaigns â€” tracks UTM-tagged links, measures reach and conversion, stores campaign creative assets, and calculates performance-based compensation.
 
 ## Overview
 
@@ -65,19 +65,19 @@ service InfluencerService {
 
 ## Dependencies
 
-**Upstream (callers)**
-- `commission-payout-service` — queries campaign earnings for payout processing
-- Analytics pipeline — feeds click and conversion events via Kafka
+Upstream (callers)
+- `commission-payout-service` â€” queries campaign earnings for payout processing
+- Analytics pipeline â€” feeds click and conversion events via Kafka
 
-**Downstream (calls out to)**
-- `media-asset-service` — stores campaign creative asset references
+Downstream (calls out to)
+- `media-asset-service` â€” stores campaign creative asset references
 
 ## Environment Variables
 
 | Variable | Default | Description |
 |---|---|---|
 | `GRPC_PORT` | `50202` | Port the gRPC server listens on |
-| `DATABASE_URL` | — | PostgreSQL connection string (required) |
+| `DATABASE_URL` | â€” | PostgreSQL connection string (required) |
 | `UTM_DEFAULT_SOURCE` | `influencer` | Default UTM source for campaign links |
 | `UTM_DEFAULT_MEDIUM` | `social` | Default UTM medium for campaign links |
 | `ATTRIBUTION_WINDOW_DAYS` | `7` | Days after click within which a conversion is attributed |
@@ -92,6 +92,6 @@ docker-compose up influencer-service
 
 ## Health Check
 
-`GET /healthz` → `{"status":"ok"}`
+`GET /healthz` â†’ `{"status":"ok"}`
 
-gRPC health: `grpc.health.v1.Health/Check` → `SERVING`
+gRPC health: `grpc.health.v1.Health/Check` â†’ `SERVING`

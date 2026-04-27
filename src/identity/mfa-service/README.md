@@ -1,4 +1,4 @@
-# mfa-service
+﻿# mfa-service
 
 > TOTP/HOTP multi-factor authentication for step-up and login verification.
 
@@ -59,7 +59,7 @@ sequenceDiagram
 - Provision TOTP secrets during MFA enrollment (cryptographically random, base32-encoded)
 - Generate otpauth:// URI for QR code display in authenticator apps
 - Generate and store hashed backup codes for account recovery
-- Verify TOTP codes with a ±1 window tolerance for clock skew
+- Verify TOTP codes with a Â±1 window tolerance for clock skew
 - Track failed verification attempts and enforce lockout after N failures
 - Support MFA method status per user: disabled, pending-activation, active
 - Allow backup code redemption (single-use, marks code as consumed)
@@ -90,29 +90,29 @@ service MFAService {
 
 ## Kafka Topics
 
-Not applicable — mfa-service is gRPC-only.
+Not applicable â€” mfa-service is gRPC-only.
 
 ## Dependencies
 
-**Upstream** (calls these):
-- None — mfa-service has no outbound service calls
+Upstream (calls these):
+- None â€” mfa-service has no outbound service calls
 
-**Downstream** (called by these):
-- `auth-service` — `VerifyOTP` during login when MFA is active
-- `user-service` — `EnrollMFA` / `GetMFAStatus` during account settings flows
+Downstream (called by these):
+- `auth-service` â€” `VerifyOTP` during login when MFA is active
+- `user-service` â€” `EnrollMFA` / `GetMFAStatus` during account settings flows
 
 ## Environment Variables
 
 | Variable | Default | Description |
 |---|---|---|
-| `DATABASE_URL` | — | PostgreSQL connection string |
+| `DATABASE_URL` | â€” | PostgreSQL connection string |
 | `GRPC_PORT` | `50064` | gRPC listening port |
 | `TOTP_ISSUER` | `ShopOS` | Issuer label shown in authenticator apps |
 | `TOTP_DIGITS` | `6` | OTP code length (6 or 8) |
 | `TOTP_PERIOD_SECONDS` | `30` | TOTP period (RFC 6238 standard) |
 | `MAX_FAILED_ATTEMPTS` | `5` | Failed OTP attempts before lockout |
 | `LOCKOUT_DURATION_MINUTES` | `15` | Duration of OTP lockout |
-| `SECRET_ENCRYPTION_KEY` | — | AES-256 key for encrypting stored TOTP secrets |
+| `SECRET_ENCRYPTION_KEY` | â€” | AES-256 key for encrypting stored TOTP secrets |
 | `BACKUP_CODES_COUNT` | `10` | Number of backup codes generated per enrollment |
 
 ## Running Locally
@@ -123,6 +123,6 @@ docker-compose up mfa-service
 
 ## Health Check
 
-`GET /healthz` — `{"status":"ok"}`
+`GET /healthz` â€” `{"status":"ok"}`
 
 gRPC health protocol: `grpc.health.v1.Health/Check` on port `50064`

@@ -1,4 +1,4 @@
-# Prometheus
+﻿# Prometheus
 
 [Prometheus](https://prometheus.io/), a [Cloud Native Computing Foundation](https://cncf.io/) project, is a systems and service monitoring system. It collects metrics from configured targets at given intervals, evaluates rule expressions, displays the results, and can trigger alerts if some condition is observed to be true.
 
@@ -102,7 +102,7 @@ Users are advised to review changes in the corresponding chart releases before u
 
 The `app.kubernetes.io/version` label has been removed from the pod selector.
 
-Therefore, you must delete the previous StatefulSet or Deployment before upgrading. Performing this operation will cause **Prometheus to stop functioning** until the upgrade is complete.
+Therefore, you must delete the previous StatefulSet or Deployment before upgrading. Performing this operation will cause Prometheus to stop functioning until the upgrade is complete.
 
 ```console
 kubectl delete deploy,sts -l app.kubernetes.io/name=prometheus
@@ -331,7 +331,7 @@ Roles and RoleBindings resources will be created automatically for `server` serv
 
 To manually setup RBAC you need to set the parameter `rbac.create=false` and specify the service account to be used for each service by setting the parameters: `serviceAccounts.{{ component }}.create` to `false` and `serviceAccounts.{{ component }}.name` to the name of a pre-existing service account.
 
-> **Tip**: You can refer to the default `*-clusterrole.yaml` and `*-clusterrolebinding.yaml` files in [templates](templates/) to customize your own.
+> Tip: You can refer to the default `*-clusterrole.yaml` and `*-clusterrolebinding.yaml` files in [templates](templates/) to customize your own.
 
 ### ConfigMap Files
 

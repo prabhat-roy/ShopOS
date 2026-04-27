@@ -1,4 +1,4 @@
-# budget-service
+﻿# budget-service
 
 > Creates and tracks departmental budgets, monitors spend against allocations, and raises variance alerts.
 
@@ -66,12 +66,12 @@ service BudgetService {
 
 ## Dependencies
 
-**Upstream (callers)**
-- `admin-portal` (platform domain) — finance team budget management UI
+Upstream (callers)
+- `admin-portal` (platform domain) â€” finance team budget management UI
 
-**Downstream (calls out to)**
-- `accounting-service` — actual GL spend data by cost centre
-- `expense-management-service` — approved expense totals by department
+Downstream (calls out to)
+- `accounting-service` â€” actual GL spend data by cost centre
+- `expense-management-service` â€” approved expense totals by department
 
 ## Environment Variables
 
@@ -82,7 +82,7 @@ service BudgetService {
 | `DB_PORT` | `5432` | PostgreSQL port |
 | `DB_NAME` | `budget_db` | Database name |
 | `DB_USER` | `budget_svc` | Database user |
-| `DB_PASSWORD` | — | Database password (required) |
+| `DB_PASSWORD` | â€” | Database password (required) |
 | `KAFKA_BROKERS` | `localhost:9092` | Comma-separated Kafka broker list |
 | `ACCOUNTING_GRPC_ADDR` | `accounting-service:50111` | Address of accounting-service |
 | `EXPENSE_GRPC_ADDR` | `expense-management-service:50114` | Address of expense-management-service |
@@ -99,6 +99,6 @@ docker-compose up budget-service
 
 ## Health Check
 
-`GET /healthz` → `{"status":"ok"}`
+`GET /healthz` â†’ `{"status":"ok"}`
 
-gRPC health: `grpc.health.v1.Health/Check` → `SERVING`
+gRPC health: `grpc.health.v1.Health/Check` â†’ `SERVING`

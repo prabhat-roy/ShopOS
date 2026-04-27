@@ -1,4 +1,4 @@
-# quote-rfq-service
+﻿# quote-rfq-service
 
 > Handles Request-for-Quote creation, vendor responses, and quote-to-order conversion for B2B buyers.
 
@@ -37,7 +37,7 @@ graph TD
 - Create RFQ documents on behalf of buyer organizations
 - Distribute RFQ requests to registered vendors or internal pricing teams
 - Accept and version quote responses from vendors
-- Track quote status through the full lifecycle: draft → submitted → responded → negotiating → accepted → converted
+- Track quote status through the full lifecycle: draft â†’ submitted â†’ responded â†’ negotiating â†’ accepted â†’ converted
 - Route high-value quotes through approval workflows before acceptance
 - Convert accepted quotes into orders, passing negotiated line items to order-service
 - Expire unanswered or outdated quotes automatically
@@ -68,15 +68,15 @@ graph TD
 
 ## Dependencies
 
-**Upstream (calls this service)**
-- `partner-bff` — buyer and vendor RFQ management UI
-- `vendor-service` — submits quote responses on behalf of vendors
+Upstream (calls this service)
+- `partner-bff` â€” buyer and vendor RFQ management UI
+- `vendor-service` â€” submits quote responses on behalf of vendors
 
-**Downstream (this service calls)**
-- `organization-service` — validates buyer organization
-- `pricing-service` — validates product references and base prices
-- `approval-workflow-service` — routes large quotes for approval
-- `order-service` — creates order from an accepted quote
+Downstream (this service calls)
+- `organization-service` â€” validates buyer organization
+- `pricing-service` â€” validates product references and base prices
+- `approval-workflow-service` â€” routes large quotes for approval
+- `order-service` â€” creates order from an accepted quote
 
 ## Environment Variables
 
@@ -87,7 +87,7 @@ graph TD
 | `DB_PORT` | `5432` | PostgreSQL port |
 | `DB_NAME` | `quote_rfq_db` | Database name |
 | `DB_USER` | `quote_user` | Database username |
-| `DB_PASSWORD` | — | Database password (required) |
+| `DB_PASSWORD` | â€” | Database password (required) |
 | `KAFKA_BOOTSTRAP_SERVERS` | `localhost:9092` | Kafka broker addresses |
 | `ORGANIZATION_SERVICE_ADDR` | `organization-service:50160` | Address of organization-service |
 | `APPROVAL_SERVICE_ADDR` | `approval-workflow-service:50163` | Address of approval-workflow-service |
@@ -104,6 +104,6 @@ docker-compose up quote-rfq-service
 
 ## Health Check
 
-`GET /healthz` → `{"status":"ok"}`
+`GET /healthz` â†’ `{"status":"ok"}`
 
-gRPC health: `grpc.health.v1.Health/Check` → `SERVING`
+gRPC health: `grpc.health.v1.Health/Check` â†’ `SERVING`

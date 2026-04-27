@@ -1,4 +1,4 @@
-# OpenTelemetry Collector Helm Chart
+﻿# OpenTelemetry Collector Helm Chart
 
 The helm chart installs [OpenTelemetry Collector](https://github.com/open-telemetry/opentelemetry-collector)
 in kubernetes cluster.
@@ -54,9 +54,9 @@ mode: deployment
 
 By default collector has the following receivers enabled:
 
-- **metrics**: OTLP and prometheus. Prometheus is configured only for scraping collector's own metrics.
-- **traces**: OTLP, zipkin and jaeger (thrift and grpc).
-- **logs**: OTLP (to enable container logs, see [Configuration for Kubernetes container logs](#configuration-for-kubernetes-container-logs)).
+- metrics: OTLP and prometheus. Prometheus is configured only for scraping collector's own metrics.
+- traces: OTLP, zipkin and jaeger (thrift and grpc).
+- logs: OTLP (to enable container logs, see [Configuration for Kubernetes container logs](#configuration-for-kubernetes-container-logs)).
 
 ### Basic Top Level Configuration
 
@@ -221,10 +221,10 @@ presets:
 
 When annotation-based discovery is enabled, the collector will:
 
-1. **Discover Pods**: Use the Receiver Creator receiver to watch for pods with specific annotations
-2. **Generate Receiver Configurations**: Automatically generate receiver configuration
+1. Discover Pods: Use the Receiver Creator receiver to watch for pods with specific annotations
+2. Generate Receiver Configurations: Automatically generate receiver configuration
 
-**Default Behavior**: When `presets.annotationDiscovery.logs.enabled` is `true`, the collector will collect logs from all containers by default, unless a pod explicitly opts out using the `io.opentelemetry.discovery.logs/enabled: "false"` annotation.
+Default Behavior: When `presets.annotationDiscovery.logs.enabled` is `true`, the collector will collect logs from all containers by default, unless a pod explicitly opts out using the `io.opentelemetry.discovery.logs/enabled: "false"` annotation.
 
 This approach provides the same functionality as `logsCollection` but with fine-grained control over which pods are monitored, making it ideal for environments where you want to selectively collect telemetry from specific applications or services.
 

@@ -1,4 +1,4 @@
-# Documentation — ShopOS
+﻿# Documentation â€” ShopOS
 
 Architecture decision records, system design documents, and operational runbooks.
 
@@ -8,24 +8,24 @@ Architecture decision records, system design documents, and operational runbooks
 
 ```
 docs/
-├── architecture/
-│   ├── system-overview.md          ← High-level architecture and design philosophy
-│   ├── domain-map.md               ← 13 business domains and their service boundaries
-│   ├── communication-patterns.md   ← gRPC sync, Kafka async, WebSocket real-time
-│   ├── database-strategy.md        ← Polyglot persistence rationale per domain
-│   └── security-model.md           ← Defence-in-depth layers and threat model
-├── runbooks/
-│   ├── incident-response.md        ← On-call escalation and triage procedures
-│   ├── database-failover.md        ← Postgres/Cassandra failover steps
-│   ├── kafka-recovery.md           ← Broker recovery and consumer group reset
-│   └── rollback.md                 ← Service and cluster rollback procedures
-└── adr/
-    ├── 001-microservice-boundaries.md
-    ├── 002-polyglot-persistence.md
-    ├── 003-event-driven-architecture.md
-    ├── 004-api-gateway-pattern.md
-    ├── 005-saga-orchestration.md
-    └── 006-gitops-delivery.md
+â”œâ”€â”€ architecture/
+â”‚   â”œâ”€â”€ system-overview.md          â† High-level architecture and design philosophy
+â”‚   â”œâ”€â”€ domain-map.md               â† 13 business domains and their service boundaries
+â”‚   â”œâ”€â”€ communication-patterns.md   â† gRPC sync, Kafka async, WebSocket real-time
+â”‚   â”œâ”€â”€ database-strategy.md        â† Polyglot persistence rationale per domain
+â”‚   â””â”€â”€ security-model.md           â† Defence-in-depth layers and threat model
+â”œâ”€â”€ runbooks/
+â”‚   â”œâ”€â”€ incident-response.md        â† On-call escalation and triage procedures
+â”‚   â”œâ”€â”€ database-failover.md        â† Postgres/Cassandra failover steps
+â”‚   â”œâ”€â”€ kafka-recovery.md           â† Broker recovery and consumer group reset
+â”‚   â””â”€â”€ rollback.md                 â† Service and cluster rollback procedures
+â””â”€â”€ adr/
+    â”œâ”€â”€ 001-microservice-boundaries.md
+    â”œâ”€â”€ 002-polyglot-persistence.md
+    â”œâ”€â”€ 003-event-driven-architecture.md
+    â”œâ”€â”€ 004-api-gateway-pattern.md
+    â”œâ”€â”€ 005-saga-orchestration.md
+    â””â”€â”€ 006-gitops-delivery.md
 ```
 
 ---
@@ -44,10 +44,10 @@ call which synchronously vs. event-driven.
 
 ### [communication-patterns.md](architecture/communication-patterns.md)
 When to use each communication mechanism:
-- **gRPC**: synchronous request/response — reads, commands that need a response
-- **Kafka**: asynchronous domain events — cross-domain side effects
-- **WebSocket**: real-time push — live chat, in-app notifications
-- **REST**: external-facing — BFF → client, webhooks → partners
+- gRPC: synchronous request/response â€” reads, commands that need a response
+- Kafka: asynchronous domain events â€” cross-domain side effects
+- WebSocket: real-time push â€” live chat, in-app notifications
+- REST: external-facing â€” BFF â†’ client, webhooks â†’ partners
 
 ### [database-strategy.md](architecture/database-strategy.md)
 Explains why each database is assigned to each domain:
@@ -67,13 +67,13 @@ Explains why each database is assigned to each domain:
 
 ### [security-model.md](architecture/security-model.md)
 The layered security posture:
-1. **Cluster perimeter** — Cilium CNI, network policies, Coraza WAF
-2. **Service mesh** — Istio mTLS between all pods, SPIFFE/SPIRE workload identity
-3. **Identity** — Keycloak OIDC, Dex federation, SPIRE X.509 SVIDs
-4. **Secrets** — Vault dynamic credentials, External Secrets Operator, Sealed Secrets
-5. **Policy** — OPA/Gatekeeper + Kyverno admission, OpenFGA authorisation
-6. **Runtime** — Falco, Tetragon (eBPF), Tracee
-7. **Supply chain** — Cosign signing, Rekor transparency, Kyverno image verification
+1. Cluster perimeter â€” Cilium CNI, network policies, Coraza WAF
+2. Service mesh â€” Istio mTLS between all pods, SPIFFE/SPIRE workload identity
+3. Identity â€” Keycloak OIDC, Dex federation, SPIRE X.509 SVIDs
+4. Secrets â€” Vault dynamic credentials, External Secrets Operator, Sealed Secrets
+5. Policy â€” OPA/Gatekeeper + Kyverno admission, OpenFGA authorisation
+6. Runtime â€” Falco, Tetragon (eBPF), Tracee
+7. Supply chain â€” Cosign signing, Rekor transparency, Kyverno image verification
 
 ---
 
@@ -93,7 +93,7 @@ The layered security posture:
 ## Runbooks
 
 ### [incident-response.md](runbooks/incident-response.md)
-Severity classification (P1–P4), on-call rotation, escalation paths, communication templates,
+Severity classification (P1â€“P4), on-call rotation, escalation paths, communication templates,
 and postmortem process.
 
 ### [database-failover.md](runbooks/database-failover.md)

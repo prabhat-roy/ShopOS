@@ -1,12 +1,12 @@
-# linkerd-crds
+﻿# linkerd-crds
 
 Linkerd gives you observability, reliability, and security
-for your microservices — with no code change required.
+for your microservices â€” with no code change required.
 
 ![Version: 1.8.0](https://img.shields.io/badge/Version-1.8.0-informational?style=flat-square)
 ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square)
 
-**Homepage:** <https://linkerd.io>
+Homepage: <https://linkerd.io>
 
 ## Quickstart and documentation
 

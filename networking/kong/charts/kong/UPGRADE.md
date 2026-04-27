@@ -1,4 +1,4 @@
-# Upgrade considerations
+﻿# Upgrade considerations
 
 New versions of the Kong chart may add significant new functionality or
 deprecate/entirely remove old functionality. This document covers how and why
@@ -666,7 +666,7 @@ if its PVC was created with an older version. If affected, your Postgres pod
 logs will show:
 
 ```
-postgresql 19:16:04.03 INFO  ==> ** Starting PostgreSQL **
+postgresql 19:16:04.03 INFO  ==>  Starting PostgreSQL 
 2020-03-27 19:16:04.053 GMT [1] FATAL:  data directory "/bitnami/postgresql/data" has group or world access
 2020-03-27 19:16:04.053 GMT [1] DETAIL:  Permissions should be u=rwx (0700).
 ```

@@ -1,4 +1,4 @@
-# payout-service
+﻿# payout-service
 
 > Schedules and executes vendor and marketplace seller payouts via bank transfer integrations.
 
@@ -38,7 +38,7 @@ graph TD
 - Payout schedule management per vendor (daily, weekly, net-30, manual)
 - Settled balance aggregation and payout batch creation
 - Bank transfer execution via integrated payment providers
-- Payout status tracking: scheduled → processing → completed / failed
+- Payout status tracking: scheduled â†’ processing â†’ completed / failed
 - Retry logic with exponential backoff for failed transfers
 - Payout holds for vendors under review or with active disputes
 - Withholding tax calculation and reporting
@@ -70,12 +70,12 @@ service PayoutService {
 
 ## Dependencies
 
-**Upstream (callers)**
-- `supplier-portal-service` (supply-chain domain) — vendor payout status reads
+Upstream (callers)
+- `supplier-portal-service` (supply-chain domain) â€” vendor payout status reads
 
-**Downstream (calls out to)**
-- `accounting-service` — settled balance query
-- `kyc-aml-service` — vendor compliance status check before payout release
+Downstream (calls out to)
+- `accounting-service` â€” settled balance query
+- `kyc-aml-service` â€” vendor compliance status check before payout release
 - External banking APIs (Stripe Connect, Wise, SEPA)
 
 ## Environment Variables
@@ -87,10 +87,10 @@ service PayoutService {
 | `DB_PORT` | `5432` | PostgreSQL port |
 | `DB_NAME` | `payout_db` | Database name |
 | `DB_USER` | `payout_svc` | Database user |
-| `DB_PASSWORD` | — | Database password (required) |
+| `DB_PASSWORD` | â€” | Database password (required) |
 | `KAFKA_BROKERS` | `localhost:9092` | Comma-separated Kafka broker list |
-| `STRIPE_CONNECT_SECRET_KEY` | — | Stripe Connect API secret key |
-| `WISE_API_KEY` | — | Wise (TransferWise) API key |
+| `STRIPE_CONNECT_SECRET_KEY` | â€” | Stripe Connect API secret key |
+| `WISE_API_KEY` | â€” | Wise (TransferWise) API key |
 | `PAYOUT_RETRY_MAX_ATTEMPTS` | `3` | Maximum retry attempts for failed transfers |
 | `PAYOUT_RETRY_DELAY_SECONDS` | `300` | Initial retry delay (exponential backoff base) |
 | `KYC_AML_GRPC_ADDR` | `kyc-aml-service:50116` | Address of kyc-aml-service |
@@ -104,6 +104,6 @@ docker-compose up payout-service
 
 ## Health Check
 
-`GET /healthz` → `{"status":"ok"}`
+`GET /healthz` â†’ `{"status":"ok"}`
 
-gRPC health: `grpc.health.v1.Health/Check` → `SERVING`
+gRPC health: `grpc.health.v1.Health/Check` â†’ `SERVING`

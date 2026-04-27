@@ -1,4 +1,4 @@
-# kyverno
+﻿# kyverno
 
 Kubernetes Native Policy Management
 
@@ -21,17 +21,17 @@ Access the complete user documentation and guides at: https://kyverno.io.
 
 ## Installing the Chart
 
-**IMPORTANT IMPORTANT IMPORTANT IMPORTANT**
+IMPORTANT IMPORTANT IMPORTANT IMPORTANT
 
 This chart changed significantly between `v2` and `v3`. If you are upgrading from `v2`, please read `Migrating from v2 to v3` section.
 
-**Add the Kyverno Helm repository:**
+Add the Kyverno Helm repository:
 
 ```console
 $ helm repo add kyverno https://kyverno.github.io/kyverno/
 ```
 
-**Create a namespace:**
+Create a namespace:
 
 You can install Kyverno in any namespace. The examples use `kyverno` as the namespace.
 
@@ -39,7 +39,7 @@ You can install Kyverno in any namespace. The examples use `kyverno` as the name
 $ kubectl create namespace kyverno
 ```
 
-**Install the Kyverno chart:**
+Install the Kyverno chart:
 
 ```console
 $ helm install kyverno --namespace kyverno kyverno/kyverno
@@ -50,7 +50,7 @@ The command deploys Kyverno on the Kubernetes cluster with default configuration
 The Kyverno ClusterRole/ClusterRoleBinding that manages webhook configurations must have the suffix `:webhook`. Ex., `*:webhook` or `kyverno:webhook`.
 Other ClusterRole/ClusterRoleBinding names are configurable.
 
-**Notes on using ArgoCD:**
+Notes on using ArgoCD:
 
 When deploying this chart with ArgoCD you will need to enable `Replace` in the `syncOptions`, and you probably want to ignore diff in aggregated cluster roles.
 
@@ -109,7 +109,7 @@ spec:
       - Replace=true
 ```
 
-**Notes on using Azure Kubernetes Service (AKS):**
+Notes on using Azure Kubernetes Service (AKS):
 
 AKS contains a component known as [Admission Enforcer](https://learn.microsoft.com/en-us/azure/aks/faq#can-admission-controller-webhooks-impact-kube-system-and-internal-aks-namespaces) which will attempt to modify Kyverno's webhooks if not excluded explicitly during Helm installation. If Admissions Enforcer is not disabled, this can lead to several symptoms such as high observed CPU usage and potentially cluster instability. Please see the Kyverno documentation [here](https://kyverno.io/docs/installation/platform-notes/#notes-for-aks-users) for more information and how to set this annotation on webhooks.
 
@@ -117,18 +117,18 @@ AKS contains a component known as [Admission Enforcer](https://learn.microsoft.c
 
 Direct upgrades from v2 of the Helm chart to v3 are not supported due to the number of breaking changes and manual intervention is required. Review and select an option after carefully reading below. Because either method requires down time, an upgrade should only be performed during a maintenance window. Regardless of the chosen option, please read all release notes very carefully to understand the full extent of changes brought by Kyverno 1.10. Release notes can be found at https://github.com/kyverno/kyverno/releases.
 
-**IMPORTANT NOTE**: If you currently use [clone-type](https://kyverno.io/docs/writing-policies/generate/#clone-source) generate rules with synchronization enabled, please do not upgrade to 1.10.0 as there is a bug which may prevent synchronization from occurring on all downstream (generated) resources when the source is updated. Please wait for a future patch where this should be resolved. See [issue 7170](https://github.com/kyverno/kyverno/issues/7170) for further details.
+IMPORTANT NOTE: If you currently use [clone-type](https://kyverno.io/docs/writing-policies/generate/#clone-source) generate rules with synchronization enabled, please do not upgrade to 1.10.0 as there is a bug which may prevent synchronization from occurring on all downstream (generated) resources when the source is updated. Please wait for a future patch where this should be resolved. See [issue 7170](https://github.com/kyverno/kyverno/issues/7170) for further details.
 
 ### Option 1 - Uninstallation and Reinstallation
 
 The first option for upgrading, which is the recommended option, involves backing up Kyverno policy resources, uninstalling Kyverno, and reinstalling with v3 of the chart. Policy Reports for policies which have background mode enabled will be regenerated upon the next scan interval.
 
-**Pros**
+Pros
 
 * Reduced complexity with minimal effort
 * Allows re-checking older policies against new validation webhooks in 1.10
 
-**Cons**
+Cons
 
 * Policy Reports which contained results only from admission mode and from policies/rules where background scans were disabled will be lost.
 * Requires additional steps if data-type generate rules are used
@@ -148,12 +148,12 @@ Follow the procedure below.
 
 In the second option, Kyverno policies do not have to be backed up however you perform more manual work in order to prepare for the upgrade to chart v3.
 
-**Pros**
+Pros
 
 * Policy Reports which contained results from admission mode will be preserved
 * Kyverno policies do not need to be backed up first
 
-**Cons**
+Cons
 
 * Older policies will not be revalidated for correctness according to the breaking schema changes. Some policies may not work as they did before.
 * Requires additional steps if data-type generate rules are used

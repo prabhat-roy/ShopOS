@@ -1,4 +1,4 @@
-# reporting-service
+﻿# reporting-service
 
 > Complex report generation using Spark-style aggregations over Cassandra for business intelligence.
 
@@ -56,14 +56,14 @@ service ReportingService {
 
 | Topic | Role |
 |---|---|
-| `analytics.aggregated.hourly` | Consumed — hourly rollup metrics from analytics-service |
-| `analytics.report.ready` | Produced — emitted when a report job completes |
+| `analytics.aggregated.hourly` | Consumed â€” hourly rollup metrics from analytics-service |
+| `analytics.report.ready` | Produced â€” emitted when a report job completes |
 
 ## Dependencies
 
-**Upstream:** analytics-service (aggregated event data), Cassandra (historical data)
+Upstream: analytics-service (aggregated event data), Cassandra (historical data)
 
-**Downstream:** data-export-service (file delivery), admin-portal, BI dashboards
+Downstream: data-export-service (file delivery), admin-portal, BI dashboards
 
 ## Environment Variables
 
@@ -86,4 +86,4 @@ docker-compose up reporting-service
 
 ## Health Check
 
-`GET /healthz` → `{"status":"ok"}`
+`GET /healthz` â†’ `{"status":"ok"}`

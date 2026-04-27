@@ -1,4 +1,4 @@
-# Change Log
+﻿# Change Log
 
 This file documents all notable changes to Falco Helm Chart. The release
 numbering uses [semantic versioning](http://semver.org).
@@ -553,10 +553,10 @@ The new chart introduces some breaking changes. For folks upgrading Falco please
 ## v3.0.0
 * Drop support for falcosecuriy/falco image, only the init container approach is supported out of the box;
 * Simplify the driver-loader init container logic;
-* Support **falcoctl** tool in the chart:
+* Support falcoctl tool in the chart:
   * Install the *rulesfile* artifacts;
   * Follow the *rulesfile* artifacts in order to have the latest rules once they are released from falcosecurity org;
-* Support the **modern-bpf** probe a new driver (experimental)
+* Support the modern-bpf probe a new driver (experimental)
 * Add a new file *BREAKING_CHANGES.md* to document the breaking changes and how to update the new chart.
 
 ## v2.5.5
@@ -715,7 +715,7 @@ update(falco/OWNERS): move inactive approvers to emeritus_approvers
 
 ## v2.0.0
 
-**Note**
+Note
 *This release is a complete refactor of the Falco Helm Chart. Thus, it introduces some breaking changes.*
 *Please, do not reuse values from previous chart installations.*
 

@@ -1,6 +1,6 @@
-# Vault Helm Chart
+﻿# Vault Helm Chart
 
-> :warning: **Please note**: We take Vault's security and our users' trust very seriously. If 
+> :warning: Please note: We take Vault's security and our users' trust very seriously. If 
 you believe you have found a security issue in Vault Helm, _please responsibly disclose_ 
 by contacting us at [security@hashicorp.com](mailto:security@hashicorp.com).
 
@@ -20,8 +20,8 @@ this README. Please refer to the Kubernetes and Helm documentation.
 
 The versions required are:
 
-  * **Helm 3.6+**
-  * **Kubernetes 1.29+** - This is the earliest version of Kubernetes tested.
+  * Helm 3.6+
+  * Kubernetes 1.29+ - This is the earliest version of Kubernetes tested.
     It is possible that this chart works with earlier versions but it is
     untested.
 

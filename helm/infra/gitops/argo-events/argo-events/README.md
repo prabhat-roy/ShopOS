@@ -1,6 +1,6 @@
-# Argo-Events Chart
+﻿# Argo-Events Chart
 
-This is a **community maintained** chart. It installs the [argo-events](https://github.com/argoproj/argo-events) application. This application comes packaged with:
+This is a community maintained chart. It installs the [argo-events](https://github.com/argoproj/argo-events) application. This application comes packaged with:
 
 - Sensor Custom Resource Definition (See CRD Notes)
 - EventSource Custom Resource Definition (See CRD Notes)
@@ -62,7 +62,7 @@ done
 | configs.jetstream.settings.maxMemoryStore | int | `-1` | Maximum size of the memory storage (e.g. 1G) |
 | configs.jetstream.streamConfig.discard | int | `0` | 0: DiscardOld, 1: DiscardNew |
 | configs.jetstream.streamConfig.duplicates | string | `"300s"` | Not documented at the moment |
-| configs.jetstream.streamConfig.maxAge | string | `"72h"` | Maximum age of existing messages, i.e. “72h”, “4h35m” |
+| configs.jetstream.streamConfig.maxAge | string | `"72h"` | Maximum age of existing messages, i.e. â€œ72hâ€, â€œ4h35mâ€ |
 | configs.jetstream.streamConfig.maxBytes | string | `"1GB"` |  |
 | configs.jetstream.streamConfig.maxMsgs | int | `1000000` | Maximum number of messages before expiring oldest message |
 | configs.jetstream.streamConfig.replicas | int | `3` | Number of replicas, defaults to 3 and requires minimal 3 |

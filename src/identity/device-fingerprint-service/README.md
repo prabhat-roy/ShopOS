@@ -1,4 +1,4 @@
-# device-fingerprint-service
+﻿# device-fingerprint-service
 
 > Device fingerprinting for fraud detection and anomalous login identification.
 
@@ -89,20 +89,20 @@ service DeviceFingerprintService {
 
 ## Dependencies
 
-**Upstream** (calls these):
-- None — device-fingerprint-service has no outbound gRPC calls
+Upstream (calls these):
+- None â€” device-fingerprint-service has no outbound gRPC calls
 
-**Downstream** (called by these):
-- `auth-service` — `IsKnownDevice` to decide if step-up MFA is required
-- `fraud-detection-service` — reads device history as a fraud signal, calls `MarkSuspicious`
-- `api-gateway` — forwards client fingerprint signals on login requests
+Downstream (called by these):
+- `auth-service` â€” `IsKnownDevice` to decide if step-up MFA is required
+- `fraud-detection-service` â€” reads device history as a fraud signal, calls `MarkSuspicious`
+- `api-gateway` â€” forwards client fingerprint signals on login requests
 
 ## Environment Variables
 
 | Variable | Default | Description |
 |---|---|---|
 | `REDIS_ADDR` | `redis:6379` | Redis server address |
-| `REDIS_PASSWORD` | — | Redis AUTH password |
+| `REDIS_PASSWORD` | â€” | Redis AUTH password |
 | `REDIS_DB` | `1` | Redis DB index (separate from session-service) |
 | `FINGERPRINT_TTL_DAYS` | `90` | How long device records are retained |
 | `MAX_DEVICES_PER_USER` | `20` | Maximum stored devices before oldest is evicted |
@@ -117,6 +117,6 @@ docker-compose up device-fingerprint-service
 
 ## Health Check
 
-`GET /healthz` — `{"status":"ok"}`
+`GET /healthz` â€” `{"status":"ok"}`
 
 gRPC health protocol: `grpc.health.v1.Health/Check` on port `50067`

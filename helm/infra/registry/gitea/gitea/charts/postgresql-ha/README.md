@@ -1,4 +1,4 @@
-<!--- app-name: PostgreSQL HA -->
+﻿<!--- app-name: PostgreSQL HA -->
 
 # Bitnami package for PostgreSQL HA
 
@@ -16,13 +16,13 @@ helm install my-release oci://registry-1.docker.io/bitnamicharts/postgresql-ha
 
 Looking to use PostgreSQL HA in production? Try [VMware Tanzu Application Catalog](https://bitnami.com/enterprise), the commercial edition of the Bitnami catalog.
 
-## ⚠️ Important Notice: Upcoming changes to the Bitnami Catalog
+## âš ï¸ Important Notice: Upcoming changes to the Bitnami Catalog
 
 Beginning August 28th, 2025, Bitnami will evolve its public catalog to offer a curated set of hardened, security-focused images under the new [Bitnami Secure Images initiative](https://news.broadcom.com/app-dev/broadcom-introduces-bitnami-secure-images-for-production-ready-containerized-applications). As part of this transition:
 
 - Granting community users access for the first time to security-optimized versions of popular container images.
-- Bitnami will begin deprecating support for non-hardened, Debian-based software images in its free tier and will gradually remove non-latest tags from the public catalog. As a result, community users will have access to a reduced number of hardened images. These images are published only under the “latest” tag and are intended for development purposes
-- Starting August 28th, over two weeks, all existing container images, including older or versioned tags (e.g., 2.50.0, 10.6), will be migrated from the public catalog (docker.io/bitnami) to the “Bitnami Legacy” repository (docker.io/bitnamilegacy), where they will no longer receive updates.
+- Bitnami will begin deprecating support for non-hardened, Debian-based software images in its free tier and will gradually remove non-latest tags from the public catalog. As a result, community users will have access to a reduced number of hardened images. These images are published only under the â€œlatestâ€ tag and are intended for development purposes
+- Starting August 28th, over two weeks, all existing container images, including older or versioned tags (e.g., 2.50.0, 10.6), will be migrated from the public catalog (docker.io/bitnami) to the â€œBitnami Legacyâ€ repository (docker.io/bitnamilegacy), where they will no longer receive updates.
 - For production workloads and long-term support, users are encouraged to adopt Bitnami Secure Images, which include hardened containers, smaller attack surfaces, CVE transparency (via VEX/KEV), SBOMs, and enterprise support.
 
 These changes aim to improve the security posture of all Bitnami users by promoting best practices for software supply chain integrity and up-to-date deployments. For more details, visit the [Bitnami Secure Images announcement](https://github.com/bitnami/containers/issues/83267).
@@ -129,9 +129,9 @@ postgresql:
 
 ### Configure the way how to expose Pgpool-II
 
-- **ClusterIP**: Exposes the service on a cluster-internal IP. Choosing this value makes the service only reachable from within the cluster. Set `service.type=ClusterIP` to choose this service type.
-- **NodePort**: Exposes the service on each Node's IP at a static port (the NodePort). You will be able to contact the NodePort service, from outside the cluster, by requesting `NodeIP:NodePort`. Set `service.type=NodePort` to choose this service type.
-- **LoadBalancer**: Exposes the service externally using a cloud provider's load balancer. Set `service.type=LoadBalancer` to choose this service type.
+- ClusterIP: Exposes the service on a cluster-internal IP. Choosing this value makes the service only reachable from within the cluster. Set `service.type=ClusterIP` to choose this service type.
+- NodePort: Exposes the service on each Node's IP at a static port (the NodePort). You will be able to contact the NodePort service, from outside the cluster, by requesting `NodeIP:NodePort`. Set `service.type=NodePort` to choose this service type.
+- LoadBalancer: Exposes the service externally using a cloud provider's load balancer. Set `service.type=LoadBalancer` to choose this service type.
 
 ### Adjust permissions of persistent volume mountpoint
 
@@ -146,17 +146,17 @@ You can enable this initContainer by setting `volumePermissions.enabled` to `tru
 
 LDAP support can be enabled in the chart by specifying the `ldap.` parameters while creating a release. The following parameters should be configured to properly enable the LDAP support in the chart.
 
-- **ldap.enabled**: Enable LDAP support. Defaults to `false`.
-- **ldap.uri**: LDAP URL beginning in the form `ldap[s]://<hostname>:<port>`. No defaults.
-- **ldap.basedn**: LDAP base DN. No defaults.
-- **ldap.binddn**: LDAP bind DN. No defaults.
-- **ldap.bindpw**: LDAP bind password. No defaults.
-- **ldap.bslookup**: LDAP base lookup. No defaults.
-- **ldap.nss_initgroups_ignoreusers**: LDAP ignored users. `root,nslcd`.
-- **ldap.scope**: LDAP search scope. No defaults.
-- **ldap.searchfilter**: LDAP search filter. No defaults.
-- **ldap.searchmap**: LDAP search map. No defaults.
-- **ldap.tls_reqcert**: LDAP TLS check on server certificates. No defaults.
+- ldap.enabled: Enable LDAP support. Defaults to `false`.
+- ldap.uri: LDAP URL beginning in the form `ldap[s]://<hostname>:<port>`. No defaults.
+- ldap.basedn: LDAP base DN. No defaults.
+- ldap.binddn: LDAP bind DN. No defaults.
+- ldap.bindpw: LDAP bind password. No defaults.
+- ldap.bslookup: LDAP base lookup. No defaults.
+- ldap.nss_initgroups_ignoreusers: LDAP ignored users. `root,nslcd`.
+- ldap.scope: LDAP search scope. No defaults.
+- ldap.searchfilter: LDAP search filter. No defaults.
+- ldap.searchmap: LDAP search map. No defaults.
+- ldap.tls_reqcert: LDAP TLS check on server certificates. No defaults.
 
 For example:
 
@@ -290,7 +290,7 @@ In addition to this option, you can also set an external ConfigMap with all the 
 
 The above parameters (`initdbScripts`, `initdbScriptsCM`, and `initdbScriptsSecret`) are supported in both StatefulSet by prepending `postgresql` or `pgpool` to the parameter, depending on the use case (see above parameters table).
 
-The allowed extensions are `.sh`, `.sql` and `.sql.gz` in the **Postgresql** container while only `.sh` in the case of the **Pgpool-II** one.
+The allowed extensions are `.sh`, `.sql` and `.sql.gz` in the Postgresql container while only `.sh` in the case of the Pgpool-II one.
 
 +info: <https://github.com/bitnami/containers/tree/main/bitnami/postgresql#initializing-a-new-instance> and <https://github.com/bitnami/containers/tree/main/bitnami/pgpool#initializing-with-custom-scripts>
 
@@ -1063,7 +1063,7 @@ If a message like the following appears in the logs:
 
 ```log
 ...
-postgresql-repmgr 13:57:07.50 INFO  ==> ** Starting repmgrd **
+postgresql-repmgr 13:57:07.50 INFO  ==>  Starting repmgrd 
 [2024-06-12 13:57:07] [NOTICE] repmgrd (repmgrd 5.4.1) starting up
 [2024-06-12 13:57:07] [ERROR] an older version of the "repmgr" extension is installed
 [2024-06-12 13:57:07] [DETAIL] extension version 5.3 is installed but newer version 5.4 is available

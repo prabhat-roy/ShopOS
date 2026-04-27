@@ -1,10 +1,10 @@
-# subscription-product-service
+﻿# subscription-product-service
 
 > Subscription plans, billing cycles, and recurring product definitions.
 
 ## Overview
 
-The subscription-product-service manages the catalog-side of recurring commerce — it defines
+The subscription-product-service manages the catalog-side of recurring commerce â€” it defines
 subscription plans (monthly/annual), billing interval options, trial periods, and the
 products or services that can be subscribed to. It is the catalog layer; the actual billing
 execution is handled by the subscription-billing-service in the commerce domain. The service
@@ -87,25 +87,25 @@ service SubscriptionProductService {
 
 ## Kafka Topics
 
-Not applicable — subscription-product-service is gRPC-only (billing events are in the commerce domain).
+Not applicable â€” subscription-product-service is gRPC-only (billing events are in the commerce domain).
 
 ## Dependencies
 
-**Upstream** (calls these):
-- `product-catalog-service` — validates product SKU associations on plan creation
+Upstream (calls these):
+- `product-catalog-service` â€” validates product SKU associations on plan creation
 
-**Downstream** (called by these):
-- `checkout-service` — `ValidatePlanSelection` when a subscription is added to checkout
-- `subscription-billing-service` — `GetPlanDetails` and `GetBillingCycles` for recurring billing
-- `api-gateway` / `web-bff` — plan listing and detail pages
+Downstream (called by these):
+- `checkout-service` â€” `ValidatePlanSelection` when a subscription is added to checkout
+- `subscription-billing-service` â€” `GetPlanDetails` and `GetBillingCycles` for recurring billing
+- `api-gateway` / `web-bff` â€” plan listing and detail pages
 
 ## Environment Variables
 
 | Variable | Default | Description |
 |---|---|---|
-| `SPRING_DATASOURCE_URL` | — | PostgreSQL JDBC URL |
-| `SPRING_DATASOURCE_USERNAME` | — | DB username |
-| `SPRING_DATASOURCE_PASSWORD` | — | DB password |
+| `SPRING_DATASOURCE_URL` | â€” | PostgreSQL JDBC URL |
+| `SPRING_DATASOURCE_USERNAME` | â€” | DB username |
+| `SPRING_DATASOURCE_PASSWORD` | â€” | DB password |
 | `GRPC_PORT` | `50077` | gRPC server port |
 | `PRODUCT_CATALOG_SERVICE_ADDR` | `product-catalog-service:50070` | Product catalog address |
 
@@ -117,6 +117,6 @@ docker-compose up subscription-product-service
 
 ## Health Check
 
-`GET /healthz` — `{"status":"ok"}`
+`GET /healthz` â€” `{"status":"ok"}`
 
 gRPC health protocol: `grpc.health.v1.Health/Check` on port `50077`

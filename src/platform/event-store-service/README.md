@@ -1,4 +1,4 @@
-# Event Store Service
+﻿# Event Store Service
 
 > Append-only event log providing the foundation for event sourcing across ShopOS.
 
@@ -49,16 +49,16 @@ graph LR
 
 ## Kafka Topics
 
-N/A — the Event Store Service stores events durably in Postgres. Downstream publication to Kafka is the responsibility of individual domain services or the event-replay-service.
+N/A â€” the Event Store Service stores events durably in Postgres. Downstream publication to Kafka is the responsibility of individual domain services or the event-replay-service.
 
 ## Dependencies
 
-**Upstream** (services this calls):
-- `PostgreSQL` — durable append-only event storage
+Upstream (services this calls):
+- `PostgreSQL` â€” durable append-only event storage
 
-**Downstream** (services that call this):
-- `event-replay-service` (platform) — reads and replays events
-- `saga-orchestrator` (platform) — optional event appending
+Downstream (services that call this):
+- `event-replay-service` (platform) â€” reads and replays events
+- `saga-orchestrator` (platform) â€” optional event appending
 - Domain services implementing event sourcing (order-service, payment-service, etc.)
 
 ## Environment Variables
@@ -86,4 +86,4 @@ skaffold dev --module=event-store-service
 
 ## Health Check
 
-`GET /healthz` → `{"status":"ok"}`
+`GET /healthz` â†’ `{"status":"ok"}`

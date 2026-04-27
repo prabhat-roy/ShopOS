@@ -1,4 +1,4 @@
-# data-pipeline-service
+﻿# data-pipeline-service
 
 > ETL pipelines transforming raw Kafka events into enriched and aggregated features stored in Cassandra and the ML feature store.
 
@@ -55,18 +55,18 @@ This service is primarily Kafka-driven. A minimal internal HTTP API is exposed f
 
 | Topic | Role |
 |---|---|
-| `analytics.page.viewed` | Consumed — raw page view events |
-| `analytics.product.clicked` | Consumed — raw product click events |
-| `analytics.search.performed` | Consumed — raw search events |
-| `commerce.order.placed` | Consumed — purchase events for feature engineering |
-| `commerce.cart.abandoned` | Consumed — abandonment signal |
-| `analytics.enriched.events` | Produced — enriched, validated event stream |
+| `analytics.page.viewed` | Consumed â€” raw page view events |
+| `analytics.product.clicked` | Consumed â€” raw product click events |
+| `analytics.search.performed` | Consumed â€” raw search events |
+| `commerce.order.placed` | Consumed â€” purchase events for feature engineering |
+| `commerce.cart.abandoned` | Consumed â€” abandonment signal |
+| `analytics.enriched.events` | Produced â€” enriched, validated event stream |
 
 ## Dependencies
 
-**Upstream:** event-tracking-service, commerce domain (raw event producers)
+Upstream: event-tracking-service, commerce domain (raw event producers)
 
-**Downstream:** ml-feature-store, Cassandra (analytics-service), analytics-service, recommendation-service (via feature store)
+Downstream: ml-feature-store, Cassandra (analytics-service), analytics-service, recommendation-service (via feature store)
 
 ## Environment Variables
 
@@ -91,4 +91,4 @@ docker-compose up data-pipeline-service
 
 ## Health Check
 
-`GET /healthz` → `{"status":"ok"}`
+`GET /healthz` â†’ `{"status":"ok"}`

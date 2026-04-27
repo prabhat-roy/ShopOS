@@ -1,4 +1,4 @@
-# auth-service
+﻿# auth-service
 
 > JWT/OAuth2 token issuance and validation with Argon2 password hashing.
 
@@ -6,7 +6,7 @@
 
 The auth-service is the trust anchor of the ShopOS identity domain. It issues short-lived JWT
 access tokens and long-lived refresh tokens after verifying credentials, and validates tokens
-presented by downstream services. All passwords are hashed using Argon2id — the memory-hard
+presented by downstream services. All passwords are hashed using Argon2id â€” the memory-hard
 algorithm recommended by OWASP for credential storage.
 
 ## Architecture
@@ -101,22 +101,22 @@ service AuthService {
 
 ## Dependencies
 
-**Upstream** (calls these):
-- `user-service` — fetch user record and hashed password by email
-- `session-service` — create/validate/revoke sessions
-- `mfa-service` — verify MFA challenge before issuing tokens (when MFA is enabled)
-- `device-fingerprint-service` — attach device context to session
+Upstream (calls these):
+- `user-service` â€” fetch user record and hashed password by email
+- `session-service` â€” create/validate/revoke sessions
+- `mfa-service` â€” verify MFA challenge before issuing tokens (when MFA is enabled)
+- `device-fingerprint-service` â€” attach device context to session
 
-**Downstream** (called by these):
-- `api-gateway` — validates every inbound JWT
-- All protected services — call `ValidateToken` to authenticate requests
+Downstream (called by these):
+- `api-gateway` â€” validates every inbound JWT
+- All protected services â€” call `ValidateToken` to authenticate requests
 
 ## Environment Variables
 
 | Variable | Default | Description |
 |---|---|---|
-| `DATABASE_URL` | — | PostgreSQL connection string |
-| `JWT_SECRET` | — | HMAC-SHA256 signing secret for access tokens (min 32 bytes) |
+| `DATABASE_URL` | â€” | PostgreSQL connection string |
+| `JWT_SECRET` | â€” | HMAC-SHA256 signing secret for access tokens (min 32 bytes) |
 | `JWT_EXPIRY_SECONDS` | `900` | Access token lifetime in seconds |
 | `REFRESH_TOKEN_EXPIRY_SECONDS` | `604800` | Refresh token lifetime (7 days) |
 | `ARGON2_MEMORY_KB` | `65536` | Argon2id memory cost (64 MB) |
@@ -136,6 +136,6 @@ docker-compose up auth-service
 
 ## Health Check
 
-`GET /healthz` — `{"status":"ok"}`
+`GET /healthz` â€” `{"status":"ok"}`
 
 gRPC health protocol: `grpc.health.v1.Health/Check` on port `50060`

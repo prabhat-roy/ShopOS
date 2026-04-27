@@ -1,10 +1,10 @@
-# event-tracking-service
+﻿# event-tracking-service
 
 > High-throughput behavioural event ingestion pipeline consuming analytics events and persisting to Cassandra.
 
 ## Overview
 
-The event-tracking-service is the entry point for all behavioural telemetry in ShopOS. It ingests high-volume events — page views, product clicks, search queries, and custom tracking calls — from BFF layers and client SDKs, validates and enriches them, and writes them to Cassandra for durable time-series storage. It acts as a multiplexer, also forwarding events to Kafka so downstream services (analytics-service, data-pipeline-service) can consume them independently.
+The event-tracking-service is the entry point for all behavioural telemetry in ShopOS. It ingests high-volume events â€” page views, product clicks, search queries, and custom tracking calls â€” from BFF layers and client SDKs, validates and enriches them, and writes them to Cassandra for durable time-series storage. It acts as a multiplexer, also forwarding events to Kafka so downstream services (analytics-service, data-pipeline-service) can consume them independently.
 
 ## Architecture
 
@@ -55,16 +55,16 @@ This service is primarily Kafka-driven. An HTTP ingest endpoint is also provided
 
 | Topic | Role |
 |---|---|
-| `analytics.page.viewed` | Consumed — page view events from BFFs |
-| `analytics.product.clicked` | Consumed — product click events |
-| `analytics.search.performed` | Consumed — search query events |
-| `analytics.enriched.events` | Produced — validated and enriched event stream |
+| `analytics.page.viewed` | Consumed â€” page view events from BFFs |
+| `analytics.product.clicked` | Consumed â€” product click events |
+| `analytics.search.performed` | Consumed â€” search query events |
+| `analytics.enriched.events` | Produced â€” validated and enriched event stream |
 
 ## Dependencies
 
-**Upstream:** web-bff, mobile-bff, client SDKs (event producers)
+Upstream: web-bff, mobile-bff, client SDKs (event producers)
 
-**Downstream:** analytics-service (Cassandra reads), data-pipeline-service (enriched Kafka consumer), personalization-service (behaviour signals)
+Downstream: analytics-service (Cassandra reads), data-pipeline-service (enriched Kafka consumer), personalization-service (behaviour signals)
 
 ## Environment Variables
 
@@ -90,4 +90,4 @@ docker-compose up event-tracking-service
 
 ## Health Check
 
-`GET /healthz` → `{"status":"ok"}`
+`GET /healthz` â†’ `{"status":"ok"}`

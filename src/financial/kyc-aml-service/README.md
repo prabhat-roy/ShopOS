@@ -1,4 +1,4 @@
-# kyc-aml-service
+﻿# kyc-aml-service
 
 > Performs KYC identity verification, AML risk screening, and sanction list checks for vendors and high-value accounts.
 
@@ -50,7 +50,7 @@ flowchart TD
 
 ## Responsibilities
 
-- KYC workflow orchestration: document collection → verification → approval
+- KYC workflow orchestration: document collection â†’ verification â†’ approval
 - Identity document verification (passport, national ID, driving licence)
 - Proof of address verification
 - AML screening against OFAC, EU Consolidated, and UN sanction lists
@@ -87,13 +87,13 @@ service KYCAMLService {
 
 ## Dependencies
 
-**Upstream (callers)**
-- `vendor-service` (supply-chain domain) — vendor onboarding KYC trigger
-- `payout-service` — pre-payout AML check
-- `credit-service` — risk rating for credit scoring
+Upstream (callers)
+- `vendor-service` (supply-chain domain) â€” vendor onboarding KYC trigger
+- `payout-service` â€” pre-payout AML check
+- `credit-service` â€” risk rating for credit scoring
 
-**Downstream (calls out to)**
-- `document-service` (content domain) — KYC document storage
+Downstream (calls out to)
+- `document-service` (content domain) â€” KYC document storage
 - External identity verification API (Onfido/Jumio) when `EXTERNAL_IDV_ENABLED=true`
 - OFAC / EU / UN sanction list APIs (scheduled sync)
 
@@ -106,10 +106,10 @@ service KYCAMLService {
 | `DB_PORT` | `5432` | PostgreSQL port |
 | `DB_NAME` | `kyc_aml_db` | Database name |
 | `DB_USER` | `kyc_aml_svc` | Database user |
-| `DB_PASSWORD` | — | Database password (required) |
+| `DB_PASSWORD` | â€” | Database password (required) |
 | `KAFKA_BROKERS` | `localhost:9092` | Comma-separated Kafka broker list |
 | `EXTERNAL_IDV_ENABLED` | `false` | Enable external identity verification provider |
-| `ONFIDO_API_KEY` | — | Onfido API key (required if external IDV enabled) |
+| `ONFIDO_API_KEY` | â€” | Onfido API key (required if external IDV enabled) |
 | `SANCTION_LIST_SYNC_CRON` | `0 0 * * *` | Cron schedule for sanction list refresh |
 | `DOCUMENT_GRPC_ADDR` | `document-service:50142` | Address of document-service |
 | `FUZZY_MATCH_THRESHOLD` | `0.85` | Minimum similarity score for name matching |
@@ -123,6 +123,6 @@ docker-compose up kyc-aml-service
 
 ## Health Check
 
-`GET /healthz` → `{"status":"ok"}`
+`GET /healthz` â†’ `{"status":"ok"}`
 
-gRPC health: `grpc.health.v1.Health/Check` → `SERVING`
+gRPC health: `grpc.health.v1.Health/Check` â†’ `SERVING`

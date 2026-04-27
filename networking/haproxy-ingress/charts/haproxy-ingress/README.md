@@ -1,4 +1,4 @@
-# HAProxy Ingress helm chart
+﻿# HAProxy Ingress helm chart
 
 [HAProxy Ingress](https://github.com/jcmoraisjr/haproxy-ingress) is an Ingress controller that uses ConfigMap to store the global haproxy configuration, and ingress annotations to configure per-backend settings.
 
@@ -43,7 +43,7 @@ $ helm repo update
 $ helm upgrade ingress haproxy-ingress/haproxy-ingress
 ```
 
-**Upgrade warning:** charts since 0.8.1 changed name patterns and this should break upgrades. It is recommended to uninstall and reinstall the HAProxy Ingress chart - and always test upgrades on a staging environment.
+Upgrade warning: charts since 0.8.1 changed name patterns and this should break upgrades. It is recommended to uninstall and reinstall the HAProxy Ingress chart - and always test upgrades on a staging environment.
 
 Upgrade tips:
 

@@ -1,6 +1,6 @@
-# Infrastructure as Code — ShopOS
+﻿# Infrastructure as Code â€” ShopOS
 
-All cloud infrastructure for ShopOS is provisioned and managed with **Terraform**.
+All cloud infrastructure for ShopOS is provisioned and managed with Terraform.
 It covers Kubernetes clusters, managed databases, networking, and object storage
 across AWS, GCP, and Azure from a single, consistent module interface.
 
@@ -10,25 +10,25 @@ across AWS, GCP, and Azure from a single, consistent module interface.
 
 ```
 infra/
-└── terraform/
-    ├── modules/
-    │   ├── gke/                    ← Google Kubernetes Engine cluster
-    │   ├── eks/                    ← Amazon EKS cluster
-    │   ├── aks/                    ← Azure AKS cluster
-    │   ├── vpc/                    ← VPC / VNet networking (per cloud)
-    │   ├── postgres/               ← Managed PostgreSQL (Cloud SQL / RDS / Azure DB)
-    │   ├── redis/                  ← Managed Redis (Memorystore / ElastiCache)
-    │   └── storage/                ← Object storage buckets (GCS / S3 / Azure Blob)
-    ├── aws/
-    │   ├── jenkins/                ← Jenkins CI server on EC2
-    │   └── eks/                    ← EKS Auto Mode cluster
-    ├── gcp/
-    │   ├── jenkins/                ← Jenkins CI server on Compute Engine
-    │   └── gke/                    ← GKE Autopilot cluster
-    ├── azure/
-    │   ├── jenkins/                ← Jenkins CI server on Azure VM
-    │   └── aks/                    ← AKS with Node Auto Provisioning
-    └── backend.tf                  ← Remote state (GCS / S3)
+â””â”€â”€ terraform/
+    â”œâ”€â”€ modules/
+    â”‚   â”œâ”€â”€ gke/                    â† Google Kubernetes Engine cluster
+    â”‚   â”œâ”€â”€ eks/                    â† Amazon EKS cluster
+    â”‚   â”œâ”€â”€ aks/                    â† Azure AKS cluster
+    â”‚   â”œâ”€â”€ vpc/                    â† VPC / VNet networking (per cloud)
+    â”‚   â”œâ”€â”€ postgres/               â† Managed PostgreSQL (Cloud SQL / RDS / Azure DB)
+    â”‚   â”œâ”€â”€ redis/                  â† Managed Redis (Memorystore / ElastiCache)
+    â”‚   â””â”€â”€ storage/                â† Object storage buckets (GCS / S3 / Azure Blob)
+    â”œâ”€â”€ aws/
+    â”‚   â”œâ”€â”€ jenkins/                â† Jenkins CI server on EC2
+    â”‚   â””â”€â”€ eks/                    â† EKS Auto Mode cluster
+    â”œâ”€â”€ gcp/
+    â”‚   â”œâ”€â”€ jenkins/                â† Jenkins CI server on Compute Engine
+    â”‚   â””â”€â”€ gke/                    â† GKE Autopilot cluster
+    â”œâ”€â”€ azure/
+    â”‚   â”œâ”€â”€ jenkins/                â† Jenkins CI server on Azure VM
+    â”‚   â””â”€â”€ aks/                    â† AKS with Node Auto Provisioning
+    â””â”€â”€ backend.tf                  â† Remote state (GCS / S3)
 ```
 
 ---
@@ -39,7 +39,7 @@ infra/
 flowchart TD
     ENG([Engineer / CI Pipeline]) --> PLAN
 
-    subgraph Terraform["Terraform — Cloud Resources"]
+    subgraph Terraform["Terraform â€” Cloud Resources"]
         PLAN[terraform plan] --> APPLY[terraform apply]
         APPLY --> VPC[VPC / VNet]
         APPLY --> K8S[K8s Cluster\nGKE / EKS / AKS]
@@ -68,7 +68,7 @@ All three providers create a production-grade, private cluster with:
 | GCP | GKE | Autopilot (fully managed nodes) | `terraform/gcp/gke/` |
 | Azure | AKS | Node Auto Provisioning | `terraform/azure/aks/` |
 
-### AWS — EKS Auto Mode
+### AWS â€” EKS Auto Mode
 
 ```bash
 cd infra/terraform/aws/eks
@@ -81,7 +81,7 @@ aws eks update-kubeconfig --region us-east-1 --name shopos-eks
 kubectl get nodes
 ```
 
-### GCP — GKE Autopilot
+### GCP â€” GKE Autopilot
 
 ```bash
 cd infra/terraform/gcp/gke
@@ -95,7 +95,7 @@ gcloud container clusters get-credentials shopos-gke \
 kubectl get nodes
 ```
 
-### Azure — AKS Node Auto Provisioning
+### Azure â€” AKS Node Auto Provisioning
 
 ```bash
 cd infra/terraform/azure/aks
@@ -120,7 +120,7 @@ terraform destroy    # in the relevant terraform/{aws|gcp|azure}/{eks|gke|aks}/ 
 ## Jenkins CI Server
 
 Jenkins can be provisioned on any cloud using Terraform. It is fully configured on first
-boot via `scripts/bash/jenkins-install.sh` — no manual steps required.
+boot via `scripts/bash/jenkins-install.sh` â€” no manual steps required.
 
 | Cloud | Terraform path | Instance type | OS |
 |---|---|---|---|
@@ -135,12 +135,12 @@ cp terraform.tfvars.example terraform.tfvars
 # Edit: key_name, private_key_path
 
 terraform init
-terraform apply          # ~8–12 min including Jenkins install
+terraform apply          # ~8â€“12 min including Jenkins install
 terraform output jenkins_url
 ```
 
-**Default credentials:** username `admin`, password `admin`.  
-Change after first login: top-right username → **Configure** → **Password** → **Save**.
+Default credentials: username `admin`, password `admin`.  
+Change after first login: top-right username â†’ Configure â†’ Password â†’ Save.
 
 ---
 
@@ -175,7 +175,7 @@ module "postgres" {
 
 | Config | dev | staging | prod |
 |---|---|---|---|
-| Node pool size | 3 nodes | 6 nodes | 12–30 nodes (autoscaled) |
+| Node pool size | 3 nodes | 6 nodes | 12â€“30 nodes (autoscaled) |
 | Postgres instance | `db-f1-micro` / `db.t3.small` | `db-n1-standard-2` | `db-n1-standard-8` HA |
 | Redis | Single node | Single node | Cluster, 3 replicas |
 | Multi-AZ | No | No | Yes |

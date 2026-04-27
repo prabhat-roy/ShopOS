@@ -1,4 +1,4 @@
-# media-asset-service
+﻿# media-asset-service
 
 > Upload, store, and serve images and media files with automatic thumbnail generation via MinIO.
 
@@ -61,9 +61,9 @@ service MediaAssetService {
 
 ## Dependencies
 
-**Upstream:** cms-service, product-catalog-service, video-service (asset references)
+Upstream: cms-service, product-catalog-service, video-service (asset references)
 
-**Downstream:** image-processing-service (thumbnail generation), video-service (video asset storage coordination)
+Downstream: image-processing-service (thumbnail generation), video-service (video asset storage coordination)
 
 ## Environment Variables
 
@@ -71,10 +71,10 @@ service MediaAssetService {
 |---|---|---|
 | `GRPC_PORT` | `50140` | gRPC server port |
 | `MINIO_ENDPOINT` | `minio:9000` | MinIO endpoint |
-| `MINIO_ACCESS_KEY` | — | MinIO access key |
-| `MINIO_SECRET_KEY` | — | MinIO secret key |
+| `MINIO_ACCESS_KEY` | â€” | MinIO access key |
+| `MINIO_SECRET_KEY` | â€” | MinIO secret key |
 | `MINIO_BUCKET` | `media-assets` | Default bucket name |
-| `POSTGRES_DSN` | — | PostgreSQL connection string |
+| `POSTGRES_DSN` | â€” | PostgreSQL connection string |
 | `PRESIGNED_URL_TTL` | `3600` | Presigned URL expiry in seconds |
 | `MAX_UPLOAD_SIZE_MB` | `500` | Maximum single upload size |
 | `IMAGE_PROCESSING_ADDR` | `image-processing-service:50141` | Downstream processor address |
@@ -87,4 +87,4 @@ docker-compose up media-asset-service
 
 ## Health Check
 
-`GET /healthz` → `{"status":"ok"}`
+`GET /healthz` â†’ `{"status":"ok"}`

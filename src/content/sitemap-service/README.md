@@ -1,4 +1,4 @@
-# sitemap-service
+﻿# sitemap-service
 
 > Dynamic sitemap.xml generation derived from the live product and category catalog.
 
@@ -64,9 +64,9 @@ HTTP endpoints:
 
 ## Dependencies
 
-**Upstream:** scheduler-service (triggers), product-catalog-service, category-service, cms-service
+Upstream: scheduler-service (triggers), product-catalog-service, category-service, cms-service
 
-**Downstream:** None (serves sitemaps directly to crawlers)
+Downstream: None (serves sitemaps directly to crawlers)
 
 ## Environment Variables
 
@@ -90,4 +90,4 @@ docker-compose up sitemap-service
 
 ## Health Check
 
-`GET /healthz` → `{"status":"ok"}`
+`GET /healthz` â†’ `{"status":"ok"}`

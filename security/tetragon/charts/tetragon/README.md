@@ -1,4 +1,4 @@
-# tetragon
+﻿# tetragon
 
 ![Version: 1.6.1](https://img.shields.io/badge/Version-1.6.1-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 1.6.1](https://img.shields.io/badge/AppVersion-1.6.1-informational?style=flat-square)
 
@@ -76,7 +76,7 @@ Helm chart for Tetragon
 | tetragon.eventCacheRetries | int | `15` | Configure the number of retries in tetragon's event cache. |
 | tetragon.eventCacheRetryDelay | int | `2` | Configure the delay (in seconds) between retires in tetragon's event cache. |
 | tetragon.exportAllowList | string | `"{\"event_set\":[\"PROCESS_EXEC\", \"PROCESS_EXIT\", \"PROCESS_KPROBE\", \"PROCESS_UPROBE\", \"PROCESS_TRACEPOINT\", \"PROCESS_LSM\"]}"` | Allowlist for JSON export. For example, to export only process_connect events from the default namespace:  exportAllowList: |   {"namespace":["default"],"event_set":["PROCESS_EXEC"]} |
-| tetragon.exportDenyList | string | `"{\"health_check\":true}\n{\"namespace\":[\"\", \"cilium\", \"kube-system\"]}"` | Denylist for JSON export **(for file sinks only; does not filter gRPC output)**. For example, to exclude exec events that look similar to Kubernetes health checks and all the events from kube-system namespace and the host:  exportDenyList: |   {"health_check":true}   {"namespace":["kube-system",""]}  |
+| tetragon.exportDenyList | string | `"{\"health_check\":true}\n{\"namespace\":[\"\", \"cilium\", \"kube-system\"]}"` | Denylist for JSON export (for file sinks only; does not filter gRPC output). For example, to exclude exec events that look similar to Kubernetes health checks and all the events from kube-system namespace and the host:  exportDenyList: |   {"health_check":true}   {"namespace":["kube-system",""]}  |
 | tetragon.exportFileCompress | bool | `false` | Compress rotated JSON export files. |
 | tetragon.exportFileMaxBackups | int | `5` | Number of rotated files to retain. |
 | tetragon.exportFileMaxSizeMB | int | `10` | Size in megabytes at which to rotate JSON export files. |

@@ -1,7 +1,7 @@
-# Kafka Event Schemas — ShopOS
+﻿# Kafka Event Schemas â€” ShopOS
 
 This directory contains Avro schemas for all Kafka events published across the ShopOS
-platform. Every event is schema-validated via the **Confluent Schema Registry** before
+platform. Every event is schema-validated via the Confluent Schema Registry before
 production and consumption, ensuring contracts between domains are explicit and versioned.
 
 ---
@@ -10,35 +10,35 @@ production and consumption, ensuring contracts between domains are explicit and 
 
 ```
 events/
-├── identity/
-│   ├── user-registered.avsc
-│   └── user-deleted.avsc
-├── commerce/
-│   ├── order-placed.avsc
-│   ├── order-cancelled.avsc
-│   ├── order-fulfilled.avsc
-│   ├── payment-processed.avsc
-│   ├── payment-failed.avsc
-│   └── cart-abandoned.avsc
-├── supply-chain/
-│   ├── shipment-created.avsc
-│   ├── shipment-updated.avsc
-│   ├── inventory-low.avsc
-│   └── inventory-restocked.avsc
-├── notifications/
-│   ├── email-requested.avsc
-│   ├── sms-requested.avsc
-│   └── push-requested.avsc
-├── analytics/
-│   ├── page-viewed.avsc
-│   ├── product-clicked.avsc
-│   └── search-performed.avsc
-└── security/
-    ├── fraud-detected.avsc
-    └── login-failed.avsc
+â”œâ”€â”€ identity/
+â”‚   â”œâ”€â”€ user-registered.avsc
+â”‚   â””â”€â”€ user-deleted.avsc
+â”œâ”€â”€ commerce/
+â”‚   â”œâ”€â”€ order-placed.avsc
+â”‚   â”œâ”€â”€ order-cancelled.avsc
+â”‚   â”œâ”€â”€ order-fulfilled.avsc
+â”‚   â”œâ”€â”€ payment-processed.avsc
+â”‚   â”œâ”€â”€ payment-failed.avsc
+â”‚   â””â”€â”€ cart-abandoned.avsc
+â”œâ”€â”€ supply-chain/
+â”‚   â”œâ”€â”€ shipment-created.avsc
+â”‚   â”œâ”€â”€ shipment-updated.avsc
+â”‚   â”œâ”€â”€ inventory-low.avsc
+â”‚   â””â”€â”€ inventory-restocked.avsc
+â”œâ”€â”€ notifications/
+â”‚   â”œâ”€â”€ email-requested.avsc
+â”‚   â”œâ”€â”€ sms-requested.avsc
+â”‚   â””â”€â”€ push-requested.avsc
+â”œâ”€â”€ analytics/
+â”‚   â”œâ”€â”€ page-viewed.avsc
+â”‚   â”œâ”€â”€ product-clicked.avsc
+â”‚   â””â”€â”€ search-performed.avsc
+â””â”€â”€ security/
+    â”œâ”€â”€ fraud-detected.avsc
+    â””â”€â”€ login-failed.avsc
 ```
 
-**Total: 20 Avro schema files.**
+Total: 20 Avro schema files.
 
 ---
 
@@ -50,13 +50,13 @@ Topic names follow the pattern:
 {domain}.{entity}.{event}
 ```
 
-All components are **lowercase**, separated by dots.
+All components are lowercase, separated by dots.
 
 | Component | Examples |
 |---|---|
 | `domain` | `identity`, `commerce`, `supplychain`, `analytics`, `security` |
 | `entity` | `user`, `order`, `payment`, `shipment`, `inventory`, `page` |
-| `event` | past-tense verb — `registered`, `placed`, `processed`, `viewed` |
+| `event` | past-tense verb â€” `registered`, `placed`, `processed`, `viewed` |
 
 ---
 
@@ -124,15 +124,15 @@ All components are **lowercase**, separated by dots.
   "namespace": "com.enterprise.commerce.events.v1",
   "doc": "Fired when a customer order transitions to PLACED state.",
   "fields": [
-    { "name": "event_id",      "type": "string",  "doc": "UUID v4 — idempotency key" },
+    { "name": "event_id",      "type": "string",  "doc": "UUID v4 â€” idempotency key" },
     { "name": "event_time",    "type": "long",    "logicalType": "timestamp-millis" },
     { "name": "schema_version","type": "string",  "default": "1.0.0" },
     { "name": "order_id",      "type": "string" },
     { "name": "customer_id",   "type": "string" },
     { "name": "total_amount",  "type": { "type": "record", "name": "Money",
         "fields": [
-          { "name": "amount",   "type": "string", "doc": "Decimal string — no float" },
-          { "name": "currency", "type": "string", "doc": "ISO 4217 — e.g. USD" }
+          { "name": "amount",   "type": "string", "doc": "Decimal string â€” no float" },
+          { "name": "currency", "type": "string", "doc": "ISO 4217 â€” e.g. USD" }
         ]
       }
     },
@@ -158,8 +158,8 @@ All components are **lowercase**, separated by dots.
 
 ## Schema Registry
 
-All schemas are registered with the **Confluent Schema Registry** (or its open-source
-equivalent **Apicurio Registry**) before production use.
+All schemas are registered with the Confluent Schema Registry (or its open-source
+equivalent Apicurio Registry) before production use.
 
 ```bash
 # Register a schema
@@ -178,11 +178,11 @@ curl http://schema-registry:8081/subjects/commerce.order.placed-value/versions/l
 
 ## Compatibility Policy
 
-All schemas use **BACKWARD** compatibility by default:
+All schemas use BACKWARD compatibility by default:
 
 - New optional fields (with defaults) are allowed
 - Removing fields requires a schema version bump and a 2-sprint deprecation window
-- Renaming fields is a breaking change — use `aliases` instead
+- Renaming fields is a breaking change â€” use `aliases` instead
 - `FULL_TRANSITIVE` compatibility is enforced for security domain topics
 
 ---

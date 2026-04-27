@@ -1,4 +1,4 @@
-# Audit Service
+﻿# Audit Service
 
 > Immutable, append-only audit log for all business-critical events across ShopOS.
 
@@ -28,13 +28,13 @@ sequenceDiagram
 | Language | Java |
 | Database | PostgreSQL |
 | Protocol | Kafka |
-| Port | — |
+| Port | â€” |
 
 ## Responsibilities
 
 - Consume all significant domain events from Kafka across every business domain
 - Persist normalised audit records with actor, action, resource, timestamp, and payload
-- Guarantee append-only writes — no updates or deletes permitted on audit records
+- Guarantee append-only writes â€” no updates or deletes permitted on audit records
 - Support structured querying by actor, resource type, time range, and event type
 - Enforce configurable data retention policies with archival to cold storage
 - Provide a REST query API for admin and compliance tooling (via admin-portal)
@@ -55,13 +55,13 @@ sequenceDiagram
 
 ## Dependencies
 
-**Upstream** (services this calls):
-- `Kafka` — source of all domain events
-- `PostgreSQL` — immutable audit record storage
+Upstream (services this calls):
+- `Kafka` â€” source of all domain events
+- `PostgreSQL` â€” immutable audit record storage
 
-**Downstream** (services that call this):
-- `admin-portal` (platform) — audit log queries for ops and compliance teams
-- `gdpr-service` (identity) — data access audit trail
+Downstream (services that call this):
+- `admin-portal` (platform) â€” audit log queries for ops and compliance teams
+- `gdpr-service` (identity) â€” data access audit trail
 
 ## Environment Variables
 
@@ -89,4 +89,4 @@ skaffold dev --module=audit-service
 
 ## Health Check
 
-`GET /healthz` → `{"status":"ok"}`
+`GET /healthz` â†’ `{"status":"ok"}`

@@ -1,11 +1,11 @@
-# configurator-service
+﻿# configurator-service
 
 > Configurable product builder (CPQ-lite) for products with complex option matrices.
 
 ## Overview
 
 The configurator-service powers Configure-Price-Quote (CPQ) experiences for products that
-require customer selection before a final SKU can be determined — for example, a laptop
+require customer selection before a final SKU can be determined â€” for example, a laptop
 where the customer chooses CPU, RAM, storage, and color. It stores configuration rules,
 option dependencies, and constraint logic in MongoDB, then validates customer-selected
 options and resolves the resulting SKU, price delta, and availability. This is particularly
@@ -91,24 +91,24 @@ service ConfiguratorService {
 
 ## Kafka Topics
 
-Not applicable — configurator-service is gRPC-only.
+Not applicable â€” configurator-service is gRPC-only.
 
 ## Dependencies
 
-**Upstream** (calls these):
-- `product-catalog-service` — `GetProduct` to load the base product record
-- `pricing-service` — `GetEffectivePrice` for option-level price adjustments
-- `inventory-service` — `GetStockLevel` to check resolved configuration availability
+Upstream (calls these):
+- `product-catalog-service` â€” `GetProduct` to load the base product record
+- `pricing-service` â€” `GetEffectivePrice` for option-level price adjustments
+- `inventory-service` â€” `GetStockLevel` to check resolved configuration availability
 
-**Downstream** (called by these):
-- `web-bff` / `mobile-bff` — drive the interactive product configuration UI
-- `cart-service` — `ResolveConfiguration` before adding a configured item to cart
+Downstream (called by these):
+- `web-bff` / `mobile-bff` â€” drive the interactive product configuration UI
+- `cart-service` â€” `ResolveConfiguration` before adding a configured item to cart
 
 ## Environment Variables
 
 | Variable | Default | Description |
 |---|---|---|
-| `MONGODB_URI` | — | MongoDB connection URI |
+| `MONGODB_URI` | â€” | MongoDB connection URI |
 | `MONGODB_DATABASE` | `configurator` | MongoDB database name |
 | `GRPC_PORT` | `50076` | gRPC listening port |
 | `PRODUCT_CATALOG_SERVICE_ADDR` | `product-catalog-service:50070` | Product catalog address |
@@ -124,6 +124,6 @@ docker-compose up configurator-service
 
 ## Health Check
 
-`GET /healthz` — `{"status":"ok"}`
+`GET /healthz` â€” `{"status":"ok"}`
 
 gRPC health protocol: `grpc.health.v1.Health/Check` on port `50076`

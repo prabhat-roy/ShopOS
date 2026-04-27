@@ -1,6 +1,6 @@
-# Developer Portal — Backstage (ShopOS)
+﻿# Developer Portal â€” Backstage (ShopOS)
 
-ShopOS uses [Backstage](https://backstage.io/) as its internal developer portal — a single
+ShopOS uses [Backstage](https://backstage.io/) as its internal developer portal â€” a single
 pane of glass for service discovery, documentation, CI/CD status, Kubernetes health,
 infrastructure costs, and on-call ownership across all 130 microservices and 12 business domains.
 
@@ -10,28 +10,28 @@ infrastructure costs, and on-call ownership across all 130 microservices and 12 
 
 ```
 backstage/
-├── app-config.yaml                 ← Main Backstage configuration
-├── app-config.production.yaml      ← Production overrides
-├── packages/
-│   ├── app/                        ← Frontend React application
-│   │   └── src/
-│   │       ├── App.tsx
-│   │       └── components/
-│   └── backend/                    ← Backstage Node.js backend
-│       └── src/
-│           └── index.ts
-├── catalog/
-│   ├── all-services.yaml           ← Catalog import list (all 130 services)
-│   └── domains/
-│       ├── platform.yaml
-│       ├── identity.yaml
-│       ├── catalog.yaml
-│       ├── commerce.yaml
-│       └── ...
-└── plugins/                        ← Custom plugin configurations
-    ├── kubernetes.yaml
-    ├── argocd.yaml
-    └── grafana.yaml
+â”œâ”€â”€ app-config.yaml                 â† Main Backstage configuration
+â”œâ”€â”€ app-config.production.yaml      â† Production overrides
+â”œâ”€â”€ packages/
+â”‚   â”œâ”€â”€ app/                        â† Frontend React application
+â”‚   â”‚   â””â”€â”€ src/
+â”‚   â”‚       â”œâ”€â”€ App.tsx
+â”‚   â”‚       â””â”€â”€ components/
+â”‚   â””â”€â”€ backend/                    â† Backstage Node.js backend
+â”‚       â””â”€â”€ src/
+â”‚           â””â”€â”€ index.ts
+â”œâ”€â”€ catalog/
+â”‚   â”œâ”€â”€ all-services.yaml           â† Catalog import list (all 130 services)
+â”‚   â””â”€â”€ domains/
+â”‚       â”œâ”€â”€ platform.yaml
+â”‚       â”œâ”€â”€ identity.yaml
+â”‚       â”œâ”€â”€ catalog.yaml
+â”‚       â”œâ”€â”€ commerce.yaml
+â”‚       â””â”€â”€ ...
+â””â”€â”€ plugins/                        â† Custom plugin configurations
+    â”œâ”€â”€ kubernetes.yaml
+    â”œâ”€â”€ argocd.yaml
+    â””â”€â”€ grafana.yaml
 ```
 
 ---
@@ -42,9 +42,9 @@ backstage/
 graph TD
     DEV([Developer\nhttp://localhost:3000]) --> BS[Backstage Portal]
 
-    subgraph Backstage["Backstage — Integration Layer"]
+    subgraph Backstage["Backstage â€” Integration Layer"]
         SC[Software Catalog\n130 services + APIs]
-        TD[TechDocs\nMarkdown → static site]
+        TD[TechDocs\nMarkdown â†’ static site]
         TEMPL[Software Templates\nScaffolding wizard]
         SEARCH[Search\nacross catalog + docs]
     end
@@ -80,7 +80,7 @@ graph TD
 Every ShopOS service registers itself via a `catalog-info.yaml` file in its repository root.
 Backstage discovers entities by scanning GitHub for these files.
 
-**Example `catalog-info.yaml` for `order-service`:**
+Example `catalog-info.yaml` for `order-service`:
 
 ```yaml
 apiVersion: backstage.io/v1alpha1
@@ -93,7 +93,7 @@ metadata:
     backstage.io/techdocs-ref: dir:.
     kubernetes.io/label-selector: "app.kubernetes.io/name=order-service"
     argocd/app-name: shopos-commerce-order-service
-    grafana/dashboard-selector: "title='Commerce — Order Flow'"
+    grafana/dashboard-selector: "title='Commerce â€” Order Flow'"
     pagerduty.com/integration-key: ${PAGERDUTY_INTEGRATION_KEY}
   tags:
     - kotlin
@@ -120,10 +120,10 @@ spec:
 TechDocs renders Markdown documentation from each service's `docs/` directory into a
 searchable, versioned static site hosted within Backstage. Every service in ShopOS has:
 
-- `docs/index.md` — overview, architecture context
-- `docs/api.md` — gRPC/REST endpoint reference
-- `docs/runbook.md` — operational runbook (alerts, common issues, scaling)
-- `mkdocs.yml` — MkDocs config pointing to the docs directory
+- `docs/index.md` â€” overview, architecture context
+- `docs/api.md` â€” gRPC/REST endpoint reference
+- `docs/runbook.md` â€” operational runbook (alerts, common issues, scaling)
+- `mkdocs.yml` â€” MkDocs config pointing to the docs directory
 
 ```bash
 # Generate TechDocs locally for a service
@@ -170,7 +170,7 @@ yarn build:backend
 ### Environment Variables
 
 ```bash
-# backstage/.env (never committed — see .env.example)
+# backstage/.env (never committed â€” see .env.example)
 GITHUB_TOKEN=ghp_...
 ARGOCD_AUTH_TOKEN=...
 GRAFANA_TOKEN=...

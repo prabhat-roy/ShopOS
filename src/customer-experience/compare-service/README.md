@@ -1,4 +1,4 @@
-# compare-service
+﻿# compare-service
 
 > Side-by-side product comparison for up to 4 products with attribute diff highlighting.
 
@@ -36,7 +36,7 @@ graph LR
 
 ## API / Interface
 
-**gRPC service:** `CompareService` (port 50123)
+gRPC service: `CompareService` (port 50123)
 
 | Method | Request | Response | Description |
 |---|---|---|---|
@@ -53,11 +53,11 @@ _This service does not produce or consume Kafka topics._
 
 ## Dependencies
 
-**Upstream (callers)**
-- `api-gateway` — routes compare operations from the storefront
+Upstream (callers)
+- `api-gateway` â€” routes compare operations from the storefront
 
-**Downstream (calls)**
-- `product-catalog-service` — fetches product attributes and metadata for comparison
+Downstream (calls)
+- `product-catalog-service` â€” fetches product attributes and metadata for comparison
 
 ## Environment Variables
 
@@ -80,4 +80,4 @@ docker-compose up compare-service
 
 ## Health Check
 
-`GET /healthz` → `{"status":"ok"}`
+`GET /healthz` â†’ `{"status":"ok"}`

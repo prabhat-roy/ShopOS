@@ -1,4 +1,4 @@
-# Upgrade guidelines
+﻿# Upgrade guidelines
 
 These upgrade guidelines only contain instructions for version upgrades which require manual modifications on the user's side.
 If the version you want to upgrade to is not listed here, then there is nothing to do for you.
@@ -63,7 +63,7 @@ See [Security Best Practices docummentation](https://github.com/open-telemetry/o
 
 Enable the `useGOMEMLIMIT` feature flag by default. This means by default the chart now does not use the Memory Ballast Extension and any custom configuraiton applied to the Memory Ballast Extension is ignored.
 
-**If you're still interested in using the Memory Ballast Extension set this back to false.**
+If you're still interested in using the Memory Ballast Extension set this back to false.
 
 ## 0.69.3 to 0.70.0
 
@@ -80,7 +80,7 @@ The `loggingexporter` was replaced with the `debugexporter`. This ended up being
 
 When using versions `0.69.1` or `0.69.2` you should explicitly list the debugging exporter instead of the logging exporter. You other option is to skip these version and use `0.69.3` or newer, which includes the logging exporter configuration.
 
-**The logging exporter will be removed in a future version.** We highly recommend switching to the debug exporter.
+The logging exporter will be removed in a future version. We highly recommend switching to the debug exporter.
 
 ## 0.67 to 0.68
 

@@ -1,4 +1,4 @@
-# social-commerce-service
+﻿# social-commerce-service
 
 > Integrates ShopOS with social commerce platforms (Instagram Shopping, TikTok Shop) for product catalog sync and order capture.
 
@@ -64,14 +64,14 @@ graph TD
 
 ## Dependencies
 
-**Upstream (calls this service)**
-- `product-catalog-service` — product data via Kafka
-- `admin-portal` — channel management
+Upstream (calls this service)
+- `product-catalog-service` â€” product data via Kafka
+- `admin-portal` â€” channel management
 
-**Downstream (this service calls)**
-- `media-asset-service` — fetches product images and videos for channel upload
-- `product-catalog-service` — fetches full product detail for catalog submission
-- `order-service` — via Kafka for imported social orders
+Downstream (this service calls)
+- `media-asset-service` â€” fetches product images and videos for channel upload
+- `product-catalog-service` â€” fetches full product detail for catalog submission
+- `order-service` â€” via Kafka for imported social orders
 
 ## Environment Variables
 
@@ -79,14 +79,14 @@ graph TD
 |---|---|---|
 | `SERVER_PORT` | `50171` | gRPC / HTTP server port |
 | `KAFKA_BOOTSTRAP_SERVERS` | `localhost:9092` | Kafka broker addresses |
-| `INSTAGRAM_APP_ID` | — | Facebook App ID for Instagram Commerce |
-| `INSTAGRAM_APP_SECRET` | — | Facebook App secret |
-| `INSTAGRAM_CATALOG_ID` | — | Facebook Commerce catalog ID |
-| `TIKTOK_APP_KEY` | — | TikTok Shop app key |
-| `TIKTOK_APP_SECRET` | — | TikTok Shop app secret |
+| `INSTAGRAM_APP_ID` | â€” | Facebook App ID for Instagram Commerce |
+| `INSTAGRAM_APP_SECRET` | â€” | Facebook App secret |
+| `INSTAGRAM_CATALOG_ID` | â€” | Facebook Commerce catalog ID |
+| `TIKTOK_APP_KEY` | â€” | TikTok Shop app key |
+| `TIKTOK_APP_SECRET` | â€” | TikTok Shop app secret |
 | `MEDIA_SERVICE_ADDR` | `media-asset-service:50140` | Address of media-asset-service |
 | `CATALOG_SERVICE_ADDR` | `product-catalog-service:50070` | Address of product-catalog-service |
-| `WEBHOOK_VERIFY_TOKEN` | — | Shared secret for webhook signature validation |
+| `WEBHOOK_VERIFY_TOKEN` | â€” | Shared secret for webhook signature validation |
 | `LOG_LEVEL` | `info` | Logging level |
 
 ## Running Locally
@@ -97,6 +97,6 @@ docker-compose up social-commerce-service
 
 ## Health Check
 
-`GET /healthz` → `{"status":"ok"}`
+`GET /healthz` â†’ `{"status":"ok"}`
 
-gRPC health: `grpc.health.v1.Health/Check` → `SERVING`
+gRPC health: `grpc.health.v1.Health/Check` â†’ `SERVING`

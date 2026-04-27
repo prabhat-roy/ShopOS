@@ -1,4 +1,4 @@
-## Kong for Kubernetes
+﻿## Kong for Kubernetes
 
 [Kong for Kubernetes](https://github.com/Kong/kubernetes-ingress-controller)
 is an open-source Ingress Controller for Kubernetes that offers
@@ -112,7 +112,7 @@ helm delete my-release
 The command removes all the Kubernetes components associated with the
 chart and deletes the release.
 
-> **Tip**: List all releases using `helm list`
+> Tip: List all releases using `helm list`
 
 ## FAQs
 
@@ -179,7 +179,7 @@ after updating externally supplied ConfigMap content.
 
 #### Using the Postgres sub-chart
 
-> **NOTE**: Due to Bitnami images not being maintained anymore, starting with
+> NOTE: Due to Bitnami images not being maintained anymore, starting with
 > Kong chart 3.0 users have to specify the Postgres image themselves via
 > `postgresql.image.registry`, `postgresql.image.repository` and `postgresql.image.tag`.
 
@@ -233,19 +233,19 @@ which is the recommended approach for OpenShift deployments.
 
 There are three different packages of Kong that are available:
 
-- **Kong Gateway**\
+- Kong Gateway\
   This is the [Open-Source](https://github.com/kong/kong) offering. It is a
   full-blown API Gateway and Ingress solution with a wide-array of functionality.
   When Kong Gateway is combined with the Ingress based configuration method,
   you get Kong for Kubernetes. This is the default deployment for this Helm
   Chart.
-- **Kong Enterprise K8S**\
+- Kong Enterprise K8S\
   This package builds up on top of the Open-Source Gateway and bundles in all
   the Enterprise-only plugins as well.
   When Kong Enterprise K8S is combined with the Ingress based
   configuration method, you get Kong for Kubernetes Enterprise.
   This package also comes with 24x7 support from Kong Inc.
-- **Kong Enterprise**\
+- Kong Enterprise\
   This is the full-blown Enterprise package which packs with itself all the
   Enterprise functionality like Manager, Portal, Vitals, etc.
   This package can't be run in DB-less mode.
@@ -257,7 +257,7 @@ the [Kong Enterprise Parameters](#kong-enterprise-parameters) section.
 ### Configuration method
 
 Kong can be configured via two methods:
-- **Ingress and CRDs**\
+- Ingress and CRDs\
   The configuration for Kong is done via `kubectl` and Kubernetes-native APIs.
   This is also known as Kong Ingress Controller or Kong for Kubernetes and is
   the default deployment pattern for this Helm Chart. The configuration
@@ -268,7 +268,7 @@ Kong can be configured via two methods:
   on Kong Ingress Controller.
   To configure and fine-tune the controller, please read the
   [Ingress Controller Parameters](#ingress-controller-parameters) section.
-- **Admin API**\
+- Admin API\
   This is the traditional method of running and configuring Kong.
   By default, the Admin API of Kong is not exposed as a Service. This
   can be controlled via `admin.enabled` and `env.admin_listen` parameters.
@@ -965,7 +965,7 @@ On the Gateway release side, set either `admin.tls.client.secretName` to the nam
 | nameOverride                       | Replaces "kong" in resource names, like "RELEASENAME-nameOverride" instead of "RELEASENAME-kong" | `""`                |
 | fullnameOverride                   | Overrides the entire resource name string                                             | `""`                |
 | extraObjects                       | Create additional k8s resources                                                       | `[]`                |
-**Note:** If you are using `deployment.hostNetwork` to bind to lower ports ( < 1024), which may be the desired option (ports 80 and 433), you also
+Note: If you are using `deployment.hostNetwork` to bind to lower ports ( < 1024), which may be the desired option (ports 80 and 433), you also
 need to tweak the `containerSecurityContext` configuration as in the example:
 
 ```yaml
@@ -977,7 +977,7 @@ containerSecurityContext: # run as root to bind to lower ports
   runAsUser: 0
 ```
 
-**Note:** The default `podAnnotations` values disable inbound proxying for Kuma
+Note: The default `podAnnotations` values disable inbound proxying for Kuma
 and Istio. This is appropriate when using Kong as a gateway for external
 traffic inbound into the cluster.
 
@@ -1018,7 +1018,7 @@ kong:
 For complete list of Kong configurations please check the
 [Kong configuration docs](https://docs.konghq.com/latest/configuration).
 
-> **Tip**: You can use the default [values.yaml](values.yaml)
+> Tip: You can use the default [values.yaml](values.yaml)
 
 #### The `customEnv` section
 
@@ -1097,7 +1097,7 @@ Kong is going to be deployed.
 #### Kong Enterprise Docker registry access
 
 Kong Enterprise versions 2.2 and earlier use a private Docker registry and
-require a pull secret. **If you use 2.3 or newer, you can skip this step.**
+require a pull secret. If you use 2.3 or newer, you can skip this step.
 
 You should have received credentials to log into docker hub after
 purchasing Kong Enterprise. After logging in, you can retrieve your API key

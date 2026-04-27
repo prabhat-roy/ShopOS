@@ -1,4 +1,4 @@
-# Geolocation Service
+﻿# Geolocation Service
 
 > IP address and postal address geolocation lookups for regionalisation and localisation.
 
@@ -22,7 +22,7 @@ graph LR
 | Component | Technology |
 |---|---|
 | Language | Go |
-| Database | — |
+| Database | â€” |
 | Protocol | gRPC |
 | Port | 50058 |
 
@@ -49,19 +49,19 @@ graph LR
 
 ## Kafka Topics
 
-N/A — the Geolocation Service operates entirely synchronously via gRPC.
+N/A â€” the Geolocation Service operates entirely synchronously via gRPC.
 
 ## Dependencies
 
-**Upstream** (services this calls):
-- Embedded GeoIP database (MaxMind GeoLite2 or equivalent) — IP geolocation data
-- Optional external geocoding API — postal address resolution
+Upstream (services this calls):
+- Embedded GeoIP database (MaxMind GeoLite2 or equivalent) â€” IP geolocation data
+- Optional external geocoding API â€” postal address resolution
 
-**Downstream** (services that call this):
-- `api-gateway` (platform) — IP geolocation for request routing and locale detection
-- `tax-service` (commerce) — jurisdiction resolution for tax calculation
-- `shipping-service` (commerce) — origin/destination coordinate resolution
-- `address-validation-service` (commerce) — coordinate enrichment
+Downstream (services that call this):
+- `api-gateway` (platform) â€” IP geolocation for request routing and locale detection
+- `tax-service` (commerce) â€” jurisdiction resolution for tax calculation
+- `shipping-service` (commerce) â€” origin/destination coordinate resolution
+- `address-validation-service` (commerce) â€” coordinate enrichment
 
 ## Environment Variables
 
@@ -87,4 +87,4 @@ skaffold dev --module=geolocation-service
 
 ## Health Check
 
-`GET /healthz` → `{"status":"ok"}`
+`GET /healthz` â†’ `{"status":"ok"}`

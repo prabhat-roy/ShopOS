@@ -1,4 +1,4 @@
-# shipping-service
+﻿# shipping-service
 
 > Provides shipping rate calculation, carrier selection, and shipping label generation for orders.
 
@@ -65,16 +65,16 @@ The shipping-service does not publish Kafka events directly. Shipment status upd
 
 ## Dependencies
 
-**Upstream (callers)**
-- `checkout-service` — rate shopping during checkout
-- `fulfillment-service` — label generation at dispatch
-- `return-refund-service` — return label generation
+Upstream (callers)
+- `checkout-service` â€” rate shopping during checkout
+- `fulfillment-service` â€” label generation at dispatch
+- `return-refund-service` â€” return label generation
 
-**Downstream (called by this service)**
+Downstream (called by this service)
 - External carrier APIs (UPS, FedEx, USPS, DHL)
-- `label-service` — PDF label rendering for ZPL/PDF output
-- `geolocation-service` — address geocoding for zone calculation
-- PostgreSQL — shipment persistence
+- `label-service` â€” PDF label rendering for ZPL/PDF output
+- `geolocation-service` â€” address geocoding for zone calculation
+- PostgreSQL â€” shipment persistence
 
 ## Environment Variables
 
@@ -101,6 +101,6 @@ docker-compose up shipping-service
 
 ## Health Check
 
-`GET /healthz` → `{"status":"ok"}`
+`GET /healthz` â†’ `{"status":"ok"}`
 
-gRPC health: `grpc.health.v1.Health/Check` → `SERVING`
+gRPC health: `grpc.health.v1.Health/Check` â†’ `SERVING`

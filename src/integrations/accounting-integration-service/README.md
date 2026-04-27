@@ -1,10 +1,10 @@
-# accounting-integration-service
+﻿# accounting-integration-service
 
 > Syncs financial transactions and journal entries to accounting platforms (QuickBooks/Xero/Sage-compatible). Consumes financial.* events from Kafka.
 
 ## Overview
 
-The accounting-integration-service is a stateless Java adapter that bridges ShopOS's financial domain and external accounting platforms. It consumes `financial.*` Kafka events (invoices created, payments processed, payouts completed, refunds issued) and maps each event to the target accounting platform's API model before posting journal entries, invoices, or payments. It supports QuickBooks Online, Xero, and Sage Intacct via a pluggable adapter pattern — the active adapter is selected at runtime by an environment variable.
+The accounting-integration-service is a stateless Java adapter that bridges ShopOS's financial domain and external accounting platforms. It consumes `financial.*` Kafka events (invoices created, payments processed, payouts completed, refunds issued) and maps each event to the target accounting platform's API model before posting journal entries, invoices, or payments. It supports QuickBooks Online, Xero, and Sage Intacct via a pluggable adapter pattern â€” the active adapter is selected at runtime by an environment variable.
 
 ## Architecture
 
@@ -14,7 +14,7 @@ sequenceDiagram
     participant AI as accounting-integration-service
     participant QBO as QuickBooks / Xero / Sage
 
-    Note over K,QBO: Outbound: ShopOS → Accounting
+    Note over K,QBO: Outbound: ShopOS â†’ Accounting
     K->>AI: financial.invoice.created (Kafka)
     AI->>AI: Map to platform invoice model
     AI->>QBO: POST /invoices
@@ -63,10 +63,10 @@ sequenceDiagram
 
 ## Dependencies
 
-**Upstream (callers)**
+Upstream (callers)
 - Kafka topics produced by `invoice-service`, `payout-service`, `payment-service`
 
-**Downstream (calls out to)**
+Downstream (calls out to)
 - QuickBooks Online REST API
 - Xero API
 - Sage Intacct Web Services API
@@ -76,14 +76,14 @@ sequenceDiagram
 | Variable | Default | Description |
 |---|---|---|
 | `SERVER_PORT` | `50196` | HTTP server port |
-| `QBO_CLIENT_ID` | — | QuickBooks OAuth2 client ID |
-| `QBO_CLIENT_SECRET` | — | QuickBooks OAuth2 client secret |
-| `QBO_REFRESH_TOKEN` | — | QuickBooks long-lived refresh token |
-| `QBO_REALM_ID` | — | QuickBooks company realm ID |
-| `XERO_CLIENT_ID` | — | Xero OAuth2 client ID |
-| `XERO_CLIENT_SECRET` | — | Xero OAuth2 client secret |
-| `XERO_TENANT_ID` | — | Xero tenant/organisation ID |
-| `SAGE_COMPANY_ID` | — | Sage Intacct company ID |
+| `QBO_CLIENT_ID` | â€” | QuickBooks OAuth2 client ID |
+| `QBO_CLIENT_SECRET` | â€” | QuickBooks OAuth2 client secret |
+| `QBO_REFRESH_TOKEN` | â€” | QuickBooks long-lived refresh token |
+| `QBO_REALM_ID` | â€” | QuickBooks company realm ID |
+| `XERO_CLIENT_ID` | â€” | Xero OAuth2 client ID |
+| `XERO_CLIENT_SECRET` | â€” | Xero OAuth2 client secret |
+| `XERO_TENANT_ID` | â€” | Xero tenant/organisation ID |
+| `SAGE_COMPANY_ID` | â€” | Sage Intacct company ID |
 | `KAFKA_BROKERS` | `localhost:9092` | Comma-separated Kafka broker list |
 | `KAFKA_CONSUMER_GROUP` | `accounting-integration-service` | Kafka consumer group ID |
 | `SPRING_PROFILES_ACTIVE` | `production` | Active Spring profile |
@@ -96,4 +96,4 @@ docker-compose up accounting-integration-service
 
 ## Health Check
 
-`GET /healthz` → `{"status":"ok"}`
+`GET /healthz` â†’ `{"status":"ok"}`

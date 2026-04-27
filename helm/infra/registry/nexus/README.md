@@ -1,19 +1,19 @@
-# Nexus Repository Manager — Artifact Proxy & Package Registry
+﻿# Nexus Repository Manager â€” Artifact Proxy & Package Registry
 
 ## Role in ShopOS
 
-Nexus Repository Manager is the **universal artifact proxy and private package registry** for
+Nexus Repository Manager is the universal artifact proxy and private package registry for
 ShopOS. It sits between CI pipelines and the public internet, caching dependencies from Maven
 Central, npm, PyPI, Go proxy, and Docker Hub. This eliminates redundant internet downloads across
 130 service builds, dramatically improving CI build speeds and providing resilience against upstream
 registry outages.
 
-**Key capabilities:**
-- Proxy repositories — caches upstream packages locally on first download
-- Hosted repositories — stores ShopOS's own published artifacts (Java JARs, Docker images)
-- Repository groups — exposes a single URL that aggregates multiple repos (proxy + hosted)
-- RBAC — restricts publish access to CI robot accounts
-- Component metadata — BOM generation, license scanning integration
+Key capabilities:
+- Proxy repositories â€” caches upstream packages locally on first download
+- Hosted repositories â€” stores ShopOS's own published artifacts (Java JARs, Docker images)
+- Repository groups â€” exposes a single URL that aggregates multiple repos (proxy + hosted)
+- RBAC â€” restricts publish access to CI robot accounts
+- Component metadata â€” BOM generation, license scanning integration
 
 ---
 
@@ -36,17 +36,17 @@ registry outages.
 ### Without Nexus (Direct Internet)
 
 ```
-Build 1: mvn install → downloads 200MB from Maven Central (40s)
-Build 2: mvn install → downloads 200MB again from Maven Central (40s)
+Build 1: mvn install â†’ downloads 200MB from Maven Central (40s)
+Build 2: mvn install â†’ downloads 200MB again from Maven Central (40s)
 Build N: same download repeated every cold CI runner
 ```
 
 ### With Nexus (Proxy Cache)
 
 ```
-Build 1: mvn install → Nexus fetches from Maven Central, caches locally (40s)
-Build 2: mvn install → Nexus serves from local cache (2s)
-Build N: same 2s — regardless of internet connectivity
+Build 1: mvn install â†’ Nexus fetches from Maven Central, caches locally (40s)
+Build 2: mvn install â†’ Nexus serves from local cache (2s)
+Build N: same 2s â€” regardless of internet connectivity
 ```
 
 | Metric | Without Nexus | With Nexus |
@@ -64,7 +64,7 @@ Build N: same 2s — regardless of internet connectivity
 ### Maven (Java / Kotlin services)
 
 ```xml
-<!-- settings.xml — configure Nexus as mirror -->
+<!-- settings.xml â€” configure Nexus as mirror -->
 <mirror>
   <id>nexus</id>
   <mirrorOf>*</mirrorOf>

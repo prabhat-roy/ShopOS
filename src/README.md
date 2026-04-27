@@ -1,4 +1,4 @@
-# Services — ShopOS
+﻿# Services â€” ShopOS
 
 263 services (256 backend microservices + 7 frontend) across 22 business domains. Each service
 is a self-contained unit with its own codebase, database, Dockerfile, Helm chart, and CI pipeline.
@@ -31,7 +31,7 @@ is a self-contained unit with its own codebase, database, Dockerfile, Helm chart
 | 20 | Auction | `auction/` | 4 | Go, Java, Elixir |
 | 21 | Rental | `rental/` | 4 | Go, Kotlin |
 | 22 | Web (Frontend) | `web/` | 7 | Next.js, React, Vue.js, Angular, React Native, Flutter, Dart |
-| | **Total** | | **263** | **19 languages** |
+| | Total | | 263 | 19 languages |
 
 ---
 
@@ -41,40 +41,40 @@ Every service follows the same layout regardless of language:
 
 ```
 src/{domain}/{service-name}/
-├── Dockerfile                  ← Multi-stage build, non-root user, minimal base
-├── Makefile                    ← build, test, lint, run targets
-├── .env.example                ← All environment variables documented
-├── README.md                   ← Service-specific docs
-│
-├── (Go service)
-│   ├── main.go
-│   ├── go.mod / go.sum
-│   └── internal/
-│
-├── (Java/Kotlin service)
-│   ├── pom.xml / build.gradle.kts
-│   └── src/main/java|kotlin/com/enterprise/{pkg}/
-│       └── Application.java|kt
-│
-├── (Python service)
-│   ├── main.py
-│   └── requirements.txt
-│
-├── (Node.js service)
-│   ├── index.js
-│   └── package.json
-│
-├── (C# service)
-│   ├── Program.cs
-│   └── {Service}.csproj
-│
-├── (Rust service)
-│   ├── src/main.rs
-│   └── Cargo.toml
-│
-└── (Scala service)
-    ├── src/main/scala/com/enterprise/{pkg}/Main.scala
-    └── build.sbt
+â”œâ”€â”€ Dockerfile                  â† Multi-stage build, non-root user, minimal base
+â”œâ”€â”€ Makefile                    â† build, test, lint, run targets
+â”œâ”€â”€ .env.example                â† All environment variables documented
+â”œâ”€â”€ README.md                   â† Service-specific docs
+â”‚
+â”œâ”€â”€ (Go service)
+â”‚   â”œâ”€â”€ main.go
+â”‚   â”œâ”€â”€ go.mod / go.sum
+â”‚   â””â”€â”€ internal/
+â”‚
+â”œâ”€â”€ (Java/Kotlin service)
+â”‚   â”œâ”€â”€ pom.xml / build.gradle.kts
+â”‚   â””â”€â”€ src/main/java|kotlin/com/enterprise/{pkg}/
+â”‚       â””â”€â”€ Application.java|kt
+â”‚
+â”œâ”€â”€ (Python service)
+â”‚   â”œâ”€â”€ main.py
+â”‚   â””â”€â”€ requirements.txt
+â”‚
+â”œâ”€â”€ (Node.js service)
+â”‚   â”œâ”€â”€ index.js
+â”‚   â””â”€â”€ package.json
+â”‚
+â”œâ”€â”€ (C# service)
+â”‚   â”œâ”€â”€ Program.cs
+â”‚   â””â”€â”€ {Service}.csproj
+â”‚
+â”œâ”€â”€ (Rust service)
+â”‚   â”œâ”€â”€ src/main.rs
+â”‚   â””â”€â”€ Cargo.toml
+â”‚
+â””â”€â”€ (Scala service)
+    â”œâ”€â”€ src/main/scala/com/enterprise/{pkg}/Main.scala
+    â””â”€â”€ build.sbt
 ```
 
 ---
@@ -85,7 +85,7 @@ Every service exposes:
 
 | Endpoint | Purpose |
 |---|---|
-| `GET /healthz` | Returns `{"status":"ok"}` — used by Kubernetes liveness/readiness probes |
+| `GET /healthz` | Returns `{"status":"ok"}` â€” used by Kubernetes liveness/readiness probes |
 | `GET /metrics` | Prometheus metrics (Phase 4 instrumentation) |
 | gRPC health check | `grpc.health.v1.Health/Check` |
 
@@ -93,11 +93,11 @@ Every service exposes:
 
 ## Communication Rules
 
-1. **Synchronous**: gRPC for reads and commands that need a response
-2. **Asynchronous**: Kafka events for cross-domain side effects
-3. **Never** access another service's database directly
-4. **Never** share a database between two services
-5. All `.proto` files live in `proto/` — generated code goes into each service
+1. Synchronous: gRPC for reads and commands that need a response
+2. Asynchronous: Kafka events for cross-domain side effects
+3. Never access another service's database directly
+4. Never share a database between two services
+5. All `.proto` files live in `proto/` â€” generated code goes into each service
 
 ---
 
@@ -122,19 +122,19 @@ Every service exposes:
 
 | Domain | Range |
 |---|---|
-| Platform | 50051–50059 |
-| Identity | 50060–50069 |
-| Catalog | 50070–50079 |
-| Commerce | 50080–50099 |
-| Supply Chain | 50100–50109 |
-| Financial | 50110–50119 |
-| Customer Experience | 50120–50129 |
-| Communications | 50130–50139 |
-| Content | 50140–50149 |
-| Analytics & AI | 50150–50159 |
-| B2B | 50160–50169 |
-| Integrations | 50170–50179 |
-| Affiliate | 50200–50209 |
+| Platform | 50051â€“50059 |
+| Identity | 50060â€“50069 |
+| Catalog | 50070â€“50079 |
+| Commerce | 50080â€“50099 |
+| Supply Chain | 50100â€“50109 |
+| Financial | 50110â€“50119 |
+| Customer Experience | 50120â€“50129 |
+| Communications | 50130â€“50139 |
+| Content | 50140â€“50149 |
+| Analytics & AI | 50150â€“50159 |
+| B2B | 50160â€“50169 |
+| Integrations | 50170â€“50179 |
+| Affiliate | 50200â€“50209 |
 
 ### HTTP Ports (external-facing)
 

@@ -1,4 +1,4 @@
-# Databases — ShopOS
+﻿# Databases â€” ShopOS
 
 Specialist database schemas for OLAP, vector search, graph analytics, high-throughput
 time-series, and log analytics. These complement the primary transactional databases
@@ -10,25 +10,25 @@ time-series, and log analytics. These complement the primary transactional datab
 
 ```
 databases/
-├── clickhouse/         ← OLAP schema — orders, events, revenue_daily MV
-├── weaviate/           ← Vector schema — Product, UserQuery classes
-├── neo4j/              ← Graph schema — product recommendation graph
-├── scylladb/           ← High-throughput time-series keyspace
-└── opensearch/         ← Index templates + ILM policies
+â”œâ”€â”€ clickhouse/         â† OLAP schema â€” orders, events, revenue_daily MV
+â”œâ”€â”€ weaviate/           â† Vector schema â€” Product, UserQuery classes
+â”œâ”€â”€ neo4j/              â† Graph schema â€” product recommendation graph
+â”œâ”€â”€ scylladb/           â† High-throughput time-series keyspace
+â””â”€â”€ opensearch/         â† Index templates + ILM policies
 ```
 
 ---
 
 ## ClickHouse
 
-**Role:** OLAP analytics — order aggregations, revenue reporting, funnel analysis.
+Role: OLAP analytics â€” order aggregations, revenue reporting, funnel analysis.
 
-**Key objects:**
+Key objects:
 
 | Object | Type | Description |
 |---|---|---|
-| `orders` | Table | ReplicatedMergeTree — raw order rows |
-| `order_events` | Table | ReplicatedMergeTree — state-change events |
+| `orders` | Table | ReplicatedMergeTree â€” raw order rows |
+| `order_events` | Table | ReplicatedMergeTree â€” state-change events |
 | `revenue_daily` | Materialized View | Aggregates daily revenue from `orders` |
 | `funnel_events` | Table | User funnel step tracking |
 
@@ -41,9 +41,9 @@ clickhouse-client --host clickhouse.analytics-ai.svc --port 9000 --user shopos
 
 ## Weaviate
 
-**Role:** Vector database for semantic product search and RAG (retrieval-augmented generation).
+Role: Vector database for semantic product search and RAG (retrieval-augmented generation).
 
-**Classes:**
+Classes:
 
 | Class | Vectorizer | Description |
 |---|---|---|
@@ -63,9 +63,9 @@ results = client.query.get("Product", ["name", "description"]) \
 
 ## Neo4j
 
-**Role:** Graph database powering the product recommendation engine.
+Role: Graph database powering the product recommendation engine.
 
-**Graph model:**
+Graph model:
 
 ```
 (User)-[:VIEWED]->(Product)
@@ -74,7 +74,7 @@ results = client.query.get("Product", ["name", "description"]) \
 (Product)-[:FREQUENTLY_BOUGHT_WITH]->(Product)
 ```
 
-Cypher — "users who bought X also bought":
+Cypher â€” "users who bought X also bought":
 ```cypher
 MATCH (p:Product {id: $productId})<-[:PURCHASED]-(u:User)-[:PURCHASED]->(rec:Product)
 WHERE rec.id <> $productId
@@ -86,12 +86,12 @@ ORDER BY coOccurrence DESC LIMIT 10
 
 ## ScyllaDB
 
-**Role:** High-throughput Cassandra-compatible time-series store for analytics events,
+Role: High-throughput Cassandra-compatible time-series store for analytics events,
 session data, and IoT-style telemetry from the supply chain.
 
-**Keyspace:** `shopos_analytics`
+Keyspace: `shopos_analytics`
 
-**Key tables:**
+Key tables:
 
 | Table | Partition Key | Clustering Key | Description |
 |---|---|---|---|
@@ -110,9 +110,9 @@ cqlsh scylladb.messaging.svc 9042 -u shopos
 
 ## OpenSearch
 
-**Role:** Log analytics, audit trail, and security event search. Alternative to the ELK stack.
+Role: Log analytics, audit trail, and security event search. Alternative to the ELK stack.
 
-**Index templates:**
+Index templates:
 
 | Template | Applies to | Shards | Replicas | Retention |
 |---|---|---|---|---|
@@ -120,7 +120,7 @@ cqlsh scylladb.messaging.svc 9042 -u shopos
 | `audit-*` | Audit events | 2 | 1 | 365 days |
 | `security-*` | Falco / security events | 2 | 1 | 90 days |
 
-**ILM policies:**
+ILM policies:
 
 | Policy | Hot phase | Warm phase | Delete |
 |---|---|---|---|

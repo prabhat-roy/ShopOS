@@ -1,4 +1,4 @@
-# search-service
+﻿# search-service
 
 > Full-text search, faceted filters, and autocomplete powered by Elasticsearch.
 
@@ -107,15 +107,15 @@ service SearchService {
 
 ## Dependencies
 
-**Upstream** (calls these):
-- `product-catalog-service` — `StreamProductUpdates` and `GetProduct` for index enrichment
-- `category-service` — `GetCategory` for breadcrumb and facet labels
-- `brand-service` — `GetBrand` for brand facet data
-- `pricing-service` — `GetEffectivePrice` to index displayable prices
+Upstream (calls these):
+- `product-catalog-service` â€” `StreamProductUpdates` and `GetProduct` for index enrichment
+- `category-service` â€” `GetCategory` for breadcrumb and facet labels
+- `brand-service` â€” `GetBrand` for brand facet data
+- `pricing-service` â€” `GetEffectivePrice` to index displayable prices
 
-**Downstream** (called by these):
-- `api-gateway` / `web-bff` — all storefront search and autocomplete queries
-- `mobile-bff` — mobile search endpoints
+Downstream (called by these):
+- `api-gateway` / `web-bff` â€” all storefront search and autocomplete queries
+- `mobile-bff` â€” mobile search endpoints
 
 ## Environment Variables
 
@@ -139,6 +139,6 @@ docker-compose up search-service
 
 ## Health Check
 
-`GET /healthz` — `{"status":"ok"}`
+`GET /healthz` â€” `{"status":"ok"}`
 
 gRPC health protocol: `grpc.health.v1.Health/Check` on port `50078`

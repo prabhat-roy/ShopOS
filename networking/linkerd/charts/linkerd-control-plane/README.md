@@ -1,13 +1,13 @@
-# linkerd-control-plane
+﻿# linkerd-control-plane
 
 Linkerd gives you observability, reliability, and security
-for your microservices — with no code change required.
+for your microservices â€” with no code change required.
 
 ![Version: 1.16.11](https://img.shields.io/badge/Version-1.16.11-informational?style=flat-square)
 ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square)
 ![AppVersion: edge-XX.X.X](https://img.shields.io/badge/AppVersion-edge--XX.X.X-informational?style=flat-square)
 
-**Homepage:** <https://linkerd.io>
+Homepage: <https://linkerd.io>
 
 ## Quickstart and documentation
 
@@ -33,8 +33,8 @@ ones.
 
 Alternatively, both trust anchor and identity issuer certificates may be
 derived from in-cluster resources. Existing CA (trust anchor) certificates
-**must** live in a `ConfigMap` resource named `linkerd-identity-trust-roots`.
-Issuer certificates **must** live in a `Secret` named
+must live in a `ConfigMap` resource named `linkerd-identity-trust-roots`.
+Issuer certificates must live in a `Secret` named
 `linkerd-identity-issuer`. Both resources should exist in the control-plane's
 install namespace. In order to use an existing CA, Linkerd needs to be
 installed with `identity.externalCA=true`. To use an existing issuer

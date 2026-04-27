@@ -1,10 +1,10 @@
-# user-service
+﻿# user-service
 
 > Canonical user account CRUD, profile management, and email verification.
 
 ## Overview
 
-The user-service owns the user aggregate — the authoritative record for every registered
+The user-service owns the user aggregate â€” the authoritative record for every registered
 account on the platform. It handles account creation, profile updates, email/phone
 verification flows, and account status transitions (active, suspended, deleted). Other
 identity services treat user-service as the single source of truth for user identity data.
@@ -87,7 +87,7 @@ service UserService {
 | `DeleteUser` | Soft-delete (sets status=DELETED) |
 | `VerifyEmail` | Validate email verification token |
 | `ListUsers` | Paginated admin list with filter support |
-| `AnonymizeUser` | GDPR erasure — replace PII with anonymized values |
+| `AnonymizeUser` | GDPR erasure â€” replace PII with anonymized values |
 
 ## Kafka Topics
 
@@ -98,23 +98,23 @@ service UserService {
 
 ## Dependencies
 
-**Upstream** (calls these):
-- `mfa-service` — send OTP for phone verification
-- `notification-orchestrator` — request verification emails (via Kafka `notification.email.requested`)
+Upstream (calls these):
+- `mfa-service` â€” send OTP for phone verification
+- `notification-orchestrator` â€” request verification emails (via Kafka `notification.email.requested`)
 
-**Downstream** (called by these):
-- `auth-service` — `GetUserByEmail` during login
-- `gdpr-service` — `AnonymizeUser` during erasure requests
-- `api-gateway` — account creation and profile reads
-- `permission-service` — resolves user roles
+Downstream (called by these):
+- `auth-service` â€” `GetUserByEmail` during login
+- `gdpr-service` â€” `AnonymizeUser` during erasure requests
+- `api-gateway` â€” account creation and profile reads
+- `permission-service` â€” resolves user roles
 
 ## Environment Variables
 
 | Variable | Default | Description |
 |---|---|---|
-| `SPRING_DATASOURCE_URL` | — | PostgreSQL JDBC URL |
-| `SPRING_DATASOURCE_USERNAME` | — | DB username |
-| `SPRING_DATASOURCE_PASSWORD` | — | DB password |
+| `SPRING_DATASOURCE_URL` | â€” | PostgreSQL JDBC URL |
+| `SPRING_DATASOURCE_USERNAME` | â€” | DB username |
+| `SPRING_DATASOURCE_PASSWORD` | â€” | DB password |
 | `GRPC_PORT` | `50061` | gRPC server port |
 | `KAFKA_BOOTSTRAP_SERVERS` | `kafka:9092` | Kafka broker list |
 | `EMAIL_VERIFICATION_EXPIRY_MINUTES` | `60` | Verification token TTL |
@@ -128,6 +128,6 @@ docker-compose up user-service
 
 ## Health Check
 
-`GET /healthz` — `{"status":"ok"}`
+`GET /healthz` â€” `{"status":"ok"}`
 
 gRPC health protocol: `grpc.health.v1.Health/Check` on port `50061`

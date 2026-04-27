@@ -1,4 +1,4 @@
-<!--- app-name: PostgreSQL -->
+﻿<!--- app-name: PostgreSQL -->
 
 # Bitnami package for PostgreSQL
 
@@ -18,13 +18,13 @@ helm install my-release oci://registry-1.docker.io/bitnamicharts/postgresql
 
 Looking to use PostgreSQL in production? Try [VMware Tanzu Application Catalog](https://bitnami.com/enterprise), the commercial edition of the Bitnami catalog.
 
-## ⚠️ Important Notice: Upcoming changes to the Bitnami Catalog
+## âš ï¸ Important Notice: Upcoming changes to the Bitnami Catalog
 
 Beginning August 28th, 2025, Bitnami will evolve its public catalog to offer a curated set of hardened, security-focused images under the new [Bitnami Secure Images initiative](https://news.broadcom.com/app-dev/broadcom-introduces-bitnami-secure-images-for-production-ready-containerized-applications). As part of this transition:
 
 - Granting community users access for the first time to security-optimized versions of popular container images.
-- Bitnami will begin deprecating support for non-hardened, Debian-based software images in its free tier and will gradually remove non-latest tags from the public catalog. As a result, community users will have access to a reduced number of hardened images. These images are published only under the “latest” tag and are intended for development purposes
-- Starting August 28th, over two weeks, all existing container images, including older or versioned tags (e.g., 2.50.0, 10.6), will be migrated from the public catalog (docker.io/bitnami) to the “Bitnami Legacy” repository (docker.io/bitnamilegacy), where they will no longer receive updates.
+- Bitnami will begin deprecating support for non-hardened, Debian-based software images in its free tier and will gradually remove non-latest tags from the public catalog. As a result, community users will have access to a reduced number of hardened images. These images are published only under the â€œlatestâ€ tag and are intended for development purposes
+- Starting August 28th, over two weeks, all existing container images, including older or versioned tags (e.g., 2.50.0, 10.6), will be migrated from the public catalog (docker.io/bitnami) to the â€œBitnami Legacyâ€ repository (docker.io/bitnamilegacy), where they will no longer receive updates.
 - For production workloads and long-term support, users are encouraged to adopt Bitnami Secure Images, which include hardened containers, smaller attack surfaces, CVE transparency (via VEX/KEV), SBOMs, and enterprise support.
 
 These changes aim to improve the security posture of all Bitnami users by promoting best practices for software supply chain integrity and up-to-date deployments. For more details, visit the [Bitnami Secure Images announcement](https://github.com/bitnami/containers/issues/83267).
@@ -53,7 +53,7 @@ helm install my-release oci://REGISTRY_NAME/REPOSITORY_NAME/postgresql
 
 The command deploys PostgreSQL on the Kubernetes cluster in the default configuration. The [Parameters](#parameters) section lists the parameters that can be configured during installation.
 
-> **Tip**: List all releases using `helm list`
+> Tip: List all releases using `helm list`
 
 ## Configuration and installation details
 
@@ -99,15 +99,15 @@ To modify the application version used in this chart, specify a different versio
 
 LDAP support can be enabled in the chart by specifying the `ldap.` parameters while creating a release. The following parameters should be configured to properly enable the LDAP support in the chart.
 
-- **ldap.enabled**: Enable LDAP support. Defaults to `false`.
-- **ldap.uri**: LDAP URL beginning in the form `ldap[s]://<hostname>:<port>`. No defaults.
-- **ldap.base**: LDAP base DN. No defaults.
-- **ldap.binddn**: LDAP bind DN. No defaults.
-- **ldap.bindpw**: LDAP bind password. No defaults.
-- **ldap.bslookup**: LDAP base lookup. No defaults.
-- **ldap.nss_initgroups_ignoreusers**: LDAP ignored users. `root,nslcd`.
-- **ldap.scope**: LDAP search scope. No defaults.
-- **ldap.tls_reqcert**: LDAP TLS check on server certificates. No defaults.
+- ldap.enabled: Enable LDAP support. Defaults to `false`.
+- ldap.uri: LDAP URL beginning in the form `ldap[s]://<hostname>:<port>`. No defaults.
+- ldap.base: LDAP base DN. No defaults.
+- ldap.binddn: LDAP bind DN. No defaults.
+- ldap.bindpw: LDAP bind password. No defaults.
+- ldap.bslookup: LDAP base lookup. No defaults.
+- ldap.nss_initgroups_ignoreusers: LDAP ignored users. `root,nslcd`.
+- ldap.scope: LDAP search scope. No defaults.
+- ldap.tls_reqcert: LDAP TLS check on server certificates. No defaults.
 
 For example:
 
@@ -905,7 +905,7 @@ helm install my-release \
 The above command sets the PostgreSQL `postgres` account password to `secretpassword`.
 
 > NOTE: Once this chart is deployed, it is not possible to change the application's access credentials, such as usernames or passwords, using Helm. To change these application credentials after deployment, delete any persistent volumes (PVs) used by the chart and re-deploy it, or use the application's built-in administrative tools if available.
-> **Warning** Setting a password will be ignored on new installation in case when previous PostgreSQL release was deleted through the helm command. In that case, old PVC will have an old password, and setting it through helm won't take effect. Deleting persistent volumes (PVs) will solve the issue. Refer to [issue 2061](https://github.com/bitnami/charts/issues/2061) for more details
+> Warning Setting a password will be ignored on new installation in case when previous PostgreSQL release was deleted through the helm command. In that case, old PVC will have an old password, and setting it through helm won't take effect. Deleting persistent volumes (PVs) will solve the issue. Refer to [issue 2061](https://github.com/bitnami/charts/issues/2061) for more details
 
 Alternatively, a YAML file that specifies the values for the parameters can be provided while installing the chart. For example,
 
@@ -914,7 +914,7 @@ helm install my-release -f values.yaml oci://REGISTRY_NAME/REPOSITORY_NAME/postg
 ```
 
 > Note: You need to substitute the placeholders `REGISTRY_NAME` and `REPOSITORY_NAME` with a reference to your Helm chart registry and repository. For example, in the case of Bitnami, you need to use `REGISTRY_NAME=registry-1.docker.io` and `REPOSITORY_NAME=bitnamicharts`.
-> **Tip**: You can use the default [values.yaml](https://github.com/bitnami/charts/tree/main/bitnami/postgresql/values.yaml)
+> Tip: You can use the default [values.yaml](https://github.com/bitnami/charts/tree/main/bitnami/postgresql/values.yaml)
 
 ## Troubleshooting
 
@@ -1021,7 +1021,7 @@ postgresql 08:05:12.59 INFO  ==> Deploying PostgreSQL with persisted data...
 ```console
 $ kubectl logs $(kubectl get pods -l app.kubernetes.io/instance=postgresql,app.kubernetes.io/name=postgresql,app.kubernetes.io/component=primary -o jsonpath="{.items[0].metadata.name}")
     ...
-postgresql 08:10:14.72 INFO  ==> ** Starting PostgreSQL **
+postgresql 08:10:14.72 INFO  ==>  Starting PostgreSQL 
 2022-02-01 08:10:14.734 GMT [1] FATAL:  database files are incompatible with server
 2022-02-01 08:10:14.734 GMT [1] DETAIL:  The data directory was initialized by PostgreSQL version 11, which is not compatible with this version 14.1.
 ```

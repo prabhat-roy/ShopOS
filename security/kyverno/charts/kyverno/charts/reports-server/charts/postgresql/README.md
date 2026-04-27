@@ -1,4 +1,4 @@
-<!--- app-name: PostgreSQL -->
+﻿<!--- app-name: PostgreSQL -->
 
 # Bitnami package for PostgreSQL
 
@@ -42,7 +42,7 @@ helm install my-release oci://REGISTRY_NAME/REPOSITORY_NAME/postgresql
 
 The command deploys PostgreSQL on the Kubernetes cluster in the default configuration. The [Parameters](#parameters) section lists the parameters that can be configured during installation.
 
-> **Tip**: List all releases using `helm list`
+> Tip: List all releases using `helm list`
 
 ## Uninstalling the Chart
 
@@ -60,7 +60,7 @@ To delete the PVC's associated with `my-release`:
 kubectl delete pvc -l release=my-release
 ```
 
-> **Note**: Deleting the PVC's will delete postgresql data as well. Please be cautious before doing it.
+> Note: Deleting the PVC's will delete postgresql data as well. Please be cautious before doing it.
 
 ## Parameters
 
@@ -549,7 +549,7 @@ helm install my-release \
 The above command sets the PostgreSQL `postgres` account password to `secretpassword`.
 
 > NOTE: Once this chart is deployed, it is not possible to change the application's access credentials, such as usernames or passwords, using Helm. To change these application credentials after deployment, delete any persistent volumes (PVs) used by the chart and re-deploy it, or use the application's built-in administrative tools if available.
-> **Warning** Setting a password will be ignored on new installation in case when previous PostgreSQL release was deleted through the helm command. In that case, old PVC will have an old password, and setting it through helm won't take effect. Deleting persistent volumes (PVs) will solve the issue. Refer to [issue 2061](https://github.com/bitnami/charts/issues/2061) for more details
+> Warning Setting a password will be ignored on new installation in case when previous PostgreSQL release was deleted through the helm command. In that case, old PVC will have an old password, and setting it through helm won't take effect. Deleting persistent volumes (PVs) will solve the issue. Refer to [issue 2061](https://github.com/bitnami/charts/issues/2061) for more details
 
 Alternatively, a YAML file that specifies the values for the parameters can be provided while installing the chart. For example,
 
@@ -558,7 +558,7 @@ helm install my-release -f values.yaml oci://REGISTRY_NAME/REPOSITORY_NAME/postg
 ```
 
 > Note: You need to substitute the placeholders `REGISTRY_NAME` and `REPOSITORY_NAME` with a reference to your Helm chart registry and repository. For example, in the case of Bitnami, you need to use `REGISTRY_NAME=registry-1.docker.io` and `REPOSITORY_NAME=bitnamicharts`.
-> **Tip**: You can use the default [values.yaml](https://github.com/bitnami/charts/tree/main/bitnami/postgresql/values.yaml)
+> Tip: You can use the default [values.yaml](https://github.com/bitnami/charts/tree/main/bitnami/postgresql/values.yaml)
 
 ## Configuration and installation details
 

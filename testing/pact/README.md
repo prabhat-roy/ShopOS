@@ -1,4 +1,4 @@
-# ShopOS — Pact Contract Tests
+﻿# ShopOS â€” Pact Contract Tests
 
 [Pact](https://pact.io/) is a contract testing framework that ensures consumer and provider
 services agree on their API contract without requiring both to be live simultaneously.
@@ -10,7 +10,7 @@ services agree on their API contract without requiring both to be live simultane
 | `consumer/order-service-cart-service.pact.json` | order-service | cart-service | GET /cart/{userId}, DELETE /cart/{userId}, GET /cart/{userId}/totals |
 | `consumer/checkout-service-payment-service.pact.json` | checkout-service | payment-service | POST /payments, GET /payments/{id}, POST /payments/{id}/refunds |
 
-All contracts use **Pact Specification v3**.
+All contracts use Pact Specification v3.
 
 ## Tools
 
@@ -90,7 +90,7 @@ docker-compose --profile testing up pact-broker pact-broker-db
 ## Adding new contracts
 
 1. Write the consumer test using your language's Pact library.
-2. Run the consumer test — Pact generates a `.pact.json` file in the output directory.
+2. Run the consumer test â€” Pact generates a `.pact.json` file in the output directory.
 3. Copy/symlink the generated file to `testing/pact/consumer/`.
 4. Publish to the Pact Broker using the command above.
 5. Add provider verification test to the provider service.

@@ -1,4 +1,4 @@
-# Grafana Agent Helm chart
+﻿# Grafana Agent Helm chart
 
 ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![Version: 0.44.2](https://img.shields.io/badge/Version-0.44.2-informational?style=flat-square) ![AppVersion: v0.44.2](https://img.shields.io/badge/AppVersion-v0.44.2-informational?style=flat-square)
 
@@ -145,7 +145,7 @@ use the older mode (called "static mode"), set the `agent.mode` value to
 `agent.extraArgs` allows for passing extra arguments to the Grafana Agent
 container. The list of available arguments is documented on [agent run][].
 
-> **WARNING**: Using `agent.extraArgs` does not have a stable API. Things may
+> WARNING: Using `agent.extraArgs` does not have a stable API. Things may
 > break between Chart upgrade if an argument gets added to the template.
 
 [agent run]: https://grafana.com/docs/agent/latest/flow/reference/cli/run/
@@ -208,7 +208,7 @@ components like [discovery.kubernetes][] to work properly.
 [app_agent_receiver-configured][app_agent_receiver] Grafana Agent or for
 [clustered][] mode.
 
-> **WARNING**: Using `controller.autoscaling` for any other Grafana Agent
+> WARNING: Using `controller.autoscaling` for any other Grafana Agent
 > configuration could lead to redundant or double telemetry collection.
 
 [app_agent_receiver]: https://grafana.com/docs/agent/latest/configuration/integrations/integrations-next/app-agent-receiver-config/

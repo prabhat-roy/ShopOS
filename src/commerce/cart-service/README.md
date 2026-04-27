@@ -1,6 +1,6 @@
-# cart-service
+﻿# cart-service
 
-> Manages shopping cart lifecycle — add, update, and remove items with real-time promotion application.
+> Manages shopping cart lifecycle â€” add, update, and remove items with real-time promotion application.
 
 ## Overview
 
@@ -63,14 +63,14 @@ The cart-service publishes the following topic for analytics:
 
 ## Dependencies
 
-**Upstream (callers)**
-- `web-bff` / `mobile-bff` — primary consumers via gRPC
-- `checkout-service` — calls `GetCart` to initiate checkout
+Upstream (callers)
+- `web-bff` / `mobile-bff` â€” primary consumers via gRPC
+- `checkout-service` â€” calls `GetCart` to initiate checkout
 
-**Downstream (called by this service)**
-- `promotions-service` — validate and apply coupon codes / auto-promotions
-- `pricing-service` — resolve current prices per SKU
-- `inventory-service` — soft-check stock availability before add-to-cart
+Downstream (called by this service)
+- `promotions-service` â€” validate and apply coupon codes / auto-promotions
+- `pricing-service` â€” resolve current prices per SKU
+- `inventory-service` â€” soft-check stock availability before add-to-cart
 
 ## Environment Variables
 
@@ -103,6 +103,6 @@ dotnet run
 
 ## Health Check
 
-`GET /healthz` → `{"status":"ok"}`
+`GET /healthz` â†’ `{"status":"ok"}`
 
-gRPC health: `grpc.health.v1.Health/Check` → `SERVING`
+gRPC health: `grpc.health.v1.Health/Check` â†’ `SERVING`

@@ -1,4 +1,4 @@
-<!--- app-name: Fluentd -->
+﻿<!--- app-name: Fluentd -->
 
 # Bitnami package for Fluentd
 
@@ -16,13 +16,13 @@ helm install my-release oci://registry-1.docker.io/bitnamicharts/fluentd
 
 Looking to use Fluentd in production? Try [VMware Tanzu Application Catalog](https://bitnami.com/enterprise), the commercial edition of the Bitnami catalog.
 
-## ⚠️ Important Notice: Upcoming changes to the Bitnami Catalog
+## âš ï¸ Important Notice: Upcoming changes to the Bitnami Catalog
 
 Beginning August 28th, 2025, Bitnami will evolve its public catalog to offer a curated set of hardened, security-focused images under the new [Bitnami Secure Images initiative](https://news.broadcom.com/app-dev/broadcom-introduces-bitnami-secure-images-for-production-ready-containerized-applications). As part of this transition:
 
 - Granting community users access for the first time to security-optimized versions of popular container images.
-- Bitnami will begin deprecating support for non-hardened, Debian-based software images in its free tier and will gradually remove non-latest tags from the public catalog. As a result, community users will have access to a reduced number of hardened images. These images are published only under the “latest” tag and are intended for development purposes
-- Starting August 28th, over two weeks, all existing container images, including older or versioned tags (e.g., 2.50.0, 10.6), will be migrated from the public catalog (docker.io/bitnami) to the “Bitnami Legacy” repository (docker.io/bitnamilegacy), where they will no longer receive updates.
+- Bitnami will begin deprecating support for non-hardened, Debian-based software images in its free tier and will gradually remove non-latest tags from the public catalog. As a result, community users will have access to a reduced number of hardened images. These images are published only under the â€œlatestâ€ tag and are intended for development purposes
+- Starting August 28th, over two weeks, all existing container images, including older or versioned tags (e.g., 2.50.0, 10.6), will be migrated from the public catalog (docker.io/bitnami) to the â€œBitnami Legacyâ€ repository (docker.io/bitnamilegacy), where they will no longer receive updates.
 - For production workloads and long-term support, users are encouraged to adopt Bitnami Secure Images, which include hardened containers, smaller attack surfaces, CVE transparency (via VEX/KEV), SBOMs, and enterprise support.
 
 These changes aim to improve the security posture of all Bitnami users by promoting best practices for software supply chain integrity and up-to-date deployments. For more details, visit the [Bitnami Secure Images announcement](https://github.com/bitnami/containers/issues/83267).
@@ -51,7 +51,7 @@ helm install my-release oci://REGISTRY_NAME/REPOSITORY_NAME/fluentd
 
 These commands deploy Fluentd on the Kubernetes cluster in the default configuration. The [Parameters](#parameters) section lists the parameters that can be configured during installation.
 
-> **Tip**: List all releases using `helm list`
+> Tip: List all releases using `helm list`
 
 ## Configuration and installation details
 
@@ -102,7 +102,7 @@ data:
     </source>
 
     # Ignore fluentd own events
-    <match fluent.**>
+    <match fluent.>
       @type null
     </match>
 
@@ -126,7 +126,7 @@ data:
     </match>
 
     # Send the logs to the standard output
-    <match **>
+    <match >
       @type elasticsearch
       include_tag_key true
       host "#{ENV['ELASTICSEARCH_HOST']}"
@@ -185,7 +185,7 @@ initScriptsSecret=special-scripts-sensitive
 
 ### Forwarder Security Context & Policy
 
-By default, the **forwarder** `DaemonSet` from this chart **runs as the `root` user**, within the `root` group, assigning `root` file system permissions. This is different to the default behaviour of most Bitnami Helm charts where we [prefer to work with non-root containers](https://techdocs.broadcom.com/us/en/vmware-tanzu/application-catalog/tanzu-application-catalog/services/tac-doc/apps-tutorials-work-with-non-root-containers-index.html).
+By default, the forwarder `DaemonSet` from this chart runs as the `root` user, within the `root` group, assigning `root` file system permissions. This is different to the default behaviour of most Bitnami Helm charts where we [prefer to work with non-root containers](https://techdocs.broadcom.com/us/en/vmware-tanzu/application-catalog/tanzu-application-catalog/services/tac-doc/apps-tutorials-work-with-non-root-containers-index.html).
 
 The default behaviour is to run as `root` because:
 
@@ -565,7 +565,7 @@ helm install my-release -f values.yaml oci://REGISTRY_NAME/REPOSITORY_NAME/fluen
 ```
 
 > Note: You need to substitute the placeholders `REGISTRY_NAME` and `REPOSITORY_NAME` with a reference to your Helm chart registry and repository. For example, in the case of Bitnami, you need to use `REGISTRY_NAME=registry-1.docker.io` and `REPOSITORY_NAME=bitnamicharts`.
-> **Tip**: You can use the default [values.yaml](https://github.com/bitnami/charts/tree/main/bitnami/fluentd/values.yaml)
+> Tip: You can use the default [values.yaml](https://github.com/bitnami/charts/tree/main/bitnami/fluentd/values.yaml)
 
 ## Troubleshooting
 
@@ -640,9 +640,9 @@ This version also introduces `bitnami/common`, a [library chart](https://helm.sh
 
 ### To 2.0.0
 
-This version introduces the ability to create/customise a `ServiceAccount` to be used by the **aggregator**, making it possible to target the aggregator with [`PodSecurityPolicy`](https://kubernetes.io/docs/concepts/policy/pod-security-policy/) independent of the **forwarder**'s `ServiceAccount`.
+This version introduces the ability to create/customise a `ServiceAccount` to be used by the aggregator, making it possible to target the aggregator with [`PodSecurityPolicy`](https://kubernetes.io/docs/concepts/policy/pod-security-policy/) independent of the forwarder's `ServiceAccount`.
 
-The **forwarder** previously used the below top-level values to configure its own `ServiceAccount`, which have been moved under the `forwarder.` prefix to avoid confusion, and only created if `forwarder.enabled=true`. There is no functional change as a result of this, and if you did not override the defaults for `serviceAccount` or `rbac`, this change does not require any action from you.
+The forwarder previously used the below top-level values to configure its own `ServiceAccount`, which have been moved under the `forwarder.` prefix to avoid confusion, and only created if `forwarder.enabled=true`. There is no functional change as a result of this, and if you did not override the defaults for `serviceAccount` or `rbac`, this change does not require any action from you.
 
 If you are overriding the default values from the `1.x` chart, the chart will fail installation with your old overrides and warn you of the necessary changes.
 

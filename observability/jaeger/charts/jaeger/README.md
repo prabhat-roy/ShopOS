@@ -1,6 +1,6 @@
-# Jaeger Helm Chart
+﻿# Jaeger Helm Chart
 
-> ⚠️ **Experimental**: This chart is under active development with no stability guarantees. Breaking changes may occur in minor versions.
+> âš ï¸ Experimental: This chart is under active development with no stability guarantees. Breaking changes may occur in minor versions.
 
 [Jaeger](https://www.jaegertracing.io/) is a distributed tracing system. This chart deploys Jaeger v2 using a unified "All-In-One" architecture built on the OpenTelemetry Collector framework.
 
@@ -8,19 +8,19 @@
 
 This release is a refactor designed to simplify operation and configuration.
 
-- **Unified Architecture**: All functionality (Collector, Query, Ingester) is now provided by a single "All-in-One" deployment.
-- **Configuration**: Storage is configured via the `config.extensions.jaeger_storage` section using native Jaeger/OTEL config syntax.
-- **Cassandra Schema**: Jaeger v2 handles schema creation internally. The legacy schema job has been removed.
-- **Service Consolidation**: A single Service now exposes all ports (agent, collector, query).
-- **No provisioned storage**: Dependency charts have been removed.  The user must deploy them separately and configure connection using the Otel config Syntax https://github.com/jaegertracing/jaeger/blob/main/cmd/jaeger/config.yaml 
+- Unified Architecture: All functionality (Collector, Query, Ingester) is now provided by a single "All-in-One" deployment.
+- Configuration: Storage is configured via the `config.extensions.jaeger_storage` section using native Jaeger/OTEL config syntax.
+- Cassandra Schema: Jaeger v2 handles schema creation internally. The legacy schema job has been removed.
+- Service Consolidation: A single Service now exposes all ports (agent, collector, query).
+- No provisioned storage: Dependency charts have been removed.  The user must deploy them separately and configure connection using the Otel config Syntax https://github.com/jaegertracing/jaeger/blob/main/cmd/jaeger/config.yaml 
 
 ## Architecture
 
-This chart uses the **All-In-One** deployment model.
-- **Single Binary**: Runs as a `Deployment` scalable to multiple replicas.
-- **Stateless**: Can connect to external persistent storage (Elasticsearch, Cassandra) for production use.
-- **Default**: Memory storage (ephemeral), suitable for testing.
-- **Scalable**: Increase replica count to scale horizontally
+This chart uses the All-In-One deployment model.
+- Single Binary: Runs as a `Deployment` scalable to multiple replicas.
+- Stateless: Can connect to external persistent storage (Elasticsearch, Cassandra) for production use.
+- Default: Memory storage (ephemeral), suitable for testing.
+- Scalable: Increase replica count to scale horizontally
 
 ## Overriding the Jaeger Version 
 ##### (chart only supports Jaever v2+)
@@ -71,7 +71,7 @@ To use ElasticSearch storage, you must provide your own ElasticSearch instance a
 
 #### Elasticsearch example:
 
-**values.yaml**
+values.yaml
 ```yaml
 userconfig:
   extensions:
@@ -100,7 +100,7 @@ userconfig:
       trace_storage: primary_store_elasticsearch
 ```
 
-**Running Maintenance Jobs:**
+Running Maintenance Jobs:
 
 To run Index Cleaner or Rollover jobs, enable them. 
 They require configuration by adjusting ```storage.elasticsearch``` values.  See that section in values.yaml for more details.
@@ -125,7 +125,7 @@ This chart does not provision a Cassandra cluster.
 
 To use Cassandra storage, you must provide your own Cassandra instance and configure Jaeger via the native config syntax:
 
-**values.yaml Example:**
+values.yaml Example:
 ```yaml
 storage:
   type: cassandra
@@ -144,7 +144,7 @@ config:
               keyspace: jaeger_v1_test
 ```
 
-> **Note**: The legacy Cassandra schema job has been removed. Jaeger v2 handles schema creation internally.
+> Note: The legacy Cassandra schema job has been removed. Jaeger v2 handles schema creation internally.
 
 ### 4. Spark Dependencies
 
@@ -202,9 +202,9 @@ config:
 
 The unified Service exposes the following ports:
 
-- **Query UI**: 16686, 16685 (gRPC)
-- **OTLP**: 4317 (gRPC), 4318 (HTTP)
-- **Jaeger**: 14250 (gRPC), 14268 (HTTP), 6831/6832 (UDP)
-- **Zipkin**: 9411
-- **Prometheus**: 8888 (HTTP), 8889 (HTTP)
+- Query UI: 16686, 16685 (gRPC)
+- OTLP: 4317 (gRPC), 4318 (HTTP)
+- Jaeger: 14250 (gRPC), 14268 (HTTP), 6831/6832 (UDP)
+- Zipkin: 9411
+- Prometheus: 8888 (HTTP), 8889 (HTTP)
 - Additional ports may be added via jaeger.service.extraPorts override.

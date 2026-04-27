@@ -1,4 +1,4 @@
-# crm-integration-service
+﻿# crm-integration-service
 
 > Synchronizes customer, opportunity, and lead data bidirectionally between ShopOS and CRM platforms (Salesforce, HubSpot).
 
@@ -66,12 +66,12 @@ graph TD
 
 ## Dependencies
 
-**Upstream (calls this service)**
-- `admin-portal` — CRM connection config and manual sync
+Upstream (calls this service)
+- `admin-portal` â€” CRM connection config and manual sync
 
-**Downstream (this service calls)**
+Downstream (this service calls)
 - External Salesforce / HubSpot APIs
-- `personalization-service` — via Kafka for imported lead data
+- `personalization-service` â€” via Kafka for imported lead data
 
 ## Environment Variables
 
@@ -80,12 +80,12 @@ graph TD
 | `SERVER_PORT` | `50172` | gRPC server port |
 | `KAFKA_BOOTSTRAP_SERVERS` | `localhost:9092` | Kafka broker addresses |
 | `CRM_PROVIDER` | `SALESFORCE` | Active CRM adapter (`SALESFORCE` or `HUBSPOT`) |
-| `SALESFORCE_INSTANCE_URL` | — | Salesforce instance URL |
-| `SALESFORCE_CLIENT_ID` | — | Salesforce Connected App client ID |
-| `SALESFORCE_CLIENT_SECRET` | — | Salesforce Connected App client secret |
-| `SALESFORCE_REFRESH_TOKEN` | — | Salesforce OAuth2 refresh token |
-| `HUBSPOT_ACCESS_TOKEN` | — | HubSpot private app access token |
-| `HUBSPOT_PORTAL_ID` | — | HubSpot portal ID |
+| `SALESFORCE_INSTANCE_URL` | â€” | Salesforce instance URL |
+| `SALESFORCE_CLIENT_ID` | â€” | Salesforce Connected App client ID |
+| `SALESFORCE_CLIENT_SECRET` | â€” | Salesforce Connected App client secret |
+| `SALESFORCE_REFRESH_TOKEN` | â€” | Salesforce OAuth2 refresh token |
+| `HUBSPOT_ACCESS_TOKEN` | â€” | HubSpot private app access token |
+| `HUBSPOT_PORTAL_ID` | â€” | HubSpot portal ID |
 | `SYNC_RETRY_MAX` | `5` | Maximum retries for failed syncs |
 | `DEDUP_KEY` | `email` | Field used for record deduplication |
 | `LOG_LEVEL` | `info` | Logging level |
@@ -98,6 +98,6 @@ docker-compose up crm-integration-service
 
 ## Health Check
 
-`GET /healthz` → `{"status":"ok"}`
+`GET /healthz` â†’ `{"status":"ok"}`
 
-gRPC health: `grpc.health.v1.Health/Check` → `SERVING`
+gRPC health: `grpc.health.v1.Health/Check` â†’ `SERVING`

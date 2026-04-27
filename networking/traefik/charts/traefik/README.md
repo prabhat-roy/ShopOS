@@ -1,4 +1,4 @@
-# Traefik
+﻿# Traefik
 
 [Traefik](https://traefik.io/) is a modern HTTP reverse proxy and load balancer made to deploy microservices with ease.
 
@@ -28,9 +28,9 @@ To upgrade from chart versions prior to v28.x (which use Traefik Proxy version 2
 - [Migration guide from v2 to v3](https://doc.traefik.io/traefik/v3.0/migration/v2-to-v3/)
 - Upgrade notes in the [`README` on the v27 branch](https://github.com/traefik/traefik-helm-chart/tree/v27)
 
-Starting with v34.x, to work around [Helm caveats](https://helm.sh/docs/chart_best_practices/custom_resource_definitions/#some-caveats-and-explanations), you can use an additional chart dedicated to CRDs: **traefik-crds**.
+Starting with v34.x, to work around [Helm caveats](https://helm.sh/docs/chart_best_practices/custom_resource_definitions/#some-caveats-and-explanations), you can use an additional chart dedicated to CRDs: traefik-crds.
 
-⚠️ This has been deprecated since v38.0.2.
+âš ï¸ This has been deprecated since v38.0.2.
 
 ### Support for Traefik Proxy v2
 
@@ -44,8 +44,8 @@ For compatibility details, installation instructions, or previous upgrade notes,
 
 ### Prerequisites
 
-1. Kubernetes (server) version **v1.22.0 or higher**: `kubectl version`
-1. Helm **v3.9.0 or higher** [installed](https://helm.sh/docs/using_helm/#installing-helm): `helm version`
+1. Kubernetes (server) version v1.22.0 or higher: `kubectl version`
+1. Helm v3.9.0 or higher [installed](https://helm.sh/docs/using_helm/#installing-helm): `helm version`
 1. Traefik's chart repository: `helm repo add traefik https://traefik.github.io/charts`
 
 ### Deploying
@@ -74,7 +74,7 @@ To see example values files, refer to the provided [EXAMPLES](./EXAMPLES.md).
 
 For complete documentation on all available parameters, check the [default values file](./traefik/values.yaml).
 
-#### With Additional CRDs Chart (⚠️  deprecated)
+#### With Additional CRDs Chart (âš ï¸  deprecated)
 
 > [!Caution]
 > The `traefik-crds` chart is deprecated. It will be removed soon
@@ -143,11 +143,11 @@ To see what has changed in each release, check the [Changelog](./traefik/Changel
 A new major version indicates that there is an incompatible breaking change.
 
 > [!WARNING]
-> To avoid issues, **always read the release notes for this chart before upgrading**.
+> To avoid issues, always read the release notes for this chart before upgrading.
 
 ### Upgrade the Standalone Traefik Chart
 
-If you use Helm's native CRD management, you **MUST** upgrade CRDs before running `helm upgrade`, since Helm does **not** update CRDs automatically. See [HIP-0011](https://github.com/helm/community/blob/main/hips/hip-0011.md) for details.
+If you use Helm's native CRD management, you MUST upgrade CRDs before running `helm upgrade`, since Helm does not update CRDs automatically. See [HIP-0011](https://github.com/helm/community/blob/main/hips/hip-0011.md) for details.
 
 To upgrade the Traefik chart and its CRDs:
 
@@ -168,7 +168,7 @@ helm upgrade traefik traefik/traefik
 > The `traefik-crds` chart is deprecated. It will be removed soon
 
 > [!WARNING]
-> To avoid conflicts, **you must change the ownership of CRDs before installing the CRDs chart**.
+> To avoid conflicts, you must change the ownership of CRDs before installing the CRDs chart.
 
 To migrate to the setup with the additional CRDs chart:
 

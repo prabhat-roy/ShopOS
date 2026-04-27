@@ -1,11 +1,11 @@
-# inventory-service
+﻿# inventory-service
 
 > Stock levels, reservations, warehouse allocation, and low-stock event publishing.
 
 ## Overview
 
 The inventory-service manages real-time stock availability across all warehouses. It
-implements a reservation pattern — stock is first soft-reserved when a cart item is added
+implements a reservation pattern â€” stock is first soft-reserved when a cart item is added
 or a checkout begins, then committed when payment succeeds, and released if the order is
 cancelled or the reservation expires. When stock falls below a configured threshold, it
 publishes a `supplychain.inventory.low` Kafka event to trigger reorder workflows in the
@@ -117,20 +117,20 @@ service InventoryService {
 
 ## Dependencies
 
-**Upstream** (calls these):
-- None — inventory-service has no outbound gRPC calls to other services
+Upstream (calls these):
+- None â€” inventory-service has no outbound gRPC calls to other services
 
-**Downstream** (called by these):
-- `cart-service` — `ReserveStock` / `GetStockBatch` for cart management
-- `checkout-service` — `CommitReservation` / `ReleaseReservation` during order flow
-- `warehouse-service` — `AddStock` when goods are received
-- `fulfillment-service` — reads stock levels for warehouse routing
+Downstream (called by these):
+- `cart-service` â€” `ReserveStock` / `GetStockBatch` for cart management
+- `checkout-service` â€” `CommitReservation` / `ReleaseReservation` during order flow
+- `warehouse-service` â€” `AddStock` when goods are received
+- `fulfillment-service` â€” reads stock levels for warehouse routing
 
 ## Environment Variables
 
 | Variable | Default | Description |
 |---|---|---|
-| `DATABASE_URL` | — | PostgreSQL connection string |
+| `DATABASE_URL` | â€” | PostgreSQL connection string |
 | `GRPC_PORT` | `50074` | gRPC listening port |
 | `KAFKA_BROKERS` | `kafka:9092` | Kafka broker list |
 | `RESERVATION_EXPIRY_MINUTES` | `30` | TTL for cart-level stock reservations |
@@ -144,6 +144,6 @@ docker-compose up inventory-service
 
 ## Health Check
 
-`GET /healthz` — `{"status":"ok"}`
+`GET /healthz` â€” `{"status":"ok"}`
 
 gRPC health protocol: `grpc.health.v1.Health/Check` on port `50074`

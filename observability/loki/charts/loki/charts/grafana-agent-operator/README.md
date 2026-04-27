@@ -1,6 +1,6 @@
-# ⚠️ Deprecation Notice
+﻿# âš ï¸ Deprecation Notice
 
-**This chart is deprecated and will no longer receive updates or support.**
+This chart is deprecated and will no longer receive updates or support.
 
 # grafana-agent-operator
 
@@ -8,7 +8,7 @@
 
 A Helm chart for Grafana Agent Operator
 
-⚠️  **Please create issues relating to this Helm chart in the [Agent](https://github.com/grafana/agent/issues) repo.**
+âš ï¸  Please create issues relating to this Helm chart in the [Agent](https://github.com/grafana/agent/issues) repo.
 
 ## Source Code
 

@@ -1,4 +1,4 @@
-# payment-gateway-integration
+﻿# payment-gateway-integration
 
 > Provides a unified payment gateway adapter layer supporting Stripe, Adyen, and Braintree.
 
@@ -77,10 +77,10 @@ sequenceDiagram
 
 ## Dependencies
 
-**Upstream (calls this service)**
-- `payment-service` — all payment operations are routed through this service
+Upstream (calls this service)
+- `payment-service` â€” all payment operations are routed through this service
 
-**Downstream (this service calls)**
+Downstream (this service calls)
 - Stripe API (`api.stripe.com`)
 - Adyen API (`checkout-test.adyen.com` / `checkout-live.adyen.com`)
 - Braintree API (`api.braintreegateway.com`)
@@ -92,17 +92,17 @@ sequenceDiagram
 | `SERVER_PORT` | `50173` | gRPC server port |
 | `KAFKA_BOOTSTRAP_SERVERS` | `localhost:9092` | Kafka broker addresses |
 | `DEFAULT_GATEWAY` | `STRIPE` | Default gateway adapter to use |
-| `STRIPE_SECRET_KEY` | — | Stripe API secret key |
-| `STRIPE_WEBHOOK_SECRET` | — | Stripe webhook signing secret |
-| `ADYEN_API_KEY` | — | Adyen API key |
-| `ADYEN_MERCHANT_ACCOUNT` | — | Adyen merchant account name |
+| `STRIPE_SECRET_KEY` | â€” | Stripe API secret key |
+| `STRIPE_WEBHOOK_SECRET` | â€” | Stripe webhook signing secret |
+| `ADYEN_API_KEY` | â€” | Adyen API key |
+| `ADYEN_MERCHANT_ACCOUNT` | â€” | Adyen merchant account name |
 | `ADYEN_ENVIRONMENT` | `TEST` | `TEST` or `LIVE` |
-| `ADYEN_WEBHOOK_HMAC_KEY` | — | Adyen HMAC key for webhook validation |
-| `BRAINTREE_MERCHANT_ID` | — | Braintree merchant ID |
-| `BRAINTREE_PUBLIC_KEY` | — | Braintree public key |
-| `BRAINTREE_PRIVATE_KEY` | — | Braintree private key |
+| `ADYEN_WEBHOOK_HMAC_KEY` | â€” | Adyen HMAC key for webhook validation |
+| `BRAINTREE_MERCHANT_ID` | â€” | Braintree merchant ID |
+| `BRAINTREE_PUBLIC_KEY` | â€” | Braintree public key |
+| `BRAINTREE_PRIVATE_KEY` | â€” | Braintree private key |
 | `BRAINTREE_ENVIRONMENT` | `SANDBOX` | `SANDBOX` or `PRODUCTION` |
-| `FALLBACK_GATEWAY` | — | Secondary gateway on primary failure (optional) |
+| `FALLBACK_GATEWAY` | â€” | Secondary gateway on primary failure (optional) |
 | `LOG_LEVEL` | `info` | Logging level |
 
 ## Running Locally
@@ -113,6 +113,6 @@ docker-compose up payment-gateway-integration
 
 ## Health Check
 
-`GET /healthz` → `{"status":"ok"}`
+`GET /healthz` â†’ `{"status":"ok"}`
 
-gRPC health: `grpc.health.v1.Health/Check` → `SERVING`
+gRPC health: `grpc.health.v1.Health/Check` â†’ `SERVING`

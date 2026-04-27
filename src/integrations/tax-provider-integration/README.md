@@ -1,4 +1,4 @@
-# tax-provider-integration
+﻿# tax-provider-integration
 
 > Integrates with external tax engines (Avalara AvaTax, TaxJar) to provide real-time tax calculation and filing support.
 
@@ -64,13 +64,13 @@ graph TD
 
 ## Dependencies
 
-**Upstream (calls this service)**
-- `tax-service` — all tax calculations are delegated here
+Upstream (calls this service)
+- `tax-service` â€” all tax calculations are delegated here
 
-**Downstream (this service calls)**
+Downstream (this service calls)
 - Avalara AvaTax REST API (`rest.avatax.com`)
 - TaxJar API (`api.taxjar.com`)
-- `tax-reporting-service` — via Kafka for committed transaction records
+- `tax-reporting-service` â€” via Kafka for committed transaction records
 
 ## Environment Variables
 
@@ -79,13 +79,13 @@ graph TD
 | `SERVER_PORT` | `50175` | gRPC server port |
 | `KAFKA_BOOTSTRAP_SERVERS` | `localhost:9092` | Kafka broker addresses |
 | `TAX_PROVIDER` | `AVATAX` | Active provider adapter (`AVATAX` or `TAXJAR`) |
-| `AVATAX_ACCOUNT_ID` | — | Avalara account number |
-| `AVATAX_LICENSE_KEY` | — | Avalara license key |
-| `AVATAX_COMPANY_CODE` | — | Avalara company code |
+| `AVATAX_ACCOUNT_ID` | â€” | Avalara account number |
+| `AVATAX_LICENSE_KEY` | â€” | Avalara license key |
+| `AVATAX_COMPANY_CODE` | â€” | Avalara company code |
 | `AVATAX_ENVIRONMENT` | `SANDBOX` | `SANDBOX` or `PRODUCTION` |
-| `TAXJAR_API_TOKEN` | — | TaxJar API token |
+| `TAXJAR_API_TOKEN` | â€” | TaxJar API token |
 | `TAXJAR_FROM_COUNTRY` | `US` | Default ship-from country code |
-| `TAXJAR_FROM_ZIP` | — | Default ship-from ZIP code |
+| `TAXJAR_FROM_ZIP` | â€” | Default ship-from ZIP code |
 | `TAX_CACHE_TTL_SECONDS` | `300` | Seconds to cache repeated tax calculations |
 | `FALLBACK_TAX_RATE` | `0.0` | Rate applied when provider is unavailable |
 | `LOG_LEVEL` | `info` | Logging level |
@@ -98,6 +98,6 @@ docker-compose up tax-provider-integration
 
 ## Health Check
 
-`GET /healthz` → `{"status":"ok"}`
+`GET /healthz` â†’ `{"status":"ok"}`
 
-gRPC health: `grpc.health.v1.Health/Check` → `SERVING`
+gRPC health: `grpc.health.v1.Health/Check` â†’ `SERVING`

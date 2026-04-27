@@ -1,14 +1,14 @@
-# Traefik Edge Router
+﻿# Traefik Edge Router
 
 Traefik serves as the primary edge router and ingress controller for ShopOS, replacing traditional static reverse proxies with a cloud-native, dynamic routing solution.
 
 ## Role in ShopOS
 
-- **Automatic service discovery** via Docker labels — services opt-in by setting `traefik.enable=true` on their container, no manual route registration required
-- **TLS termination** — handles HTTPS at the edge; all internal service-to-service traffic travels over the `shopos` Docker network
-- **Middleware chain** — rate limiting, security headers, and forward auth are composed as reusable middleware and attached to routers declaratively
-- **Metrics** — exposes Prometheus metrics at `:8082/metrics` with per-entrypoint and per-service labels, feeding into the observability stack
-- **Tracing** — sends spans to Jaeger via the agent UDP port, correlating edge request traces with downstream service traces
+- Automatic service discovery via Docker labels â€” services opt-in by setting `traefik.enable=true` on their container, no manual route registration required
+- TLS termination â€” handles HTTPS at the edge; all internal service-to-service traffic travels over the `shopos` Docker network
+- Middleware chain â€” rate limiting, security headers, and forward auth are composed as reusable middleware and attached to routers declaratively
+- Metrics â€” exposes Prometheus metrics at `:8082/metrics` with per-entrypoint and per-service labels, feeding into the observability stack
+- Tracing â€” sends spans to Jaeger via the agent UDP port, correlating edge request traces with downstream service traces
 
 ## Request Flow
 
@@ -34,8 +34,8 @@ flowchart LR
 
 | File | Purpose |
 |---|---|
-| `traefik.yml` | Static config — entrypoints, providers, metrics, tracing, log level |
-| `dynamic.yml` | Dynamic routing config — routers, services, middlewares (hot-reloaded) |
+| `traefik.yml` | Static config â€” entrypoints, providers, metrics, tracing, log level |
+| `dynamic.yml` | Dynamic routing config â€” routers, services, middlewares (hot-reloaded) |
 
 ## Comparison: Traefik vs Nginx vs Kong
 
@@ -50,7 +50,7 @@ flowchart LR
 | Open source | Yes (Apache 2.0) | Yes (BSD) | Yes (Apache 2.0) |
 | Learning curve | Low | Medium | Medium-High |
 
-**Why Traefik for ShopOS:** Zero-config service discovery aligns with the dynamic microservice topology (130 services). New services automatically appear in routing when deployed with the correct Docker/K8s labels, without touching any router configuration.
+Why Traefik for ShopOS: Zero-config service discovery aligns with the dynamic microservice topology (130 services). New services automatically appear in routing when deployed with the correct Docker/K8s labels, without touching any router configuration.
 
 ## Adding a New Service
 

@@ -1,10 +1,10 @@
-# image-processing-service
+﻿# image-processing-service
 
 > Real-time image transformation service for resize, crop, compress, format conversion, and watermarking.
 
 ## Overview
 
-The image-processing-service performs on-demand and batch image manipulation operations for the ShopOS platform. It receives raw image data or asset references and returns transformed variants suitable for web, mobile, and print use cases. All processing is stateless — transformed outputs are handed back to callers or written to MinIO via media-asset-service.
+The image-processing-service performs on-demand and batch image manipulation operations for the ShopOS platform. It receives raw image data or asset references and returns transformed variants suitable for web, mobile, and print use cases. All processing is stateless â€” transformed outputs are handed back to callers or written to MinIO via media-asset-service.
 
 ## Architecture
 
@@ -52,9 +52,9 @@ This service does not produce or consume Kafka topics. It operates purely via sy
 
 ## Dependencies
 
-**Upstream:** media-asset-service, cms-service, product-catalog-service
+Upstream: media-asset-service, cms-service, product-catalog-service
 
-**Downstream:** None (stateless transformer — returns results to caller)
+Downstream: None (stateless transformer â€” returns results to caller)
 
 ## Environment Variables
 
@@ -62,7 +62,7 @@ This service does not produce or consume Kafka topics. It operates purely via sy
 |---|---|---|
 | `GRPC_PORT` | `50141` | gRPC server port |
 | `MAX_IMAGE_SIZE_MB` | `50` | Maximum input image size |
-| `DEFAULT_JPEG_QUALITY` | `85` | Default JPEG compression quality (1–100) |
+| `DEFAULT_JPEG_QUALITY` | `85` | Default JPEG compression quality (1â€“100) |
 | `DEFAULT_WEBP_QUALITY` | `80` | Default WebP compression quality |
 | `WATERMARK_OPACITY` | `0.3` | Default watermark opacity |
 | `WORKER_THREADS` | `4` | Parallel processing threads |
@@ -75,4 +75,4 @@ docker-compose up image-processing-service
 
 ## Health Check
 
-`GET /healthz` → `{"status":"ok"}`
+`GET /healthz` â†’ `{"status":"ok"}`

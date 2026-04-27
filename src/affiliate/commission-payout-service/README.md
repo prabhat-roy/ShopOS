@@ -1,4 +1,4 @@
-# commission-payout-service
+﻿# commission-payout-service
 
 > Automates commission and referral payout processing. Aggregates earned commissions per period, applies tax withholding rules, and submits payout batches to payout-service.
 
@@ -37,7 +37,7 @@ graph TD
 - Calculate tax withholding per payee based on annual earnings and jurisdiction rules
 - Deduct chargebacks from pending earnings when orders are cancelled/refunded
 - Submit payout batch to `payout-service` (financial domain) via gRPC
-- Record payout batch state machine: PENDING → SUBMITTED → COMPLETED / FAILED
+- Record payout batch state machine: PENDING â†’ SUBMITTED â†’ COMPLETED / FAILED
 - Emit `affiliate.payout.batch.submitted` and `affiliate.payout.completed` Kafka events
 
 ## API / Interface
@@ -65,20 +65,20 @@ service CommissionPayoutService {
 
 ## Dependencies
 
-**Upstream (callers)**
-- `affiliate-service` — source of affiliate commission earnings
-- `referral-service` — source of referral reward earnings
-- `influencer-service` — source of campaign earnings
+Upstream (callers)
+- `affiliate-service` â€” source of affiliate commission earnings
+- `referral-service` â€” source of referral reward earnings
+- `influencer-service` â€” source of campaign earnings
 
-**Downstream (calls out to)**
-- `payout-service` (financial domain) — submits payout batches for disbursement
+Downstream (calls out to)
+- `payout-service` (financial domain) â€” submits payout batches for disbursement
 
 ## Environment Variables
 
 | Variable | Default | Description |
 |---|---|---|
 | `GRPC_PORT` | `50203` | Port the gRPC server listens on |
-| `DATABASE_URL` | — | PostgreSQL connection string (required) |
+| `DATABASE_URL` | â€” | PostgreSQL connection string (required) |
 | `PAYOUT_PERIOD` | `monthly` | Payout cycle: `weekly`, `biweekly`, `monthly` |
 | `PAYOUT_DAY_OF_MONTH` | `1` | Day of month to run payout cycle (monthly mode) |
 | `MINIMUM_PAYOUT_AMOUNT` | `10.00` | Minimum balance required to trigger payout |
@@ -96,6 +96,6 @@ docker-compose up commission-payout-service
 
 ## Health Check
 
-`GET /healthz` → `{"status":"ok"}`
+`GET /healthz` â†’ `{"status":"ok"}`
 
-gRPC health: `grpc.health.v1.Health/Check` → `SERVING`
+gRPC health: `grpc.health.v1.Health/Check` â†’ `SERVING`

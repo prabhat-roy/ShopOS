@@ -1,11 +1,11 @@
-# Logstash Helm Chart
+﻿# Logstash Helm Chart
 
 [![Build Status](https://img.shields.io/jenkins/s/https/devops-ci.elastic.co/job/elastic+helm-charts+main.svg)](https://devops-ci.elastic.co/job/elastic+helm-charts+main/) [![Artifact HUB](https://img.shields.io/endpoint?url=https://artifacthub.io/badge/repository/elastic)](https://artifacthub.io/packages/search?repo=elastic)
 
 This Helm chart is a lightweight way to configure and run our official
 [Logstash Docker image][].
 
-> **Warning**
+> Warning
 > When it comes to running the Elastic on Kubernetes infrastructure, we
 > recommend [Elastic Cloud on Kubernetes][] (ECK) as the best way to run and manage
 > the Elastic Stack.

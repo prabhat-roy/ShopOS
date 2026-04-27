@@ -1,6 +1,6 @@
-# Database Strategy — ShopOS
+﻿# Database Strategy â€” ShopOS
 
-ShopOS uses **database-per-service** with technology chosen per access pattern. No two services share a database instance or schema. Cross-service data access always goes through gRPC or Kafka — never via direct DB connection.
+ShopOS uses database-per-service with technology chosen per access pattern. No two services share a database instance or schema. Cross-service data access always goes through gRPC or Kafka â€” never via direct DB connection.
 
 ---
 
@@ -8,27 +8,27 @@ ShopOS uses **database-per-service** with technology chosen per access pattern. 
 
 | Database | Version | Access Pattern | Services |
 |---|---|---|---|
-| **PostgreSQL** | 16 | ACID transactions, relational queries, strong consistency | 60+ services (orders, payments, users, inventory, financial) |
-| **MongoDB** | 8.0 | Flexible schema, nested documents, rapid iteration | product-catalog, cms-service, review-rating, tracking, cold-chain |
-| **Redis** | 7 | Sub-millisecond reads, ephemeral data, pub/sub, sorted sets | cart, sessions, rate-limiter, waitlist, flash-sale, live-chat |
-| **Memcached** | 1.6 | High-throughput simple key-value cache (no persistence needed) | Hot read paths requiring maximum throughput with minimal overhead |
-| **Cassandra** | 5.0 | High-write time-series, wide rows, no single point of failure | analytics-service, event-tracking, data-pipeline, reporting |
-| **Elasticsearch** | 8.15 | Full-text search, faceted filtering, relevance ranking | search-service |
-| **OpenSearch** | 2.17 | Log analytics, audit log search, alternative product search | Log pipeline, audit search, OpenSearch-based deployments |
-| **ClickHouse** | 24.8 | OLAP, columnar storage, aggregations over billions of rows | reporting-service, analytics aggregations, revenue dashboards |
-| **Weaviate** | 1.26 | Vector embeddings, semantic similarity, ANN search | recommendation-service, semantic product search |
-| **Neo4j** | 5.23 | Graph traversal, relationship queries | recommendation-service (product graph, collaborative filtering) |
-| **MinIO** | latest | S3-compatible object storage for large binary files | media-asset, document-service, video-service, data-export |
+| PostgreSQL | 16 | ACID transactions, relational queries, strong consistency | 60+ services (orders, payments, users, inventory, financial) |
+| MongoDB | 8.0 | Flexible schema, nested documents, rapid iteration | product-catalog, cms-service, review-rating, tracking, cold-chain |
+| Redis | 7 | Sub-millisecond reads, ephemeral data, pub/sub, sorted sets | cart, sessions, rate-limiter, waitlist, flash-sale, live-chat |
+| Memcached | 1.6 | High-throughput simple key-value cache (no persistence needed) | Hot read paths requiring maximum throughput with minimal overhead |
+| Cassandra | 5.0 | High-write time-series, wide rows, no single point of failure | analytics-service, event-tracking, data-pipeline, reporting |
+| Elasticsearch | 8.15 | Full-text search, faceted filtering, relevance ranking | search-service |
+| OpenSearch | 2.17 | Log analytics, audit log search, alternative product search | Log pipeline, audit search, OpenSearch-based deployments |
+| ClickHouse | 24.8 | OLAP, columnar storage, aggregations over billions of rows | reporting-service, analytics aggregations, revenue dashboards |
+| Weaviate | 1.26 | Vector embeddings, semantic similarity, ANN search | recommendation-service, semantic product search |
+| Neo4j | 5.23 | Graph traversal, relationship queries | recommendation-service (product graph, collaborative filtering) |
+| MinIO | latest | S3-compatible object storage for large binary files | media-asset, document-service, video-service, data-export |
 
 ---
 
 ## Decision Rules
 
 ### Use PostgreSQL when:
-- Data has relationships requiring JOINs (orders → order_items → products)
+- Data has relationships requiring JOINs (orders â†’ order_items â†’ products)
 - ACID transactions are required (payment processing, inventory reservation, financial ledger)
 - Strong consistency matters more than write throughput
-- Data is regulated (financial, PII) — PostgreSQL row-level encryption + Vault Transit available
+- Data is regulated (financial, PII) â€” PostgreSQL row-level encryption + Vault Transit available
 - Team needs standard SQL tooling and Flyway/golang-migrate migrations
 
 ### Use MongoDB when:
@@ -73,7 +73,7 @@ ShopOS uses **database-per-service** with technology chosen per access pattern. 
 
 ### Use Neo4j when:
 - Relationship traversal is the primary query pattern (product recommendations via co-purchase graph)
-- Data is a naturally connected graph (users → purchased → products → belong_to → categories)
+- Data is a naturally connected graph (users â†’ purchased â†’ products â†’ belong_to â†’ categories)
 - Multi-hop queries would require expensive self-JOINs in SQL
 
 ---
@@ -91,7 +91,7 @@ Each service manages its own migrations:
 | Node.js | Knex / Prisma | `migrations/` |
 | C# | EF Core Migrations | `Migrations/` |
 
-Migrations run automatically on service startup. Both Flyway and `golang-migrate` are idempotent — re-running an already-applied migration is a no-op. All migration files are checked into the service's source tree and applied in order by version number.
+Migrations run automatically on service startup. Both Flyway and `golang-migrate` are idempotent â€” re-running an already-applied migration is a no-op. All migration files are checked into the service's source tree and applied in order by version number.
 
 ---
 
@@ -101,11 +101,11 @@ Operational databases are never queried directly by the reporting or analytics l
 
 ```
 Operational DB (PostgreSQL / MongoDB)
-  └──► Debezium CDC
-         └──► Kafka topic
-                ├──► ClickHouse (OLAP read model — orders, revenue, inventory)
-                ├──► OpenSearch (log and audit read model)
-                └──► Elasticsearch (product search index)
+  â””â”€â”€â–º Debezium CDC
+         â””â”€â”€â–º Kafka topic
+                â”œâ”€â”€â–º ClickHouse (OLAP read model â€” orders, revenue, inventory)
+                â”œâ”€â”€â–º OpenSearch (log and audit read model)
+                â””â”€â”€â–º Elasticsearch (product search index)
 ```
 
 This ensures:
@@ -117,12 +117,12 @@ This ensures:
 
 ## Data Access Rules
 
-1. A service **MUST NOT** connect to another service's database directly
-2. A service **MUST NOT** import another service's ORM models or schema types
-3. Cross-service data access **MUST** go through gRPC (synchronous) or Kafka (asynchronous)
+1. A service MUST NOT connect to another service's database directly
+2. A service MUST NOT import another service's ORM models or schema types
+3. Cross-service data access MUST go through gRPC (synchronous) or Kafka (asynchronous)
 4. Read models for reporting are populated via Kafka CDC, not by querying operational databases
-5. All database credentials are issued dynamically by **HashiCorp Vault** (short-lived, rotated per pod)
-6. All PII fields are encrypted at rest using **Vault Transit** engine before storage
+5. All database credentials are issued dynamically by HashiCorp Vault (short-lived, rotated per pod)
+6. All PII fields are encrypted at rest using Vault Transit engine before storage
 
 ---
 
@@ -133,8 +133,8 @@ This ensures:
 | PostgreSQL | Velero + WAL archiving to MinIO/S3 | 1h | 30m |
 | MongoDB | Velero + mongodump to MinIO/S3 | 1h | 30m |
 | Redis | AOF persistence + Velero snapshot | 15m | 5m |
-| Cassandra | nodetool snapshot → MinIO/S3 | 4h | 1h |
-| Elasticsearch | snapshot API → MinIO/S3 | 1h | 30m |
+| Cassandra | nodetool snapshot â†’ MinIO/S3 | 4h | 1h |
+| Elasticsearch | snapshot API â†’ MinIO/S3 | 1h | 30m |
 | ClickHouse | BACKUP TO S3 (native) | 4h | 1h |
 | MinIO | bucket replication to secondary MinIO | 5m | 5m |
 

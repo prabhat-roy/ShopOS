@@ -1,6 +1,6 @@
-# checkout-service
+﻿# checkout-service
 
-> Orchestrates the end-to-end checkout saga — from cart validation through inventory reservation, payment, and order creation.
+> Orchestrates the end-to-end checkout saga â€” from cart validation through inventory reservation, payment, and order creation.
 
 ## Overview
 
@@ -30,7 +30,7 @@ sequenceDiagram
 
     CHK->>INV: ReserveStock(items)
     INV-->>CHK: ReservationToken
-    Note over CHK,INV: On failure → compensate: no-op
+    Note over CHK,INV: On failure â†’ compensate: no-op
 
     CHK->>TAX: CalculateTax(address, items)
     TAX-->>CHK: TaxBreakdown
@@ -93,18 +93,18 @@ The checkout-service does not publish Kafka events directly. Order and payment e
 
 ## Dependencies
 
-**Upstream (callers)**
-- `web-bff` / `mobile-bff` — initiates and confirms checkout
+Upstream (callers)
+- `web-bff` / `mobile-bff` â€” initiates and confirms checkout
 
-**Downstream (called by this service)**
-- `cart-service` — fetch cart contents
-- `inventory-service` — reserve and release/confirm stock
-- `tax-service` — compute applicable taxes
-- `shipping-service` — retrieve carrier rates
-- `payment-service` — charge the customer
-- `order-service` — create the persisted order record
-- `saga-orchestrator` — register, track, and compensate saga steps
-- `address-validation-service` — validate shipping address before reservation
+Downstream (called by this service)
+- `cart-service` â€” fetch cart contents
+- `inventory-service` â€” reserve and release/confirm stock
+- `tax-service` â€” compute applicable taxes
+- `shipping-service` â€” retrieve carrier rates
+- `payment-service` â€” charge the customer
+- `order-service` â€” create the persisted order record
+- `saga-orchestrator` â€” register, track, and compensate saga steps
+- `address-validation-service` â€” validate shipping address before reservation
 
 ## Environment Variables
 
@@ -131,6 +131,6 @@ docker-compose up checkout-service
 
 ## Health Check
 
-`GET /healthz` → `{"status":"ok"}`
+`GET /healthz` â†’ `{"status":"ok"}`
 
-gRPC health: `grpc.health.v1.Health/Check` → `SERVING`
+gRPC health: `grpc.health.v1.Health/Check` â†’ `SERVING`

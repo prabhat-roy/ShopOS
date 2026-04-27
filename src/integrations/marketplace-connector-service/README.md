@@ -1,4 +1,4 @@
-# marketplace-connector-service
+﻿# marketplace-connector-service
 
 > Synchronizes product listings, inventory levels, and orders across external marketplaces (Amazon, eBay, Walmart).
 
@@ -84,28 +84,28 @@ This service is Kafka-driven with no public gRPC API. Internal control operation
 
 ## Dependencies
 
-**Upstream (calls this service)**
-- `product-catalog-service` — product data via Kafka
-- `inventory-service` — inventory levels via Kafka
+Upstream (calls this service)
+- `product-catalog-service` â€” product data via Kafka
+- `inventory-service` â€” inventory levels via Kafka
 
-**Downstream (this service calls)**
-- `order-service` — via Kafka for imported orders
+Downstream (this service calls)
+- `order-service` â€” via Kafka for imported orders
 
 ## Environment Variables
 
 | Variable | Default | Description |
 |---|---|---|
 | `KAFKA_BOOTSTRAP_SERVERS` | `localhost:9092` | Kafka broker addresses |
-| `AMAZON_SELLER_ID` | — | Amazon Seller Central account ID |
-| `AMAZON_CLIENT_ID` | — | Amazon SP-API LWA client ID |
-| `AMAZON_CLIENT_SECRET` | — | Amazon SP-API LWA client secret |
-| `AMAZON_REFRESH_TOKEN` | — | Amazon SP-API refresh token |
-| `AMAZON_MARKETPLACE_ID` | — | Amazon marketplace ID (e.g., ATVPDKIKX0DER) |
-| `EBAY_CLIENT_ID` | — | eBay OAuth2 client ID |
-| `EBAY_CLIENT_SECRET` | — | eBay OAuth2 client secret |
-| `EBAY_REFRESH_TOKEN` | — | eBay refresh token |
-| `WALMART_CLIENT_ID` | — | Walmart Marketplace client ID |
-| `WALMART_CLIENT_SECRET` | — | Walmart Marketplace client secret |
+| `AMAZON_SELLER_ID` | â€” | Amazon Seller Central account ID |
+| `AMAZON_CLIENT_ID` | â€” | Amazon SP-API LWA client ID |
+| `AMAZON_CLIENT_SECRET` | â€” | Amazon SP-API LWA client secret |
+| `AMAZON_REFRESH_TOKEN` | â€” | Amazon SP-API refresh token |
+| `AMAZON_MARKETPLACE_ID` | â€” | Amazon marketplace ID (e.g., ATVPDKIKX0DER) |
+| `EBAY_CLIENT_ID` | â€” | eBay OAuth2 client ID |
+| `EBAY_CLIENT_SECRET` | â€” | eBay OAuth2 client secret |
+| `EBAY_REFRESH_TOKEN` | â€” | eBay refresh token |
+| `WALMART_CLIENT_ID` | â€” | Walmart Marketplace client ID |
+| `WALMART_CLIENT_SECRET` | â€” | Walmart Marketplace client secret |
 | `ORDER_POLL_INTERVAL_SECONDS` | `60` | Seconds between order polling cycles |
 | `INVENTORY_SYNC_BATCH_SIZE` | `500` | Products per inventory push batch |
 | `LOG_LEVEL` | `info` | Logging level |
@@ -118,4 +118,4 @@ docker-compose up marketplace-connector-service
 
 ## Health Check
 
-`GET /healthz` → `{"status":"ok"}`
+`GET /healthz` â†’ `{"status":"ok"}`

@@ -1,4 +1,4 @@
-# consent-management-service
+﻿# consent-management-service
 
 > Cookie consent, marketing opt-in/out, and full consent history for GDPR and privacy compliance.
 
@@ -41,7 +41,7 @@ graph LR
 
 ## API / Interface
 
-**gRPC service:** `ConsentManagementService` (port 50127)
+gRPC service: `ConsentManagementService` (port 50127)
 
 | Method | Request | Response | Description |
 |---|---|---|---|
@@ -61,13 +61,13 @@ graph LR
 
 ## Dependencies
 
-**Upstream (callers)**
-- `api-gateway` — surfaces consent preference centre to users
-- `analytics-service`, `personalization-service`, `email-service` — check consent before processing
+Upstream (callers)
+- `api-gateway` â€” surfaces consent preference centre to users
+- `analytics-service`, `personalization-service`, `email-service` â€” check consent before processing
 
-**Downstream (calls)**
-- `gdpr-service` — coordinates with GDPR service for DSAR responses
-- `user-service` — resolves user identity and jurisdiction
+Downstream (calls)
+- `gdpr-service` â€” coordinates with GDPR service for DSAR responses
+- `user-service` â€” resolves user identity and jurisdiction
 
 ## Environment Variables
 
@@ -89,4 +89,4 @@ docker-compose up consent-management-service
 
 ## Health Check
 
-`GET /healthz` → `{"status":"ok"}`
+`GET /healthz` â†’ `{"status":"ok"}`

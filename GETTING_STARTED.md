@@ -1,4 +1,4 @@
-# Getting Started — ShopOS
+﻿# Getting Started â€” ShopOS
 
 This guide takes you from zero to a running ShopOS environment. It covers prerequisites,
 local development, Kubernetes cluster setup, CI/CD pipeline configuration, and day-two
@@ -34,7 +34,7 @@ operations. Read it top-to-bottom the first time; use it as a reference after th
 ## 1. Project at a Glance
 
 ShopOS is an enterprise-grade, cloud-native commerce platform built entirely with open source
-technology. It is a reference implementation — not a toy — demonstrating production patterns
+technology. It is a reference implementation â€” not a toy â€” demonstrating production patterns
 at scale:
 
 | Dimension | Number |
@@ -50,7 +50,7 @@ at scale:
 | Security tools configured | 50+ |
 | Observability tools | 35+ |
 
-**Design patterns in use:** DDD, CQRS, Event Sourcing, Saga (orchestration), BFF,
+Design patterns in use: DDD, CQRS, Event Sourcing, Saga (orchestration), BFF,
 API Gateway, Strangler Fig, Outbox, Sidecar.
 
 ---
@@ -59,112 +59,112 @@ API Gateway, Strangler Fig, Outbox, Sidecar.
 
 ```
 ShopOS/
-├── GETTING_STARTED.md          ← You are here
-├── README.md                   ← Project overview and technology catalogue
-├── Makefile                    ← Top-level build and operational commands
-├── docker-compose.yml          ← Full local stack (154 services + all infra)
-├── docker-compose.override.yml ← Local dev overrides (bind mounts, debug ports)
-├── skaffold.yaml               ← Skaffold hot-reload config
-├── Tiltfile                    ← Tilt hot-reload config
-├── .env.example                ← All environment variables documented
-├── .devcontainer/              ← VS Code / Codespaces dev container
-│
-├── src/                        ← All 154 microservices (13 domains)
-│   ├── platform/               ← 22 services: api-gateway, BFFs, saga-orchestrator …
-│   ├── identity/               ← 8 services: auth, user, session, MFA …
-│   ├── catalog/                ← 12 services: products, pricing, inventory, search …
-│   ├── commerce/               ← 23 services: cart, checkout, order, payment …
-│   ├── supply-chain/           ← 13 services: vendor, warehouse, fulfillment …
-│   ├── financial/              ← 11 services: invoice, accounting, payout …
-│   ├── customer-experience/    ← 14 services: reviews, wishlist, support …
-│   ├── communications/         ← 9 services: notifications, email, SMS …
-│   ├── content/                ← 8 services: media, CMS, i18n …
-│   ├── analytics-ai/           ← 13 services: ML, recommendations, analytics …
-│   ├── b2b/                    ← 7 services: organisations, contracts, quotes …
-│   ├── integrations/           ← 10 services: ERP, CRM, marketplace connectors …
-│   └── affiliate/              ← 4 services: affiliate, referral, influencer …
-│
-├── proto/                      ← gRPC .proto files (58 files, 14 domains)
-├── events/                     ← Kafka Avro schemas (20 event types)
-│
-├── ci/github-actions/          ← GitHub Actions (15th platform — 12 workflows, auto-trigger disabled)
-│
-├── ci/                         ← 14 other CI platforms × 12 pipelines = 168 files
-│   ├── jenkins/                ← 12 Jenkinsfiles (deploy, security, networking …)
-│   ├── drone/                  ← 12 Drone YAML (*.drone.yml)
-│   ├── woodpecker/             ← 12 Woodpecker YAML (*.woodpecker.yml)
-│   ├── dagger/                 ← 12 Go SDK pipelines (one subdirectory each)
-│   ├── tekton/                 ← 12 Tekton CRD YAML (*-pipeline.yml)
-│   ├── concourse/              ← 12 Concourse YAML (*-pipeline.yml)
-│   ├── gitlab-ci/              ← 12 GitLab CI YAML (*.gitlab-ci.yml)
-│   ├── circleci/               ← 12 CircleCI YAML (*.circleci.yml)
-│   ├── gocd/                   ← 12 GoCD YAML (*.gocd.yml)
-│   ├── travis/                 ← 12 Travis CI YAML (*.travis.yml)
-│   ├── harness/                ← 12 Harness YAML (*-pipeline.yml)
-│   ├── azure-devops/           ← 12 Azure Pipelines YAML
-│   ├── aws-codepipeline/       ← 12 CodeBuild buildspecs (buildspec-*.yml)
-│   └── gcp-cloudbuild/         ← 12 Cloud Build YAML (cloudbuild-*.yaml)
-│
-├── helm/
-│   └── charts/                 ← 154 per-service Helm charts
-│
-├── gitops/                     ← GitOps configurations
-│   ├── argocd/                 ← App-of-Apps + ApplicationSets
-│   ├── flux/                   ← Flux base + cluster overlays
-│   ├── argo-rollouts/          ← Canary rollout templates
-│   ├── argo-workflows/         ← CI build + ML training workflows
-│   ├── argo-events/            ← GitHub EventSource + Sensors
-│   └── charts/                 ← Helm charts for 12 GitOps tools
-│
-├── infra/
-│   ├── terraform/              ← EKS (aws/eks), GKE (gcp/gke), AKS (azure/aks), Jenkins VM
-│   ├── opentofu/               ← Same targets as Terraform (open source alternative)
-│   ├── crossplane/             ← Kubernetes-native IaC (compositions, claims)
-│   └── ansible/                ← Kubernetes node bootstrapping roles
-│
-├── kubernetes/                 ← Raw K8s manifests
-│   ├── namespaces/             ← 19 Namespace definitions
-│   ├── rbac/                   ← ServiceAccounts, Roles, Bindings
-│   ├── network-policies/       ← Default-deny + allow rules
-│   ├── resource-quotas/        ← ResourceQuota + LimitRange per namespace
-│   ├── pod-disruption-budgets/ ← PDBs for critical services
-│   ├── keda/                   ← KEDA ScaledObjects (Kafka + Redis)
-│   └── velero/                 ← Backup schedules
-│
-├── observability/              ← 35+ observability tool configs
-├── security/                   ← 50+ security tool configs
-├── messaging/                  ← Kafka, RabbitMQ, NATS configs
-├── networking/                 ← Istio, Cilium, Traefik configs
-├── registry/                   ← Harbor, MinIO, Nexus charts
-│
-├── databases/                  ← Specialist DB schemas
-│   ├── clickhouse/             ← OLAP schema
-│   ├── weaviate/               ← Vector schema
-│   ├── neo4j/                  ← Graph schema
-│   ├── scylladb/               ← Time-series keyspace
-│   └── opensearch/             ← Index templates + ILM
-│
-├── streaming/                  ← CDC + stream processing
-│   ├── debezium/               ← Postgres + MongoDB CDC connectors
-│   └── flink/                  ← FlinkDeployment CRDs
-│
-├── workflow/temporal/          ← Temporal server config + workflow mapping
-├── ml/mlflow/                  ← MLflow config
-├── backstage/                  ← Developer portal app-config + catalog-info
-│
-├── chaos/                      ← Chaos engineering
-│   ├── chaos-mesh/             ← 13 experiments + 2 workflows + 1 game-day schedule
-│   └── litmus/                 ← 5 ChaosEngine + 2 Argo Workflow runs
-│
-├── load-testing/               ← Load tests
-│   ├── k6/                     ← 6 scripts (smoke, browse, checkout, spike, soak …)
-│   ├── locust/                 ← 3 user classes + 4 task sets
-│   └── gatling/                ← Commerce + Search simulations
-│
-└── docs/
-    ├── architecture/           ← 5 design documents
-    ├── runbooks/               ← Incident response, failover, rollback
-    └── adr/                    ← 6 Architecture Decision Records
+â”œâ”€â”€ GETTING_STARTED.md          â† You are here
+â”œâ”€â”€ README.md                   â† Project overview and technology catalogue
+â”œâ”€â”€ Makefile                    â† Top-level build and operational commands
+â”œâ”€â”€ docker-compose.yml          â† Full local stack (154 services + all infra)
+â”œâ”€â”€ docker-compose.override.yml â† Local dev overrides (bind mounts, debug ports)
+â”œâ”€â”€ skaffold.yaml               â† Skaffold hot-reload config
+â”œâ”€â”€ Tiltfile                    â† Tilt hot-reload config
+â”œâ”€â”€ .env.example                â† All environment variables documented
+â”œâ”€â”€ .devcontainer/              â† VS Code / Codespaces dev container
+â”‚
+â”œâ”€â”€ src/                        â† All 154 microservices (13 domains)
+â”‚   â”œâ”€â”€ platform/               â† 22 services: api-gateway, BFFs, saga-orchestrator â€¦
+â”‚   â”œâ”€â”€ identity/               â† 8 services: auth, user, session, MFA â€¦
+â”‚   â”œâ”€â”€ catalog/                â† 12 services: products, pricing, inventory, search â€¦
+â”‚   â”œâ”€â”€ commerce/               â† 23 services: cart, checkout, order, payment â€¦
+â”‚   â”œâ”€â”€ supply-chain/           â† 13 services: vendor, warehouse, fulfillment â€¦
+â”‚   â”œâ”€â”€ financial/              â† 11 services: invoice, accounting, payout â€¦
+â”‚   â”œâ”€â”€ customer-experience/    â† 14 services: reviews, wishlist, support â€¦
+â”‚   â”œâ”€â”€ communications/         â† 9 services: notifications, email, SMS â€¦
+â”‚   â”œâ”€â”€ content/                â† 8 services: media, CMS, i18n â€¦
+â”‚   â”œâ”€â”€ analytics-ai/           â† 13 services: ML, recommendations, analytics â€¦
+â”‚   â”œâ”€â”€ b2b/                    â† 7 services: organisations, contracts, quotes â€¦
+â”‚   â”œâ”€â”€ integrations/           â† 10 services: ERP, CRM, marketplace connectors â€¦
+â”‚   â””â”€â”€ affiliate/              â† 4 services: affiliate, referral, influencer â€¦
+â”‚
+â”œâ”€â”€ proto/                      â† gRPC .proto files (58 files, 14 domains)
+â”œâ”€â”€ events/                     â† Kafka Avro schemas (20 event types)
+â”‚
+â”œâ”€â”€ ci/github-actions/          â† GitHub Actions (15th platform â€” 12 workflows, auto-trigger disabled)
+â”‚
+â”œâ”€â”€ ci/                         â† 14 other CI platforms Ã— 12 pipelines = 168 files
+â”‚   â”œâ”€â”€ jenkins/                â† 12 Jenkinsfiles (deploy, security, networking â€¦)
+â”‚   â”œâ”€â”€ drone/                  â† 12 Drone YAML (*.drone.yml)
+â”‚   â”œâ”€â”€ woodpecker/             â† 12 Woodpecker YAML (*.woodpecker.yml)
+â”‚   â”œâ”€â”€ dagger/                 â† 12 Go SDK pipelines (one subdirectory each)
+â”‚   â”œâ”€â”€ tekton/                 â† 12 Tekton CRD YAML (*-pipeline.yml)
+â”‚   â”œâ”€â”€ concourse/              â† 12 Concourse YAML (*-pipeline.yml)
+â”‚   â”œâ”€â”€ gitlab-ci/              â† 12 GitLab CI YAML (*.gitlab-ci.yml)
+â”‚   â”œâ”€â”€ circleci/               â† 12 CircleCI YAML (*.circleci.yml)
+â”‚   â”œâ”€â”€ gocd/                   â† 12 GoCD YAML (*.gocd.yml)
+â”‚   â”œâ”€â”€ travis/                 â† 12 Travis CI YAML (*.travis.yml)
+â”‚   â”œâ”€â”€ harness/                â† 12 Harness YAML (*-pipeline.yml)
+â”‚   â”œâ”€â”€ azure-devops/           â† 12 Azure Pipelines YAML
+â”‚   â”œâ”€â”€ aws-codepipeline/       â† 12 CodeBuild buildspecs (buildspec-*.yml)
+â”‚   â””â”€â”€ gcp-cloudbuild/         â† 12 Cloud Build YAML (cloudbuild-*.yaml)
+â”‚
+â”œâ”€â”€ helm/
+â”‚   â””â”€â”€ charts/                 â† 154 per-service Helm charts
+â”‚
+â”œâ”€â”€ gitops/                     â† GitOps configurations
+â”‚   â”œâ”€â”€ argocd/                 â† App-of-Apps + ApplicationSets
+â”‚   â”œâ”€â”€ flux/                   â† Flux base + cluster overlays
+â”‚   â”œâ”€â”€ argo-rollouts/          â† Canary rollout templates
+â”‚   â”œâ”€â”€ argo-workflows/         â† CI build + ML training workflows
+â”‚   â”œâ”€â”€ argo-events/            â† GitHub EventSource + Sensors
+â”‚   â””â”€â”€ charts/                 â† Helm charts for 12 GitOps tools
+â”‚
+â”œâ”€â”€ infra/
+â”‚   â”œâ”€â”€ terraform/              â† EKS (aws/eks), GKE (gcp/gke), AKS (azure/aks), Jenkins VM
+â”‚   â”œâ”€â”€ opentofu/               â† Same targets as Terraform (open source alternative)
+â”‚   â”œâ”€â”€ crossplane/             â† Kubernetes-native IaC (compositions, claims)
+â”‚   â””â”€â”€ ansible/                â† Kubernetes node bootstrapping roles
+â”‚
+â”œâ”€â”€ kubernetes/                 â† Raw K8s manifests
+â”‚   â”œâ”€â”€ namespaces/             â† 19 Namespace definitions
+â”‚   â”œâ”€â”€ rbac/                   â† ServiceAccounts, Roles, Bindings
+â”‚   â”œâ”€â”€ network-policies/       â† Default-deny + allow rules
+â”‚   â”œâ”€â”€ resource-quotas/        â† ResourceQuota + LimitRange per namespace
+â”‚   â”œâ”€â”€ pod-disruption-budgets/ â† PDBs for critical services
+â”‚   â”œâ”€â”€ keda/                   â† KEDA ScaledObjects (Kafka + Redis)
+â”‚   â””â”€â”€ velero/                 â† Backup schedules
+â”‚
+â”œâ”€â”€ observability/              â† 35+ observability tool configs
+â”œâ”€â”€ security/                   â† 50+ security tool configs
+â”œâ”€â”€ messaging/                  â† Kafka, RabbitMQ, NATS configs
+â”œâ”€â”€ networking/                 â† Istio, Cilium, Traefik configs
+â”œâ”€â”€ registry/                   â† Harbor, MinIO, Nexus charts
+â”‚
+â”œâ”€â”€ databases/                  â† Specialist DB schemas
+â”‚   â”œâ”€â”€ clickhouse/             â† OLAP schema
+â”‚   â”œâ”€â”€ weaviate/               â† Vector schema
+â”‚   â”œâ”€â”€ neo4j/                  â† Graph schema
+â”‚   â”œâ”€â”€ scylladb/               â† Time-series keyspace
+â”‚   â””â”€â”€ opensearch/             â† Index templates + ILM
+â”‚
+â”œâ”€â”€ streaming/                  â† CDC + stream processing
+â”‚   â”œâ”€â”€ debezium/               â† Postgres + MongoDB CDC connectors
+â”‚   â””â”€â”€ flink/                  â† FlinkDeployment CRDs
+â”‚
+â”œâ”€â”€ workflow/temporal/          â† Temporal server config + workflow mapping
+â”œâ”€â”€ ml/mlflow/                  â† MLflow config
+â”œâ”€â”€ backstage/                  â† Developer portal app-config + catalog-info
+â”‚
+â”œâ”€â”€ chaos/                      â† Chaos engineering
+â”‚   â”œâ”€â”€ chaos-mesh/             â† 13 experiments + 2 workflows + 1 game-day schedule
+â”‚   â””â”€â”€ litmus/                 â† 5 ChaosEngine + 2 Argo Workflow runs
+â”‚
+â”œâ”€â”€ load-testing/               â† Load tests
+â”‚   â”œâ”€â”€ k6/                     â† 6 scripts (smoke, browse, checkout, spike, soak â€¦)
+â”‚   â”œâ”€â”€ locust/                 â† 3 user classes + 4 task sets
+â”‚   â””â”€â”€ gatling/                â† Commerce + Search simulations
+â”‚
+â””â”€â”€ docs/
+    â”œâ”€â”€ architecture/           â† 5 design documents
+    â”œâ”€â”€ runbooks/               â† Incident response, failover, rollback
+    â””â”€â”€ adr/                    â† 6 Architecture Decision Records
 ```
 
 ---
@@ -218,7 +218,7 @@ cd ShopOS
 
 # 2. Copy environment file
 cp .env.example .env
-# Edit .env — set passwords, ports, registry URLs as needed
+# Edit .env â€” set passwords, ports, registry URLs as needed
 
 # 3. Start the full stack (all 154 services + all infra)
 docker compose up -d
@@ -302,7 +302,7 @@ helm upgrade --install order-service helm/charts/order-service \
   --set image.repository=localhost:5000/shopos/order-service \
   --set image.tag=local
 
-# Deploy all services (slow — ~154 helm releases)
+# Deploy all services (slow â€” ~154 helm releases)
 make deploy-local
 ```
 
@@ -461,12 +461,12 @@ dagger run go run main.go
 
 | Phase | Duration | Components |
 |---|---|---|
-| 1 — Networking | ~20 min | Cilium CNI, Istio (base + istiod + gateway), Traefik |
-| 2 — Security | ~25 min | cert-manager, Vault HA, Keycloak, Kyverno, Falco |
-| 3 — Observability | ~30 min | Prometheus stack, Grafana, Loki, Jaeger, OTel Collector |
-| 4 — Messaging | ~20 min | ZooKeeper, Kafka (3 brokers), RabbitMQ, NATS, 20 Kafka topics |
-| 5 — Registry | ~25 min | MinIO (4 nodes), Harbor (with Trivy), Nexus, 8 MinIO buckets |
-| 6 — GitOps | ~20 min | ArgoCD, Argo Rollouts, Argo Workflows, KEDA, Velero |
+| 1 â€” Networking | ~20 min | Cilium CNI, Istio (base + istiod + gateway), Traefik |
+| 2 â€” Security | ~25 min | cert-manager, Vault HA, Keycloak, Kyverno, Falco |
+| 3 â€” Observability | ~30 min | Prometheus stack, Grafana, Loki, Jaeger, OTel Collector |
+| 4 â€” Messaging | ~20 min | ZooKeeper, Kafka (3 brokers), RabbitMQ, NATS, 20 Kafka topics |
+| 5 â€” Registry | ~25 min | MinIO (4 nodes), Harbor (with Trivy), Nexus, 8 MinIO buckets |
+| 6 â€” GitOps | ~20 min | ArgoCD, Argo Rollouts, Argo Workflows, KEDA, Velero |
 
 ---
 
@@ -517,7 +517,7 @@ drone exec ci/drone/deploy.drone.yml \
 
 ### Dagger (run anywhere)
 
-Dagger pipelines are plain Go programs — no CI server needed.
+Dagger pipelines are plain Go programs â€” no CI server needed.
 
 ```bash
 cd ci/dagger/deploy
@@ -529,9 +529,9 @@ dagger run go run main.go
 
 ### GitHub Actions
 
-Workflow files live at `ci/github-actions/` (NOT `.github/workflows/`), so they do **not**
+Workflow files live at `ci/github-actions/` (NOT `.github/workflows/`), so they do not
 auto-trigger on push or PR. To activate them, copy the files into `.github/workflows/` and
-add the required secrets in repository Settings → Secrets and variables → Actions.
+add the required secrets in repository Settings â†’ Secrets and variables â†’ Actions.
 
 ```bash
 # Activate GitHub Actions
@@ -555,7 +555,7 @@ gh run list --workflow=deploy.yml
 ### GitLab CI
 
 Copy files from `ci/gitlab-ci/` to your GitLab repository root.
-Secrets are set in Settings → CI/CD → Variables.
+Secrets are set in Settings â†’ CI/CD â†’ Variables.
 
 ---
 
@@ -621,7 +621,7 @@ kubectl get secret argocd-initial-admin-secret -n argocd \
   -o jsonpath="{.data.password}" | base64 -d
 ```
 
-Open https://localhost:8088 — login with `admin` and the password above.
+Open https://localhost:8088 â€” login with `admin` and the password above.
 
 ### App-of-Apps pattern
 
@@ -629,7 +629,7 @@ The root application in `gitops/argocd/app-of-apps.yaml` creates one ArgoCD Appl
 per domain. Each domain application manages all services within that domain.
 
 ```bash
-# Bootstrap — apply root app
+# Bootstrap â€” apply root app
 kubectl apply -f gitops/argocd/app-of-apps.yaml -n argocd
 
 # Sync all apps
@@ -642,7 +642,7 @@ argocd app sync commerce
 ### Canary deployments (Argo Rollouts)
 
 Services with a `Rollout` manifest (in `gitops/argo-rollouts/`) use progressive delivery:
-20% canary → automated metric check → 100% promote or rollback.
+20% canary â†’ automated metric check â†’ 100% promote or rollback.
 
 ```bash
 # Check rollout status
@@ -667,12 +667,12 @@ kubectl port-forward svc/grafana -n observability 3000:80
 ```
 
 Pre-built dashboards:
-- **ShopOS Overview** — cross-domain request rates and error budgets
-- **Service Health** — per-service latency p50/p95/p99, error rate, saturation
-- **Kafka Lag** — consumer group lag per topic
-- **SLO Dashboard** — error budget burn rates (Pyrra)
-- **Cost** — per-namespace cost (OpenCost)
-- **Infrastructure** — node CPU, memory, disk (kube-state-metrics + node-exporter)
+- ShopOS Overview â€” cross-domain request rates and error budgets
+- Service Health â€” per-service latency p50/p95/p99, error rate, saturation
+- Kafka Lag â€” consumer group lag per topic
+- SLO Dashboard â€” error budget burn rates (Pyrra)
+- Cost â€” per-namespace cost (OpenCost)
+- Infrastructure â€” node CPU, memory, disk (kube-state-metrics + node-exporter)
 
 ### Traces (Jaeger)
 
@@ -683,7 +683,7 @@ kubectl port-forward svc/jaeger-query -n observability 16686:16686
 
 ### Logs (Loki / Grafana)
 
-In Grafana → Explore → Select datasource "Loki":
+In Grafana â†’ Explore â†’ Select datasource "Loki":
 
 ```logql
 # All errors in the commerce namespace
@@ -706,7 +706,7 @@ Critical alerts page on-call via PagerDuty integration (configure in
 
 ## 13. Security Layer
 
-### Vault — Secrets Management
+### Vault â€” Secrets Management
 
 ```bash
 kubectl port-forward svc/vault -n security 8200:8200
@@ -723,11 +723,11 @@ vault kv get secret/shopos/order-service
 Services fetch secrets at startup via the Vault Agent Injector sidecar (configured in
 each Helm chart's `values.yaml`).
 
-### Keycloak — Identity / SSO
+### Keycloak â€” Identity / SSO
 
 ```bash
 kubectl port-forward svc/keycloak -n security 8443:443
-# open https://localhost:8443 — admin / <KEYCLOAK_ADMIN_PASSWORD>
+# open https://localhost:8443 â€” admin / <KEYCLOAK_ADMIN_PASSWORD>
 ```
 
 Realm `shopos` is pre-configured with:
@@ -786,7 +786,7 @@ kubectl exec -n messaging "$KAFKA_POD" -- \
 
 ```bash
 kubectl port-forward svc/rabbitmq -n messaging 15672:15672
-# open http://localhost:15672 — admin / <RABBITMQ_PASSWORD>
+# open http://localhost:15672 â€” admin / <RABBITMQ_PASSWORD>
 ```
 
 ### NATS JetStream
@@ -883,7 +883,7 @@ curl http://schema-registry.messaging.svc:8081/subjects
 
 ### Topic naming convention
 
-`{domain}.{entity}.{event}` — e.g., `commerce.order.placed`, `identity.user.registered`
+`{domain}.{entity}.{event}` â€” e.g., `commerce.order.placed`, `identity.user.registered`
 
 All 20 topics: see [events/README.md](events/README.md).
 
@@ -917,10 +917,10 @@ go mod init github.com/shopos/my-new-service
 
 Required files for every service:
 - `main.go` / `index.js` / `main.py` / `Application.java` etc.
-- `Dockerfile` — multi-stage build, non-root user
-- `Makefile` — build, test, lint, run targets
-- `.env.example` — all environment variables
-- `README.md` — service description
+- `Dockerfile` â€” multi-stage build, non-root user
+- `Makefile` â€” build, test, lint, run targets
+- `.env.example` â€” all environment variables
+- `README.md` â€” service description
 
 ### 4. Add the proto file
 
@@ -1025,7 +1025,7 @@ Copy `.env.example` to `.env` and populate. Key variables:
 
 ## 20. Troubleshooting
 
-### Docker Compose — service won't start
+### Docker Compose â€” service won't start
 
 ```bash
 docker compose logs order-service --tail=50

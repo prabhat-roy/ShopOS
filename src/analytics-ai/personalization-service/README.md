@@ -1,4 +1,4 @@
-# personalization-service
+﻿# personalization-service
 
 > Personalised homepage layouts, search ranking boosts, and content selection tailored per user.
 
@@ -56,22 +56,22 @@ service PersonalizationService {
 
 | Topic | Role |
 |---|---|
-| `analytics.product.clicked` | Consumed — updates user interest signals |
-| `commerce.order.placed` | Consumed — updates purchase history profile |
-| `analytics.page.viewed` | Consumed — updates browsing affinity signals |
+| `analytics.product.clicked` | Consumed â€” updates user interest signals |
+| `commerce.order.placed` | Consumed â€” updates purchase history profile |
+| `analytics.page.viewed` | Consumed â€” updates browsing affinity signals |
 
 ## Dependencies
 
-**Upstream:** web-bff, mobile-bff (real-time callers), event-tracking-service (profile update events)
+Upstream: web-bff, mobile-bff (real-time callers), event-tracking-service (profile update events)
 
-**Downstream:** ml-feature-store (feature reads), recommendation-service, cms-service, search-service
+Downstream: ml-feature-store (feature reads), recommendation-service, cms-service, search-service
 
 ## Environment Variables
 
 | Variable | Default | Description |
 |---|---|---|
 | `GRPC_PORT` | `50153` | gRPC server port |
-| `MONGODB_URI` | — | MongoDB connection string |
+| `MONGODB_URI` | â€” | MongoDB connection string |
 | `MONGODB_DB` | `personalization` | MongoDB database name |
 | `ML_FEATURE_STORE_ADDR` | `ml-feature-store:50152` | Feature store address |
 | `RECOMMENDATION_SERVICE_ADDR` | `recommendation-service:50150` | Recommendation service address |
@@ -89,4 +89,4 @@ docker-compose up personalization-service
 
 ## Health Check
 
-`GET /healthz` → `{"status":"ok"}`
+`GET /healthz` â†’ `{"status":"ok"}`

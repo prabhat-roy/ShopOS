@@ -1,4 +1,4 @@
-# accounting-service
+﻿# accounting-service
 
 > Implements double-entry bookkeeping with journal entry management and a general ledger for the ShopOS platform.
 
@@ -71,12 +71,12 @@ service AccountingService {
 
 ## Dependencies
 
-**Upstream (callers)**
+Upstream (callers)
 - Multiple domain Kafka topics (see above)
-- `reconciliation-service` — triggers journal queries for reconciliation
+- `reconciliation-service` â€” triggers journal queries for reconciliation
 
-**Downstream (calls out to)**
-- `tax-reporting-service` — provides GL data for tax report generation
+Downstream (calls out to)
+- `tax-reporting-service` â€” provides GL data for tax report generation
 
 ## Environment Variables
 
@@ -87,7 +87,7 @@ service AccountingService {
 | `DB_PORT` | `5432` | PostgreSQL port |
 | `DB_NAME` | `accounting_db` | Database name |
 | `DB_USER` | `accounting_svc` | Database user |
-| `DB_PASSWORD` | — | Database password (required) |
+| `DB_PASSWORD` | â€” | Database password (required) |
 | `KAFKA_BROKERS` | `localhost:9092` | Comma-separated Kafka broker list |
 | `BASE_CURRENCY` | `USD` | Platform base currency for GL reporting |
 | `FISCAL_YEAR_START_MONTH` | `1` | Month (1-12) the fiscal year begins |
@@ -101,6 +101,6 @@ docker-compose up accounting-service
 
 ## Health Check
 
-`GET /healthz` → `{"status":"ok"}`
+`GET /healthz` â†’ `{"status":"ok"}`
 
-gRPC health: `grpc.health.v1.Health/Check` → `SERVING`
+gRPC health: `grpc.health.v1.Health/Check` â†’ `SERVING`

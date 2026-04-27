@@ -1,4 +1,4 @@
-# EXAMPLES
+﻿# EXAMPLES
 
 ## Install as a DaemonSet
 
@@ -638,7 +638,7 @@ experimental:
     legacy-demo:
       moduleName: github.com/traefik/legacydemo
       mountPath: /plugins-local/src/github.com/traefik/legacydemo
-      hostPath: /path/to/plugin-source  # ⚠️ Deprecated - use type: hostPath instead
+      hostPath: /path/to/plugin-source  # âš ï¸ Deprecated - use type: hostPath instead
 ```
 
 ## Structured Local Plugins
@@ -703,7 +703,7 @@ experimental:
           }
 ```
 
-> **Advantages**: Secure (no host filesystem access), portable, version controlled with Helm values, supports up to 1MB of plugin code.
+> Advantages: Secure (no host filesystem access), portable, version controlled with Helm values, supports up to 1MB of plugin code.
 
 ### Using Host Path Plugin
 
@@ -750,12 +750,12 @@ experimental:
       subPath: plugins/s3plugin   # Optional subpath within volume
 ```
 
-> **Advantages**:
+> Advantages:
 >
-> - **Flexible**: Supports any Kubernetes volume type (PVC, CSI, NFS, etc.)
-> - **Secure**: Works with CSI drivers for cloud storage (S3, Azure Blob, GCS)
-> - **Scalable**: Centralized plugin storage, no per-node requirements
-> - **Consistent**: Uses existing Helm chart patterns (`additionalVolumes`)
+> - Flexible: Supports any Kubernetes volume type (PVC, CSI, NFS, etc.)
+> - Secure: Works with CSI drivers for cloud storage (S3, Azure Blob, GCS)
+> - Scalable: Centralized plugin storage, no per-node requirements
+> - Consistent: Uses existing Helm chart patterns (`additionalVolumes`)
 
 ## Using Traefik-Hub with private plugin registries
 
@@ -846,7 +846,7 @@ See [the list of supported providers](https://doc.traefik.io/traefik/https/acme/
 
 This example needs a Cloudflare token in a Kubernetes `Secret` and a working `StorageClass`.
 
-**Step 1**: Create `Secret` with Cloudflare token:
+Step 1: Create `Secret` with Cloudflare token:
 
 ```yaml
 ---
@@ -859,7 +859,7 @@ stringData:
   token: {{ SET_A_VALID_TOKEN_HERE }}
 ```
 
-**Step 2**:
+Step 2:
 
 ```yaml
 persistence:
@@ -900,7 +900,7 @@ Setup:
 - cert-manager installed in `cert-manager` namespace
 - A Cloudflare account on a DNS Zone
 
-**Step 1**: Create `Secret` and `Issuer` needed by `cert-manager` with your API Token.
+Step 1: Create `Secret` and `Issuer` needed by `cert-manager` with your API Token.
 See [cert-manager documentation](https://cert-manager.io/docs/configuration/acme/dns01/cloudflare/)
 for creating this token with needed rights:
 
@@ -934,7 +934,7 @@ spec:
               key: api-token
 ```
 
-**Step 2**: Create `Certificate` in traefik namespace
+Step 2: Create `Certificate` in traefik namespace
 
 ```yaml
 apiVersion: cert-manager.io/v1
@@ -952,7 +952,7 @@ spec:
     kind: Issuer
 ```
 
-**Step 3**: Check that it's ready
+Step 3: Check that it's ready
 
 ```bash
 kubectl get certificate -n traefik
@@ -960,7 +960,7 @@ kubectl get certificate -n traefik
 
 If needed, logs of the cert-manager pod can give you more information
 
-**Step 4**: Use it on the TLS Store in **values.yaml** file for this Helm Chart
+Step 4: Use it on the TLS Store in values.yaml file for this Helm Chart
 
 ```yaml
 tlsStore:
@@ -969,7 +969,7 @@ tlsStore:
       secretName: wildcard-example-com-tls
 ```
 
-**Step 5**: Enjoy. All your `IngressRoute` use this certificate by default now.
+Step 5: Enjoy. All your `IngressRoute` use this certificate by default now.
 
 They should use a websecure entrypoint like this:
 
@@ -1371,7 +1371,7 @@ This provider allows Traefik to consume Kubernetes Ingress resources with NGINX-
 
 where the same Ingress resource continues to work without modification.<br>
 
-**Step 1**: Install NGINX Ingress Controller and deploy the whoami application
+Step 1: Install NGINX Ingress Controller and deploy the whoami application
 
 ```bash
 # Install NGINX Ingress Controller
@@ -1440,7 +1440,7 @@ spec:
                   number: 80
 ```
 
-**Step 2**: Test that the application works with NGINX
+Step 2: Test that the application works with NGINX
 
 ```bash
 # Port-forward to NGINX
@@ -1452,7 +1452,7 @@ curl http://whoami.docker.localhost:8000 -c /tmp/cookies.txt -b /tmp/cookies.txt
 
 You should see the whoami response with your request details.
 
-**Step 3**: Install Traefik with the Kubernetes Ingress NGINX provider enabled (alongside NGINX)
+Step 3: Install Traefik with the Kubernetes Ingress NGINX provider enabled (alongside NGINX)
 
 ```bash
 helm upgrade --install traefik traefik/traefik \
@@ -1468,7 +1468,7 @@ providers:
     enabled: true
 ```
 
-**Step 4**: Test that the application now also works with Traefik
+Step 4: Test that the application now also works with Traefik
 
 Both NGINX and Traefik are now running in parallel, each serving the same Ingress thanks to the Traefik NGINX provider !
 
@@ -1480,10 +1480,10 @@ kubectl port-forward -n traefik deployment/traefik 8001:8000 &
 curl http://whoami.docker.localhost:8001 -c /tmp/cookies.txt -b /tmp/cookies.txt
 ```
 
-The same Ingress resource is now served by **both** NGINX and Traefik! You can verify which one is responding by checking the response headers or the service endpoints.
+The same Ingress resource is now served by both NGINX and Traefik! You can verify which one is responding by checking the response headers or the service endpoints.
 
 > :warning:
-> **Important note about NGINX**: When uninstalling the NGINX Ingress Controller helm chart, it removes the `nginx` IngressClass.
+> Important note about NGINX: When uninstalling the NGINX Ingress Controller helm chart, it removes the `nginx` IngressClass.
 > Traefik needs this IngressClass to detect and serve Ingress resources that use `ingressClassName: nginx`. Before uninstalling NGINX, it's recommended to ensure that an IngressClass like this will stay:
 >
 > ```yaml
@@ -1497,7 +1497,7 @@ The same Ingress resource is now served by **both** NGINX and Traefik! You can v
 > ```
 
 > :information_source:
-> The Kubernetes Ingress NGINX provider supports most common NGINX Ingress annotations, allowing for a **seamless migration** from NGINX Ingress Controller to Traefik **without modifying existing Ingress resources**.
+> The Kubernetes Ingress NGINX provider supports most common NGINX Ingress annotations, allowing for a seamless migration from NGINX Ingress Controller to Traefik without modifying existing Ingress resources.
 
 ## Use Knative Provider
 

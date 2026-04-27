@@ -1,6 +1,6 @@
-# Argo Workflows Chart
+﻿# Argo Workflows Chart
 
-This is a **community maintained** chart. It is used to set up argo and its needed dependencies through one command. This is used in conjunction with [helm](https://github.com/kubernetes/helm).
+This is a community maintained chart. It is used to set up argo and its needed dependencies through one command. This is used in conjunction with [helm](https://github.com/kubernetes/helm).
 
 If you want your deployment of this helm chart to most closely match the [argo CLI](https://github.com/argoproj/argo-workflows), you should deploy it in the `argo` namespace.
 
@@ -12,8 +12,8 @@ If you want your deployment of this helm chart to most closely match the [argo C
 
 This chart supports two CRD variants:
 
-- **Full CRDs** (default): Include complete OpenAPI schemas for better validation and type safety. These are approximately 11MB total uncompressed.
-- **Minified CRDs**: Use `x-kubernetes-preserve-unknown-fields` to accept any fields. Smaller but provide almost no validation.
+- Full CRDs (default): Include complete OpenAPI schemas for better validation and type safety. These are approximately 11MB total uncompressed.
+- Minified CRDs: Use `x-kubernetes-preserve-unknown-fields` to accept any fields. Smaller but provide almost no validation.
 
 As of Argo Workflows version 4, full CRDs are the default, matching upstream.
 
@@ -25,9 +25,9 @@ helm install my-release argo/argo-workflows --set crds.full=false
 
 #### How the full CRDs are installed
 
-Full CRDs are too large to include directly in Helm templates (they would exceed the Kubernetes Secret size limit that Helm uses to store releases). Instead, this chart uses a **pre-install/pre-upgrade hook Job** that downloads and applies CRDs from this chart's GitHub release tag using `kubectl apply --server-side --force-conflicts`.
+Full CRDs are too large to include directly in Helm templates (they would exceed the Kubernetes Secret size limit that Helm uses to store releases). Instead, this chart uses a pre-install/pre-upgrade hook Job that downloads and applies CRDs from this chart's GitHub release tag using `kubectl apply --server-side --force-conflicts`.
 
-This means `helm install` works out of the box with full CRDs — no manual steps required. The hook Job requires:
+This means `helm install` works out of the box with full CRDs â€” no manual steps required. The hook Job requires:
 
 - A `kubectl` image (defaults to `registry.k8s.io/kubectl`)
 - ClusterRole permissions to create/update CRDs (created automatically as hook resources)
@@ -37,7 +37,7 @@ You can customize the kubectl image, image pull secrets, and CRD source URL via 
 
 #### Using Argo CD
 
-Argo CD supports Helm hooks natively by converting them to Argo CD PreSync hooks. The CRD install hook Job will run automatically during Argo CD sync — no special configuration is required.
+Argo CD supports Helm hooks natively by converting them to Argo CD PreSync hooks. The CRD install hook Job will run automatically during Argo CD sync â€” no special configuration is required.
 
 #### Installing CRDs Outside the Chart
 
@@ -140,8 +140,8 @@ See the `server.ingress` section in values.yaml for standard Ingress configurati
 
 The Gateway API provides a modern, extensible way to configure ingress traffic routing. This chart supports HTTPRoute resources as an alternative to traditional Ingress.
 
-> **Note:**
-> Gateway API support is **EXPERIMENTAL**. Support depends on your Gateway controller implementation. Some controllers may require additional configuration (e.g., BackendTLSPolicy for HTTPS backends). Refer to [Gateway API implementations](https://gateway-api.sigs.k8s.io/implementations/) for controller-specific details.
+> Note:
+> Gateway API support is EXPERIMENTAL. Support depends on your Gateway controller implementation. Some controllers may require additional configuration (e.g., BackendTLSPolicy for HTTPS backends). Refer to [Gateway API implementations](https://gateway-api.sigs.k8s.io/implementations/) for controller-specific details.
 
 ```yaml
 server:
@@ -159,8 +159,8 @@ server:
 
 For HTTPS backends with Gateway API (when `server.secure: true`), you may need to configure BackendTLSPolicy (experimental, v1alpha3):
 
-> **Warning:**
-> BackendTLSPolicy is in **EXPERIMENTAL** status. Not all Gateway controllers support this resource (e.g., Cilium does not yet support it).
+> Warning:
+> BackendTLSPolicy is in EXPERIMENTAL status. Not all Gateway controllers support this resource (e.g., Cilium does not yet support it).
 
 ```yaml
 server:
@@ -188,7 +188,7 @@ server:
 The `values.yaml` contains items used to tweak a deployment of this chart.
 Fields to note:
 
-- `controller.instanceID.enabled`: If set to true, the Argo Controller will **ONLY** monitor Workflow submissions with a `--instanceid` attribute
+- `controller.instanceID.enabled`: If set to true, the Argo Controller will ONLY monitor Workflow submissions with a `--instanceid` attribute
 - `controller.instanceID.useReleaseName`: If set to true then chart set controller instance id to release name
 - `controller.instanceID.explicitID`: Allows customization of an instance id for the workflow controller to monitor
 - `singleNamespace`:  When true, restricts the workflow controller to operate
@@ -285,7 +285,7 @@ Fields to note:
 | controller.logging.level | string | `"info"` | Set the logging level (one of: `debug`, `info`, `warn`, `error`) |
 | controller.metricsConfig.enabled | bool | `false` | Enables prometheus metrics server |
 | controller.metricsConfig.headlessService | bool | `false` | Flag to enable headless service |
-| controller.metricsConfig.honorLabels | bool | `false` | When true, honorLabels preserves the metric’s labels when they collide with the target’s labels. |
+| controller.metricsConfig.honorLabels | bool | `false` | When true, honorLabels preserves the metricâ€™s labels when they collide with the targetâ€™s labels. |
 | controller.metricsConfig.ignoreErrors | bool | `false` | Flag that instructs prometheus to ignore metric emission errors. |
 | controller.metricsConfig.interval | string | `"30s"` | Frequency at which prometheus scrapes metrics |
 | controller.metricsConfig.metricRelabelings | list | `[]` | ServiceMonitor metric relabel configs to apply to samples before ingestion |

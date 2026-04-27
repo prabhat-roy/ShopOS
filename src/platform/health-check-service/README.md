@@ -1,4 +1,4 @@
-# Health Check Service
+﻿# Health Check Service
 
 > Aggregates and exposes the health status of all ShopOS services in one place.
 
@@ -22,7 +22,7 @@ graph LR
 | Component | Technology |
 |---|---|
 | Language | Go |
-| Database | — |
+| Database | â€” |
 | Protocol | HTTP |
 | Port | 8090 |
 
@@ -48,14 +48,14 @@ graph LR
 
 ## Kafka Topics
 
-N/A — the Health Check Service uses HTTP polling, not Kafka.
+N/A â€” the Health Check Service uses HTTP polling, not Kafka.
 
 ## Dependencies
 
-**Upstream** (services this calls):
-- All registered microservices — polled via their `/healthz` HTTP or gRPC health endpoints
+Upstream (services this calls):
+- All registered microservices â€” polled via their `/healthz` HTTP or gRPC health endpoints
 
-**Downstream** (services that call this):
+Downstream (services that call this):
 - Kubernetes liveness and readiness probes
 - Load balancers and ingress controllers
 - Admin Portal and on-call monitoring dashboards
@@ -82,4 +82,4 @@ skaffold dev --module=health-check-service
 
 ## Health Check
 
-`GET /healthz` → `{"status":"ok"}`
+`GET /healthz` â†’ `{"status":"ok"}`

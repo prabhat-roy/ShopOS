@@ -1,4 +1,4 @@
-# Argo Rollouts Chart
+﻿# Argo Rollouts Chart
 
 A Helm chart for Argo Rollouts, progressive delivery for Kubernetes.
 
@@ -6,7 +6,7 @@ Source code can be found [here](https://github.com/argoproj/argo-rollouts)
 
 ## Additional Information
 
-This is a **community maintained** chart. This chart installs [argo-rollouts](https://argoproj.github.io/argo-rollouts/), progressive delivery for Kubernetes.
+This is a community maintained chart. This chart installs [argo-rollouts](https://argoproj.github.io/argo-rollouts/), progressive delivery for Kubernetes.
 
 The default installation is intended to be similar to the provided Argo Rollouts [releases](https://github.com/argoproj/argo-rollouts/releases).
 
@@ -217,7 +217,7 @@ For full list of changes please check ArtifactHub [changelog].
 
 * The argo-rollouts dashboard is added to the template and can be enabled by setting `dashboard.enabled=true`.
 * There is a breaking change where the selector label `app.kubernetes.io/component: {{ .Values.controller.component }}` is added to rollout's deployment and service in order to distinguish between the controller and the dashboard component.
-  To upgrade an existing installation, please **add the `--force` parameter** to the `helm upgrade` command or **delete the Deployment and Service resource** before you upgrade. This is necessary because Deployment's label selector is immutable.
+  To upgrade an existing installation, please add the `--force` parameter to the `helm upgrade` command or delete the Deployment and Service resource before you upgrade. This is necessary because Deployment's label selector is immutable.
 
 ### To 1.0.0
 
@@ -225,7 +225,7 @@ For full list of changes please check ArtifactHub [changelog].
   To migrate to Helm v3 please have a look at the [Helm 2to3 Plugin](https://github.com/helm/helm-2to3). This tool will convert the existing ConfigMap used for Tiller to a Secret of type `helm.sh/release.v1`.
 * `quay.io` is the default registry now
 * We introduce a template function for the labels here to reduce code duplication. This also affects the Deployment `matchLabels` selector.  
-  To upgrade an existing installation, please **add the `--force` parameter** to the `helm upgrade` command or **delete the Deployment resource** before you upgrade. This is necessary because Deployment's label selector is immutable.
+  To upgrade an existing installation, please add the `--force` parameter to the `helm upgrade` command or delete the Deployment resource before you upgrade. This is necessary because Deployment's label selector is immutable.
 * All resources are now prefixed with the template `"argo-rollouts.fullname"`.
   This enables the users to override resource names via the `nameOverride` and `fullnameOverride` parameters.
 * Breaking parameters update

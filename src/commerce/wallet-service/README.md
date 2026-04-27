@@ -1,4 +1,4 @@
-# wallet-service
+﻿# wallet-service
 
 > Manages digital wallet balances, top-ups, and spend transactions for ShopOS customers.
 
@@ -67,15 +67,15 @@ Proto file: `proto/commerce/wallet.proto`
 
 ## Dependencies
 
-**Upstream (callers)**
-- `checkout-service` — wallet as payment method at checkout
-- `payment-service` — top-up funding and refund-to-wallet
-- `return-refund-service` — store credit refunds
-- `web-bff` / `mobile-bff` — balance and history display
-- `admin-portal` — manual adjustments
+Upstream (callers)
+- `checkout-service` â€” wallet as payment method at checkout
+- `payment-service` â€” top-up funding and refund-to-wallet
+- `return-refund-service` â€” store credit refunds
+- `web-bff` / `mobile-bff` â€” balance and history display
+- `admin-portal` â€” manual adjustments
 
-**Downstream (called by this service)**
-- PostgreSQL — ledger persistence
+Downstream (called by this service)
+- PostgreSQL â€” ledger persistence
 
 ## Environment Variables
 
@@ -101,6 +101,6 @@ docker-compose up wallet-service
 
 ## Health Check
 
-`GET /healthz` → `{"status":"ok"}`
+`GET /healthz` â†’ `{"status":"ok"}`
 
-gRPC health: `grpc.health.v1.Health/Check` → `SERVING`
+gRPC health: `grpc.health.v1.Health/Check` â†’ `SERVING`

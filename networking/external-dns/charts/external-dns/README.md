@@ -1,10 +1,10 @@
-# external-dns
+﻿# external-dns
 
 ![Version: 1.20.0](https://img.shields.io/badge/Version-1.20.0-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 0.20.0](https://img.shields.io/badge/AppVersion-0.20.0-informational?style=flat-square)
 
 ExternalDNS synchronizes exposed Kubernetes Services and Ingresses with DNS providers.
 
-**Homepage:** <https://github.com/kubernetes-sigs/external-dns/>
+Homepage: <https://github.com/kubernetes-sigs/external-dns/>
 
 ## Maintainers
 
@@ -42,7 +42,7 @@ See [documentation](https://kubernetes-sigs.github.io/external-dns/#new-provider
 
 | Provider               | Supported  |
 |------------------------|------------|
-| `webhook`              | ✅         |
+| `webhook`              | âœ…         |
 
 ### Other Providers
 
@@ -76,18 +76,18 @@ If `namespaced` is set to `true`, please ensure that `sources` my only contains 
 
 | Source                 | Supported  | Infos                  |
 |------------------------|------------|------------------------|
-| `ingress`              | ✅         |                        |
-| `istio-gateway`        | ✅         |                        |
-| `istio-virtualservice` | ✅         |                        |
-| `crd`                  | ✅         |                        |
-| `kong-tcpingress`      | ✅         |                        |
-| `openshift-route`      | ✅         |                        |
-| `skipper-routegroup`   | ✅         |                        |
-| `gloo-proxy`           | ✅         |                        |
-| `contour-httpproxy`    | ✅         |                        |
-| `service`              | ⚠️️         | NodePort not supported |
-| `node`                 | ❌         |                        |
-| `pod`                  | ❌         |                        |
+| `ingress`              | âœ…         |                        |
+| `istio-gateway`        | âœ…         |                        |
+| `istio-virtualservice` | âœ…         |                        |
+| `crd`                  | âœ…         |                        |
+| `kong-tcpingress`      | âœ…         |                        |
+| `openshift-route`      | âœ…         |                        |
+| `skipper-routegroup`   | âœ…         |                        |
+| `gloo-proxy`           | âœ…         |                        |
+| `contour-httpproxy`    | âœ…         |                        |
+| `service`              | âš ï¸ï¸         | NodePort not supported |
+| `node`                 | âŒ         |                        |
+| `pod`                  | âŒ         |                        |
 
 ## Values
 
@@ -152,7 +152,7 @@ If `namespaced` is set to `true`, please ensure that `sources` my only contains 
 | resources | object | `{}` | [Resources](https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/) for the `external-dns` container. |
 | revisionHistoryLimit | int | `nil` | Specify the number of old `ReplicaSets` to retain to allow rollback of the `Deployment``. |
 | secretConfiguration.data | object | `{}` | `Secret` data. |
-| secretConfiguration.enabled | bool | `false` | If `true`, create a `Secret` to store sensitive provider configuration (**DEPRECATED**). |
+| secretConfiguration.enabled | bool | `false` | If `true`, create a `Secret` to store sensitive provider configuration (DEPRECATED). |
 | secretConfiguration.mountPath | string | `nil` | Mount path for the `Secret`, this can be templated. |
 | secretConfiguration.subPath | string | `nil` | Sub-path for mounting the `Secret`, this can be templated. |
 | securityContext | object | See _values.yaml_ | [Security context](https://kubernetes.io/docs/tasks/configure-pod-container/security-context/#set-the-security-context-for-a-container) for the `external-dns` container. |

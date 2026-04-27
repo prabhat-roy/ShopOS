@@ -1,4 +1,4 @@
-# support-ticket-service
+﻿# support-ticket-service
 
 > Customer support ticketing with SLA tracking, agent assignment, and priority queuing.
 
@@ -43,7 +43,7 @@ graph LR
 
 ## API / Interface
 
-**gRPC service:** `SupportTicketService` (port 50125)
+gRPC service: `SupportTicketService` (port 50125)
 
 | Method | Request | Response | Description |
 |---|---|---|---|
@@ -67,14 +67,14 @@ graph LR
 
 ## Dependencies
 
-**Upstream (callers)**
-- `api-gateway` — customer-facing ticket submission and status checks
-- `admin-portal` — agent workbench for managing and replying to tickets
+Upstream (callers)
+- `api-gateway` â€” customer-facing ticket submission and status checks
+- `admin-portal` â€” agent workbench for managing and replying to tickets
 
-**Downstream (calls)**
-- `order-service` — links tickets to order context
-- `user-service` — looks up customer profile for ticket enrichment
-- `notification-orchestrator` / Kafka — sends email notifications on ticket events
+Downstream (calls)
+- `order-service` â€” links tickets to order context
+- `user-service` â€” looks up customer profile for ticket enrichment
+- `notification-orchestrator` / Kafka â€” sends email notifications on ticket events
 
 ## Environment Variables
 
@@ -101,4 +101,4 @@ docker-compose up support-ticket-service
 
 ## Health Check
 
-`GET /healthz` → `{"status":"ok"}`
+`GET /healthz` â†’ `{"status":"ok"}`

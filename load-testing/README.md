@@ -1,4 +1,4 @@
-# Load Testing
+﻿# Load Testing
 
 Three complementary load testing frameworks targeting the ShopOS API gateway.
 
@@ -6,9 +6,9 @@ Three complementary load testing frameworks targeting the ShopOS API gateway.
 
 | Tool | Use case | Entry point |
 |---|---|---|
-| **k6** | Threshold-based SLO gating in CI | `k6/scripts/` |
-| **Locust** | Exploratory load with live web UI | `locust/locustfile.py` |
-| **Gatling** | JVM-based high concurrency + HTML reports | `gatling/pom.xml` |
+| k6 | Threshold-based SLO gating in CI | `k6/scripts/` |
+| Locust | Exploratory load with live web UI | `locust/locustfile.py` |
+| Gatling | JVM-based high concurrency + HTML reports | `gatling/pom.xml` |
 
 ---
 
@@ -31,10 +31,10 @@ docker pull grafana/k6
 | Script | Description | VUs | Duration |
 |---|---|---|---|
 | `smoke.js` | Critical path sanity check | 1 | 2m |
-| `product-browse.js` | Catalog browsing | 0→100 | ~10m |
-| `search-load.js` | Search service load | 0→80 | ~10m |
-| `checkout-flow.js` | Full purchase journey | 0→50 | ~10m |
-| `spike-test.js` | Sudden burst (auto-scale validation) | 0→500 | ~5m |
+| `product-browse.js` | Catalog browsing | 0â†’100 | ~10m |
+| `search-load.js` | Search service load | 0â†’80 | ~10m |
+| `checkout-flow.js` | Full purchase journey | 0â†’50 | ~10m |
+| `spike-test.js` | Sudden burst (auto-scale validation) | 0â†’500 | ~5m |
 | `soak.js` | Sustained load (memory leak detection) | 30 | 2h |
 
 ### Run
@@ -120,7 +120,7 @@ mvn gatling:test -DBASE_URL=https://api.staging.shopos.io
 
 | Class | Description |
 |---|---|
-| `CommerceSimulation` | Full purchase journey: login → browse → cart → checkout → payment |
+| `CommerceSimulation` | Full purchase journey: login â†’ browse â†’ cart â†’ checkout â†’ payment |
 | `SearchSimulation` | Search service: keyword, filtered, autocomplete, facets |
 
 ---
@@ -150,5 +150,5 @@ See [`k6/config/thresholds.json`](k6/config/thresholds.json) for all baseline SL
 |---|---|---|---|---|
 | `http_req_failed` | <1% | <5% | <15% | <1% |
 | `p95 latency` | <2s | <3s | <10s | <3s |
-| `p99 latency` | — | <5s | <15s | <5s |
-| `payment_success_rate` | — | >95% | — | — |
+| `p99 latency` | â€” | <5s | <15s | <5s |
+| `payment_success_rate` | â€” | >95% | â€” | â€” |

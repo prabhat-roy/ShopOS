@@ -1,10 +1,10 @@
-# digital-goods-service
+﻿# digital-goods-service
 
 > Delivers digital products to customers via time-limited download links and manages software license key issuance.
 
 ## Overview
 
-The digital-goods-service handles post-purchase fulfilment of digital products: e-books, software, music, video files, and license-gated content. It stores binary assets in MinIO (S3-compatible object storage) and generates pre-signed, time-limited download URLs that are served to customers post-payment. For software products, it also manages license key pools — either pre-generated or dynamically generated — and associates keys with customer purchases.
+The digital-goods-service handles post-purchase fulfilment of digital products: e-books, software, music, video files, and license-gated content. It stores binary assets in MinIO (S3-compatible object storage) and generates pre-signed, time-limited download URLs that are served to customers post-payment. For software products, it also manages license key pools â€” either pre-generated or dynamically generated â€” and associates keys with customer purchases.
 
 ## Architecture
 
@@ -65,15 +65,15 @@ Proto file: `proto/commerce/digital_goods.proto`
 
 ## Dependencies
 
-**Upstream (callers)**
-- `order-service` — triggers fulfilment when an order containing digital goods is confirmed
-- `web-bff` / `mobile-bff` — customer download portal
-- `admin-portal` — asset management and key pool management
-- `return-refund-service` — revoke access on approved refund
+Upstream (callers)
+- `order-service` â€” triggers fulfilment when an order containing digital goods is confirmed
+- `web-bff` / `mobile-bff` â€” customer download portal
+- `admin-portal` â€” asset management and key pool management
+- `return-refund-service` â€” revoke access on approved refund
 
-**Downstream (called by this service)**
-- MinIO — binary asset storage and pre-signed URL generation
-- Kafka — `commerce.digital.fulfilled` event for customer notification
+Downstream (called by this service)
+- MinIO â€” binary asset storage and pre-signed URL generation
+- Kafka â€” `commerce.digital.fulfilled` event for customer notification
 
 ## Environment Variables
 
@@ -99,6 +99,6 @@ docker-compose up digital-goods-service
 
 ## Health Check
 
-`GET /healthz` → `{"status":"ok"}`
+`GET /healthz` â†’ `{"status":"ok"}`
 
-gRPC health: `grpc.health.v1.Health/Check` → `SERVING`
+gRPC health: `grpc.health.v1.Health/Check` â†’ `SERVING`

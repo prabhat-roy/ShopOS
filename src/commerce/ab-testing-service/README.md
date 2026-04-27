@@ -1,4 +1,4 @@
-# ab-testing-service
+﻿# ab-testing-service
 
 > Manages A/B and multivariate experiment assignment, feature flags for experiments, and conversion event tracking.
 
@@ -41,7 +41,7 @@ graph TD
 - Track assignment events for downstream statistical analysis
 - Consume analytics events to record conversion signals against active experiments
 - Provide experiment results with assignment counts and conversion rates for admin dashboards
-- Support experiment lifecycle: draft → active → paused → concluded
+- Support experiment lifecycle: draft â†’ active â†’ paused â†’ concluded
 - Enforce mutual exclusivity rules between conflicting experiments
 
 ## API / Interface
@@ -61,7 +61,7 @@ Proto file: `proto/commerce/ab_testing.proto`
 
 ## Kafka Topics
 
-**Consumed:**
+Consumed:
 
 | Topic | Purpose |
 |---|---|
@@ -69,7 +69,7 @@ Proto file: `proto/commerce/ab_testing.proto`
 | `analytics.product.clicked` | Product click conversion signal |
 | `commerce.order.placed` | Purchase conversion signal |
 
-**Published:**
+Published:
 
 | Topic | Event Type | Trigger |
 |---|---|---|
@@ -78,12 +78,12 @@ Proto file: `proto/commerce/ab_testing.proto`
 
 ## Dependencies
 
-**Upstream (callers)**
-- `web-bff` / `mobile-bff` — variant resolution per request
-- `admin-portal` — experiment management
+Upstream (callers)
+- `web-bff` / `mobile-bff` â€” variant resolution per request
+- `admin-portal` â€” experiment management
 
-**Downstream (Kafka → this service)**
-- `analytics-service` / `event-tracking-service` — conversion signal events
+Downstream (Kafka â†’ this service)
+- `analytics-service` / `event-tracking-service` â€” conversion signal events
 
 ## Environment Variables
 
@@ -109,6 +109,6 @@ docker-compose up ab-testing-service
 
 ## Health Check
 
-`GET /healthz` → `{"status":"ok"}`
+`GET /healthz` â†’ `{"status":"ok"}`
 
-gRPC health: `grpc.health.v1.Health/Check` → `SERVING`
+gRPC health: `grpc.health.v1.Health/Check` â†’ `SERVING`

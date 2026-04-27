@@ -1,4 +1,4 @@
-# returns-logistics-service
+﻿# returns-logistics-service
 
 > Manages reverse logistics for customer returns, including return shipment scheduling, label issuance, and receipt confirmation.
 
@@ -63,13 +63,13 @@ service ReturnsLogisticsService {
 
 ## Dependencies
 
-**Upstream (callers)**
+Upstream (callers)
 - `return-refund-service` (commerce domain) via Kafka `commerce.return.approved`
 
-**Downstream (calls out to)**
-- `label-service` — generate prepaid return labels
-- `carrier-integration-service` — schedule carrier pickup
-- `warehouse-service` — putaway of received return items
+Downstream (calls out to)
+- `label-service` â€” generate prepaid return labels
+- `carrier-integration-service` â€” schedule carrier pickup
+- `warehouse-service` â€” putaway of received return items
 
 ## Environment Variables
 
@@ -80,7 +80,7 @@ service ReturnsLogisticsService {
 | `DB_PORT` | `5432` | PostgreSQL port |
 | `DB_NAME` | `returns_logistics_db` | Database name |
 | `DB_USER` | `returns_svc` | Database user |
-| `DB_PASSWORD` | — | Database password (required) |
+| `DB_PASSWORD` | â€” | Database password (required) |
 | `KAFKA_BROKERS` | `localhost:9092` | Comma-separated Kafka broker list |
 | `LABEL_GRPC_ADDR` | `label-service:50105` | Address of label-service |
 | `CARRIER_GRPC_ADDR` | `carrier-integration-service:50106` | Address of carrier-integration-service |
@@ -96,6 +96,6 @@ docker-compose up returns-logistics-service
 
 ## Health Check
 
-`GET /healthz` → `{"status":"ok"}`
+`GET /healthz` â†’ `{"status":"ok"}`
 
-gRPC health: `grpc.health.v1.Health/Check` → `SERVING`
+gRPC health: `grpc.health.v1.Health/Check` â†’ `SERVING`

@@ -1,4 +1,4 @@
-<!--- app-name: Apache Cassandra -->
+﻿<!--- app-name: Apache Cassandra -->
 
 # Bitnami package for Apache Cassandra
 
@@ -38,7 +38,7 @@ helm install my-release oci://REGISTRY_NAME/REPOSITORY_NAME/cassandra
 
 These commands deploy one node with Apache Cassandra on the Kubernetes cluster in the default configuration. The [Parameters](#parameters) section lists the parameters that can be configured during installation.
 
-> **Tip**: List all releases using `helm list`
+> Tip: List all releases using `helm list`
 
 ## Configuration and installation details
 
@@ -447,7 +447,7 @@ helm install my-release -f values.yaml oci://REGISTRY_NAME/REPOSITORY_NAME/cassa
 ```
 
 > Note: You need to substitute the placeholders `REGISTRY_NAME` and `REPOSITORY_NAME` with a reference to your Helm chart registry and repository. For example, in the case of Bitnami, you need to use `REGISTRY_NAME=registry-1.docker.io` and `REPOSITORY_NAME=bitnamicharts`.
-> **Tip**: You can use the default [values.yaml](https://github.com/bitnami/charts/tree/main/bitnami/cassandra/values.yaml)
+> Tip: You can use the default [values.yaml](https://github.com/bitnami/charts/tree/main/bitnami/cassandra/values.yaml)
 
 ## Troubleshooting
 

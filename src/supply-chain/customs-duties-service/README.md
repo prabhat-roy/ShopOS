@@ -1,4 +1,4 @@
-# customs-duties-service
+﻿# customs-duties-service
 
 > Classifies goods under HS/HTS tariff codes and calculates applicable customs duties and import taxes for international shipments.
 
@@ -51,16 +51,16 @@ service CustomsDutiesService {
 
 ## Kafka Topics
 
-No Kafka topics — this is a synchronous calculation service.
+No Kafka topics â€” this is a synchronous calculation service.
 
 ## Dependencies
 
-**Upstream (callers)**
-- `checkout-service` (commerce domain) — landed cost display at checkout
-- `shipping-service` (commerce domain) — customs documentation for international labels
-- `carrier-integration-service` — carrier-specific customs rate requirements
+Upstream (callers)
+- `checkout-service` (commerce domain) â€” landed cost display at checkout
+- `shipping-service` (commerce domain) â€” customs documentation for international labels
+- `carrier-integration-service` â€” carrier-specific customs rate requirements
 
-**Downstream (calls out to)**
+Downstream (calls out to)
 - External tariff API (optional, e.g., Avalara AvaTax or TaxJar) when `EXTERNAL_TARIFF_API_ENABLED=true`
 
 ## Environment Variables
@@ -70,8 +70,8 @@ No Kafka topics — this is a synchronous calculation service.
 | `GRPC_PORT` | `50107` | Port the gRPC server listens on |
 | `TARIFF_DB_PATH` | `/data/tariff.json` | Path to embedded tariff data file |
 | `EXTERNAL_TARIFF_API_ENABLED` | `false` | Enable external tariff API fallback |
-| `EXTERNAL_TARIFF_API_URL` | — | URL for external tariff API |
-| `EXTERNAL_TARIFF_API_KEY` | — | API key for external tariff provider |
+| `EXTERNAL_TARIFF_API_URL` | â€” | URL for external tariff API |
+| `EXTERNAL_TARIFF_API_KEY` | â€” | API key for external tariff provider |
 | `DEFAULT_ORIGIN_COUNTRY` | `US` | ISO 3166-1 alpha-2 default origin country |
 | `CACHE_TTL_SECONDS` | `3600` | TTL for duty rate cache entries |
 | `LOG_LEVEL` | `info` | Logging level |
@@ -84,6 +84,6 @@ docker-compose up customs-duties-service
 
 ## Health Check
 
-`GET /healthz` → `{"status":"ok"}`
+`GET /healthz` â†’ `{"status":"ok"}`
 
-gRPC health: `grpc.health.v1.Health/Check` → `SERVING`
+gRPC health: `grpc.health.v1.Health/Check` â†’ `SERVING`

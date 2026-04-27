@@ -1,7 +1,7 @@
-# Workflow Orchestration — ShopOS
+﻿# Workflow Orchestration â€” ShopOS
 
-Durable workflow execution for long-running business processes. ShopOS uses **Temporal** as
-the primary workflow engine for business sagas, and **Argo Workflows** for infrastructure
+Durable workflow execution for long-running business processes. ShopOS uses Temporal as
+the primary workflow engine for business sagas, and Argo Workflows for infrastructure
 and ML training DAGs.
 
 ---
@@ -10,10 +10,10 @@ and ML training DAGs.
 
 ```
 workflow/
-└── temporal/
-    ├── server-config.yaml          ← Temporal server Helm values
-    ├── namespaces.yaml             ← Temporal namespaces (shopos-prod, shopos-staging)
-    └── workflow-mapping.md        ← Which services own which workflows
+â””â”€â”€ temporal/
+    â”œâ”€â”€ server-config.yaml          â† Temporal server Helm values
+    â”œâ”€â”€ namespaces.yaml             â† Temporal namespaces (shopos-prod, shopos-staging)
+    â””â”€â”€ workflow-mapping.md        â† Which services own which workflows
 ```
 
 ---
@@ -23,7 +23,7 @@ workflow/
 ### What it does
 
 Temporal provides fault-tolerant, stateful workflow execution. If a workflow worker crashes
-mid-execution, Temporal replays the event history and resumes exactly where it stopped —
+mid-execution, Temporal replays the event history and resumes exactly where it stopped â€”
 without duplicating side effects.
 
 ### Namespaces
@@ -37,9 +37,9 @@ without duplicating side effects.
 
 | Workflow | Owner Service | Trigger | Description |
 |---|---|---|---|
-| `CheckoutSaga` | `checkout-service` | Order placed | Orchestrates payment → inventory reserve → fulfilment → notification |
+| `CheckoutSaga` | `checkout-service` | Order placed | Orchestrates payment â†’ inventory reserve â†’ fulfilment â†’ notification |
 | `SubscriptionBillingCycle` | `subscription-billing-service` | Cron (monthly) | Charge, retry, dunning, suspension |
-| `RefundSaga` | `return-refund-service` | Return approved | Reverse fulfilment → payment refund → loyalty adjustment |
+| `RefundSaga` | `return-refund-service` | Return approved | Reverse fulfilment â†’ payment refund â†’ loyalty adjustment |
 | `KYCAMLWorkflow` | `kyc-aml-service` | User registration | Identity verification, document checks, screening |
 | `SupplierOnboarding` | `supplier-portal-service` | New supplier signup | Document collection, approval, system provisioning |
 | `DataSubjectRequest` | `gdpr-service` | GDPR request | Collect, package, and deliver personal data |
@@ -111,5 +111,5 @@ Key workflows (see [gitops/argo-workflows/](../gitops/argo-workflows/)):
 
 - [Temporal Documentation](https://docs.temporal.io/)
 - [Argo Workflows](https://argoproj.github.io/argo-workflows/)
-- [GitOps — Argo Workflows](../gitops/argo-workflows/)
-- [Saga pattern — ADR 005](../docs/adr/005-saga-orchestration.md)
+- [GitOps â€” Argo Workflows](../gitops/argo-workflows/)
+- [Saga pattern â€” ADR 005](../docs/adr/005-saga-orchestration.md)

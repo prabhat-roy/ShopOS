@@ -1,6 +1,6 @@
-# OpenTofu — GCP, Azure, and Non-Production Environments
+﻿# OpenTofu â€” GCP, Azure, and Non-Production Environments
 
-**Scope: GCP production, Azure production, and ALL non-production environments (dev/staging across all clouds).**
+Scope: GCP production, Azure production, and ALL non-production environments (dev/staging across all clouds).
 
 OpenTofu is the open-source Terraform fork (Linux Foundation). It manages:
 1. GCP GKE production cluster and GCP-native resources
@@ -10,7 +10,7 @@ OpenTofu is the open-source Terraform fork (Linux Foundation). It manages:
 
 ## Why OpenTofu (not Terraform) Here?
 
-- No HashiCorp BSL licence concern — fully OSI-approved open source
+- No HashiCorp BSL licence concern â€” fully OSI-approved open source
 - Feature-compatible with Terraform (same provider registry)
 - Used for non-production to keep provider/module parity with Terraform production modules
 - GCP and Azure teams prefer OpenTofu for cloud-agnostic portability
@@ -19,36 +19,36 @@ OpenTofu is the open-source Terraform fork (Linux Foundation). It manages:
 
 ```
 opentofu/
-├── aws/
-│   ├── dev/            ← Dev EKS cluster (t3.medium, single-AZ, no HA)
-│   │   ├── main.tofu
-│   │   └── variables.tofu
-│   └── staging/        ← Staging EKS cluster (m5.large, multi-AZ, mirrors prod)
-│       ├── main.tofu
-│       └── variables.tofu
-│
-├── gcp/
-│   ├── gke/            ← GKE Autopilot cluster (production)
-│   │   ├── main.tofu   ← GKE cluster, node pools, Workload Identity
-│   │   ├── network.tofu ← VPC, subnets, Cloud NAT, firewall rules
-│   │   ├── cloudsql.tofu ← Cloud SQL PostgreSQL (analytics domain)
-│   │   ├── bigquery.tofu ← BigQuery datasets for analytics-ai domain
-│   │   ├── pubsub.tofu ← Pub/Sub topics for GCP-native event bus
-│   │   ├── artifact_registry.tofu ← Container image registry
-│   │   └── cloud_run.tofu ← Cloud Run services (ML model serving)
-│   ├── dev/            ← GCP dev environment
-│   └── staging/        ← GCP staging environment
-│
-└── azure/
-    ├── aks/            ← AKS cluster (production)
-    │   ├── main.tofu   ← AKS cluster, node pools, Managed Identity
-    │   ├── network.tofu ← VNet, subnets, NSG, Azure Firewall
-    │   ├── acr.tofu    ← Azure Container Registry
-    │   ├── keyvault.tofu ← Azure Key Vault (C# service secrets)
-    │   ├── cosmosdb.tofu ← Cosmos DB (cart-service, return-refund-service)
-    │   └── servicebus.tofu ← Azure Service Bus (RabbitMQ alternative for Azure)
-    ├── dev/
-    └── staging/
+â”œâ”€â”€ aws/
+â”‚   â”œâ”€â”€ dev/            â† Dev EKS cluster (t3.medium, single-AZ, no HA)
+â”‚   â”‚   â”œâ”€â”€ main.tofu
+â”‚   â”‚   â””â”€â”€ variables.tofu
+â”‚   â””â”€â”€ staging/        â† Staging EKS cluster (m5.large, multi-AZ, mirrors prod)
+â”‚       â”œâ”€â”€ main.tofu
+â”‚       â””â”€â”€ variables.tofu
+â”‚
+â”œâ”€â”€ gcp/
+â”‚   â”œâ”€â”€ gke/            â† GKE Autopilot cluster (production)
+â”‚   â”‚   â”œâ”€â”€ main.tofu   â† GKE cluster, node pools, Workload Identity
+â”‚   â”‚   â”œâ”€â”€ network.tofu â† VPC, subnets, Cloud NAT, firewall rules
+â”‚   â”‚   â”œâ”€â”€ cloudsql.tofu â† Cloud SQL PostgreSQL (analytics domain)
+â”‚   â”‚   â”œâ”€â”€ bigquery.tofu â† BigQuery datasets for analytics-ai domain
+â”‚   â”‚   â”œâ”€â”€ pubsub.tofu â† Pub/Sub topics for GCP-native event bus
+â”‚   â”‚   â”œâ”€â”€ artifact_registry.tofu â† Container image registry
+â”‚   â”‚   â””â”€â”€ cloud_run.tofu â† Cloud Run services (ML model serving)
+â”‚   â”œâ”€â”€ dev/            â† GCP dev environment
+â”‚   â””â”€â”€ staging/        â† GCP staging environment
+â”‚
+â””â”€â”€ azure/
+    â”œâ”€â”€ aks/            â† AKS cluster (production)
+    â”‚   â”œâ”€â”€ main.tofu   â† AKS cluster, node pools, Managed Identity
+    â”‚   â”œâ”€â”€ network.tofu â† VNet, subnets, NSG, Azure Firewall
+    â”‚   â”œâ”€â”€ acr.tofu    â† Azure Container Registry
+    â”‚   â”œâ”€â”€ keyvault.tofu â† Azure Key Vault (C# service secrets)
+    â”‚   â”œâ”€â”€ cosmosdb.tofu â† Cosmos DB (cart-service, return-refund-service)
+    â”‚   â””â”€â”€ servicebus.tofu â† Azure Service Bus (RabbitMQ alternative for Azure)
+    â”œâ”€â”€ dev/
+    â””â”€â”€ staging/
 ```
 
 ## What OpenTofu Does NOT Manage
@@ -83,7 +83,7 @@ tofu plan -var-file=../../gcp-prod.tfvars
 cd infra/opentofu/aws/dev
 tofu init
 tofu plan -var-file=dev.tfvars
-tofu apply -auto-approve   # Dev only — auto-approve allowed
+tofu apply -auto-approve   # Dev only â€” auto-approve allowed
 
 # Azure production
 cd infra/opentofu/azure/aks

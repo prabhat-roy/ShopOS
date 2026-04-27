@@ -1,4 +1,4 @@
-# Changelog
+﻿# Changelog
 
 ## 3.2.0
 
@@ -96,7 +96,7 @@
 ### Fixes
 
 * Run containers with read-only file system and non-root user to increase container and pod security.
-  **Note**: This change may be incompatible with user sidecar containers. In this case, change the
+  Note: This change may be incompatible with user sidecar containers. In this case, change the
   `securityContext` in your values.
   [#1057](https://github.com/Kong/charts/pull/1057)
 * Add the ability to override the proxy service name using the already available `proxy.nameOverride` value. [#1266](https://github.com/Kong/charts/issues/1266)
@@ -1050,7 +1050,7 @@ detect whether you use the legacy CRD installation method automatically.
 
 ## 2.6.0
 
-**Note:** chart versions 2.3.0 through 2.5.0 contained an incorrect
+Note: chart versions 2.3.0 through 2.5.0 contained an incorrect
 KongIngress CRD. The `proxy.path` field was missing. Helm will not fix this
 automatically on upgrade. You can fix it by running:
 
@@ -1251,7 +1251,7 @@ kubectl apply -f https://raw.githubusercontent.com/Kong/charts/main/charts/kong/
 
 ### Breaking changes
 
-* Helm 2 is no longer supported. You **must** [migrate your Kong chart releases
+* Helm 2 is no longer supported. You must [migrate your Kong chart releases
   to Helm 3](https://helm.sh/docs/topics/v2_v3_migration/) before updating to
   this release.
 * Deprecated [Portal auth settings](https://github.com/Kong/charts/blob/kong-1.15.0/charts/kong/UPGRADE.md#removal-of-dedicated-portal-authentication-configuration-parameters)
@@ -1471,7 +1471,7 @@ format.
   [credential Secrets](https://github.com/Kong/kubernetes-ingress-controller/blob/next/docs/guides/using-consumer-credential-resource.md#provision-a-consumer).
   If you manage CRDs using Helm (check to see if your KongCredential CRD has a
   `app.kubernetes.io/managed-by: Helm` label), perform the credential Secret
-  conversion **before** upgrading to chart 1.11.0 to avoid losing credential
+  conversion before upgrading to chart 1.11.0 to avoid losing credential
   configuration.
 * The chart no longer uses the `extensions` API for PodSecurityPolicy, and now
   uses the modern `policy` API. This breaks compatibility with Kubernetes
@@ -1554,7 +1554,7 @@ a second release upgrade.
 
 ## 1.8.0
 
-**Kong Enterprise users:** please review documentation for the [Kong Enterprise
+Kong Enterprise users: please review documentation for the [Kong Enterprise
 2.1.x beta
 release](https://docs.konghq.com/enterprise/2.1.x/release-notes/#coming-soon)
 and [hybrid mode on Kong
@@ -1660,10 +1660,10 @@ issue with our release automation.
 * Added support for the [status listen](https://github.com/Kong/kong/pull/4977).
   ([#107](https://github.com/Kong/charts/pull/107))
 * :warning: Exposed PodSecurityPolicy spec in values.yaml and added default
-  configuration to enforce a read-only root filesystem. **Kong Enterprise
+  configuration to enforce a read-only root filesystem. Kong Enterprise
   versions prior to 1.5.0 require the root filesystem be read-write. If you use
   an older version and enforce PodSecurityPolicy, you must set
-  `.Values.podSecurityPolicy.spec.readOnlyRootFilesystem: false`.**
+  `.Values.podSecurityPolicy.spec.readOnlyRootFilesystem: false`.
   ([#104](https://github.com/Kong/charts/pull/104))
 
 ### Fixed
@@ -1697,8 +1697,8 @@ issue with our release automation.
 ### Improvements
 
 * :warning: Service and listen configuration now use a unified configuration
-  format. **The previous configuration format for the admin API service is
-  deprecated and will be removed in a future release.** Listen configuration
+  format. The previous configuration format for the admin API service is
+  deprecated and will be removed in a future release. Listen configuration
   now supports specifying parameters. Kubernetes service creation can now be
   enabled or disabled for all Kong services. Users should review the
   [1.4.0 upgrade guide](https://github.com/Kong/charts/blob/next/charts/kong/UPGRADE.md#changes-to-kong-service-configuration)
@@ -1769,9 +1769,9 @@ issue with our release automation.
 * Bumped default Kong version to 2.0 and controller version to 0.7.1.
   ([#60](https://github.com/Kong/charts/pull/60))
 * :warning: Removed dedicated Portal auth settings, which are unnecessary in
-  modern versions. **The `enterprise.portal.portal_auth` and
+  modern versions. The `enterprise.portal.portal_auth` and
   `enterprise.portal.session_conf_secret` settings in values.yaml are
-  deprecated and will be removed in a future release.** See the [upgrade
+  deprecated and will be removed in a future release. See the [upgrade
   guide](https://github.com/Kong/charts/blob/main/charts/kong/UPGRADE.md#removal-of-dedicated-portal-authentication-configuration-parameters)
   for instructions on migrating them to environment variables.
   ([#55](https://github.com/Kong/charts/pull/55))

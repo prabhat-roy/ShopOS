@@ -1,4 +1,4 @@
-# bundle-service
+﻿# bundle-service
 
 > Product bundles, kit configurations, and bundle pricing.
 
@@ -63,7 +63,7 @@ graph LR
 
 ## Responsibilities
 
-- Define and manage bundle compositions (parent bundle → component SKUs + quantities)
+- Define and manage bundle compositions (parent bundle â†’ component SKUs + quantities)
 - Calculate bundle price as sum of component prices minus optional bundle discount
 - Check bundle availability by aggregating component stock levels
 - Validate that all component products exist and are in ACTIVE status
@@ -97,25 +97,25 @@ service BundleService {
 
 ## Kafka Topics
 
-Not applicable — bundle-service is gRPC-only.
+Not applicable â€” bundle-service is gRPC-only.
 
 ## Dependencies
 
-**Upstream** (calls these):
-- `product-catalog-service` — `GetProductBatch` to validate component products
-- `inventory-service` — `GetStockBatch` for bundle availability check
-- `pricing-service` — `GetEffectivePriceBatch` to compute bundle price
+Upstream (calls these):
+- `product-catalog-service` â€” `GetProductBatch` to validate component products
+- `inventory-service` â€” `GetStockBatch` for bundle availability check
+- `pricing-service` â€” `GetEffectivePriceBatch` to compute bundle price
 
-**Downstream** (called by these):
-- `cart-service` — get components when bundle is added to cart
-- `checkout-service` — get component breakdown for order line items
-- `fulfillment-service` — get components to create individual pick tasks
+Downstream (called by these):
+- `cart-service` â€” get components when bundle is added to cart
+- `checkout-service` â€” get component breakdown for order line items
+- `fulfillment-service` â€” get components to create individual pick tasks
 
 ## Environment Variables
 
 | Variable | Default | Description |
 |---|---|---|
-| `DATABASE_URL` | — | PostgreSQL connection string |
+| `DATABASE_URL` | â€” | PostgreSQL connection string |
 | `GRPC_PORT` | `50075` | gRPC listening port |
 | `PRODUCT_CATALOG_SERVICE_ADDR` | `product-catalog-service:50070` | Product catalog address |
 | `INVENTORY_SERVICE_ADDR` | `inventory-service:50074` | Inventory service address |
@@ -129,6 +129,6 @@ docker-compose up bundle-service
 
 ## Health Check
 
-`GET /healthz` — `{"status":"ok"}`
+`GET /healthz` â€” `{"status":"ok"}`
 
 gRPC health protocol: `grpc.health.v1.Health/Check` on port `50075`

@@ -1,4 +1,4 @@
-# Protocol Buffers — ShopOS
+﻿# Protocol Buffers â€” ShopOS
 
 All gRPC service contracts for ShopOS are defined as `.proto` files in this directory.
 Using a centralised proto repository ensures consistent types, versioning, and a single
@@ -10,114 +10,114 @@ source of truth for inter-service contracts across all 8 programming languages.
 
 ```
 proto/
-├── common/
-│   ├── money.proto                 ← Money, Currency types
-│   ├── address.proto               ← Address, GeoPoint types
-│   ├── pagination.proto            ← PageRequest, PageResponse
-│   ├── timestamp.proto             ← Consistent timestamp wrappers
-│   └── error.proto                 ← Standard error details
-│
-├── platform/
-│   ├── gateway.proto               ← APIGateway service
-│   ├── config.proto                ← ConfigService
-│   ├── feature_flag.proto          ← FeatureFlagService
-│   ├── audit.proto                 ← AuditService
-│   ├── scheduler.proto             ← SchedulerService
-│   ├── webhook.proto               ← WebhookService
-│   └── tenant.proto                ← TenantService
-│
-├── identity/
-│   ├── auth.proto                  ← AuthService (login, token, refresh)
-│   ├── user.proto                  ← UserService (CRUD, profile)
-│   ├── session.proto               ← SessionService
-│   ├── permission.proto            ← PermissionService
-│   ├── mfa.proto                   ← MFAService (TOTP, SMS)
-│   ├── api_key.proto               ← APIKeyService
-│   └── device_fingerprint.proto    ← DeviceFingerprintService
-│
-├── catalog/
-│   ├── product.proto               ← ProductCatalogService
-│   ├── category.proto              ← CategoryService
-│   ├── brand.proto                 ← BrandService
-│   ├── pricing.proto               ← PricingService
-│   ├── inventory.proto             ← InventoryService
-│   ├── bundle.proto                ← BundleService
-│   ├── search.proto                ← SearchService
-│   └── seo.proto                   ← SEOService
-│
-├── commerce/
-│   ├── cart.proto                  ← CartService
-│   ├── checkout.proto              ← CheckoutService
-│   ├── order.proto                 ← OrderService
-│   ├── payment.proto               ← PaymentService
-│   ├── shipping.proto              ← ShippingService
-│   ├── tax.proto                   ← TaxService
-│   ├── promotions.proto            ← PromotionsService
-│   ├── loyalty.proto               ← LoyaltyService
-│   └── wallet.proto                ← WalletService
-│
-├── supply-chain/
-│   ├── vendor.proto                ← VendorService
-│   ├── warehouse.proto             ← WarehouseService
-│   ├── fulfillment.proto           ← FulfillmentService
-│   ├── tracking.proto              ← TrackingService
-│   └── carrier.proto               ← CarrierIntegrationService
-│
-├── financial/
-│   ├── invoice.proto               ← InvoiceService
-│   ├── payout.proto                ← PayoutService
-│   ├── accounting.proto            ← AccountingService
-│   └── credit.proto                ← CreditService
-│
-├── customer-experience/
-│   ├── review.proto                ← ReviewRatingService
-│   ├── wishlist.proto              ← WishlistService
-│   ├── support.proto               ← SupportTicketService
-│   └── survey.proto                ← SurveyService
-│
-├── communications/
-│   ├── notification.proto          ← NotificationOrchestrator
-│   └── template.proto              ← TemplateService
-│
-├── content/
-│   ├── media.proto                 ← MediaAssetService
-│   ├── document.proto              ← DocumentService
-│   ├── cms.proto                   ← CMSService
-│   └── i18n.proto                  ← I18nL10nService
-│
-├── analytics-ai/
-│   ├── analytics.proto             ← AnalyticsService
-│   ├── recommendation.proto        ← RecommendationService
-│   ├── ad.proto                    ← AdService
-│   └── personalization.proto       ← PersonalizationService
-│
-├── b2b/
-│   ├── organization.proto          ← OrganizationService
-│   ├── contract.proto              ← ContractService
-│   └── quote.proto                 ← QuoteRFQService
-│
-├── integrations/
-│   ├── erp.proto                   ← ERPIntegrationService
-│   ├── crm.proto                   ← CRMIntegrationService
-│   └── marketplace.proto           ← MarketplaceConnectorService
-│
-├── marketplace/
-│   └── marketplace.proto           ← SellerRegistration, ListingApproval, Commission, Dispute
-│
-├── gamification/
-│   └── gamification.proto          ← Points, Badge, Leaderboard, Challenge
-│
-├── developer-platform/
-│   └── developer-platform.proto    ← OAuthClient, WebhookManagement
-│
-├── compliance/
-│   └── compliance.proto            ← PrivacyRequest, ConsentAudit, DataLineage
-│
-└── sustainability/
-    └── sustainability.proto        ← CarbonTracker, EcoScore, Offset
+â”œâ”€â”€ common/
+â”‚   â”œâ”€â”€ money.proto                 â† Money, Currency types
+â”‚   â”œâ”€â”€ address.proto               â† Address, GeoPoint types
+â”‚   â”œâ”€â”€ pagination.proto            â† PageRequest, PageResponse
+â”‚   â”œâ”€â”€ timestamp.proto             â† Consistent timestamp wrappers
+â”‚   â””â”€â”€ error.proto                 â† Standard error details
+â”‚
+â”œâ”€â”€ platform/
+â”‚   â”œâ”€â”€ gateway.proto               â† APIGateway service
+â”‚   â”œâ”€â”€ config.proto                â† ConfigService
+â”‚   â”œâ”€â”€ feature_flag.proto          â† FeatureFlagService
+â”‚   â”œâ”€â”€ audit.proto                 â† AuditService
+â”‚   â”œâ”€â”€ scheduler.proto             â† SchedulerService
+â”‚   â”œâ”€â”€ webhook.proto               â† WebhookService
+â”‚   â””â”€â”€ tenant.proto                â† TenantService
+â”‚
+â”œâ”€â”€ identity/
+â”‚   â”œâ”€â”€ auth.proto                  â† AuthService (login, token, refresh)
+â”‚   â”œâ”€â”€ user.proto                  â† UserService (CRUD, profile)
+â”‚   â”œâ”€â”€ session.proto               â† SessionService
+â”‚   â”œâ”€â”€ permission.proto            â† PermissionService
+â”‚   â”œâ”€â”€ mfa.proto                   â† MFAService (TOTP, SMS)
+â”‚   â”œâ”€â”€ api_key.proto               â† APIKeyService
+â”‚   â””â”€â”€ device_fingerprint.proto    â† DeviceFingerprintService
+â”‚
+â”œâ”€â”€ catalog/
+â”‚   â”œâ”€â”€ product.proto               â† ProductCatalogService
+â”‚   â”œâ”€â”€ category.proto              â† CategoryService
+â”‚   â”œâ”€â”€ brand.proto                 â† BrandService
+â”‚   â”œâ”€â”€ pricing.proto               â† PricingService
+â”‚   â”œâ”€â”€ inventory.proto             â† InventoryService
+â”‚   â”œâ”€â”€ bundle.proto                â† BundleService
+â”‚   â”œâ”€â”€ search.proto                â† SearchService
+â”‚   â””â”€â”€ seo.proto                   â† SEOService
+â”‚
+â”œâ”€â”€ commerce/
+â”‚   â”œâ”€â”€ cart.proto                  â† CartService
+â”‚   â”œâ”€â”€ checkout.proto              â† CheckoutService
+â”‚   â”œâ”€â”€ order.proto                 â† OrderService
+â”‚   â”œâ”€â”€ payment.proto               â† PaymentService
+â”‚   â”œâ”€â”€ shipping.proto              â† ShippingService
+â”‚   â”œâ”€â”€ tax.proto                   â† TaxService
+â”‚   â”œâ”€â”€ promotions.proto            â† PromotionsService
+â”‚   â”œâ”€â”€ loyalty.proto               â† LoyaltyService
+â”‚   â””â”€â”€ wallet.proto                â† WalletService
+â”‚
+â”œâ”€â”€ supply-chain/
+â”‚   â”œâ”€â”€ vendor.proto                â† VendorService
+â”‚   â”œâ”€â”€ warehouse.proto             â† WarehouseService
+â”‚   â”œâ”€â”€ fulfillment.proto           â† FulfillmentService
+â”‚   â”œâ”€â”€ tracking.proto              â† TrackingService
+â”‚   â””â”€â”€ carrier.proto               â† CarrierIntegrationService
+â”‚
+â”œâ”€â”€ financial/
+â”‚   â”œâ”€â”€ invoice.proto               â† InvoiceService
+â”‚   â”œâ”€â”€ payout.proto                â† PayoutService
+â”‚   â”œâ”€â”€ accounting.proto            â† AccountingService
+â”‚   â””â”€â”€ credit.proto                â† CreditService
+â”‚
+â”œâ”€â”€ customer-experience/
+â”‚   â”œâ”€â”€ review.proto                â† ReviewRatingService
+â”‚   â”œâ”€â”€ wishlist.proto              â† WishlistService
+â”‚   â”œâ”€â”€ support.proto               â† SupportTicketService
+â”‚   â””â”€â”€ survey.proto                â† SurveyService
+â”‚
+â”œâ”€â”€ communications/
+â”‚   â”œâ”€â”€ notification.proto          â† NotificationOrchestrator
+â”‚   â””â”€â”€ template.proto              â† TemplateService
+â”‚
+â”œâ”€â”€ content/
+â”‚   â”œâ”€â”€ media.proto                 â† MediaAssetService
+â”‚   â”œâ”€â”€ document.proto              â† DocumentService
+â”‚   â”œâ”€â”€ cms.proto                   â† CMSService
+â”‚   â””â”€â”€ i18n.proto                  â† I18nL10nService
+â”‚
+â”œâ”€â”€ analytics-ai/
+â”‚   â”œâ”€â”€ analytics.proto             â† AnalyticsService
+â”‚   â”œâ”€â”€ recommendation.proto        â† RecommendationService
+â”‚   â”œâ”€â”€ ad.proto                    â† AdService
+â”‚   â””â”€â”€ personalization.proto       â† PersonalizationService
+â”‚
+â”œâ”€â”€ b2b/
+â”‚   â”œâ”€â”€ organization.proto          â† OrganizationService
+â”‚   â”œâ”€â”€ contract.proto              â† ContractService
+â”‚   â””â”€â”€ quote.proto                 â† QuoteRFQService
+â”‚
+â”œâ”€â”€ integrations/
+â”‚   â”œâ”€â”€ erp.proto                   â† ERPIntegrationService
+â”‚   â”œâ”€â”€ crm.proto                   â† CRMIntegrationService
+â”‚   â””â”€â”€ marketplace.proto           â† MarketplaceConnectorService
+â”‚
+â”œâ”€â”€ marketplace/
+â”‚   â””â”€â”€ marketplace.proto           â† SellerRegistration, ListingApproval, Commission, Dispute
+â”‚
+â”œâ”€â”€ gamification/
+â”‚   â””â”€â”€ gamification.proto          â† Points, Badge, Leaderboard, Challenge
+â”‚
+â”œâ”€â”€ developer-platform/
+â”‚   â””â”€â”€ developer-platform.proto    â† OAuthClient, WebhookManagement
+â”‚
+â”œâ”€â”€ compliance/
+â”‚   â””â”€â”€ compliance.proto            â† PrivacyRequest, ConsentAudit, DataLineage
+â”‚
+â””â”€â”€ sustainability/
+    â””â”€â”€ sustainability.proto        â† CarbonTracker, EcoScore, Offset
 ```
 
-**Total: 63 `.proto` files across 18 directories.**
+Total: 63 `.proto` files across 18 directories.
 
 ---
 
@@ -137,16 +137,16 @@ option java_multiple_files = true;
 
 ### Service Naming
 
-- Service name: `{Entity}Service` — e.g., `OrderService`, `PaymentService`
-- RPC methods: `PascalCase` verbs — `CreateOrder`, `GetOrder`, `ListOrders`, `CancelOrder`
+- Service name: `{Entity}Service` â€” e.g., `OrderService`, `PaymentService`
+- RPC methods: `PascalCase` verbs â€” `CreateOrder`, `GetOrder`, `ListOrders`, `CancelOrder`
 - Request/Response messages: `{Method}Request` / `{Method}Response`
 
 ### Field Conventions
 
-- Use `google.protobuf.Timestamp` for all timestamps — never string-encoded dates
-- Use `common.Money` for all monetary amounts — never raw floats
+- Use `google.protobuf.Timestamp` for all timestamps â€” never string-encoded dates
+- Use `common.Money` for all monetary amounts â€” never raw floats
 - Use `common.Address` for all postal addresses
-- Field numbers 1–15 are reserved for the most frequently used fields (1-byte encoding)
+- Field numbers 1â€“15 are reserved for the most frequently used fields (1-byte encoding)
 - Reserved field numbers are documented with `reserved` keyword when removed
 
 ### Versioning
@@ -255,17 +255,17 @@ buf push proto/ --tag v1.5.0
 
 ```
 gen/
-├── go/
-│   ├── common/v1/
-│   ├── platform/v1/
-│   ├── commerce/v1/
-│   └── ...
-├── java/com/enterprise/
-├── python/enterprise/
-├── node/enterprise/
-├── csharp/Enterprise/
-├── kotlin/com/enterprise/
-└── rust/enterprise/
+â”œâ”€â”€ go/
+â”‚   â”œâ”€â”€ common/v1/
+â”‚   â”œâ”€â”€ platform/v1/
+â”‚   â”œâ”€â”€ commerce/v1/
+â”‚   â””â”€â”€ ...
+â”œâ”€â”€ java/com/enterprise/
+â”œâ”€â”€ python/enterprise/
+â”œâ”€â”€ node/enterprise/
+â”œâ”€â”€ csharp/Enterprise/
+â”œâ”€â”€ kotlin/com/enterprise/
+â””â”€â”€ rust/enterprise/
 ```
 
 Each service imports generated code from `gen/{language}/`. Generated files are checked into

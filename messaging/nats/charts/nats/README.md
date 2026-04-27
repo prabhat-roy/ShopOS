@@ -1,4 +1,4 @@
-# NATS Server
+﻿# NATS Server
 
 ---
 
@@ -14,7 +14,7 @@ helm upgrade --install nats nats/nats
 
 ## Upgrade Nodes
 
-- **Upgrading from 0.x**: The `values.yaml` schema changed significantly from 0.x to 1.x.  Read [UPGRADING.md](UPGRADING.md) for instructions on upgrading a 0.x release to 1.x.
+- Upgrading from 0.x: The `values.yaml` schema changed significantly from 0.x to 1.x.  Read [UPGRADING.md](UPGRADING.md) for instructions on upgrading a 0.x release to 1.x.
 
 ## Values
 
@@ -119,7 +119,7 @@ podTemplate:
 
 ### NATS Container Resources
 
-We recommend setting both **requests and limits** - for both **CPU and memory** - **to the same value** for the following reasons:
+We recommend setting both requests and limits - for both CPU and memory - to the same value for the following reasons:
 
 * It ensures your NATS pod has [predictable performance](https://www.datadoghq.com/blog/kubernetes-cpu-requests-limits/#predictability:~:text=If%20containers%20are,available%20capacity%20decreases.).  
 * The Go runtime [automatically sets](https://go.dev/doc/go1.25#container-aware-gomaxprocs) [GOMAXPROCS](https://pkg.go.dev/runtime#GOMAXPROCS) to the number of CPU cores defined in the `limits` section. If `limits` are not set, GOMAXPROCS defaults to the node's physical core count, which can lead to [poor performance](https://github.com/golang/go/issues/33803).  

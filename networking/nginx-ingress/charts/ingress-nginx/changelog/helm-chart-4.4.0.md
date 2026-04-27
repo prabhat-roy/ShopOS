@@ -1,4 +1,4 @@
-# Changelog
+﻿# Changelog
 
 This file documents all notable changes to [ingress-nginx](https://github.com/kubernetes/ingress-nginx) Helm Chart. The release numbering uses [semantic versioning](http://semver.org).
 
@@ -9,4 +9,4 @@ This file documents all notable changes to [ingress-nginx](https://github.com/ku
 * #7652 - Updated Helm chart to use the fullname for the electionID if not specified. by @FutureMatt in https://github.com/kubernetes/ingress-nginx/pull/9133
 * Rename controller-wehbooks-networkpolicy.yaml. by @Gacko in https://github.com/kubernetes/ingress-nginx/pull/9123
 
-**Full Changelog**: https://github.com/kubernetes/ingress-nginx/compare/helm-chart-4.3.0...helm-chart-4.4.0
+Full Changelog: https://github.com/kubernetes/ingress-nginx/compare/helm-chart-4.3.0...helm-chart-4.4.0

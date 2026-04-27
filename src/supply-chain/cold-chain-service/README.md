@@ -1,4 +1,4 @@
-# cold-chain-service
+﻿# cold-chain-service
 
 > Tracks temperature and humidity data for perishable goods throughout the supply chain. Alerts when cold-chain integrity is broken.
 
@@ -61,11 +61,11 @@ service ColdChainService {
 
 ## Dependencies
 
-**Upstream (callers)**
-- IoT Sensor Gateway — streams real-time sensor data
-- `fulfillment-service` — queries chain status before confirming delivery
+Upstream (callers)
+- IoT Sensor Gateway â€” streams real-time sensor data
+- `fulfillment-service` â€” queries chain status before confirming delivery
 
-**Downstream (calls out to)**
+Downstream (calls out to)
 - None (leaf service for environmental sensor data)
 
 ## Environment Variables
@@ -73,10 +73,10 @@ service ColdChainService {
 | Variable | Default | Description |
 |---|---|---|
 | `GRPC_PORT` | `50193` | Port the gRPC server listens on |
-| `MONGODB_URI` | — | MongoDB connection string (required) |
+| `MONGODB_URI` | â€” | MongoDB connection string (required) |
 | `KAFKA_BROKERS` | `localhost:9092` | Comma-separated Kafka broker list |
-| `TEMP_MAX_CELSIUS` | `8.0` | Default maximum safe temperature (°C) |
-| `TEMP_MIN_CELSIUS` | `-25.0` | Default minimum safe temperature (°C) |
+| `TEMP_MAX_CELSIUS` | `8.0` | Default maximum safe temperature (Â°C) |
+| `TEMP_MIN_CELSIUS` | `-25.0` | Default minimum safe temperature (Â°C) |
 | `HUMIDITY_MAX_PERCENT` | `85` | Default maximum relative humidity (%) |
 | `LOG_LEVEL` | `info` | Logging level |
 
@@ -88,6 +88,6 @@ docker-compose up cold-chain-service
 
 ## Health Check
 
-`GET /healthz` → `{"status":"ok"}`
+`GET /healthz` â†’ `{"status":"ok"}`
 
-gRPC health: `grpc.health.v1.Health/Check` → `SERVING`
+gRPC health: `grpc.health.v1.Health/Check` â†’ `SERVING`

@@ -1,4 +1,4 @@
-# vendor-service
+﻿# vendor-service
 
 > Manages vendor onboarding, profiles, contracts, and performance metrics across the supply chain.
 
@@ -61,13 +61,13 @@ service VendorService {
 
 ## Dependencies
 
-**Upstream (callers)**
-- `supplier-portal-service` — vendor self-registration flow
-- `purchase-order-service` — vendor lookup on PO creation
+Upstream (callers)
+- `supplier-portal-service` â€” vendor self-registration flow
+- `purchase-order-service` â€” vendor lookup on PO creation
 
-**Downstream (calls out to)**
-- `kyc-aml-service` — triggers KYC check on onboarding
-- `document-service` (content domain) — stores vendor certificates and contracts
+Downstream (calls out to)
+- `kyc-aml-service` â€” triggers KYC check on onboarding
+- `document-service` (content domain) â€” stores vendor certificates and contracts
 
 ## Environment Variables
 
@@ -78,7 +78,7 @@ service VendorService {
 | `DB_PORT` | `5432` | PostgreSQL port |
 | `DB_NAME` | `vendor_db` | Database name |
 | `DB_USER` | `vendor_svc` | Database user |
-| `DB_PASSWORD` | — | Database password (required) |
+| `DB_PASSWORD` | â€” | Database password (required) |
 | `KAFKA_BROKERS` | `localhost:9092` | Comma-separated Kafka broker list |
 | `KYC_AML_GRPC_ADDR` | `kyc-aml-service:50116` | Address of kyc-aml-service |
 | `LOG_LEVEL` | `INFO` | Logging level |
@@ -91,6 +91,6 @@ docker-compose up vendor-service
 
 ## Health Check
 
-`GET /healthz` → `{"status":"ok"}`
+`GET /healthz` â†’ `{"status":"ok"}`
 
-gRPC health: `grpc.health.v1.Health/Check` → `SERVING`
+gRPC health: `grpc.health.v1.Health/Check` â†’ `SERVING`

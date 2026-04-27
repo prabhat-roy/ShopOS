@@ -1,4 +1,4 @@
-# demand-forecast-service
+﻿# demand-forecast-service
 
 > Runs ML-based demand forecasting models to predict future inventory needs and publishes forecast events to Kafka.
 
@@ -63,12 +63,12 @@ Scheduled job triggers (via APScheduler):
 
 ## Dependencies
 
-**Upstream (callers)**
+Upstream (callers)
 - Kafka events from `analytics-service` and `warehouse-service`
 
-**Downstream (calls out to)**
-- `ml-feature-store` (analytics-ai domain) — reads pre-computed features
-- `inventory-service` (catalog domain) — reads current stock levels as forecast input
+Downstream (calls out to)
+- `ml-feature-store` (analytics-ai domain) â€” reads pre-computed features
+- `inventory-service` (catalog domain) â€” reads current stock levels as forecast input
 
 ## Environment Variables
 
@@ -78,7 +78,7 @@ Scheduled job triggers (via APScheduler):
 | `DB_PORT` | `5432` | PostgreSQL port |
 | `DB_NAME` | `forecast_db` | Database name |
 | `DB_USER` | `forecast_svc` | Database user |
-| `DB_PASSWORD` | — | Database password (required) |
+| `DB_PASSWORD` | â€” | Database password (required) |
 | `KAFKA_BROKERS` | `localhost:9092` | Comma-separated Kafka broker list |
 | `MLFLOW_TRACKING_URI` | `http://mlflow:5000` | MLflow tracking server URI |
 | `FORECAST_HORIZON_DAYS` | `30` | Number of days ahead to forecast |
@@ -94,4 +94,4 @@ docker-compose up demand-forecast-service
 
 ## Health Check
 
-`GET /healthz` → `{"status":"ok"}`
+`GET /healthz` â†’ `{"status":"ok"}`

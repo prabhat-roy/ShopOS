@@ -1,4 +1,4 @@
-# session-service
+﻿# session-service
 
 > Session lifecycle management with refresh tokens stored in Redis.
 
@@ -82,24 +82,24 @@ service SessionService {
 
 ## Kafka Topics
 
-Not applicable — session-service is gRPC-only.
+Not applicable â€” session-service is gRPC-only.
 
 ## Dependencies
 
-**Upstream** (calls these):
-- None — session-service has no outbound service calls
+Upstream (calls these):
+- None â€” session-service has no outbound service calls
 
-**Downstream** (called by these):
-- `auth-service` — create/validate/revoke sessions during auth flows
-- `api-gateway` — fetch active sessions list for account management UI
-- `user-service` — revoke all sessions on account deletion
+Downstream (called by these):
+- `auth-service` â€” create/validate/revoke sessions during auth flows
+- `api-gateway` â€” fetch active sessions list for account management UI
+- `user-service` â€” revoke all sessions on account deletion
 
 ## Environment Variables
 
 | Variable | Default | Description |
 |---|---|---|
 | `REDIS_ADDR` | `redis:6379` | Redis server address |
-| `REDIS_PASSWORD` | — | Redis AUTH password |
+| `REDIS_PASSWORD` | â€” | Redis AUTH password |
 | `REDIS_DB` | `0` | Redis logical database index |
 | `SESSION_TTL_SECONDS` | `604800` | Session TTL in Redis (7 days) |
 | `GRPC_PORT` | `50062` | gRPC listening port |
@@ -113,6 +113,6 @@ docker-compose up session-service
 
 ## Health Check
 
-`GET /healthz` — `{"status":"ok"}`
+`GET /healthz` â€” `{"status":"ok"}`
 
 gRPC health protocol: `grpc.health.v1.Health/Check` on port `50062`

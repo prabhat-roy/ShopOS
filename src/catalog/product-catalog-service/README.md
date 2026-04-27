@@ -1,6 +1,6 @@
-# product-catalog-service
+﻿# product-catalog-service
 
-> Master product data store — attributes, variants, media references, and lifecycle management.
+> Master product data store â€” attributes, variants, media references, and lifecycle management.
 
 ## Overview
 
@@ -64,7 +64,7 @@ graph LR
 - Manage product variants (SKU matrix) with per-variant pricing and inventory references
 - Store media asset ID references (resolved by media-asset-service)
 - Support flexible attribute schemas per product type via MongoDB document model
-- Enforce product status transitions: DRAFT → ACTIVE → ARCHIVED
+- Enforce product status transitions: DRAFT â†’ ACTIVE â†’ ARCHIVED
 - Publish change events for search-service indexing and downstream cache invalidation
 - Support batch retrieval for bundle-service and cart-service
 
@@ -104,23 +104,23 @@ service ProductCatalogService {
 
 ## Dependencies
 
-**Upstream** (calls these):
-- `media-asset-service` — validates media asset IDs referenced in products
-- `category-service` — validates category assignment on create/update
-- `brand-service` — validates brand assignment
+Upstream (calls these):
+- `media-asset-service` â€” validates media asset IDs referenced in products
+- `category-service` â€” validates category assignment on create/update
+- `brand-service` â€” validates brand assignment
 
-**Downstream** (called by these):
-- `search-service` — consumes `StreamProductUpdates` to build search index
-- `bundle-service` — `GetProductBatch` to assemble bundles
-- `cart-service` — `GetProduct` to validate items added to cart
-- `product-import-service` — `CreateProduct` / `UpdateProduct` during bulk import
-- `pricing-service` — reads product base price reference
+Downstream (called by these):
+- `search-service` â€” consumes `StreamProductUpdates` to build search index
+- `bundle-service` â€” `GetProductBatch` to assemble bundles
+- `cart-service` â€” `GetProduct` to validate items added to cart
+- `product-import-service` â€” `CreateProduct` / `UpdateProduct` during bulk import
+- `pricing-service` â€” reads product base price reference
 
 ## Environment Variables
 
 | Variable | Default | Description |
 |---|---|---|
-| `MONGODB_URI` | — | MongoDB connection URI |
+| `MONGODB_URI` | â€” | MongoDB connection URI |
 | `MONGODB_DATABASE` | `catalog` | MongoDB database name |
 | `GRPC_PORT` | `50070` | gRPC listening port |
 | `KAFKA_BROKERS` | `kafka:9092` | Kafka broker list |
@@ -136,6 +136,6 @@ docker-compose up product-catalog-service
 
 ## Health Check
 
-`GET /healthz` — `{"status":"ok"}`
+`GET /healthz` â€” `{"status":"ok"}`
 
 gRPC health protocol: `grpc.health.v1.Health/Check` on port `50070`

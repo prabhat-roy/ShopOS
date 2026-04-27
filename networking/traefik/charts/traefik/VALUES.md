@@ -1,10 +1,10 @@
-# traefik
+﻿# traefik
 
 ![Version: 39.0.8](https://img.shields.io/badge/Version-39.0.8-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: v3.6.13](https://img.shields.io/badge/AppVersion-v3.6.13-informational?style=flat-square)
 
 A Traefik based Kubernetes ingress controller
 
-**Homepage:** <https://traefik.io/>
+Homepage: <https://traefik.io/>
 
 ## Maintainers
 
@@ -100,7 +100,7 @@ Kubernetes: `>=1.22.0-0`
 | global.sendAnonymousUsage | bool | `false` | Please take time to consider whether or not you wish to share anonymous data with us See https://doc.traefik.io/traefik/contributing/data-collection/ |
 | hostNetwork | bool | `false` | If hostNetwork is true, runs traefik in the host network namespace To prevent unschedulable pods due to port collisions, if hostNetwork=true and replicas>1, a pod anti-affinity is recommended and will be set if the affinity is left as default. |
 | hub.aigateway.enabled | bool | `false` | Set to true in order to enable AI Gateway. Requires a valid license token. |
-| hub.aigateway.maxRequestBodySize | string | `nil` | Hard limit for the size of request bodies inspected by the gateway. Accepts a plain integer representing **bytes**. The default value is `1048576` (1 MiB). |
+| hub.aigateway.maxRequestBodySize | string | `nil` | Hard limit for the size of request bodies inspected by the gateway. Accepts a plain integer representing bytes. The default value is `1048576` (1 MiB). |
 | hub.apimanagement.admission.annotations | object | `{}` | Set custom annotations. |
 | hub.apimanagement.admission.customWebhookCertificate | object | `{}` | Set custom certificate for the WebHook admission server. The certificate should be specified with _tls.crt_ and _tls.key_ in base64 encoding. |
 | hub.apimanagement.admission.listenAddr | string | `""` | WebHook admission server listen address. Default: "0.0.0.0:9943". |
@@ -110,7 +110,7 @@ Kubernetes: `>=1.22.0-0`
 | hub.apimanagement.enabled | bool | `false` | Set to true in order to enable API Management. Requires a valid license token. |
 | hub.apimanagement.openApi.validateRequestMethodAndPath | bool | `false` | When set to true, it will only accept paths and methods that are explicitly defined in its OpenAPI specification |
 | hub.mcpgateway.enabled | bool | `false` | Set to true in order to enable AI MCP Gateway. Requires a valid license token. |
-| hub.mcpgateway.maxRequestBodySize | string | `nil` | Hard limit for the size of request bodies inspected by the gateway. Accepts a plain integer representing **bytes**. The default value is `1048576` (1 MiB). |
+| hub.mcpgateway.maxRequestBodySize | string | `nil` | Hard limit for the size of request bodies inspected by the gateway. Accepts a plain integer representing bytes. The default value is `1048576` (1 MiB). |
 | hub.namespaces | list | `[]` | By default, Traefik Hub provider watches all namespaces. When using `rbac.namespaced`, it will watch helm release namespace and namespaces listed in this array. |
 | hub.offline | string | `nil` | Disables all external network connections. |
 | hub.pluginRegistry.sources | object | `{}` |  |

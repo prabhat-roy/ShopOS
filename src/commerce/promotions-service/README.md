@@ -1,4 +1,4 @@
-# promotions-service
+﻿# promotions-service
 
 > Manages coupon codes, discount rules, flash sales, and promotional pricing campaigns.
 
@@ -65,14 +65,14 @@ Proto file: `proto/commerce/promotions.proto`
 
 ## Dependencies
 
-**Upstream (callers)**
-- `cart-service` — real-time promotion evaluation on cart mutations
-- `checkout-service` — final promotion validation at checkout confirmation
-- `admin-portal` — promotion management CRUD operations
+Upstream (callers)
+- `cart-service` â€” real-time promotion evaluation on cart mutations
+- `checkout-service` â€” final promotion validation at checkout confirmation
+- `admin-portal` â€” promotion management CRUD operations
 
-**Downstream (called by this service)**
-- PostgreSQL — promotion rule and usage persistence
-- Kafka — analytics and notification events
+Downstream (called by this service)
+- PostgreSQL â€” promotion rule and usage persistence
+- Kafka â€” analytics and notification events
 
 ## Environment Variables
 
@@ -98,6 +98,6 @@ docker-compose up promotions-service
 
 ## Health Check
 
-`GET /healthz` → `{"status":"ok"}`
+`GET /healthz` â†’ `{"status":"ok"}`
 
-gRPC health: `grpc.health.v1.Health/Check` → `SERVING`
+gRPC health: `grpc.health.v1.Health/Check` â†’ `SERVING`

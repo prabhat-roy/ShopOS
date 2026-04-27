@@ -1,4 +1,4 @@
-# Kubernetes Manifests — ShopOS
+﻿# Kubernetes Manifests â€” ShopOS
 
 Raw Kubernetes manifests that sit beneath Helm: namespace declarations, RBAC, network policies,
 resource quotas, pod disruption budgets, KEDA autoscalers, and Velero backup schedules.
@@ -10,13 +10,13 @@ These are applied once during cluster bootstrap and updated as the platform evol
 
 ```
 kubernetes/
-├── namespaces/                 ← 19 Namespace declarations
-├── rbac/                       ← ServiceAccounts, Roles, ClusterRoles, Bindings
-├── network-policies/           ← Default-deny + per-namespace allow rules
-├── resource-quotas/            ← ResourceQuota + LimitRange per namespace
-├── pod-disruption-budgets/     ← PDBs for all stateful and critical services
-├── keda/                       ← KEDA ScaledObjects (Kafka + Redis triggers)
-└── velero/                     ← Velero Schedule (daily backup to MinIO)
+â”œâ”€â”€ namespaces/                 â† 19 Namespace declarations
+â”œâ”€â”€ rbac/                       â† ServiceAccounts, Roles, ClusterRoles, Bindings
+â”œâ”€â”€ network-policies/           â† Default-deny + per-namespace allow rules
+â”œâ”€â”€ resource-quotas/            â† ResourceQuota + LimitRange per namespace
+â”œâ”€â”€ pod-disruption-budgets/     â† PDBs for all stateful and critical services
+â”œâ”€â”€ keda/                       â† KEDA ScaledObjects (Kafka + Redis triggers)
+â””â”€â”€ velero/                     â† Velero Schedule (daily backup to MinIO)
 ```
 
 ---
@@ -51,11 +51,11 @@ kubernetes/
 
 Each service has its own `ServiceAccount`. Roles follow least-privilege:
 
-- **Platform services** (api-gateway, saga-orchestrator): read access to ConfigMaps and Secrets in their own namespace
-- **ArgoCD**: cluster-scoped read + write to managed namespaces
-- **Velero**: cluster-scoped backup/restore permissions
-- **KEDA**: read ScaledObjects, write HPA resources
-- **Falco / Tetragon**: node-level read access for runtime monitoring
+- Platform services (api-gateway, saga-orchestrator): read access to ConfigMaps and Secrets in their own namespace
+- ArgoCD: cluster-scoped read + write to managed namespaces
+- Velero: cluster-scoped backup/restore permissions
+- KEDA: read ScaledObjects, write HPA resources
+- Falco / Tetragon: node-level read access for runtime monitoring
 
 Apply all RBAC:
 ```bash
@@ -66,18 +66,18 @@ kubectl apply -f kubernetes/rbac/
 
 ## Network Policies
 
-The default posture is **deny-all ingress + deny-all egress** per namespace, with explicit
+The default posture is deny-all ingress + deny-all egress per namespace, with explicit
 allow rules for known traffic flows:
 
 | Policy | Scope | Allows |
 |---|---|---|
 | `default-deny` | All namespaces | Nothing (baseline) |
 | `allow-intra-namespace` | Each namespace | Pods within the same namespace |
-| `allow-prometheus-scrape` | All namespaces | `observability` namespace → `:metrics` |
+| `allow-prometheus-scrape` | All namespaces | `observability` namespace â†’ `:metrics` |
 | `allow-istio-sidecar` | All namespaces | Istiod control-plane traffic |
-| `allow-ingress` | `platform` | Traefik → api-gateway port 8080 |
-| `allow-kafka-egress` | All namespaces | Pods → `messaging` namespace port 9092 |
-| `allow-postgres-egress` | Per namespace | Pods → their designated PG cluster |
+| `allow-ingress` | `platform` | Traefik â†’ api-gateway port 8080 |
+| `allow-kafka-egress` | All namespaces | Pods â†’ `messaging` namespace port 9092 |
+| `allow-postgres-egress` | Per namespace | Pods â†’ their designated PG cluster |
 
 Apply:
 ```bash

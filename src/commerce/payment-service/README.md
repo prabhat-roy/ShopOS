@@ -1,4 +1,4 @@
-# payment-service
+﻿# payment-service
 
 > Processes payments through PSP integrations with idempotent charging and automatic retry logic.
 
@@ -29,7 +29,7 @@ sequenceDiagram
 
     else First attempt fails (transient)
         PSP-->>PAY: Error{type: TRANSIENT}
-        Note over PAY: Retry 1 — wait 1s
+        Note over PAY: Retry 1 â€” wait 1s
         PAY->>PSP: CreateCharge (retry, same idempotency_key)
 
         alt Retry succeeds
@@ -40,7 +40,7 @@ sequenceDiagram
 
         else Retry also fails
             PSP-->>PAY: Error{type: TRANSIENT}
-            Note over PAY: Retry 2 — wait 3s (exponential backoff)
+            Note over PAY: Retry 2 â€” wait 3s (exponential backoff)
             PAY->>PSP: CreateCharge (retry 2, same idempotency_key)
 
             alt Retry 2 succeeds
@@ -111,19 +111,19 @@ Proto file: `proto/commerce/payment.proto`
 
 ## Dependencies
 
-**Upstream (callers)**
-- `checkout-service` — primary caller for new charges
-- `return-refund-service` — issues refunds
-- `subscription-billing-service` — recurring charges
+Upstream (callers)
+- `checkout-service` â€” primary caller for new charges
+- `return-refund-service` â€” issues refunds
+- `subscription-billing-service` â€” recurring charges
 
-**Downstream (called by this service)**
-- External PSP adapters (Stripe, Adyen — configured via env vars)
-- PostgreSQL — payment record persistence
+Downstream (called by this service)
+- External PSP adapters (Stripe, Adyen â€” configured via env vars)
+- PostgreSQL â€” payment record persistence
 
-**Kafka consumers of payment events**
-- `notification-orchestrator` — payment confirmation / failure notifications
-- `fraud-detection-service` — post-payment fraud signal enrichment
-- `reconciliation-service` — financial reconciliation
+Kafka consumers of payment events
+- `notification-orchestrator` â€” payment confirmation / failure notifications
+- `fraud-detection-service` â€” post-payment fraud signal enrichment
+- `reconciliation-service` â€” financial reconciliation
 
 ## Environment Variables
 
@@ -154,6 +154,6 @@ docker-compose up payment-service
 
 ## Health Check
 
-`GET /healthz` → `{"status":"ok"}`
+`GET /healthz` â†’ `{"status":"ok"}`
 
-gRPC health: `grpc.health.v1.Health/Check` → `SERVING`
+gRPC health: `grpc.health.v1.Health/Check` â†’ `SERVING`

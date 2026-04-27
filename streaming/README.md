@@ -1,4 +1,4 @@
-# Streaming — ShopOS
+﻿# Streaming â€” ShopOS
 
 Change Data Capture and real-time stream processing. Debezium captures database mutations
 and streams them into Kafka; Apache Flink consumes those streams for real-time analytics
@@ -10,17 +10,17 @@ and fraud detection.
 
 ```
 streaming/
-├── debezium/
-│   ├── postgres-connector.json     ← CDC connector for PostgreSQL (order, payment, user tables)
-│   └── mongodb-connector.json      ← CDC connector for MongoDB (product catalog, reviews)
-└── flink/
-    ├── order-analytics.yaml        ← FlinkDeployment — real-time order aggregations
-    └── fraud-detection.yaml        ← FlinkDeployment — streaming fraud scoring
+â”œâ”€â”€ debezium/
+â”‚   â”œâ”€â”€ postgres-connector.json     â† CDC connector for PostgreSQL (order, payment, user tables)
+â”‚   â””â”€â”€ mongodb-connector.json      â† CDC connector for MongoDB (product catalog, reviews)
+â””â”€â”€ flink/
+    â”œâ”€â”€ order-analytics.yaml        â† FlinkDeployment â€” real-time order aggregations
+    â””â”€â”€ fraud-detection.yaml        â† FlinkDeployment â€” streaming fraud scoring
 ```
 
 ---
 
-## Debezium — Change Data Capture
+## Debezium â€” Change Data Capture
 
 Debezium is deployed via the Kafka Connect framework and captures row-level changes from
 databases into Kafka topics in real time.
@@ -29,7 +29,7 @@ databases into Kafka topics in real time.
 
 Captures changes from the `orders`, `payments`, and `users` tables in the `shopos` database.
 
-**Output topics:**
+Output topics:
 
 | Topic | Source table | Description |
 |---|---|---|
@@ -37,14 +37,14 @@ Captures changes from the `orders`, `payments`, and `users` tables in the `shopo
 | `dbz.public.payments` | `payments` | Payment state changes |
 | `dbz.public.users` | `users` | User profile updates |
 
-**Deploy:**
+Deploy:
 ```bash
 curl -X POST http://kafka-connect.messaging.svc:8083/connectors \
   -H 'Content-Type: application/json' \
   -d @streaming/debezium/postgres-connector.json
 ```
 
-**Check status:**
+Check status:
 ```bash
 curl http://kafka-connect.messaging.svc:8083/connectors/postgres-cdc/status
 ```
@@ -53,9 +53,9 @@ curl http://kafka-connect.messaging.svc:8083/connectors/postgres-cdc/status
 
 Captures change streams from MongoDB collections: `products`, `reviews`, `cms_pages`.
 
-**Output topics:** `dbz.catalog.products`, `dbz.catalog.reviews`, `dbz.content.cms_pages`
+Output topics: `dbz.catalog.products`, `dbz.catalog.reviews`, `dbz.content.cms_pages`
 
-**Deploy:**
+Deploy:
 ```bash
 curl -X POST http://kafka-connect.messaging.svc:8083/connectors \
   -H 'Content-Type: application/json' \
@@ -75,12 +75,12 @@ Consumes `commerce.order.placed` and `dbz.public.orders` topics. Computes:
 - Real-time revenue by category
 - Running totals for the operations dashboard
 
-**Deploy:**
+Deploy:
 ```bash
 kubectl apply -f streaming/flink/order-analytics.yaml -n analytics-ai
 ```
 
-**Check job status:**
+Check job status:
 ```bash
 kubectl get flinkdeployment order-analytics -n analytics-ai
 ```
@@ -91,7 +91,7 @@ Consumes `commerce.payment.processed` and enriches with user behaviour signals f
 `analytics.page.viewed`. Emits `security.fraud.detected` events when the score exceeds
 the configured threshold.
 
-**Deploy:**
+Deploy:
 ```bash
 kubectl apply -f streaming/flink/fraud-detection.yaml -n analytics-ai
 ```
@@ -101,9 +101,9 @@ kubectl apply -f streaming/flink/fraud-detection.yaml -n analytics-ai
 ## Data Flow
 
 ```
-PostgreSQL ──► Debezium ──► Kafka (dbz.public.*) ──► Flink (order-analytics) ──► ClickHouse
-MongoDB    ──► Debezium ──► Kafka (dbz.catalog.*)
-                                                  ──► Flink (fraud-detection) ──► security.fraud.detected
+PostgreSQL â”€â”€â–º Debezium â”€â”€â–º Kafka (dbz.public.*) â”€â”€â–º Flink (order-analytics) â”€â”€â–º ClickHouse
+MongoDB    â”€â”€â–º Debezium â”€â”€â–º Kafka (dbz.catalog.*)
+                                                  â”€â”€â–º Flink (fraud-detection) â”€â”€â–º security.fraud.detected
 ```
 
 ---

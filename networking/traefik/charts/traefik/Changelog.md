@@ -1,12 +1,12 @@
-# Change Log
+﻿# Change Log
 
 ## 39.0.8  ![AppVersion: v3.6.13](https://img.shields.io/static/v1?label=AppVersion&message=v3.6.13&color=success&logo=) ![Kubernetes: >=1.22.0-0](https://img.shields.io/static/v1?label=Kubernetes&message=%3E%3D1.22.0-0&color=informational&logo=kubernetes) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2026-04-17
+Release date: 2026-04-17
 
 * feat(deps): update traefik docker tag to v3.6.13 (v39.0)
 * chore: :bento: merge back #1679 into v39.0
-* chore(release): 🚀 publish v39.0.8
+* chore(release): ðŸš€ publish v39.0.8
 
 ### Default value changes
 
@@ -29,14 +29,14 @@ index ef2993c..ab46bf5 100644
 
 ## v39.0.7  ![AppVersion: v3.6.12](https://img.shields.io/static/v1?label=AppVersion&message=v3.6.12&color=success&logo=) ![Kubernetes: >=1.22.0-0](https://img.shields.io/static/v1?label=Kubernetes&message=%3E%3D1.22.0-0&color=informational&logo=kubernetes) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2026-03-30
+Release date: 2026-03-30
 
 * feat(deps): update traefik docker tag to v3.6.12 (v39.0)
-* chore(release): 🚀 publish v39.0.7
+* chore(release): ðŸš€ publish v39.0.7
 
 ## 39.0.6  ![AppVersion: v3.6.11](https://img.shields.io/static/v1?label=AppVersion&message=v3.6.11&color=success&logo=) ![Kubernetes: >=1.22.0-0](https://img.shields.io/static/v1?label=Kubernetes&message=%3E%3D1.22.0-0&color=informational&logo=kubernetes) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2026-03-20
+Release date: 2026-03-20
 
 * feat: :rocket: upgrade traefik to version v3.6.11
 * chore(release): :rocket: publish v39.0.6
@@ -48,7 +48,7 @@ index ef2993c..ab46bf5 100644
 * fix(gateway): setting port value for `websecure` listener can fail
 * feat: upgrade traefik to version v3.6.10
 
-**Upgrade Notes**
+Upgrade Notes
 
 This version allows users to test the upcoming Traefik v3.7.0.
 
@@ -56,14 +56,14 @@ Since v3.7.0 is not released yet, the required CRDs are not part of the chart re
 Users must manually apply the latest CRDs from the `master` branch before upgrading.
 ## 39.0.4  ![AppVersion: v3.6.9](https://img.shields.io/static/v1?label=AppVersion&message=v3.6.9&color=success&logo=) ![Kubernetes: >=1.22.0-0](https://img.shields.io/static/v1?label=Kubernetes&message=%3E%3D1.22.0-0&color=informational&logo=kubernetes) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2026-03-05
+Release date: 2026-03-05
 
 * fix(deps): bump traefik.io CRDs to release v3.6.9
 * chore(release): publish v39.0.4
 
 ## 39.0.3  ![AppVersion: v3.6.9](https://img.shields.io/static/v1?label=AppVersion&message=v3.6.9&color=success&logo=) ![Kubernetes: >=1.22.0-0](https://img.shields.io/static/v1?label=Kubernetes&message=%3E%3D1.22.0-0&color=informational&logo=kubernetes) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2026-03-05
+Release date: 2026-03-05
 
 * fix: remove `rbac.secretResourceNames`
 * feat(deps): update traefik docker tag to v3.6.9
@@ -90,9 +90,9 @@ index 5604572..ef2993c 100644
 
 ## 39.0.2  ![AppVersion: v3.6.8](https://img.shields.io/static/v1?label=AppVersion&message=v3.6.8&color=success&logo=) ![Kubernetes: >=1.22.0-0](https://img.shields.io/static/v1?label=Kubernetes&message=%3E%3D1.22.0-0&color=informational&logo=kubernetes) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2026-02-20
+Release date: 2026-02-20
 
-* chore(release): 🚀 publish traefik 39.0.2
+* chore(release): ðŸš€ publish traefik 39.0.2
 * docs: fix typo in examples
 * chore(deps): update helm/kind-action action to v1.14.0
 * feat: :package: allow IBM cloud values
@@ -119,7 +119,7 @@ index e1ede33..5604572 100644
 
 ## 39.0.1  ![AppVersion: v3.6.8](https://img.shields.io/static/v1?label=AppVersion&message=v3.6.8&color=success&logo=) ![Kubernetes: >=1.22.0-0](https://img.shields.io/static/v1?label=Kubernetes&message=%3E%3D1.22.0-0&color=informational&logo=kubernetes) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2026-02-13
+Release date: 2026-02-13
 
 * tests(hub): relocate and clean api gw tests
 * fix(grpc): enforce mutually exclusive TLS and insecure options
@@ -229,27 +229,27 @@ index a8aec47..e1ede33 100644
 
 ## 39.0.0  ![AppVersion: v3.6.7](https://img.shields.io/static/v1?label=AppVersion&message=v3.6.7&color=success&logo=) ![Kubernetes: >=1.22.0-0](https://img.shields.io/static/v1?label=Kubernetes&message=%3E%3D1.22.0-0&color=informational&logo=kubernetes) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2026-01-22
+Release date: 2026-01-22
 
 * fix(security)!: add support for request path options of Traefik 3.6.7+
-* fix(ports)!: 🐛 entrypoints `http` options
+* fix(ports)!: ðŸ› entrypoints `http` options
 * feat(gateway-api): add support for defaultScope experimental feature
 * feat(deps)!: update traefik docker tag to v3.6.7
 * feat(chart): enforce schema
 * feat(CRDs)!: support Traefik Hub v3.19.0
 * docs(values): avoid unbreakable lines in table output of VALUES.md
-* chore(release): 🚀 publish traefik 39.0.0 and crds 1.14.0
+* chore(release): ðŸš€ publish traefik 39.0.0 and crds 1.14.0
 * refactor(chart): clean output on Deployment & Daemonset
 
-**Upgrade Notes**
+Upgrade Notes
 
 There are 3 breaking changes in this release:
 
-1. **Traefik Hub**: This release support **only** Traefik Hub v3.19.0+ versions.
-   * CRDs has to be upgraded **before** the Chart. See [UPGRADING](https://github.com/traefik/traefik-helm-chart?tab=readme-ov-file#upgrading) instructions.
+1. Traefik Hub: This release support only Traefik Hub v3.19.0+ versions.
+   * CRDs has to be upgraded before the Chart. See [UPGRADING](https://github.com/traefik/traefik-helm-chart?tab=readme-ov-file#upgrading) instructions.
    * It's possible to use previous versions of the Chart for previous versions of Traefik Hub.
-2. **Encoded Characters**: Allowed by default in Traefik v3.6.7+ ([opt-in security options](https://github.com/traefik/traefik-helm-chart/blob/master/traefik/values.yaml#L913), [documentation](https://doc.traefik.io/traefik/security/request-path/#encoded-character-filtering))
-3. **Ports Configuration**: HTTP options now require explicit `http` nesting level with PR https://github.com/traefik/traefik-helm-chart/pull/1603.
+2. Encoded Characters: Allowed by default in Traefik v3.6.7+ ([opt-in security options](https://github.com/traefik/traefik-helm-chart/blob/master/traefik/values.yaml#L913), [documentation](https://doc.traefik.io/traefik/security/request-path/#encoded-character-filtering))
+3. Ports Configuration: HTTP options now require explicit `http` nesting level with PR https://github.com/traefik/traefik-helm-chart/pull/1603.
    * There is a _before_ / _after_ example in the PR description.
 
 :information_source: Schema validation has been enforced in this release. When it fails, it means that the parameter is not implemented.
@@ -522,7 +522,7 @@ index 66a7f22..a8aec47 100644
 
 ## 38.0.2  ![AppVersion: v3.6.6](https://img.shields.io/static/v1?label=AppVersion&message=v3.6.6&color=success&logo=) ![Kubernetes: >=1.22.0-0](https://img.shields.io/static/v1?label=Kubernetes&message=%3E%3D1.22.0-0&color=informational&logo=kubernetes) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2026-01-08
+Release date: 2026-01-08
 
 * revert(CRDs): use Traefik Hub v3.18.0 compatible crds
 * fix(security): set the seccomp profile to RuntimeDefault
@@ -530,7 +530,7 @@ index 66a7f22..a8aec47 100644
 * feat(deps): update traefik docker tag to v3.6.6
 * chore(release): publish traefik 38.0.2 and crds 1.13.1
 
-**Upgrades Notes**
+Upgrades Notes
 
 There is a breaking change on CRDs between Traefik Hub v3.18.0 and inferior and the CRDs of Traefik Hub v3.19.0+ preview versions (ea & rc).
 With this release, we remove the CRDs of Traefik Hub v3.19.0 preview versions.
@@ -557,11 +557,11 @@ index f2a9f10..66a7f22 100644
 
 ## 38.0.1  ![AppVersion: v3.6.5](https://img.shields.io/static/v1?label=AppVersion&message=v3.6.5&color=success&logo=) ![Kubernetes: >=1.22.0-0](https://img.shields.io/static/v1?label=Kubernetes&message=%3E%3D1.22.0-0&color=informational&logo=kubernetes) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2025-12-19
+Release date: 2025-12-19
 
-* fix(ports): 🐛 add missing `http.maxHeaderBytes` option
-* fix(ports): 🐛 `http.encodedCharacters` on custom entrypoints
-* chore(release): 🚀 publish traefik 38.0.1
+* fix(ports): ðŸ› add missing `http.maxHeaderBytes` option
+* fix(ports): ðŸ› `http.encodedCharacters` on custom entrypoints
+* chore(release): ðŸš€ publish traefik 38.0.1
 
 ### Default value changes
 
@@ -583,24 +583,24 @@ index 0ccdbae..f2a9f10 100644
 
 ## 38.0.0  ![AppVersion: v3.6.5](https://img.shields.io/static/v1?label=AppVersion&message=v3.6.5&color=success&logo=) ![Kubernetes: >=1.22.0-0](https://img.shields.io/static/v1?label=Kubernetes&message=%3E%3D1.22.0-0&color=informational&logo=kubernetes) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2025-12-17
+Release date: 2025-12-17
 
 * fix: update error message for maxUnavailable validation
 * fix(pvc): allow empty storageClassName
 * fix(providers)!: align labelSelector for kubernetesGateway and knative
-* fix(providers): ✨ enforce schema for all providers
+* fix(providers): âœ¨ enforce schema for all providers
 * fix(notes): minor typo
-* fix(nginx)!: 🐛 align provider settings and provide required rbac
-* feat(security): ✨ 🔒️ add support for request path options of traefik 3.6.4+
-* feat(providers): ✨ enforce schema
+* fix(nginx)!: ðŸ› align provider settings and provide required rbac
+* feat(security): âœ¨ ðŸ”’ï¸ add support for request path options of traefik 3.6.4+
+* feat(providers): âœ¨ enforce schema
 * feat(ports): enforce schema
 * feat(deps): update traefik docker tag to v3.6.5
 * feat(deps): update traefik docker tag to v3.6.4
 * feat(CRDs): update Traefik Hub to v1.24.2
 * feat(CRDs): update Traefik Hub to v1.24.1, with required RBACs
-* chore(release): 🚀 publish traefik 38.0.0 and crds 1.13.0
+* chore(release): ðŸš€ publish traefik 38.0.0 and crds 1.13.0
 
-**Upgrades Notes**
+Upgrades Notes
 
 There are two breaking changes in this release:
 
@@ -799,14 +799,14 @@ index bc4c5da..0ccdbae 100644
 
 ## 37.4.0  ![AppVersion: v3.6.2](https://img.shields.io/static/v1?label=AppVersion&message=v3.6.2&color=success&logo=) ![Kubernetes: >=1.22.0-0](https://img.shields.io/static/v1?label=Kubernetes&message=%3E%3D1.22.0-0&color=informational&logo=kubernetes) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2025-11-20
+Release date: 2025-11-20
 
 * feat: allow `publishedService` to be set without service being enabled
 * feat: :rocket: add support of Nginx provider
 * feat(plugins): support ConfigMap inline local plugins alongside hostPath
 * feat(deps): update traefik docker tag to v3.6.2
 * feat(deps): update traefik docker tag to v3.6.1
-* chore(release): 🚀 publish traefik 37.4.0
+* chore(release): ðŸš€ publish traefik 37.4.0
 
 ### Default value changes
 
@@ -870,7 +870,7 @@ index e90d6b9..bc4c5da 100644
 
 ## 37.3.0  ![AppVersion: v3.6.0](https://img.shields.io/static/v1?label=AppVersion&message=v3.6.0&color=success&logo=) ![Kubernetes: >=1.22.0-0](https://img.shields.io/static/v1?label=Kubernetes&message=%3E%3D1.22.0-0&color=informational&logo=kubernetes) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2025-11-10
+Release date: 2025-11-10
 
 * tests: update certificatesResolvers with Proxy v3.6 options
 * fix: add missing flag arg
@@ -880,8 +880,8 @@ index e90d6b9..bc4c5da 100644
 * feat(deps): update traefik docker tag to v3.5.4
 * feat(CRDs): update for Traefik Proxy v3.6 and Gateway API v1.4.0
 * feat(CRDs): update Traefik Hub to v1.23.1
-* docs: 📚 fix comment grammar in values
-* chore(release): 🚀 publish traefik 37.3.0 and 1.12.0
+* docs: ðŸ“š fix comment grammar in values
+* chore(release): ðŸš€ publish traefik 37.3.0 and 1.12.0
 
 ### Default value changes
 
@@ -989,7 +989,7 @@ index c697f6f..e90d6b9 100644
 
 ## 37.2.0  ![AppVersion: v3.5.3](https://img.shields.io/static/v1?label=AppVersion&message=v3.5.3&color=success&logo=) ![Kubernetes: >=1.22.0-0](https://img.shields.io/static/v1?label=Kubernetes&message=%3E%3D1.22.0-0&color=informational&logo=kubernetes) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2025-10-21
+Release date: 2025-10-21
 
 * feat: support API basePath
 * feat: make dashboard toggleable
@@ -998,7 +998,7 @@ index c697f6f..e90d6b9 100644
 * feat(observability): :mag: add per entrypoint observability
 * feat(metrics): :chart_with_upwards_trend: add OTLP resourceAttributes support
 * feat(logs): :memo: add missing support of OTLP logs
-* chore(release): 🚀 publish traefik 37.2.0
+* chore(release): ðŸš€ publish traefik 37.2.0
 * chore(hub): :twisted_rightwards_arrows: update hub and proxy mapping for v3.18
 
 ### Default value changes
@@ -1243,7 +1243,7 @@ index cc48b7d..c697f6f 100644
 +  mcpgateway:
 +    # -- Set to true in order to enable AI MCP Gateway. Requires a valid license token.
 +    enabled: false
-+    # -- Hard limit for the size of request bodies inspected by the gateway. Accepts a plain integer representing **bytes**. The default value is `1048576` (1 MiB).
++    # -- Hard limit for the size of request bodies inspected by the gateway. Accepts a plain integer representing bytes. The default value is `1048576` (1 MiB).
 +    maxRequestBodySize:  # @schema type:[integer, null]; minimum:0
 +
    aigateway:
@@ -1264,22 +1264,22 @@ index cc48b7d..c697f6f 100644
 
 ## 37.1.2  ![AppVersion: v3.5.3](https://img.shields.io/static/v1?label=AppVersion&message=v3.5.3&color=success&logo=) ![Kubernetes: >=1.22.0-0](https://img.shields.io/static/v1?label=Kubernetes&message=%3E%3D1.22.0-0&color=informational&logo=kubernetes) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2025-10-03
+Release date: 2025-10-03
 
 * fix(observability): tracer creation warning with default security context
-* fix(CRDs): ✨ update for Traefik Proxy v3.5.2
+* fix(CRDs): âœ¨ update for Traefik Proxy v3.5.2
 * feat(deps): update traefik docker tag to v3.5.3 + add plugin hash option
 * feat(CRDs): update for Traefik to v3.5.3
 * chore(release): :rocket: publish traefik 37.1.2 and crds 1.11.1
 
 ## 37.1.1  ![AppVersion: v3.5.2](https://img.shields.io/static/v1?label=AppVersion&message=v3.5.2&color=success&logo=) ![Kubernetes: >=1.22.0-0](https://img.shields.io/static/v1?label=Kubernetes&message=%3E%3D1.22.0-0&color=informational&logo=kubernetes) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2025-09-10
+Release date: 2025-09-10
 
 * feat(hub): allow to specify admission controller certificate from existing secret
 * feat(deps): update traefik docker tag to v3.5.2
-* feat(accesslog): ✨ add genericCLF format
-* chore(release): 🚀 publish v37.1.1
+* feat(accesslog): âœ¨ add genericCLF format
+* chore(release): ðŸš€ publish v37.1.1
 
 ### Default value changes
 
@@ -1310,7 +1310,7 @@ index b56a33b..cc48b7d 100644
 
 ## 37.1.0  ![AppVersion: v3.5.1](https://img.shields.io/static/v1?label=AppVersion&message=v3.5.1&color=success&logo=) ![Kubernetes: >=1.22.0-0](https://img.shields.io/static/v1?label=Kubernetes&message=%3E%3D1.22.0-0&color=informational&logo=kubernetes) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2025-09-03
+Release date: 2025-09-03
 
 * refactor: remove `$root` hacks in favor of using `$`
 * refactor: only render `--global.checkNewVersion` when it differs from default
@@ -1406,7 +1406,7 @@ index 0c1274f..b56a33b 100644
 
 ## 37.0.0  ![AppVersion: v3.5.0](https://img.shields.io/static/v1?label=AppVersion&message=v3.5.0&color=success&logo=) ![Kubernetes: >=1.22.0-0](https://img.shields.io/static/v1?label=Kubernetes&message=%3E%3D1.22.0-0&color=informational&logo=kubernetes) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2025-07-29
+Release date: 2025-07-29
 
 * fix(observability): allow `tracing.sampleRate` to be set to zero
 * fix(entryPoint): allow scheme to be unset on redirect
@@ -1485,22 +1485,22 @@ index 25a47a9..0c1274f 100644
 
 ## 36.3.0  ![AppVersion: v3.4.3](https://img.shields.io/static/v1?label=AppVersion&message=v3.4.3&color=success&logo=) ![Kubernetes: >=1.22.0-0](https://img.shields.io/static/v1?label=Kubernetes&message=%3E%3D1.22.0-0&color=informational&logo=kubernetes) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2025-07-01
+Release date: 2025-07-01
 
 * feat(deps): update traefik docker tag to v3.4.3
 * feat(deployment): allow null and 0 replicas
-* chore(release): 🚀 publish 36.3.0
+* chore(release): ðŸš€ publish 36.3.0
 
 ## 36.2.0  ![AppVersion: v3.4.1](https://img.shields.io/static/v1?label=AppVersion&message=v3.4.1&color=success&logo=) ![Kubernetes: >=1.22.0-0](https://img.shields.io/static/v1?label=Kubernetes&message=%3E%3D1.22.0-0&color=informational&logo=kubernetes) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2025-06-23
+Release date: 2025-06-23
 
 * fix(CRDs): :bug: kustomization file for CRDs
-* feat(hub): ✨ initial support for AI Gateway
+* feat(hub): âœ¨ initial support for AI Gateway
 * feat(hub): update version mapping with Proxy v3.4
-* feat(hpa): ✨ customizable scaleTargetRef
+* feat(hpa): âœ¨ customizable scaleTargetRef
 * chore(schema): update linter
-* chore(release): 🚀 publish v36.2.0 and CRDs v1.9.0
+* chore(release): ðŸš€ publish v36.2.0 and CRDs v1.9.0
 
 ### Default value changes
 
@@ -1543,7 +1543,7 @@ index c6daa8d..25a47a9 100644
      # -- Set to true in order to enable AI Gateway. Requires a valid license token.
 -    aigateway: false
 +    enabled: false
-+    # -- Hard limit for the size of request bodies inspected by the gateway. Accepts a plain integer representing **bytes**. The default value is `1048576` (1 MiB).
++    # -- Hard limit for the size of request bodies inspected by the gateway. Accepts a plain integer representing bytes. The default value is `1048576` (1 MiB).
 +    maxRequestBodySize:  # @schema type:[integer, null]; minimum:0
    providers:
      consulCatalogEnterprise:
@@ -1552,7 +1552,7 @@ index c6daa8d..25a47a9 100644
 
 ## 36.2.0-rc1  ![AppVersion: v3.4.1](https://img.shields.io/static/v1?label=AppVersion&message=v3.4.1&color=success&logo=) ![Kubernetes: >=1.22.0-0](https://img.shields.io/static/v1?label=Kubernetes&message=%3E%3D1.22.0-0&color=informational&logo=kubernetes) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2025-06-11
+Release date: 2025-06-11
 
 * feat(CRDs): update Traefik Hub to v1.20.1
 * chore: release traefik v36.2.0-rc1 and traefik-crds v1.9.0-rc1
@@ -1560,13 +1560,13 @@ index c6daa8d..25a47a9 100644
 
 ## 36.1.0  ![AppVersion: v3.4.1](https://img.shields.io/static/v1?label=AppVersion&message=v3.4.1&color=success&logo=) ![Kubernetes: >=1.22.0-0](https://img.shields.io/static/v1?label=Kubernetes&message=%3E%3D1.22.0-0&color=informational&logo=kubernetes) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2025-06-10
+Release date: 2025-06-10
 
-* fix(schema): 🐛 allow additional properties on `global`
+* fix(schema): ðŸ› allow additional properties on `global`
 * fix(chart): update icon link to track upstream master branch
 * fix(Traefik Hub): add strict check on admission cert
 * feat(Traefik Hub): add v3.17 version mapping
-* chore(release): 🚀 publish v36.1.0
+* chore(release): ðŸš€ publish v36.1.0
 
 ### Default value changes
 
@@ -1588,17 +1588,17 @@ index 9bcb400..c6daa8d 100644
 
 ## 36.0.0  ![AppVersion: v3.4.1](https://img.shields.io/static/v1?label=AppVersion&message=v3.4.1&color=success&logo=) ![Kubernetes: >=1.22.0-0](https://img.shields.io/static/v1?label=Kubernetes&message=%3E%3D1.22.0-0&color=informational&logo=kubernetes) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2025-06-06
+Release date: 2025-06-06
 
 * fix(notes): update condition to display certificate persistence warning
 * fix(Traefik Proxy): supported `ingressRoute.*.annotations` breaks templating
 * fix(Traefik Proxy)!: strict opt-in on data collection
 * feat(deps): update traefik docker tag to v3.4.1
 * feat(Traefik Hub): add offline flag
-* chore(schema): 🔧 update following latest upstream release
-* chore(release): 🚀 publish v36.0.0
+* chore(schema): ðŸ”§ update following latest upstream release
+* chore(release): ðŸš€ publish v36.0.0
 
-**Upgrade Notes**
+Upgrade Notes
 
 There is a breaking change on `globalArguments` which has been replaced by `global.xx`, following upstream.
 See PR [#1436](https://github.com/traefik/traefik-helm-chart/pull/1436) for details.
@@ -1684,7 +1684,7 @@ index a9b74a3..9bcb400 100644
 
 ## 35.4.0  ![AppVersion: v3.4.0](https://img.shields.io/static/v1?label=AppVersion&message=v3.4.0&color=success&logo=) ![Kubernetes: >=1.22.0-0](https://img.shields.io/static/v1?label=Kubernetes&message=%3E%3D1.22.0-0&color=informational&logo=kubernetes) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2025-05-23
+Release date: 2025-05-23
 
 * fix(CRDs): validation check on RootCA for both servertransport
 * feat(Traefik Hub): :sparkles: automatically restart API Management pods on admission certificate change
@@ -1710,7 +1710,7 @@ index ff04c8b..a9b74a3 100644
 
 ## 35.3.0  ![AppVersi   on: v3.4.0](https://img.shields.io/static/v1?label=AppVersion&message=v3.4.0&color=success&logo=) ![Kubernetes: >=1.22.0-0](https://img.shields.io/static/v1?label=Kubernetes&message=%3E%3D1.22.0-0&color=informational&logo=kubernetes) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2025-05-19
+Release date: 2025-05-19
 
 * fix: :bug: ingress route annotations should not be null
 * fix(Traefik Hub): fail when upgrading with --reuse-values
@@ -1721,7 +1721,7 @@ index ff04c8b..a9b74a3 100644
 * feat(deps): update traefik docker tag to v3.3.7
 * feat(Traefik Hub): improve UserXP on token
 * feat(Traefik Hub): :sparkles: set custom certificate for Hub webhooks
-* feat(CRDs): ✨ update CRDs for Traefik Proxy v3.4.x
+* feat(CRDs): âœ¨ update CRDs for Traefik Proxy v3.4.x
 * chore: update maintainers
 * chore: remove K8s version check for unsupported version
 * chore(release): :rocket: publish v35.3.0 and CRDs v1.8.0
@@ -1807,23 +1807,23 @@ index 04f4973..ff04c8b 100644
 
 ## 35.2.0  ![AppVersion: v3.3.6](https://img.shields.io/static/v1?label=AppVersion&message=v3.3.6&color=success&logo=) ![Kubernetes: >=1.22.0-0](https://img.shields.io/static/v1?label=Kubernetes&message=%3E%3D1.22.0-0&color=informational&logo=kubernetes) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2025-04-29
+Release date: 2025-04-29
 
 * fix(Traefik Hub): really disable sendlogs when set to false
 * fix(Traefik Hub): prefix mutating webhook by release name
 * feat(Traefik Hub): option to set token in values
-* chore(release): 🚀 publish v35.2.0
+* chore(release): ðŸš€ publish v35.2.0
 
 ## 35.1.0  ![AppVersion: v3.3.6](https://img.shields.io/static/v1?label=AppVersion&message=v3.3.6&color=success&logo=) ![Kubernetes: >=1.22.0-0](https://img.shields.io/static/v1?label=Kubernetes&message=%3E%3D1.22.0-0&color=informational&logo=kubernetes) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2025-04-25
+Release date: 2025-04-25
 
-* feat: ✨ versionOverride
+* feat: âœ¨ versionOverride
 * feat(Traefik Hub): namespaces
 * feat(CRDs): remove APIAccess resource
 * chore(release): :rocket: publish v35.1.0 and CRDs v1.7.0
 
-**Upgrade Notes**
+Upgrade Notes
 
 Traefik-Hub users should follow this procedure:
 
@@ -1903,25 +1903,25 @@ index f2b90da..04f4973 100644
 
 ## 35.0.1  ![AppVersion: v3.3.6](https://img.shields.io/static/v1?label=AppVersion&message=v3.3.6&color=success&logo=) ![Kubernetes: >=1.22.0-0](https://img.shields.io/static/v1?label=Kubernetes&message=%3E%3D1.22.0-0&color=informational&logo=kubernetes) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2025-04-18
+Release date: 2025-04-18
 
 * feat(deps): update traefik docker tag to v3.3.6
 * chore(release): :rocket: publish traefik 35.0.1
 
 ## 35.0.0  ![AppVersion: v3.3.5](https://img.shields.io/static/v1?label=AppVersion&message=v3.3.5&color=success&logo=) ![Kubernetes: >=1.22.0-0](https://img.shields.io/static/v1?label=Kubernetes&message=%3E%3D1.22.0-0&color=informational&logo=kubernetes) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2025-04-07
+Release date: 2025-04-07
 
 * fix: do not quote protocol on pod ports
-* fix(tracing): 🐛 multiple response or request headers
-* feat: ✨ Oracle Cloud marketplace integration
+* fix(tracing): ðŸ› multiple response or request headers
+* feat: âœ¨ Oracle Cloud marketplace integration
 * feat(deps): update traefik docker tag to v3.3.5
 * feat!: add port name template functions
 * chore(release): :rocket: publish traefik 35.0.0
 * chore(helpers): :bookmark: update hub proxy corresponding versions
 * chore(ci): :bug: should fail on test error
 
-**Upgrade Notes**
+Upgrade Notes
 
 This release has been marked as major as it might [modify service and deployment port names](https://github.com/traefik/traefik-helm-chart/pull/1363) (if they use uppercase characters or are longer than 15 characters).
 Nevertheless, even in these cases, it should not impact the availability of your endpoints.
@@ -1956,16 +1956,16 @@ index 956000d..f2b90da 100644
 
 ## 34.5.0  ![AppVersion: v3.3.4](https://img.shields.io/static/v1?label=AppVersion&message=v3.3.4&color=success&logo=) ![Kubernetes: >=1.22.0-0](https://img.shields.io/static/v1?label=Kubernetes&message=%3E%3D1.22.0-0&color=informational&logo=kubernetes) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2025-03-31
+Release date: 2025-03-31
 
 * fix(gateway): `gateway.namespace` value is ignored
 * feat: allow templating the additionalVolumeMounts configuration
-* feat(CRDs): 🔧 update Traefik Hub CRDs to v1.17.2
+* feat(CRDs): ðŸ”§ update Traefik Hub CRDs to v1.17.2
 * chore(release): publish crds 1.6.0 and traefik 34.5.0
 
 ## 34.4.1  ![AppVersion: v3.3.4](https://img.shields.io/static/v1?label=AppVersion&message=v3.3.4&color=success&logo=) ![Kubernetes: >=1.22.0-0](https://img.shields.io/static/v1?label=Kubernetes&message=%3E%3D1.22.0-0&color=informational&logo=kubernetes) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2025-02-28
+Release date: 2025-02-28
 
 * fix(Traefik Proxy): headerLabels does not exist for metrics.prometheus
 * fix(Traefik Hub): add missing consulCatalogEnterprise provider
@@ -1973,7 +1973,7 @@ index 956000d..f2b90da 100644
 * test(Traefik Proxy): fix metrics header labels
 * fix(chart): reorder source urls annotations
 * docs(Traefik Proxy): fix VALUES.md generation on prometheus values
-* chore(release): 🚀 publish v34.4.1
+* chore(release): ðŸš€ publish v34.4.1
 
 ### Default value changes
 
@@ -2095,10 +2095,10 @@ index 2d8ac73..956000d 100644
 
 ## 34.4.0  ![AppVersion: v3.3.3](https://img.shields.io/static/v1?label=AppVersion&message=v3.3.3&color=success&logo=) ![Kubernetes: >=1.22.0-0](https://img.shields.io/static/v1?label=Kubernetes&message=%3E%3D1.22.0-0&color=informational&logo=kubernetes) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2025-02-19
+Release date: 2025-02-19
 
 * feat(CRDs): update Traefik Hub CRDs to v1.17.0
-* chore(release): 🚀 publish v34.4.0 and CRDs v1.4.0
+* chore(release): ðŸš€ publish v34.4.0 and CRDs v1.4.0
 
 ## 34.3.0  ![AppVersion: v3.3.3](https://img.shields.io/static/v1?label=AppVersion&message=v3.3.3&color=success&logo=) ![Kubernetes: >=1.22.0-0](https://img.shields.io/static/v1?label=Kubernetes&message=%3E%3D1.22.0-0&color=informational&logo=kubernetes) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
@@ -2154,11 +2154,11 @@ index 4f93924..2d8ac73 100644
 
 ## 34.2.0  ![AppVersion: v3.3.2](https://img.shields.io/static/v1?label=AppVersion&message=v3.3.2&color=success&logo=) ![Kubernetes: >=1.22.0-0](https://img.shields.io/static/v1?label=Kubernetes&message=%3E%3D1.22.0-0&color=informational&logo=kubernetes) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2025-01-28
+Release date: 2025-01-28
 
 * fix: :bug: permanent redirect should be disableable
 * feat: :sparkles: add hub tracing capabilities
-* docs: 📚️ fix typo in Guidelines.md
+* docs: ðŸ“šï¸ fix typo in Guidelines.md
 * chore(release): publish v34.2.0
 
 ### Default value changes
@@ -2190,7 +2190,7 @@ index 3335e78..4f93924 100644
 
 ## 34.1.0  ![AppVersion: v3.3.2](https://img.shields.io/static/v1?label=AppVersion&message=v3.3.2&color=success&logo=) ![Kubernetes: >=1.22.0-0](https://img.shields.io/static/v1?label=Kubernetes&message=%3E%3D1.22.0-0&color=informational&logo=kubernetes) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2025-01-15
+Release date: 2025-01-15
 
 * fix(Traefik Proxy): support uppercase letters in entrypoint names
 * feat(deps): update traefik docker tag to v3.3.2
@@ -2219,7 +2219,7 @@ index f5922fe..3335e78 100644
 
 ## 34.0.0  ![AppVersion: v3.3.1](https://img.shields.io/static/v1?label=AppVersion&message=v3.3.1&color=success&logo=) ![Kubernetes: >=1.22.0-0](https://img.shields.io/static/v1?label=Kubernetes&message=%3E%3D1.22.0-0&color=informational&logo=kubernetes) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2025-01-13
+Release date: 2025-01-13
 
 * fix(Traefik Proxy)!: use namespaceOverride as expected
 * fix(Traefik Proxy)!: move redirectTo => redirections
@@ -2234,7 +2234,7 @@ index f5922fe..3335e78 100644
 * chore(release): publish v34.0.0
 * chore(Gateway API): :recycle: remove template from values
 
-**Upgrade Notes**
+Upgrade Notes
 
 There are multiple breaking changes in this release:
 
@@ -2336,14 +2336,14 @@ index 78c8ea4..f5922fe 100644
 
 ## 33.2.1  ![AppVersion: v3.2.2](https://img.shields.io/static/v1?label=AppVersion&message=v3.2.2&color=success&logo=) ![Kubernetes: >=1.22.0-0](https://img.shields.io/static/v1?label=Kubernetes&message=%3E%3D1.22.0-0&color=informational&logo=kubernetes) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2024-12-13
+Release date: 2024-12-13
 
 * fix(Gateway API): CRDs should only be defined once
-* chore(release): 🚀 publish v33.2.1
+* chore(release): ðŸš€ publish v33.2.1
 
 ## 33.2.0  ![AppVersion: v3.2.2](https://img.shields.io/static/v1?label=AppVersion&message=v3.2.2&color=success&logo=) ![Kubernetes: >=1.22.0-0](https://img.shields.io/static/v1?label=Kubernetes&message=%3E%3D1.22.0-0&color=informational&logo=kubernetes) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2024-12-11
+Release date: 2024-12-11
 
 * fix(Traefik Proxy): :bug: abortOnPluginFailure not released yet
 * feat(deps): update traefik docker tag to v3.2.2
@@ -2351,7 +2351,7 @@ index 78c8ea4..f5922fe 100644
 * feat(Traefik Proxy): add `tracing`parameters to helm chart values
 * feat(Traefik Proxy): :art: harmonize semverCompare calls
 * feat(Gateway API): update sigs.k8s.io/gateway-api to v1.2.1
-* chore(release): 🚀 publish v33.2.0
+* chore(release): ðŸš€ publish v33.2.0
 
 ### Default value changes
 
@@ -2392,18 +2392,18 @@ index 9b4379c..78c8ea4 100644
 
 ## 33.1.0  ![AppVersion: v3.2.1](https://img.shields.io/static/v1?label=AppVersion&message=v3.2.1&color=success&logo=) ![Kubernetes: >=1.22.0-0](https://img.shields.io/static/v1?label=Kubernetes&message=%3E%3D1.22.0-0&color=informational&logo=kubernetes) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2024-11-26
+Release date: 2024-11-26
 
 * fix: :bug: support specifying plugins storage
 * fix(Traefik): support for entrypoint option on allowACMEByPass
 * fix(Traefik Proxy): allowEmptyServices not disabled when set to false
 * fix(Traefik Hub): compatibility with Traefik Proxy v3.2
-* fix(KubernetesCRD): 🐛 IngressClass should be readable even when kubernetesIngress is disabled
+* fix(KubernetesCRD): ðŸ› IngressClass should be readable even when kubernetesIngress is disabled
 * feat(deps): update traefik docker tag to v3.2.1
 * feat(Traefik Proxy): add `abortOnPluginFailure` field
 * feat(Traefik Hub): add APICatalogItem and ManagedSubscription support
-* docs: 📚️ fix typos in values and readme
-* chore(release): 🚀 publish v33.1.0-rc1
+* docs: ðŸ“šï¸ fix typos in values and readme
+* chore(release): ðŸš€ publish v33.1.0-rc1
 
 ### Default value changes
 
@@ -2435,18 +2435,18 @@ index be89b00..9b4379c 100644
 
 ## 33.1.0-rc1  ![AppVersion: v3.2.1](https://img.shields.io/static/v1?label=AppVersion&message=v3.2.1&color=success&logo=) ![Kubernetes: >=1.22.0-0](https://img.shields.io/static/v1?label=Kubernetes&message=%3E%3D1.22.0-0&color=informational&logo=kubernetes) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2024-11-26
+Release date: 2024-11-26
 
 * fix: :bug: support specifying plugins storage
 * fix(Traefik): support for entrypoint option on allowACMEByPass
 * fix(Traefik Proxy): allowEmptyServices not disabled when set to false
 * fix(Traefik Hub): compatibility with Traefik Proxy v3.2
-* fix(KubernetesCRD): 🐛 IngressClass should be readable even when kubernetesIngress is disabled
+* fix(KubernetesCRD): ðŸ› IngressClass should be readable even when kubernetesIngress is disabled
 * feat(deps): update traefik docker tag to v3.2.1
 * feat(Traefik Proxy): add `abortOnPluginFailure` field
 * feat(Traefik Hub): add APICatalogItem and ManagedSubscription support
-* docs: 📚️ fix typos in values and readme
-* chore(release): 🚀 publish v33.1.0-rc1
+* docs: ðŸ“šï¸ fix typos in values and readme
+* chore(release): ðŸš€ publish v33.1.0-rc1
 
 ### Default value changes
 
@@ -2477,9 +2477,9 @@ index be89b00..9b4379c 100644
 
 ## 33.0.0  ![AppVersion: v3.2.0](https://img.shields.io/static/v1?label=AppVersion&message=v3.2.0&color=success&logo=) ![Kubernetes: >=1.22.0-0](https://img.shields.io/static/v1?label=Kubernetes&message=%3E%3D1.22.0-0&color=informational&logo=kubernetes) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2024-10-30
+Release date: 2024-10-30
 
-* fix: 🐛 http3 with internal service
+* fix: ðŸ› http3 with internal service
 * fix: use correct children indentation for logs.access.filters
 * fix(schema): :bug: targetPort can also be a string
 * fix(certificateResolvers)!: :boom: :bug: use same syntax in Chart and in Traefik
@@ -2490,15 +2490,15 @@ index be89b00..9b4379c 100644
 * fix(Env Variables)!: allow extending env without overwrite
 * feat(deps): update traefik docker tag to v3.2.0
 * feat(deps): update traefik docker tag to v3.1.6
-* feat(Traefik): ✨ support Gateway API statusAddress
+* feat(Traefik): âœ¨ support Gateway API statusAddress
 * feat(Traefik Proxy): CRDs for v3.2+
 * feat(Gateway API): :sparkles: standard install CRD v1.2.0
 * feat(Gateway API): :sparkles: add infrastructure in the values
 * chore: allow TRACE log level
-* chore(release): 🚀 publish v33.0.0
+* chore(release): ðŸš€ publish v33.0.0
 * Update topology spread constraints comments
 
-**Upgrade Notes**
+Upgrade Notes
 
 There are multiple breaking changes in this release:
 
@@ -2508,7 +2508,7 @@ There are multiple breaking changes in this release:
     * You _can_ disable it, if needed
 3. The `POD_NAME` and `POD_NAMESPACE` environment variables are now set by default, without values.
     * It is no longer necessary to add them in values and so, it can be removed from user values.
-4. In _values_, **certResolvers** specific syntax has been reworked to align with Traefik Proxy syntax.
+4. In _values_, certResolvers specific syntax has been reworked to align with Traefik Proxy syntax.
     * PR [#1214](https://github.com/traefik/traefik-helm-chart/pull/1214) contains a complete before / after example on how to update _values_
 5. Traefik Proxy 3.2 supports Gateway API v1.2 (standard channel)
     * It is recommended to check that other software using Gateway API on your cluster are compatible
@@ -2693,12 +2693,12 @@ index 73371f3..be89b00 100644
 
 ## 32.1.0  ![AppVersion: v3.1.5](https://img.shields.io/static/v1?label=AppVersion&message=v3.1.5&color=success&logo=) ![Kubernetes: >=1.22.0-0](https://img.shields.io/static/v1?label=Kubernetes&message=%3E%3D1.22.0-0&color=informational&logo=kubernetes) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2024-10-04
+Release date: 2024-10-04
 
 * fix: :bug: set disableIngressClassLookup until 3.1.4
 * feat(deps): update traefik docker tag to v3.1.5
 * feat(Traefik Proxy): update rbac following v3.2 migration guide
-* chore(release): 🚀 publish v32.1.0
+* chore(release): ðŸš€ publish v32.1.0
 
 ### Default value changes
 
@@ -2717,13 +2717,13 @@ index f36a9dd..73371f3 100644
 +  # 1. It switches respectively the use of `ClusterRole` and `ClusterRoleBinding` to `Role` and `RoleBinding`.
 +  # 2. It adds `disableIngressClassLookup` on Kubernetes Ingress with Traefik Proxy v3 until v3.1.4
 +  # 3. It adds `disableClusterScopeResources` on Ingress and CRD (Kubernetes) providers with Traefik Proxy v3.1.2+
-   # **NOTE**: `IngressClass`, `NodePortLB` and **Gateway** provider cannot be used with namespaced RBAC.
+   # NOTE: `IngressClass`, `NodePortLB` and Gateway provider cannot be used with namespaced RBAC.
    # See [upstream documentation](https://doc.traefik.io/traefik/providers/kubernetes-ingress/#disableclusterscoperesources) for more details.
    namespaced: false
 
 ## 32.0.0  ![AppVersion: v3.1.4](https://img.shields.io/static/v1?label=AppVersion&message=v3.1.4&color=success&logo=) ![Kubernetes: >=1.22.0-0](https://img.shields.io/static/v1?label=Kubernetes&message=%3E%3D1.22.0-0&color=informational&logo=kubernetes) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2024-09-27
+Release date: 2024-09-27
 
 * chore(release): :rocket: publish 32.0.0
 * fix: replace `CLF` with `common` in `values.yaml`
@@ -2813,10 +2813,10 @@ index d5173dc..f36a9dd 100644
 
 ## 32.0.0-rc1  ![AppVersion: v3.1.4](https://img.shields.io/static/v1?label=AppVersion&message=v3.1.4&color=success&logo=) ![Kubernetes: >=1.22.0-0](https://img.shields.io/static/v1?label=Kubernetes&message=%3E%3D1.22.0-0&color=informational&logo=kubernetes) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2024-09-20
+Release date: 2024-09-20
 
 * feat(Traefik Hub): add APIPlans and APIBundles CRDs
-* chore(release): 🚀 publish 32.0.0-rc1
+* chore(release): ðŸš€ publish 32.0.0-rc1
 
 ### Default value changes
 
@@ -2892,22 +2892,22 @@ index d5173dc..51dec67 100644
 
 ## 31.1.1  ![AppVersion: v3.1.4](https://img.shields.io/static/v1?label=AppVersion&message=v3.1.4&color=success&logo=) ![Kubernetes: >=1.22.0-0](https://img.shields.io/static/v1?label=Kubernetes&message=%3E%3D1.22.0-0&color=informational&logo=kubernetes) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2024-09-20
+Release date: 2024-09-20
 
-* fix: 🐛 updateStrategy behavior
+* fix: ðŸ› updateStrategy behavior
 * feat(deps): update traefik docker tag to v3.1.4
-* chore(release): 🚀 publish v31.1.1
+* chore(release): ðŸš€ publish v31.1.1
 
 ## 31.1.0  ![AppVersion: v3.1.3](https://img.shields.io/static/v1?label=AppVersion&message=v3.1.3&color=success&logo=) ![Kubernetes: >=1.22.0-0](https://img.shields.io/static/v1?label=Kubernetes&message=%3E%3D1.22.0-0&color=informational&logo=kubernetes) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2024-09-18
+Release date: 2024-09-18
 
-* fix: 🐛 update CRD to v3.1
-* feat: ✨ input validation using schema
-* feat: ✨ add AllowACMEByPass and improve schema/doc on ports values
+* fix: ðŸ› update CRD to v3.1
+* feat: âœ¨ input validation using schema
+* feat: âœ¨ add AllowACMEByPass and improve schema/doc on ports values
 * feat: add new webhooks and removes unnecessary ones
 * feat(deps): update traefik docker tag to v3.1.3
-* chore(release): 🚀 publish v31.1.0
+* chore(release): ðŸš€ publish v31.1.0
 
 ### Default value changes
 
@@ -3727,13 +3727,13 @@ index 2232d9e..1b9d0fd 100644
 
 ## 31.0.0  ![AppVersion: v3.1.2](https://img.shields.io/static/v1?label=AppVersion&message=v3.1.2&color=success&logo=) ![Kubernetes: >=1.22.0-0](https://img.shields.io/static/v1?label=Kubernetes&message=%3E%3D1.22.0-0&color=informational&logo=kubernetes) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2024-09-03
+Release date: 2024-09-03
 
 * fix(Traefik Hub): update CRDs to v1.5.0
 * fix(HTTP3): split udp and tcp Service when service.single is false
-* fix!: 🐛 set allowEmptyServices to true by default
+* fix!: ðŸ› set allowEmptyServices to true by default
 * feat(Traefik Hub): update CRDs to v1.7.0
-* chore(release): 🚀 publish v31.0.0
+* chore(release): ðŸš€ publish v31.0.0
 
 ### Default value changes
 
@@ -3764,13 +3764,13 @@ index 78eeacf..2232d9e 100644
 
 ## 30.1.0  ![AppVersion: v3.1.2](https://img.shields.io/static/v1?label=AppVersion&message=v3.1.2&color=success&logo=) ![Kubernetes: >=1.22.0-0](https://img.shields.io/static/v1?label=Kubernetes&message=%3E%3D1.22.0-0&color=informational&logo=kubernetes) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2024-08-14
+Release date: 2024-08-14
 
 * fix: disable default HTTPS listener for gateway
 * fix(Gateway API): wildcard support in hostname
 * fix(Gateway API): use Standard channel by default
-* feat: ✨ rework namespaced RBAC with `disableClusterScopeResources`
-* chore(release): 🚀 publish v30.1.0
+* feat: âœ¨ rework namespaced RBAC with `disableClusterScopeResources`
+* chore(release): ðŸš€ publish v30.1.0
 * chore(deps): update traefik docker tag to v3.1.2
 * chore(deps): update traefik docker tag to v3.1.1
 
@@ -3840,7 +3840,7 @@ index 83b6d98..78eeacf 100644
 +  # 1. Use `Role` and `RoleBinding` instead of `ClusterRole` and `ClusterRoleBinding`.
 +  # 2. Set `disableIngressClassLookup` on Kubernetes Ingress providers with Traefik Proxy v3 until v3.1.1
 +  # 3. Set `disableClusterScopeResources` on Kubernetes Ingress and CRD providers with Traefik Proxy v3.1.2+
-+  # **NOTE**: `IngressClass`, `NodePortLB` and **Gateway** provider cannot be used with namespaced RBAC.
++  # NOTE: `IngressClass`, `NodePortLB` and Gateway provider cannot be used with namespaced RBAC.
 +  # See [upstream documentation](https://doc.traefik.io/traefik/providers/kubernetes-ingress/#disableclusterscoperesources) for more details.
    namespaced: false
    # Enable user-facing roles
@@ -3849,14 +3849,14 @@ index 83b6d98..78eeacf 100644
 
 ## 30.0.2  ![AppVersion: v3.1.0](https://img.shields.io/static/v1?label=AppVersion&message=v3.1.0&color=success&logo=) ![Kubernetes: >=1.22.0-0](https://img.shields.io/static/v1?label=Kubernetes&message=%3E%3D1.22.0-0&color=informational&logo=kubernetes) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2024-07-30
+Release date: 2024-07-30
 
 * fix(Traefik Hub): missing RBACs for Traefik Hub
-* chore(release): 🚀 publish v30.0.2
+* chore(release): ðŸš€ publish v30.0.2
 
 ## 30.0.1  ![AppVersion: v3.1.0](https://img.shields.io/static/v1?label=AppVersion&message=v3.1.0&color=success&logo=) ![Kubernetes: >=1.22.0-0](https://img.shields.io/static/v1?label=Kubernetes&message=%3E%3D1.22.0-0&color=informational&logo=kubernetes) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2024-07-29
+Release date: 2024-07-29
 
 * fix(Traefik Hub): support new RBACs for upcoming traefik hub release
 * fix(Traefik Hub): RBACs missing with API Gateway
@@ -3864,23 +3864,23 @@ index 83b6d98..78eeacf 100644
 
 ## 30.0.0  ![AppVersion: v3.1.0](https://img.shields.io/static/v1?label=AppVersion&message=v3.1.0&color=success&logo=) ![Kubernetes: >=1.22.0-0](https://img.shields.io/static/v1?label=Kubernetes&message=%3E%3D1.22.0-0&color=informational&logo=kubernetes) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2024-07-24
+Release date: 2024-07-24
 
-* fix: 🐛 ingressroute default name
+* fix: ðŸ› ingressroute default name
 * fix: namespaced RBACs hub api gateway
 * fix: can't set gateway name
 * fix(Gateway API): provide expected roles when using namespaced RBAC
 * fix(Gateway API)!: revamp Gateway implementation
-* feat: ✨ display release name and image full path in installation notes
+* feat: âœ¨ display release name and image full path in installation notes
 * feat: use single ingressRoute template
 * feat: handle log filePath and noColor
-* chore(release): 🚀 publish v30.0.0
+* chore(release): ðŸš€ publish v30.0.0
 * chore(deps): update traefik docker tag to v3.1.0
 
-**Upgrade Notes**
+Upgrade Notes
 
 There is a breaking upgrade on how to configure Gateway with _values_.
-This release supports Traefik Proxy v3.0 **and** v3.1.
+This release supports Traefik Proxy v3.0 and v3.1.
 
 ### Default value changes
 
@@ -3971,16 +3971,16 @@ index c8bfd5b..83b6d98 100644
 
 ## 29.0.1  ![AppVersion: v3.0.4](https://img.shields.io/static/v1?label=AppVersion&message=v3.0.4&color=success&logo=) ![Kubernetes: >=1.22.0-0](https://img.shields.io/static/v1?label=Kubernetes&message=%3E%3D1.22.0-0&color=informational&logo=kubernetes) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2024-07-09
+Release date: 2024-07-09
 
 * fix: semverCompare failing on some legitimate tags
 * fix: RBACs for hub and disabled namespaced RBACs
-* chore(release): 🚀 publish v29.0.1
+* chore(release): ðŸš€ publish v29.0.1
 * chore(deps): update jnorwood/helm-docs docker tag to v1.14.0
 
 ## 29.0.0  ![AppVersion: v3.0.4](https://img.shields.io/static/v1?label=AppVersion&message=v3.0.4&color=success&logo=) ![Kubernetes: >=1.22.0-0](https://img.shields.io/static/v1?label=Kubernetes&message=%3E%3D1.22.0-0&color=informational&logo=kubernetes) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Upgrade Notes**
+Upgrade Notes
 
 This is a major breaking upgrade. [Migration guide](https://doc.traefik.io/traefik/v3.1/migration/v3/#v30-to-v31) from v3.0 to v3.1rc has been applied on this chart.
 
@@ -3995,15 +3995,15 @@ It comes with those breaking changes:
 
 CRDs needs to be upgraded: `kubectl apply --server-side --force-conflicts -k https://github.com/traefik/traefik-helm-chart/traefik/crds/`
 
-**Release date:** 2024-07-05
+Release date: 2024-07-05
 
-* fix: 🐛 improve error message on additional service without ports
+* fix: ðŸ› improve error message on additional service without ports
 * fix:  allow multiples values in the `secretResourceNames` slice
 * fix(rbac)!: nodes API permissions for Traefik v3.1+
 * fix(dashboard): Only set ingressClass annotation when kubernetesCRD provider is listening for it
 * fix!: prometheus operator settings
-* feat: ✨ update CRDs & RBAC for Traefik Proxy
-* feat: ✨ migrate to endpointslices rbac
+* feat: âœ¨ update CRDs & RBAC for Traefik Proxy
+* feat: âœ¨ migrate to endpointslices rbac
 * feat: allow to set hostAliases for traefik pod
 * feat(providers): add nativeLBByDefault support
 * feat(providers)!: improve kubernetesGateway and Gateway API support
@@ -4244,11 +4244,11 @@ index e440dcf..c8bfd5b 100644
 
 ## 28.3.0  ![AppVersion: v3.0.2](https://img.shields.io/static/v1?label=AppVersion&message=v3.0.2&color=success&logo=) ![Kubernetes: >=1.22.0-0](https://img.shields.io/static/v1?label=Kubernetes&message=%3E%3D1.22.0-0&color=informational&logo=kubernetes) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2024-06-14
+Release date: 2024-06-14
 
-* fix: 🐛 namespaced rbac when kubernetesIngress provider is disabled
-* fix: 🐛  add divisor: '1' to GOMAXPROCS and GOMEMLIMIT
-* fix(security): 🐛 🔒️ mount service account token on pod level
+* fix: ðŸ› namespaced rbac when kubernetesIngress provider is disabled
+* fix: ðŸ›  add divisor: '1' to GOMAXPROCS and GOMEMLIMIT
+* fix(security): ðŸ› ðŸ”’ï¸ mount service account token on pod level
 * fix(Traefik Hub): remove obsolete CRD
 * fix(Traefik Hub): remove namespace in mutating webhook
 * feat: allow setting permanent on redirectTo
@@ -4274,12 +4274,12 @@ index c558c78..e440dcf 100644
 
 ## 28.2.0  ![AppVersion: v3.0.1](https://img.shields.io/static/v1?label=AppVersion&message=v3.0.1&color=success&logo=) ![Kubernetes: >=1.22.0-0](https://img.shields.io/static/v1?label=Kubernetes&message=%3E%3D1.22.0-0&color=informational&logo=kubernetes) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2024-05-28
+Release date: 2024-05-28
 
 * fix(IngressClass): provides annotation on IngressRoutes when it's enabled
-* feat: ✨ simplify values and provide more examples
+* feat: âœ¨ simplify values and provide more examples
 * feat: add deletecollection right on secrets
-* chore(release): 🚀 publish v28.2.0
+* chore(release): ðŸš€ publish v28.2.0
 * chore(deps): update traefik docker tag to v3.0.1
 
 ### Default value changes
@@ -4656,7 +4656,7 @@ index 2fd9282..c558c78 100644
 
 * fix(Traefik Hub): do not deploy mutating webhook when enabling only API Gateway
 * feat(Traefik Hub): use Traefik Proxy otlp config
-* chore: 🔧 update Traefik Hub CRD to v1.3.3
+* chore: ðŸ”§ update Traefik Hub CRD to v1.3.3
 
 ### Default value changes
 
@@ -4719,17 +4719,17 @@ index 70297f6..2fd9282 100644
 
 ## 28.1.0-beta.3  ![AppVersion: v3.0.0](https://img.shields.io/static/v1?label=AppVersion&message=v3.0.0&color=success&logo=) ![Kubernetes: >=1.22.0-0](https://img.shields.io/static/v1?label=Kubernetes&message=%3E%3D1.22.0-0&color=informational&logo=kubernetes) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2024-05-03
+Release date: 2024-05-03
 
-* chore: 🔧 update Traefik Hub CRD to v1.3.2
-* chore(release): 🚀 publish v28.1.0-beta.3
+* chore: ðŸ”§ update Traefik Hub CRD to v1.3.2
+* chore(release): ðŸš€ publish v28.1.0-beta.3
 
 ## 28.1.0-beta.2  ![AppVersion: v3.0.0](https://img.shields.io/static/v1?label=AppVersion&message=v3.0.0&color=success&logo=) ![Kubernetes: >=1.22.0-0](https://img.shields.io/static/v1?label=Kubernetes&message=%3E%3D1.22.0-0&color=informational&logo=kubernetes) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2024-05-02
+Release date: 2024-05-02
 
-* fix: 🐛 refine Traefik Hub support
-* chore(release): 🚀 publish v28.1.0-beta.2
+* fix: ðŸ› refine Traefik Hub support
+* chore(release): ðŸš€ publish v28.1.0-beta.2
 
 ### Default value changes
 
@@ -4764,19 +4764,19 @@ index ce0a7a3..70297f6 100644
 
 ## 28.1.0-beta.1  ![AppVersion: v3.0.0](https://img.shields.io/static/v1?label=AppVersion&message=v3.0.0&color=success&logo=) ![Kubernetes: >=1.22.0-0](https://img.shields.io/static/v1?label=Kubernetes&message=%3E%3D1.22.0-0&color=informational&logo=kubernetes) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2024-04-30
+Release date: 2024-04-30
 
 * feat: :rocket: add initial support for Traefik Hub Api Gateway
-* chore(release): 🚀 publish v28.1.0-beta.1
+* chore(release): ðŸš€ publish v28.1.0-beta.1
 
 ## 28.0.0  ![AppVersion: v3.0.0](https://img.shields.io/static/v1?label=AppVersion&message=v3.0.0&color=success&logo=) ![Kubernetes: >=1.22.0-0](https://img.shields.io/static/v1?label=Kubernetes&message=%3E%3D1.22.0-0&color=informational&logo=kubernetes) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2024-04-30
+Release date: 2024-04-30
 
-* style: 🎨 consistent capitalization on `--entryPoints` CLI flag
-* fix: 🐛 only expose http3 port on service when TCP variant is exposed
-* fix: 🐛 logs filters on status codes
-* feat: ✨ add support of `experimental-v3.0` unstable version
+* style: ðŸŽ¨ consistent capitalization on `--entryPoints` CLI flag
+* fix: ðŸ› only expose http3 port on service when TCP variant is exposed
+* fix: ðŸ› logs filters on status codes
+* feat: âœ¨ add support of `experimental-v3.0` unstable version
 * feat: ability to override liveness and readiness probe paths
 * feat(ports): add transport options
 * chore(release): publish v28.0.0
@@ -4868,9 +4868,9 @@ index c0d72d8..2bff10d 100644
 
 ## 28.0.0-rc1  ![AppVersion: v3.0.0-rc5](https://img.shields.io/static/v1?label=AppVersion&message=v3.0.0-rc5&color=success&logo=) ![Kubernetes: >=1.16.0-0](https://img.shields.io/static/v1?label=Kubernetes&message=%3E%3D1.16.0-0&color=informational&logo=kubernetes) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2024-04-17
+Release date: 2024-04-17
 
-**Upgrade Notes**
+Upgrade Notes
 
 This is a major breaking upgrade. [Migration guide](https://doc.traefik.io/traefik/v3.0/migration/v2-to-v3/) have been applied on the chart.
 
@@ -4894,13 +4894,13 @@ kubectl delete crds \
   traefikservices.traefik.containo.us
 ```
 
-**Changes**
+Changes
 
 * feat(podtemplate): set GOMEMLIMIT, GOMAXPROCS when limits are defined
-* feat: ✨ fail gracefully when required port number is not set
+* feat: âœ¨ fail gracefully when required port number is not set
 * feat!: :boom: initial support of Traefik Proxy v3
-* docs: 📚️ improve EXAMPLES on acme resolver
-* chore(release): 🚀 publish v28 rc1
+* docs: ðŸ“šï¸ improve EXAMPLES on acme resolver
+* chore(release): ðŸš€ publish v28 rc1
 
 ### Default value changes
 
@@ -5182,9 +5182,9 @@ index cd9fb6e..c0d72d8 100644
 
 ## 27.0.0  ![AppVersion: v2.11.0](https://img.shields.io/static/v1?label=AppVersion&message=v2.11.0&color=success&logo=) ![Kubernetes: >=1.16.0-0](https://img.shields.io/static/v1?label=Kubernetes&message=%3E%3D1.16.0-0&color=informational&logo=kubernetes) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2024-04-02
+Release date: 2024-04-02
 
-**Upgrade notes**
+Upgrade notes
 
 Custom services and port exposure have been redesigned, requiring the following changes:
 - if you were overriding port exposure behavior using the `expose` or `exposeInternal` flags, you should replace them with a service name to boolean mapping, i.e. replace this:
@@ -5208,13 +5208,13 @@ ports:
 
 - if you were previously using the `service.internal` value, you should migrate the values to the `service.additionalServices.internal` value instead; this should yield the same results, but make sure to carefully check for any changes!
 
-**Changes**
+Changes
 
 * fix: remove null annotations on dashboard `IngressRoute`
 * fix(rbac): do not create clusterrole for namespace deployment on Traefik v3
 * feat: restrict access to secrets
 * feat!: :boom: refactor custom services and port exposure
-* chore(release): 🚀 publish v27.0.0
+* chore(release): ðŸš€ publish v27.0.0
 
 ### Default value changes
 
@@ -5337,18 +5337,18 @@ index dbd078f..363871d 100644
 
 ## 26.1.0  ![AppVersion: v2.11.0](https://img.shields.io/static/v1?label=AppVersion&message=v2.11.0&color=success&logo=) ![Kubernetes: >=1.16.0-0](https://img.shields.io/static/v1?label=Kubernetes&message=%3E%3D1.16.0-0&color=informational&logo=kubernetes) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2024-02-19
+Release date: 2024-02-19
 
-* fix: 🐛 set runtimeClassName at pod level
-* fix: 🐛 missing quote on experimental plugin args
+* fix: ðŸ› set runtimeClassName at pod level
+* fix: ðŸ› missing quote on experimental plugin args
 * fix: update traefik v3 serverstransporttcps CRD
 * feat: set runtimeClassName on pod spec
 * feat: create v1 Gateway and GatewayClass Version for Traefik v3
 * feat: allow exposure of ports on internal service only
 * doc: fix invalid suggestion on TLSOption (#996)
-* chore: 🔧 update maintainers
-* chore: 🔧 promote jnoordsij to Traefik Helm Chart maintainer
-* chore(release): 🚀 publish v26.1.0
+* chore: ðŸ”§ update maintainers
+* chore: ðŸ”§ promote jnoordsij to Traefik Helm Chart maintainer
+* chore(release): ðŸš€ publish v26.1.0
 * chore(deps): update traefik docker tag to v2.11.0
 * chore(deps): update traefik docker tag to v2.10.7
 * chore(crds): update definitions for traefik v2.11
@@ -5435,16 +5435,16 @@ index f9dac91..dbd078f 100644
 
 ## 26.0.0  ![AppVersion: v2.10.6](https://img.shields.io/static/v1?label=AppVersion&message=v2.10.6&color=success&logo=) ![Kubernetes: >=1.16.0-0](https://img.shields.io/static/v1?label=Kubernetes&message=%3E%3D1.16.0-0&color=informational&logo=kubernetes) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2023-12-05
+Release date: 2023-12-05
 
-* fix: 🐛 improve confusing suggested value on openTelemetry.grpc
-* fix: 🐛 declare http3 udp port, with or without hostport
-* feat: 💥 deployment.podannotations support interpolation with tpl
+* fix: ðŸ› improve confusing suggested value on openTelemetry.grpc
+* fix: ðŸ› declare http3 udp port, with or without hostport
+* feat: ðŸ’¥ deployment.podannotations support interpolation with tpl
 * feat: allow update of namespace policy for websecure listener
 * feat: allow defining startupProbe
 * feat: add file provider
 * feat: :boom: unify plugin import between traefik and this chart
-* chore(release): 🚀 publish v26
+* chore(release): ðŸš€ publish v26
 * chore(deps): update traefik docker tag to v2.10.6
 * Release namespace for Prometheus Operator resources
 
@@ -5535,16 +5535,16 @@ index 71e377e..f9dac91 100644
 
 ## 25.0.0  ![AppVersion: v2.10.5](https://img.shields.io/static/v1?label=AppVersion&message=v2.10.5&color=success&logo=) ![Kubernetes: >=1.16.0-0](https://img.shields.io/static/v1?label=Kubernetes&message=%3E%3D1.16.0-0&color=informational&logo=kubernetes) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2023-10-23
+Release date: 2023-10-23
 
-* revert: "fix: 🐛 remove old CRDs using traefik.containo.us"
-* fix: 🐛 remove old CRDs using traefik.containo.us
+* revert: "fix: ðŸ› remove old CRDs using traefik.containo.us"
+* fix: ðŸ› remove old CRDs using traefik.containo.us
 * fix: disable ClusterRole and ClusterRoleBinding when not needed
 * fix: detect correctly v3 version when using sha in `image.tag`
 * fix: allow updateStrategy.rollingUpdate.maxUnavailable to be passed in as an int or string
 * fix: add missing separator in crds
 * fix: add Prometheus scraping annotations only if serviceMonitor not created
-* feat: ✨ add healthcheck ingressRoute
+* feat: âœ¨ add healthcheck ingressRoute
 * feat: :boom: support http redirections and http challenges with cert-manager
 * feat: :boom: rework and allow update of namespace policy for Gateway
 * docs: Fix typo in the default values file
@@ -5552,7 +5552,7 @@ index 71e377e..f9dac91 100644
 * chore(release): publish v25.0.0
 * chore(deps): update traefik docker tag to v2.10.5
 * chore(deps): update docker.io/helmunittest/helm-unittest docker tag to v3.12.3
-* chore(ci): 🔧 👷 add e2e test when releasing
+* chore(ci): ðŸ”§ ðŸ‘· add e2e test when releasing
 
 ### Default value changes
 
@@ -6227,14 +6227,14 @@ index aeec85c..71e377e 100644
 
 ## 24.0.0  ![AppVersion: v2.10.4](https://img.shields.io/static/v1?label=AppVersion&message=v2.10.4&color=success&logo=) ![Kubernetes: >=1.16.0-0](https://img.shields.io/static/v1?label=Kubernetes&message=%3E%3D1.16.0-0&color=informational&logo=kubernetes) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2023-08-10
+Release date: 2023-08-10
 
-* fix: 💥 BREAKING CHANGE on healthchecks and traefik port
+* fix: ðŸ’¥ BREAKING CHANGE on healthchecks and traefik port
 * fix: tracing.opentelemetry.tls is optional for all values
 * fix: http3 support broken when advertisedPort set
 * feat: multi namespace RBAC manifests
-* chore(tests): 🔧 fix typo on tracing test
-* chore(release): 🚀 publish v24.0.0
+* chore(tests): ðŸ”§ fix typo on tracing test
+* chore(release): ðŸš€ publish v24.0.0
 * chore(deps): update docker.io/helmunittest/helm-unittest docker tag to v3.12.2
 
 ### Default value changes
@@ -6296,17 +6296,17 @@ index 947ba56..aeec85c 100644
 
 ## 23.2.0  ![AppVersion: v2.10.4](https://img.shields.io/static/v1?label=AppVersion&message=v2.10.4&color=success&logo=) ![Kubernetes: >=1.16.0-0](https://img.shields.io/static/v1?label=Kubernetes&message=%3E%3D1.16.0-0&color=informational&logo=kubernetes) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2023-07-27
+Release date: 2023-07-27
 
-* ⬆️ Upgrade traefik Docker tag to v2.10.3
+* â¬†ï¸ Upgrade traefik Docker tag to v2.10.3
 * release: :rocket: publish v23.2.0
-* fix: 🐛 update traefik.containo.us CRDs to v2.10
-* fix: 🐛 traefik or metrics port can be disabled
+* fix: ðŸ› update traefik.containo.us CRDs to v2.10
+* fix: ðŸ› traefik or metrics port can be disabled
 * fix: ingressclass name should be customizable (#864)
-* feat: ✨ add support for traefik v3.0.0-beta3 and openTelemetry
+* feat: âœ¨ add support for traefik v3.0.0-beta3 and openTelemetry
 * feat: disable allowPrivilegeEscalation
 * feat: add pod_name as default in values.yaml
-* chore(tests): 🔧 use more accurate asserts on refactor'd isNull test
+* chore(tests): ðŸ”§ use more accurate asserts on refactor'd isNull test
 * chore(deps): update traefik docker tag to v2.10.4
 * chore(deps): update docker.io/helmunittest/helm-unittest docker tag to v3.11.3
 
@@ -6420,14 +6420,14 @@ index 345bbd8..947ba56 100644
 
 ## 23.1.0  ![AppVersion: v2.10.1](https://img.shields.io/static/v1?label=AppVersion&message=v2.10.1&color=success&logo=) ![Kubernetes: >=1.16.0-0](https://img.shields.io/static/v1?label=Kubernetes&message=%3E%3D1.16.0-0&color=informational&logo=kubernetes) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2023-06-06
+Release date: 2023-06-06
 
-* release: 🚀 publish v23.1.0
-* fix: 🐛 use k8s version for hpa api version
-* fix: 🐛 http3 support on traefik v3
+* release: ðŸš€ publish v23.1.0
+* fix: ðŸ› use k8s version for hpa api version
+* fix: ðŸ› http3 support on traefik v3
 * fix: use `targetPort` instead of `port` on ServiceMonitor
-* feat: ➖ remove Traefik Hub v1 integration
-* feat: ✨ add a warning when labelSelector don't match
+* feat: âž– remove Traefik Hub v1 integration
+* feat: âœ¨ add a warning when labelSelector don't match
 * feat: common labels for all resources
 * feat: allow specifying service loadBalancerClass
 * feat: add optional `appProtocol` field on Service ports
@@ -7197,37 +7197,37 @@ index 71273cc..345bbd8 100644
 
 ## 23.0.1  ![AppVersion: v2.10.1](https://img.shields.io/static/v1?label=AppVersion&message=v2.10.1&color=success&logo=) ![Kubernetes: >=1.16.0-0](https://img.shields.io/static/v1?label=Kubernetes&message=%3E%3D1.16.0-0&color=informational&logo=kubernetes) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2023-04-28
+Release date: 2023-04-28
 
-* fix: ⬆️ Upgrade traefik Docker tag to v2.10.1
+* fix: â¬†ï¸ Upgrade traefik Docker tag to v2.10.1
 
 
 ## 23.0.0  ![AppVersion: v2.10.0](https://img.shields.io/static/v1?label=AppVersion&message=v2.10.0&color=success&logo=) ![Kubernetes: >=1.16.0-0](https://img.shields.io/static/v1?label=Kubernetes&message=%3E%3D1.16.0-0&color=informational&logo=kubernetes) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2023-04-26
+Release date: 2023-04-26
 
 * BREAKING CHANGE: Traefik 2.10 comes with CRDs update on API Group
 
 
 ## 22.3.0  ![AppVersion: v2.10.0](https://img.shields.io/static/v1?label=AppVersion&message=v2.10.0&color=success&logo=) ![Kubernetes: >=1.16.0-0](https://img.shields.io/static/v1?label=Kubernetes&message=%3E%3D1.16.0-0&color=informational&logo=kubernetes) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2023-04-25
+Release date: 2023-04-25
 
-* ⬆️ Upgrade traefik Docker tag to v2.10.0
-* fix: 🐛 update rbac for both traefik.io and containo.us apigroups (#836)
-* breaking: 💥 update CRDs needed for Traefik v2.10
+* â¬†ï¸ Upgrade traefik Docker tag to v2.10.0
+* fix: ðŸ› update rbac for both traefik.io and containo.us apigroups (#836)
+* breaking: ðŸ’¥ update CRDs needed for Traefik v2.10
 
 
 ## 22.2.0  ![AppVersion: v2.9.10](https://img.shields.io/static/v1?label=AppVersion&message=v2.9.10&color=success&logo=) ![Kubernetes: >=1.16.0-0](https://img.shields.io/static/v1?label=Kubernetes&message=%3E%3D1.16.0-0&color=informational&logo=kubernetes) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2023-04-24
+Release date: 2023-04-24
 
-* test: 👷 Update unit tests tooling
-* fix: 🐛 annotations leaking between aliased subcharts
+* test: ðŸ‘· Update unit tests tooling
+* fix: ðŸ› annotations leaking between aliased subcharts
 * fix: indentation on `TLSOption`
 * feat: override container port
 * feat: allow to set dnsConfig on pod template
-* chore: 🔧 new release
+* chore: ðŸ”§ new release
 * added targetPort support
 
 ### Default value changes
@@ -7282,9 +7282,9 @@ index 9ece303..71273cc 100644
 
 ## 22.1.0  ![AppVersion: v2.9.10](https://img.shields.io/static/v1?label=AppVersion&message=v2.9.10&color=success&logo=) ![Kubernetes: >=1.16.0-0](https://img.shields.io/static/v1?label=Kubernetes&message=%3E%3D1.16.0-0&color=informational&logo=kubernetes) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2023-04-07
+Release date: 2023-04-07
 
-* ⬆️ Upgrade traefik Docker tag to v2.9.10
+* â¬†ï¸ Upgrade traefik Docker tag to v2.9.10
 * feat: add additional labels to tlsoption
 
 ### Default value changes
@@ -7315,17 +7315,17 @@ index 4762b77..9ece303 100644
 
 ## 22.0.0  ![AppVersion: v2.9.9](https://img.shields.io/static/v1?label=AppVersion&message=v2.9.9&color=success&logo=) ![Kubernetes: >=1.16.0-0](https://img.shields.io/static/v1?label=Kubernetes&message=%3E%3D1.16.0-0&color=informational&logo=kubernetes) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2023-03-29
+Release date: 2023-03-29
 
 * BREAKING CHANGE: `image.repository` introduction may break during the upgrade. See PR #802.
 
 
 ## 21.2.1  ![AppVersion: v2.9.9](https://img.shields.io/static/v1?label=AppVersion&message=v2.9.9&color=success&logo=) ![Kubernetes: >=1.16.0-0](https://img.shields.io/static/v1?label=Kubernetes&message=%3E%3D1.16.0-0&color=informational&logo=kubernetes) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2023-03-28
+Release date: 2023-03-28
 
-* 🎨 Introduce `image.registry` and add explicit default (it may impact custom `image.repository`)
-* ⬆️ Upgrade traefik Docker tag to v2.9.9
+* ðŸŽ¨ Introduce `image.registry` and add explicit default (it may impact custom `image.repository`)
+* â¬†ï¸ Upgrade traefik Docker tag to v2.9.9
 * :memo: Clarify the need of an initContainer when enabling persistence for TLS Certificates
 
 ### Default value changes
@@ -7385,20 +7385,20 @@ index cadc7a6..4762b77 100644
 
 ## 21.2.0  ![AppVersion: v2.9.8](https://img.shields.io/static/v1?label=AppVersion&message=v2.9.8&color=success&logo=) ![Kubernetes: >=1.16.0-0](https://img.shields.io/static/v1?label=Kubernetes&message=%3E%3D1.16.0-0&color=informational&logo=kubernetes) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2023-03-08
+Release date: 2023-03-08
 
-* 🚨 Fail when enabling PSP on Kubernetes v1.25+ (#801)
-* ⬆️ Upgrade traefik Docker tag to v2.9.8
+* ðŸš¨ Fail when enabling PSP on Kubernetes v1.25+ (#801)
+* â¬†ï¸ Upgrade traefik Docker tag to v2.9.8
 * Separate UDP hostPort for HTTP/3
 * :sparkles: release 21.2.0 (#805)
 
 
 ## 21.1.0  ![AppVersion: v2.9.7](https://img.shields.io/static/v1?label=AppVersion&message=v2.9.7&color=success&logo=) ![Kubernetes: >=1.16.0-0](https://img.shields.io/static/v1?label=Kubernetes&message=%3E%3D1.16.0-0&color=informational&logo=kubernetes) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2023-02-15
+Release date: 2023-02-15
 
-* ⬆️ Upgrade traefik Docker tag to v2.9.7
-* ✨ release 21.1.0
+* â¬†ï¸ Upgrade traefik Docker tag to v2.9.7
+* âœ¨ release 21.1.0
 * fix: traefik image name for renovate
 * feat: Add volumeName to PersistentVolumeClaim (#792)
 * Allow setting TLS options on dashboard IngressRoute
@@ -7431,12 +7431,12 @@ index 780b04b..cadc7a6 100644
 
 ## 21.0.0  ![AppVersion: v2.9.6](https://img.shields.io/static/v1?label=AppVersion&message=v2.9.6&color=success&logo=) ![Kubernetes: >=1.16.0-0](https://img.shields.io/static/v1?label=Kubernetes&message=%3E%3D1.16.0-0&color=informational&logo=kubernetes) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2023-02-10
+Release date: 2023-02-10
 
-* 🙈 Add a setting disable API check on Prometheus Operator (#769)
-* 📝 Improve documentation on entrypoint options
-* 💥 New release with BREAKING changes (#786)
-* ✨ Chart.yaml - add kubeVersion: ">=1.16.0-0"
+* ðŸ™ˆ Add a setting disable API check on Prometheus Operator (#769)
+* ðŸ“ Improve documentation on entrypoint options
+* ðŸ’¥ New release with BREAKING changes (#786)
+* âœ¨ Chart.yaml - add kubeVersion: ">=1.16.0-0"
 * fix: allowExternalNameServices for kubernetes ingress when hub enabled (#772)
 * fix(service-metrics): invert prometheus svc & fullname length checking
 * Configure Renovate (#783)
@@ -7515,11 +7515,11 @@ index 42a27f9..780b04b 100644
 
 ## 20.8.0  ![AppVersion: v2.9.6](https://img.shields.io/static/v1?label=AppVersion&message=v2.9.6&color=success&logo=) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2022-12-09
+Release date: 2022-12-09
 
-* ✨ update chart to version 20.8.0
-* ✨ add support for default entrypoints
-* ✨ add support for OpenTelemetry and Traefik v3
+* âœ¨ update chart to version 20.8.0
+* âœ¨ add support for default entrypoints
+* âœ¨ add support for OpenTelemetry and Traefik v3
 
 ### Default value changes
 
@@ -7604,11 +7604,11 @@ index b77539d..42a27f9 100644
 
 ## 20.7.0  ![AppVersion: v2.9.6](https://img.shields.io/static/v1?label=AppVersion&message=v2.9.6&color=success&logo=) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2022-12-08
+Release date: 2022-12-08
 
-* 🐛 Don't fail when prometheus is disabled (#756)
-* ⬆️  Update default Traefik release to v2.9.6 (#758)
-* ✨ support for Gateway annotations
+* ðŸ› Don't fail when prometheus is disabled (#756)
+* â¬†ï¸  Update default Traefik release to v2.9.6 (#758)
+* âœ¨ support for Gateway annotations
 * add keywords [networking], for artifacthub category quering
 * :bug: Fix typo on bufferingSize for access logs (#753)
 * :adhesive_bandage: Add quotes for artifacthub changelog parsing (#748)
@@ -7644,9 +7644,9 @@ index 4f2fb2a..b77539d 100644
 
 ## 20.6.0  ![AppVersion: v2.9.5](https://img.shields.io/static/v1?label=AppVersion&message=v2.9.5&color=success&logo=) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2022-11-30
+Release date: 2022-11-30
 
-* 🔍️ Add filePath support on access logs (#747)
+* ðŸ”ï¸ Add filePath support on access logs (#747)
 * :memo: Improve documentation on using PVC with TLS certificates
 * :bug: Add missing scheme in help on Traefik Hub integration (#746)
 
@@ -7740,31 +7740,31 @@ index 15f1682..4f2fb2a 100644
 
 ## 20.5.3  ![AppVersion: v2.9.5](https://img.shields.io/static/v1?label=AppVersion&message=v2.9.5&color=success&logo=) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2022-11-25
+Release date: 2022-11-25
 
-* 🐛 Fix template issue with obsolete helm version + add helm version requirement (#743)
+* ðŸ› Fix template issue with obsolete helm version + add helm version requirement (#743)
 
 
 ## 20.5.2  ![AppVersion: v2.9.5](https://img.shields.io/static/v1?label=AppVersion&message=v2.9.5&color=success&logo=) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2022-11-24
+Release date: 2022-11-24
 
-* ⬆️Update Traefik to v2.9.5 (#740)
+* â¬†ï¸Update Traefik to v2.9.5 (#740)
 
 
 ## 20.5.1  ![AppVersion: v2.9.4](https://img.shields.io/static/v1?label=AppVersion&message=v2.9.4&color=success&logo=) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2022-11-23
+Release date: 2022-11-23
 
-* 🐛 Fix namespaceSelector on ServiceMonitor (#737)
+* ðŸ› Fix namespaceSelector on ServiceMonitor (#737)
 
 
 ## 20.5.0  ![AppVersion: v2.9.4](https://img.shields.io/static/v1?label=AppVersion&message=v2.9.4&color=success&logo=) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2022-11-23
+Release date: 2022-11-23
 
-* 🚀 Add complete support on metrics options (#735)
-* 🐛 make tests use fixed version
+* ðŸš€ Add complete support on metrics options (#735)
+* ðŸ› make tests use fixed version
 
 ### Default value changes
 
@@ -7891,14 +7891,14 @@ index e49d02d..15f1682 100644
 
 ## 20.4.1  ![AppVersion: v2.9.4](https://img.shields.io/static/v1?label=AppVersion&message=v2.9.4&color=success&logo=) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2022-11-21
+Release date: 2022-11-21
 
-* 🐛 fix namespace references to support namespaceOverride
+* ðŸ› fix namespace references to support namespaceOverride
 
 
 ## 20.4.0  ![AppVersion: v2.9.4](https://img.shields.io/static/v1?label=AppVersion&message=v2.9.4&color=success&logo=) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2022-11-21
+Release date: 2022-11-21
 
 * Add (optional) dedicated metrics service (#727)
 
@@ -7926,14 +7926,14 @@ index ca15f6a..e49d02d 100644
 
 ## 20.3.1  ![AppVersion: v2.9.4](https://img.shields.io/static/v1?label=AppVersion&message=v2.9.4&color=success&logo=) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2022-11-21
+Release date: 2022-11-21
 
-* 🐛 Fix namespace override which was missing on `ServiceAccount` (#731)
+* ðŸ› Fix namespace override which was missing on `ServiceAccount` (#731)
 
 
 ## 20.3.0  ![AppVersion: v2.9.4](https://img.shields.io/static/v1?label=AppVersion&message=v2.9.4&color=success&logo=) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2022-11-17
+Release date: 2022-11-17
 
 * Add overwrite option for instance label value (#725)
 
@@ -7955,17 +7955,17 @@ index c7f84a7..ca15f6a 100644
 
 ## 20.2.1  ![AppVersion: v2.9.4](https://img.shields.io/static/v1?label=AppVersion&message=v2.9.4&color=success&logo=) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2022-11-17
+Release date: 2022-11-17
 
-* 🙈 do not namespace ingress class (#723)
-* ✨ copy LICENSE and README.md on release
+* ðŸ™ˆ do not namespace ingress class (#723)
+* âœ¨ copy LICENSE and README.md on release
 
 
 ## 20.2.0  ![AppVersion: v2.9.4](https://img.shields.io/static/v1?label=AppVersion&message=v2.9.4&color=success&logo=) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2022-11-15
+Release date: 2022-11-15
 
-* ✨ add support for namespace overrides (#718)
+* âœ¨ add support for namespace overrides (#718)
 * Document recent changes in the README (#717)
 
 ### Default value changes
@@ -7990,17 +7990,17 @@ index 97a1b71..c7f84a7 100644
 
 ## 20.1.1  ![AppVersion: v2.9.4](https://img.shields.io/static/v1?label=AppVersion&message=v2.9.4&color=success&logo=) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2022-11-10
+Release date: 2022-11-10
 
 * fix: use consistent appVersion with Traefik Proxy
 
 
 ## 20.1.0  ![AppVersion: 2.9.4](https://img.shields.io/static/v1?label=AppVersion&message=2.9.4&color=success&logo=) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2022-11-09
+Release date: 2022-11-09
 
-* 🔧 Adds more settings for dashboard ingressRoute (#710)
-* 🐛 fix chart releases
+* ðŸ”§ Adds more settings for dashboard ingressRoute (#710)
+* ðŸ› fix chart releases
 
 ### Default value changes
 
@@ -8028,10 +8028,10 @@ index 2ec3736..97a1b71 100644
 
 ## 20.0.0  ![AppVersion: 2.9.4](https://img.shields.io/static/v1?label=AppVersion&message=2.9.4&color=success&logo=) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2022-11-08
+Release date: 2022-11-08
 
-* 🐛 remove old deployment workflow
-* ✨ migrate to centralised helm repository
+* ðŸ› remove old deployment workflow
+* âœ¨ migrate to centralised helm repository
 * Allow updateStrategy to be configurable
 
 ### Default value changes
@@ -8061,9 +8061,9 @@ index 413aa88..2ec3736 100644
 
 ## 19.0.4  ![AppVersion: 2.9.4](https://img.shields.io/static/v1?label=AppVersion&message=2.9.4&color=success&logo=) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2022-11-08
+Release date: 2022-11-08
 
-* 🔧 Adds more settings & rename (wrong) scrapeInterval to (valid) interval on ServiceMonitor (#703)
+* ðŸ”§ Adds more settings & rename (wrong) scrapeInterval to (valid) interval on ServiceMonitor (#703)
 
 ### Default value changes
 
@@ -8107,30 +8107,30 @@ index b24c1cb..413aa88 100644
 
 ## 19.0.3  ![AppVersion: 2.9.4](https://img.shields.io/static/v1?label=AppVersion&message=2.9.4&color=success&logo=) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2022-11-03
+Release date: 2022-11-03
 
-* 🎨 Don't require exposed Ports when enabling Hub (#700)
+* ðŸŽ¨ Don't require exposed Ports when enabling Hub (#700)
 
 
 ## 19.0.2  ![AppVersion: 2.9.4](https://img.shields.io/static/v1?label=AppVersion&message=2.9.4&color=success&logo=) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2022-11-03
+Release date: 2022-11-03
 
 * :speech_balloon: Support volume secrets with '.' in name (#695)
 
 
 ## 19.0.1  ![AppVersion: 2.9.4](https://img.shields.io/static/v1?label=AppVersion&message=2.9.4&color=success&logo=) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2022-11-03
+Release date: 2022-11-03
 
-* 🐛 Fix IngressClass install on EKS (#699)
+* ðŸ› Fix IngressClass install on EKS (#699)
 
 
 ## 19.0.0  ![AppVersion: 2.9.4](https://img.shields.io/static/v1?label=AppVersion&message=2.9.4&color=success&logo=) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2022-11-02
+Release date: 2022-11-02
 
-* ✨ Provides Default IngressClass for Traefik by default (#693)
+* âœ¨ Provides Default IngressClass for Traefik by default (#693)
 
 ### Default value changes
 
@@ -8158,16 +8158,16 @@ index 69190f1..b24c1cb 100644
 
 ## 18.3.0  ![AppVersion: 2.9.4](https://img.shields.io/static/v1?label=AppVersion&message=2.9.4&color=success&logo=) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2022-10-31
+Release date: 2022-10-31
 
-* ⬆️  Update Traefik appVersion to 2.9.4 (#696)
+* â¬†ï¸  Update Traefik appVersion to 2.9.4 (#696)
 
 
 ## 18.2.0  ![AppVersion: 2.9.1](https://img.shields.io/static/v1?label=AppVersion&message=2.9.1&color=success&logo=) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2022-10-31
+Release date: 2022-10-31
 
-* 🚩 Add an optional "internal" service (#683)
+* ðŸš© Add an optional "internal" service (#683)
 
 ### Default value changes
 
@@ -8217,9 +8217,9 @@ index 8033a87..69190f1 100644
 
 ## 18.1.0  ![AppVersion: 2.9.1](https://img.shields.io/static/v1?label=AppVersion&message=2.9.1&color=success&logo=) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2022-10-27
+Release date: 2022-10-27
 
-* 🚀 Add native support for Traefik Hub (#676)
+* ðŸš€ Add native support for Traefik Hub (#676)
 
 ### Default value changes
 
@@ -8269,7 +8269,7 @@ index acce704..8033a87 100644
 
 ## 18.0.0  ![AppVersion: 2.9.1](https://img.shields.io/static/v1?label=AppVersion&message=2.9.1&color=success&logo=) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2022-10-26
+Release date: 2022-10-26
 
 * Refactor http3 and merge TCP with UDP ports into a single service (#656)
 
@@ -8327,35 +8327,35 @@ index 807bd09..acce704 100644
 
 ## 17.0.5  ![AppVersion: 2.9.1](https://img.shields.io/static/v1?label=AppVersion&message=2.9.1&color=success&logo=) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2022-10-21
+Release date: 2022-10-21
 
-* 📝 Add annotations changelog for artifacthub.io & update Maintainers
+* ðŸ“ Add annotations changelog for artifacthub.io & update Maintainers
 
 
 ## 17.0.4  ![AppVersion: 2.9.1](https://img.shields.io/static/v1?label=AppVersion&message=2.9.1&color=success&logo=) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2022-10-21
+Release date: 2022-10-21
 
 * :art: Add helper function for label selector
 
 
 ## 17.0.3  ![AppVersion: 2.9.1](https://img.shields.io/static/v1?label=AppVersion&message=2.9.1&color=success&logo=) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2022-10-20
+Release date: 2022-10-20
 
-* 🐛 fix changing label selectors
+* ðŸ› fix changing label selectors
 
 
 ## 17.0.2  ![AppVersion: 2.9.1](https://img.shields.io/static/v1?label=AppVersion&message=2.9.1&color=success&logo=) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2022-10-20
+Release date: 2022-10-20
 
 * fix: setting ports.web.proxyProtocol.insecure=true
 
 
 ## 17.0.1  ![AppVersion: 2.9.1](https://img.shields.io/static/v1?label=AppVersion&message=2.9.1&color=success&logo=) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2022-10-20
+Release date: 2022-10-20
 
 * :bug: Unify all labels selector with traefik chart labels (#681)
 
@@ -8379,14 +8379,14 @@ index 6a90bc6..807bd09 100644
 
 ## 17.0.0  ![AppVersion: 2.9.1](https://img.shields.io/static/v1?label=AppVersion&message=2.9.1&color=success&logo=) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2022-10-20
+Release date: 2022-10-20
 
 * :bug: Fix `ClusterRole`, `ClusterRoleBinding` names and `app.kubernetes.io/instance` label (#662)
 
 
 ## 16.2.0  ![AppVersion: 2.9.1](https://img.shields.io/static/v1?label=AppVersion&message=2.9.1&color=success&logo=) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2022-10-20
+Release date: 2022-10-20
 
 * Add forwardedHeaders and proxyProtocol config (#673)
 
@@ -8435,9 +8435,9 @@ index 9b5afc4..6a90bc6 100644
 
 ## 16.1.0  ![AppVersion: 2.9.1](https://img.shields.io/static/v1?label=AppVersion&message=2.9.1&color=success&logo=) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2022-10-19
+Release date: 2022-10-19
 
-* ✨ add optional ServiceMonitor & PrometheusRules CRDs (#425)
+* âœ¨ add optional ServiceMonitor & PrometheusRules CRDs (#425)
 
 ### Default value changes
 
@@ -8499,7 +8499,7 @@ index 7e335b5..9b5afc4 100644
 
 ## 16.0.0  ![AppVersion: 2.9.1](https://img.shields.io/static/v1?label=AppVersion&message=2.9.1&color=success&logo=) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2022-10-19
+Release date: 2022-10-19
 
 * :fire: Remove `Pilot` and `fallbackApiVersion` (#665)
 
@@ -8530,16 +8530,16 @@ index 03fdaed..7e335b5 100644
 
 ## 15.3.1  ![AppVersion: 2.9.1](https://img.shields.io/static/v1?label=AppVersion&message=2.9.1&color=success&logo=) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2022-10-18
+Release date: 2022-10-18
 
 * :art: Improve `IngressRoute` structure (#674)
 
 
 ## 15.3.0  ![AppVersion: 2.9.1](https://img.shields.io/static/v1?label=AppVersion&message=2.9.1&color=success&logo=) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2022-10-18
+Release date: 2022-10-18
 
-* 📌 Add capacity to enable User-facing role
+* ðŸ“Œ Add capacity to enable User-facing role
 
 ### Default value changes
 
@@ -8566,21 +8566,21 @@ index 76aac93..03fdaed 100644
 
 ## 15.2.2  ![AppVersion: 2.9.1](https://img.shields.io/static/v1?label=AppVersion&message=2.9.1&color=success&logo=) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2022-10-17
+Release date: 2022-10-17
 
 * Fix provider namespace changes
 
 
 ## 15.2.1  ![AppVersion: 2.9.1](https://img.shields.io/static/v1?label=AppVersion&message=2.9.1&color=success&logo=) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2022-10-17
+Release date: 2022-10-17
 
-* 🐛 fix provider namespace changes
+* ðŸ› fix provider namespace changes
 
 
 ## 15.2.0  ![AppVersion: 2.9.1](https://img.shields.io/static/v1?label=AppVersion&message=2.9.1&color=success&logo=) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2022-10-17
+Release date: 2022-10-17
 
 * :bug: Allow to watch on specific namespaces without using rbac.namespaced (#666)
 
@@ -8604,14 +8604,14 @@ index 781ac15..76aac93 100644
 
 ## 15.1.1  ![AppVersion: 2.9.1](https://img.shields.io/static/v1?label=AppVersion&message=2.9.1&color=success&logo=) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2022-10-17
+Release date: 2022-10-17
 
 * :goal_net: Fail gracefully when http3 is not enabled correctly (#667)
 
 
 ## 15.1.0  ![AppVersion: 2.9.1](https://img.shields.io/static/v1?label=AppVersion&message=2.9.1&color=success&logo=) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2022-10-14
+Release date: 2022-10-14
 
 * :sparkles: add optional topologySpreadConstraints (#663)
 
@@ -8642,7 +8642,7 @@ index fc2c371..781ac15 100644
 
 ## 15.0.0  ![AppVersion: 2.9.1](https://img.shields.io/static/v1?label=AppVersion&message=2.9.1&color=success&logo=) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2022-10-13
+Release date: 2022-10-13
 
 * :rocket: Enable TLS by default on `websecure` port (#657)
 
@@ -8666,14 +8666,14 @@ index 400a29a..fc2c371 100644
 
 ## 14.0.2  ![AppVersion: 2.9.1](https://img.shields.io/static/v1?label=AppVersion&message=2.9.1&color=success&logo=) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2022-10-13
+Release date: 2022-10-13
 
 * :memo: Add Changelog (#661)
 
 
 ## 14.0.1  ![AppVersion: 2.9.1](https://img.shields.io/static/v1?label=AppVersion&message=2.9.1&color=success&logo=) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2022-10-11
+Release date: 2022-10-11
 
 * :memo: Update workaround for permissions 660 on acme.json
 
@@ -8702,28 +8702,28 @@ index a4e4ff2..400a29a 100644
 
 ## 14.0.0  ![AppVersion: 2.9.1](https://img.shields.io/static/v1?label=AppVersion&message=2.9.1&color=success&logo=) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2022-10-11
+Release date: 2022-10-11
 
 * Limit rbac to only required resources for Ingress and CRD providers
 
 
 ## 13.0.1  ![AppVersion: 2.9.1](https://img.shields.io/static/v1?label=AppVersion&message=2.9.1&color=success&logo=) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2022-10-11
+Release date: 2022-10-11
 
 * Add helper function for common labels
 
 
 ## 13.0.0  ![AppVersion: 2.9.1](https://img.shields.io/static/v1?label=AppVersion&message=2.9.1&color=success&logo=) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2022-10-11
+Release date: 2022-10-11
 
 * Moved list object to individual objects
 
 
 ## 12.0.7  ![AppVersion: 2.9.1](https://img.shields.io/static/v1?label=AppVersion&message=2.9.1&color=success&logo=) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2022-10-10
+Release date: 2022-10-10
 
 * :lipstick: Affinity templating and example (#557)
 
@@ -8770,14 +8770,14 @@ index 4431c36..a4e4ff2 100644
 
 ## 12.0.6  ![AppVersion: 2.9.1](https://img.shields.io/static/v1?label=AppVersion&message=2.9.1&color=success&logo=) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2022-10-10
+Release date: 2022-10-10
 
 * :bug: Ignore kustomization file used for CRDs update (#653)
 
 
 ## 12.0.5  ![AppVersion: 2.9.1](https://img.shields.io/static/v1?label=AppVersion&message=2.9.1&color=success&logo=) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2022-10-10
+Release date: 2022-10-10
 
 * :memo: Establish Traefik & CRD update process
 
@@ -8800,35 +8800,35 @@ index 3526729..4431c36 100644
 
 ## 12.0.4  ![AppVersion: 2.9.1](https://img.shields.io/static/v1?label=AppVersion&message=2.9.1&color=success&logo=) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2022-10-10
+Release date: 2022-10-10
 
 * Allows ingressClass to be used without semver-compatible image tag
 
 
 ## 12.0.3  ![AppVersion: 2.9.1](https://img.shields.io/static/v1?label=AppVersion&message=2.9.1&color=success&logo=) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2022-10-10
+Release date: 2022-10-10
 
 * :bug: Should check hostNetwork when hostPort != containerPort
 
 
 ## 12.0.2  ![AppVersion: 2.9.1](https://img.shields.io/static/v1?label=AppVersion&message=2.9.1&color=success&logo=) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2022-10-07
+Release date: 2022-10-07
 
 * :goal_net: Fail gracefully when hostNetwork is enabled and hostPort != containerPort
 
 
 ## 12.0.1  ![AppVersion: 2.9.1](https://img.shields.io/static/v1?label=AppVersion&message=2.9.1&color=success&logo=) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2022-10-07
+Release date: 2022-10-07
 
 * :bug: Fix a typo on `behavior` for HPA v2
 
 
 ## 12.0.0  ![AppVersion: 2.9.1](https://img.shields.io/static/v1?label=AppVersion&message=2.9.1&color=success&logo=) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2022-10-06
+Release date: 2022-10-06
 
 * Update default HPA API Version to `v2` and add support for behavior (#518)
 
@@ -8868,21 +8868,21 @@ index 2bd51f8..3526729 100644
 
 ## 11.1.1  ![AppVersion: 2.9.1](https://img.shields.io/static/v1?label=AppVersion&message=2.9.1&color=success&logo=) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2022-10-05
+Release date: 2022-10-05
 
-* 🔊 add failure message when using maxUnavailable 0 and hostNetwork
+* ðŸ”Š add failure message when using maxUnavailable 0 and hostNetwork
 
 
 ## 11.1.0  ![AppVersion: 2.9.1](https://img.shields.io/static/v1?label=AppVersion&message=2.9.1&color=success&logo=) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2022-10-04
+Release date: 2022-10-04
 
 * Update Traefik to v2.9.1
 
 
 ## 11.0.0  ![AppVersion: 2.8.7](https://img.shields.io/static/v1?label=AppVersion&message=2.8.7&color=success&logo=) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2022-10-04
+Release date: 2022-10-04
 
 * tweak default values to avoid downtime when updating
 
@@ -8921,7 +8921,7 @@ index 844cadc..2bd51f8 100644
 
 ## 10.33.0  ![AppVersion: 2.8.7](https://img.shields.io/static/v1?label=AppVersion&message=2.8.7&color=success&logo=) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2022-10-04
+Release date: 2022-10-04
 
 * :rocket: Add `extraObjects` value that allows creating adhoc resources
 
@@ -8947,7 +8947,7 @@ index c926bd9..844cadc 100644
 
 ## 10.32.0  ![AppVersion: 2.8.7](https://img.shields.io/static/v1?label=AppVersion&message=2.8.7&color=success&logo=) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2022-10-03
+Release date: 2022-10-03
 
 * Add support setting middleware on entrypoint
 
@@ -8979,7 +8979,7 @@ index 3957448..c926bd9 100644
 
 ## 10.31.0  ![AppVersion: 2.8.7](https://img.shields.io/static/v1?label=AppVersion&message=2.8.7&color=success&logo=) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2022-10-03
+Release date: 2022-10-03
 
 * Support setting dashboard entryPoints for ingressRoute resource
 
@@ -9005,21 +9005,21 @@ index c9feb76..3957448 100644
 
 ## 10.30.2  ![AppVersion: 2.8.7](https://img.shields.io/static/v1?label=AppVersion&message=2.8.7&color=success&logo=) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2022-10-03
+Release date: 2022-10-03
 
 * :test_tube: Fail gracefully when asked to provide a service without ports
 
 
 ## 10.30.1  ![AppVersion: 2.8.7](https://img.shields.io/static/v1?label=AppVersion&message=2.8.7&color=success&logo=) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2022-09-30
+Release date: 2022-09-30
 
 * :arrow_up: Upgrade helm, ct & unittest (#638)
 
 
 ## 10.30.0  ![AppVersion: 2.8.7](https://img.shields.io/static/v1?label=AppVersion&message=2.8.7&color=success&logo=) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2022-09-30
+Release date: 2022-09-30
 
 * Add support HTTPS scheme for healthcheks
 
@@ -9045,7 +9045,7 @@ index fed4a8a..c9feb76 100644
 
 ## 10.29.0  ![AppVersion: 2.8.7](https://img.shields.io/static/v1?label=AppVersion&message=2.8.7&color=success&logo=) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2022-09-29
+Release date: 2022-09-29
 
 * Add missing tracing options
 
@@ -9107,7 +9107,7 @@ index d1708cc..fed4a8a 100644
 
 ## 10.28.0  ![AppVersion: 2.8.7](https://img.shields.io/static/v1?label=AppVersion&message=2.8.7&color=success&logo=) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2022-09-29
+Release date: 2022-09-29
 
 * feat: add lifecycle for prestop and poststart
 
@@ -9140,7 +9140,7 @@ index 19a133c..d1708cc 100644
 
 ## 10.27.0  ![AppVersion: 2.8.7](https://img.shields.io/static/v1?label=AppVersion&message=2.8.7&color=success&logo=) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2022-09-29
+Release date: 2022-09-29
 
 * feat: add create gateway option
 
@@ -9164,28 +9164,28 @@ index d9c745e..19a133c 100644
 
 ## 10.26.1  ![AppVersion: 2.8.7](https://img.shields.io/static/v1?label=AppVersion&message=2.8.7&color=success&logo=) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2022-09-28
+Release date: 2022-09-28
 
-* 🐛 fix rbac templating (#636)
+* ðŸ› fix rbac templating (#636)
 
 
 ## 10.26.0  ![AppVersion: 2.8.7](https://img.shields.io/static/v1?label=AppVersion&message=2.8.7&color=success&logo=) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2022-09-28
+Release date: 2022-09-28
 
 * :bug: Fix ingressClass support when rbac.namespaced=true (#499)
 
 
 ## 10.25.1  ![AppVersion: 2.8.7](https://img.shields.io/static/v1?label=AppVersion&message=2.8.7&color=success&logo=) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2022-09-28
+Release date: 2022-09-28
 
 * Add ingressclasses to traefik role
 
 
 ## 10.25.0  ![AppVersion: 2.8.7](https://img.shields.io/static/v1?label=AppVersion&message=2.8.7&color=success&logo=) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2022-09-27
+Release date: 2022-09-27
 
 * Add TLSStore resource to chart
 
@@ -9216,7 +9216,7 @@ index d4011c3..d9c745e 100644
 
 ## 10.24.5  ![AppVersion: 2.8.7](https://img.shields.io/static/v1?label=AppVersion&message=2.8.7&color=success&logo=) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2022-09-27
+Release date: 2022-09-27
 
 * Suggest an alternative port for metrics
 
@@ -9240,49 +9240,49 @@ index 81f2e85..d4011c3 100644
 
 ## 10.24.4  ![AppVersion: 2.8.7](https://img.shields.io/static/v1?label=AppVersion&message=2.8.7&color=success&logo=) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2022-09-26
+Release date: 2022-09-26
 
 * Update Traefik to v2.8.7
 
 
 ## 10.24.3  ![AppVersion: 2.8.5](https://img.shields.io/static/v1?label=AppVersion&message=2.8.5&color=success&logo=) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2022-09-14
+Release date: 2022-09-14
 
 * Update Traefik version to v2.8.5
 
 
 ## 10.24.2  ![AppVersion: 2.8.4](https://img.shields.io/static/v1?label=AppVersion&message=2.8.4&color=success&logo=) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2022-09-05
+Release date: 2022-09-05
 
 * Update Traefik version to v2.8.4
 
 
 ## 10.24.1  ![AppVersion: 2.8.0](https://img.shields.io/static/v1?label=AppVersion&message=2.8.0&color=success&logo=) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2022-08-29
+Release date: 2022-08-29
 
 * Update PodDisruptionBudget apiVersion to policy/v1
 
 
 ## 10.24.0  ![AppVersion: 2.8.0](https://img.shields.io/static/v1?label=AppVersion&message=2.8.0&color=success&logo=) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2022-06-30
+Release date: 2022-06-30
 
 * Update Traefik version to v2.8.0
 
 
 ## 10.23.0  ![AppVersion: 2.7.1](https://img.shields.io/static/v1?label=AppVersion&message=2.7.1&color=success&logo=) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2022-06-27
+Release date: 2022-06-27
 
 * Support environment variable usage for Datadog
 
 
 ## 10.22.0  ![AppVersion: 2.7.1](https://img.shields.io/static/v1?label=AppVersion&message=2.7.1&color=success&logo=) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2022-06-22
+Release date: 2022-06-22
 
 * Allow setting revisionHistoryLimit for Deployment and DaemonSet
 
@@ -9306,14 +9306,14 @@ index d5785ab..81f2e85 100644
 
 ## 10.21.1  ![AppVersion: 2.7.1](https://img.shields.io/static/v1?label=AppVersion&message=2.7.1&color=success&logo=) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2022-06-15
+Release date: 2022-06-15
 
 * Update Traefik version to 2.7.1
 
 
 ## 10.21.0  ![AppVersion: 2.7.0](https://img.shields.io/static/v1?label=AppVersion&message=2.7.0&color=success&logo=) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2022-06-15
+Release date: 2022-06-15
 
 * Support allowEmptyServices config for KubernetesCRD
 
@@ -9336,7 +9336,7 @@ index e141e29..d5785ab 100644
 
 ## 10.20.1  ![AppVersion: 2.7.0](https://img.shields.io/static/v1?label=AppVersion&message=2.7.0&color=success&logo=) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2022-06-01
+Release date: 2022-06-01
 
 * Add Acme certificate resolver configuration
 
@@ -9379,49 +9379,49 @@ index a16b107..e141e29 100644
 
 ## 10.20.0  ![AppVersion: 2.7.0](https://img.shields.io/static/v1?label=AppVersion&message=2.7.0&color=success&logo=) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2022-05-25
+Release date: 2022-05-25
 
 * Update Traefik Proxy to v2.7.0
 
 
 ## 10.19.5  ![AppVersion: 2.6.6](https://img.shields.io/static/v1?label=AppVersion&message=2.6.6&color=success&logo=) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2022-05-04
+Release date: 2022-05-04
 
 * Upgrade Traefik to 2.6.6
 
 
 ## 10.19.4  ![AppVersion: 2.6.3](https://img.shields.io/static/v1?label=AppVersion&message=2.6.3&color=success&logo=) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2022-03-31
+Release date: 2022-03-31
 
 * Update Traefik dependency version to 2.6.3
 
 
 ## 10.19.3  ![AppVersion: 2.6.2](https://img.shields.io/static/v1?label=AppVersion&message=2.6.2&color=success&logo=) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2022-03-30
+Release date: 2022-03-30
 
 * Update CRDs to match the ones defined in the reference documentation
 
 
 ## 10.19.2  ![AppVersion: 2.6.2](https://img.shields.io/static/v1?label=AppVersion&message=2.6.2&color=success&logo=) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2022-03-30
+Release date: 2022-03-30
 
 * Revert Traefik version to 2.6.2
 
 
 ## 10.19.1  ![AppVersion: 2.6.3](https://img.shields.io/static/v1?label=AppVersion&message=2.6.3&color=success&logo=) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2022-03-30
+Release date: 2022-03-30
 
 * Update Traefik version to 2.6.3
 
 
 ## 10.19.0  ![AppVersion: 2.6.2](https://img.shields.io/static/v1?label=AppVersion&message=2.6.2&color=success&logo=) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2022-03-28
+Release date: 2022-03-28
 
 * Support ingressClass option for KubernetesIngress provider
 
@@ -9444,7 +9444,7 @@ index 02ab704..a16b107 100644
 
 ## 10.18.0  ![AppVersion: 2.6.2](https://img.shields.io/static/v1?label=AppVersion&message=2.6.2&color=success&logo=) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2022-03-28
+Release date: 2022-03-28
 
 * Support liveness and readyness probes customization
 
@@ -9480,7 +9480,7 @@ index 15f1103..02ab704 100644
 
 ## 10.17.0  ![AppVersion: 2.6.2](https://img.shields.io/static/v1?label=AppVersion&message=2.6.2&color=success&logo=) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2022-03-28
+Release date: 2022-03-28
 
 * Support Datadog tracing
 
@@ -9507,14 +9507,14 @@ index 4dccd1a..15f1103 100644
 
 ## 10.16.1  ![AppVersion: 2.6.2](https://img.shields.io/static/v1?label=AppVersion&message=2.6.2&color=success&logo=) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2022-03-28
+Release date: 2022-03-28
 
 * Update Traefik version to 2.6.2
 
 
 ## 10.16.0  ![AppVersion: 2.6.1](https://img.shields.io/static/v1?label=AppVersion&message=2.6.1&color=success&logo=) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2022-03-28
+Release date: 2022-03-28
 
 * Support allowEmptyServices for KubernetesIngress provider
 
@@ -9537,7 +9537,7 @@ index 1f9dbbe..4dccd1a 100644
 
 ## 10.15.0  ![AppVersion: 2.6.1](https://img.shields.io/static/v1?label=AppVersion&message=2.6.1&color=success&logo=) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2022-03-08
+Release date: 2022-03-08
 
 * Add metrics.prometheus.addRoutersLabels option
 
@@ -9560,21 +9560,21 @@ index cd4d49b..1f9dbbe 100644
 
 ## 10.14.2  ![AppVersion: 2.6.1](https://img.shields.io/static/v1?label=AppVersion&message=2.6.1&color=success&logo=) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2022-02-18
+Release date: 2022-02-18
 
 * Update Traefik to v2.6.1
 
 
 ## 10.14.1  ![AppVersion: 2.6.0](https://img.shields.io/static/v1?label=AppVersion&message=2.6.0&color=success&logo=) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2022-02-09
+Release date: 2022-02-09
 
 * Add missing inFlightConn TCP middleware CRD
 
 
 ## 10.14.0  ![AppVersion: 2.6.0](https://img.shields.io/static/v1?label=AppVersion&message=2.6.0&color=success&logo=) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2022-02-03
+Release date: 2022-02-03
 
 * Add experimental HTTP/3 support
 
@@ -9609,7 +9609,7 @@ index d49122f..cd4d49b 100644
 
 ## 10.13.0  ![AppVersion: 2.6.0](https://img.shields.io/static/v1?label=AppVersion&message=2.6.0&color=success&logo=) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2022-02-01
+Release date: 2022-02-01
 
 * Add support for ipFamilies
 
@@ -9636,7 +9636,7 @@ index 32fce6f..d49122f 100644
 
 ## 10.12.0  ![AppVersion: 2.6.0](https://img.shields.io/static/v1?label=AppVersion&message=2.6.0&color=success&logo=) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2022-02-01
+Release date: 2022-02-01
 
 * Add shareProcessNamespace option to podtemplate
 
@@ -9660,7 +9660,7 @@ index ab25456..32fce6f 100644
 
 ## 10.11.1  ![AppVersion: 2.6.0](https://img.shields.io/static/v1?label=AppVersion&message=2.6.0&color=success&logo=) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2022-01-31
+Release date: 2022-01-31
 
 * Fix anti-affinity example
 
@@ -9696,7 +9696,7 @@ index 8c72905..ab25456 100644
 
 ## 10.11.0  ![AppVersion: 2.6.0](https://img.shields.io/static/v1?label=AppVersion&message=2.6.0&color=success&logo=) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2022-01-31
+Release date: 2022-01-31
 
 * Add setting to enable Instana tracing
 
@@ -9722,7 +9722,7 @@ index 7fe4a2c..8c72905 100644
 
 ## 10.10.0  ![AppVersion: 2.6.0](https://img.shields.io/static/v1?label=AppVersion&message=2.6.0&color=success&logo=) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2022-01-31
+Release date: 2022-01-31
 
 * Update Traefik to v2.6
 
@@ -9749,14 +9749,14 @@ index 8ae4bd8..7fe4a2c 100644
 
 ## 10.9.1  ![AppVersion: 2.5.6](https://img.shields.io/static/v1?label=AppVersion&message=2.5.6&color=success&logo=) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2021-12-24
+Release date: 2021-12-24
 
 * Bump traefik version to 2.5.6
 
 
 ## 10.9.0  ![AppVersion: 2.5.4](https://img.shields.io/static/v1?label=AppVersion&message=2.5.4&color=success&logo=) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2021-12-20
+Release date: 2021-12-20
 
 * feat: add allowExternalNameServices to KubernetesIngress provider
 
@@ -9779,7 +9779,7 @@ index 79df205..8ae4bd8 100644
 
 ## 10.8.0  ![AppVersion: 2.5.4](https://img.shields.io/static/v1?label=AppVersion&message=2.5.4&color=success&logo=) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2021-12-20
+Release date: 2021-12-20
 
 * Add support to specify minReadySeconds on Deployment/DaemonSet
 
@@ -9803,7 +9803,7 @@ index 7e9186b..79df205 100644
 
 ## 10.7.1  ![AppVersion: 2.5.4](https://img.shields.io/static/v1?label=AppVersion&message=2.5.4&color=success&logo=) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2021-12-06
+Release date: 2021-12-06
 
 * Fix pod disruption when using percentages
 
@@ -9835,7 +9835,7 @@ index e0655c8..7e9186b 100644
 
 ## 10.7.0  ![AppVersion: 2.5.4](https://img.shields.io/static/v1?label=AppVersion&message=2.5.4&color=success&logo=) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2021-12-06
+Release date: 2021-12-06
 
 * Add support for ipFamilyPolicy
 
@@ -9870,21 +9870,21 @@ index 3ec7105..e0655c8 100644
 
 ## 10.6.2  ![AppVersion: 2.5.4](https://img.shields.io/static/v1?label=AppVersion&message=2.5.4&color=success&logo=) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2021-11-15
+Release date: 2021-11-15
 
 * Bump Traefik version to 2.5.4
 
 
 ## 10.6.1  ![AppVersion: 2.5.3](https://img.shields.io/static/v1?label=AppVersion&message=2.5.3&color=success&logo=) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2021-11-05
+Release date: 2021-11-05
 
 * Add missing Gateway API resources to ClusterRole
 
 
 ## 10.6.0  ![AppVersion: 2.5.3](https://img.shields.io/static/v1?label=AppVersion&message=2.5.3&color=success&logo=) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2021-10-13
+Release date: 2021-10-13
 
 * feat: allow termination grace period to be configurable
 
@@ -9908,7 +9908,7 @@ index f06ebc6..3ec7105 100644
 
 ## 10.5.0  ![AppVersion: 2.5.3](https://img.shields.io/static/v1?label=AppVersion&message=2.5.3&color=success&logo=) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2021-10-13
+Release date: 2021-10-13
 
 * feat: add allowExternalNameServices to Kubernetes CRD provider
 
@@ -9931,21 +9931,21 @@ index 3bcb350..f06ebc6 100644
 
 ## 10.4.2  ![AppVersion: 2.5.3](https://img.shields.io/static/v1?label=AppVersion&message=2.5.3&color=success&logo=) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2021-10-13
+Release date: 2021-10-13
 
 * fix(crd): add permissionsPolicy to headers middleware
 
 
 ## 10.4.1  ![AppVersion: 2.5.3](https://img.shields.io/static/v1?label=AppVersion&message=2.5.3&color=success&logo=) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2021-10-13
+Release date: 2021-10-13
 
 * fix(crd): add peerCertURI option to ServersTransport
 
 
 ## 10.4.0  ![AppVersion: 2.5.3](https://img.shields.io/static/v1?label=AppVersion&message=2.5.3&color=success&logo=) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2021-10-12
+Release date: 2021-10-12
 
 * Add Kubernetes CRD labelSelector and ingressClass options
 
@@ -9972,21 +9972,21 @@ index f54f5fe..3bcb350 100644
 
 ## 10.3.6  ![AppVersion: 2.5.3](https://img.shields.io/static/v1?label=AppVersion&message=2.5.3&color=success&logo=) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2021-09-24
+Release date: 2021-09-24
 
 * Fix missing RequireAnyClientCert value to TLSOption CRD
 
 
 ## 10.3.5  ![AppVersion: 2.5.3](https://img.shields.io/static/v1?label=AppVersion&message=2.5.3&color=success&logo=) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2021-09-23
+Release date: 2021-09-23
 
 * Bump Traefik version to 2.5.3
 
 
 ## 10.3.4  ![AppVersion: 2.5.1](https://img.shields.io/static/v1?label=AppVersion&message=2.5.1&color=success&logo=) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2021-09-17
+Release date: 2021-09-17
 
 * Add allowCrossNamespace option on kubernetesCRD provider
 
@@ -10009,35 +10009,35 @@ index 7e3a579..f54f5fe 100644
 
 ## 10.3.3  ![AppVersion: 2.5.1](https://img.shields.io/static/v1?label=AppVersion&message=2.5.1&color=success&logo=) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2021-09-17
+Release date: 2021-09-17
 
 * fix(crd): missing alpnProtocols in TLSOption
 
 
 ## 10.3.2  ![AppVersion: 2.5.1](https://img.shields.io/static/v1?label=AppVersion&message=2.5.1&color=success&logo=) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2021-08-23
+Release date: 2021-08-23
 
 * Releasing 2.5.1
 
 
 ## 10.3.1  ![AppVersion: 2.5.0](https://img.shields.io/static/v1?label=AppVersion&message=2.5.0&color=success&logo=) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2021-08-20
+Release date: 2021-08-20
 
 * Fix Ingress RBAC for namespaced scoped deployment
 
 
 ## 10.3.0  ![AppVersion: 2.5.0](https://img.shields.io/static/v1?label=AppVersion&message=2.5.0&color=success&logo=) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2021-08-18
+Release date: 2021-08-18
 
 * Releasing Traefik 2.5.0
 
 
 ## 10.2.0  ![AppVersion: 2.4.13](https://img.shields.io/static/v1?label=AppVersion&message=2.4.13&color=success&logo=) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2021-08-18
+Release date: 2021-08-18
 
 * Allow setting TCP and UDP service annotations separately
 
@@ -10066,21 +10066,21 @@ index 72a01ea..7e3a579 100644
 
 ## 10.1.6  ![AppVersion: 2.4.13](https://img.shields.io/static/v1?label=AppVersion&message=2.4.13&color=success&logo=) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2021-08-17
+Release date: 2021-08-17
 
 * fix: missing service labels
 
 
 ## 10.1.5  ![AppVersion: 2.4.13](https://img.shields.io/static/v1?label=AppVersion&message=2.4.13&color=success&logo=) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2021-08-17
+Release date: 2021-08-17
 
 * fix(pvc-annotaions): see traefik/traefik-helm-chart#471
 
 
 ## 10.1.4  ![AppVersion: 2.4.13](https://img.shields.io/static/v1?label=AppVersion&message=2.4.13&color=success&logo=) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2021-08-17
+Release date: 2021-08-17
 
 * fix(ingressclass): fallbackApiVersion default shouldn't be `nil`
 
@@ -10104,28 +10104,28 @@ index 04d336c..72a01ea 100644
 
 ## 10.1.3  ![AppVersion: 2.4.13](https://img.shields.io/static/v1?label=AppVersion&message=2.4.13&color=success&logo=) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2021-08-16
+Release date: 2021-08-16
 
 * Move Prometheus annotations to Pods
 
 
 ## 10.1.2  ![AppVersion: 2.4.13](https://img.shields.io/static/v1?label=AppVersion&message=2.4.13&color=success&logo=) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2021-08-10
+Release date: 2021-08-10
 
 * Version bumped 2.4.13
 
 
 ## 10.1.1  ![AppVersion: 2.4.9](https://img.shields.io/static/v1?label=AppVersion&message=2.4.9&color=success&logo=) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2021-07-20
+Release date: 2021-07-20
 
 * Fixing Prometheus.io/port annotation
 
 
 ## 10.1.0  ![AppVersion: 2.4.9](https://img.shields.io/static/v1?label=AppVersion&message=2.4.9&color=success&logo=) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2021-07-20
+Release date: 2021-07-20
 
 * Add metrics framework, and prom annotations
 
@@ -10179,7 +10179,7 @@ index f6e370a..04d336c 100644
 
 ## 10.0.2  ![AppVersion: 2.4.9](https://img.shields.io/static/v1?label=AppVersion&message=2.4.9&color=success&logo=) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2021-07-14
+Release date: 2021-07-14
 
 * feat(gateway): introduces param / pick Namespace installing Gateway
 
@@ -10204,42 +10204,42 @@ index 9bf90ea..f6e370a 100644
 
 ## 10.0.1  ![AppVersion: 2.4.9](https://img.shields.io/static/v1?label=AppVersion&message=2.4.9&color=success&logo=) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2021-07-14
+Release date: 2021-07-14
 
 * Add RBAC for middlewaretcps
 
 
 ## 10.0.0  ![AppVersion: 2.4.9](https://img.shields.io/static/v1?label=AppVersion&message=2.4.9&color=success&logo=) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2021-07-07
+Release date: 2021-07-07
 
 * Update CRD versions
 
 
 ## 9.20.1  ![AppVersion: 2.4.8](https://img.shields.io/static/v1?label=AppVersion&message=2.4.8&color=success&logo=) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2021-07-05
+Release date: 2021-07-05
 
 * Revert CRD templating
 
 
 ## 9.20.0  ![AppVersion: 2.4.8](https://img.shields.io/static/v1?label=AppVersion&message=2.4.8&color=success&logo=) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2021-07-05
+Release date: 2021-07-05
 
 * Add support for apiextensions v1 CRDs
 
 
 ## 9.19.2  ![AppVersion: 2.4.8](https://img.shields.io/static/v1?label=AppVersion&message=2.4.8&color=success&logo=) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2021-06-16
+Release date: 2021-06-16
 
 * Add name-metadata for service "List" object
 
 
 ## 9.19.1  ![AppVersion: 2.4.8](https://img.shields.io/static/v1?label=AppVersion&message=2.4.8&color=success&logo=) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2021-05-13
+Release date: 2021-05-13
 
 * fix simple typo
 
@@ -10263,7 +10263,7 @@ index b30afac..9bf90ea 100644
 
 ## 9.19.0  ![AppVersion: 2.4.8](https://img.shields.io/static/v1?label=AppVersion&message=2.4.8&color=success&logo=) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2021-04-29
+Release date: 2021-04-29
 
 * Fix IngressClass api version
 
@@ -10287,28 +10287,28 @@ index 0aa2d6b..b30afac 100644
 
 ## 9.18.3  ![AppVersion: 2.4.8](https://img.shields.io/static/v1?label=AppVersion&message=2.4.8&color=success&logo=) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2021-04-26
+Release date: 2021-04-26
 
 * Fix: ignore provider namespace args on disabled
 
 
 ## 9.18.2  ![AppVersion: 2.4.8](https://img.shields.io/static/v1?label=AppVersion&message=2.4.8&color=success&logo=) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2021-04-02
+Release date: 2021-04-02
 
 * Fix pilot dashboard deactivation
 
 
 ## 9.18.1  ![AppVersion: 2.4.8](https://img.shields.io/static/v1?label=AppVersion&message=2.4.8&color=success&logo=) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2021-03-29
+Release date: 2021-03-29
 
 * Do not disable Traefik Pilot in the dashboard by default
 
 
 ## 9.18.0  ![AppVersion: 2.4.8](https://img.shields.io/static/v1?label=AppVersion&message=2.4.8&color=success&logo=) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2021-03-24
+Release date: 2021-03-24
 
 * Add an option to toggle the pilot dashboard
 
@@ -10332,14 +10332,14 @@ index 017f771..0aa2d6b 100644
 
 ## 9.17.6  ![AppVersion: 2.4.8](https://img.shields.io/static/v1?label=AppVersion&message=2.4.8&color=success&logo=) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2021-03-24
+Release date: 2021-03-24
 
 * Bump Traefik to 2.4.8
 
 
 ## 9.17.5  ![AppVersion: 2.4.7](https://img.shields.io/static/v1?label=AppVersion&message=2.4.7&color=success&logo=) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2021-03-17
+Release date: 2021-03-17
 
 * feat(labelSelector): option matching Ingresses based on labelSelectors
 
@@ -10362,28 +10362,28 @@ index 868a985..017f771 100644
 
 ## 9.17.4  ![AppVersion: 2.4.7](https://img.shields.io/static/v1?label=AppVersion&message=2.4.7&color=success&logo=) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2021-03-17
+Release date: 2021-03-17
 
 * Add helm resource-policy annotation on PVC
 
 
 ## 9.17.3  ![AppVersion: 2.4.7](https://img.shields.io/static/v1?label=AppVersion&message=2.4.7&color=success&logo=) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2021-03-17
+Release date: 2021-03-17
 
 * Throw error with explicit latest tag
 
 
 ## 9.17.2  ![AppVersion: 2.4.7](https://img.shields.io/static/v1?label=AppVersion&message=2.4.7&color=success&logo=) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2021-03-10
+Release date: 2021-03-10
 
 * fix(keywords): removed by mistake
 
 
 ## 9.17.1  ![AppVersion: 2.4.7](https://img.shields.io/static/v1?label=AppVersion&message=2.4.7&color=success&logo=) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2021-03-10
+Release date: 2021-03-10
 
 * feat(healthchecksPort): Support for overriding the liveness/readiness probes port
 
@@ -10418,14 +10418,14 @@ index 56abb93..868a985 100644
 
 ## 9.16.2  ![AppVersion: 2.4.7](https://img.shields.io/static/v1?label=AppVersion&message=2.4.7&color=success&logo=) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2021-03-09
+Release date: 2021-03-09
 
 * Bump Traefik to 2.4.7
 
 
 ## 9.16.1  ![AppVersion: 2.4.6](https://img.shields.io/static/v1?label=AppVersion&message=2.4.6&color=success&logo=) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2021-03-09
+Release date: 2021-03-09
 
 * Adding custom labels to deployment
 
@@ -10449,14 +10449,14 @@ index ba24be7..56abb93 100644
 
 ## 9.15.2  ![AppVersion: 2.4.6](https://img.shields.io/static/v1?label=AppVersion&message=2.4.6&color=success&logo=) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2021-03-02
+Release date: 2021-03-02
 
 * Upgrade Traefik to 2.4.6
 
 
 ## 9.15.1  ![AppVersion: 2.4.5](https://img.shields.io/static/v1?label=AppVersion&message=2.4.5&color=success&logo=) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2021-03-02
+Release date: 2021-03-02
 
 * Configurable PVC name
 
@@ -10479,21 +10479,21 @@ index 1e0e5a9..ba24be7 100644
 
 ## 9.14.4  ![AppVersion: 2.4.5](https://img.shields.io/static/v1?label=AppVersion&message=2.4.5&color=success&logo=) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2021-03-02
+Release date: 2021-03-02
 
 * fix typo
 
 
 ## 9.14.3  ![AppVersion: 2.4.5](https://img.shields.io/static/v1?label=AppVersion&message=2.4.5&color=success&logo=) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2021-02-19
+Release date: 2021-02-19
 
 * Bump Traefik to 2.4.5
 
 
 ## 9.14.2  ![AppVersion: 2.4.2](https://img.shields.io/static/v1?label=AppVersion&message=2.4.2&color=success&logo=) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2021-02-03
+Release date: 2021-02-03
 
 * docs: indent nit for dsdsocket example
 
@@ -10517,14 +10517,14 @@ index 56485ad..1e0e5a9 100644
 
 ## 9.14.1  ![AppVersion: 2.4.2](https://img.shields.io/static/v1?label=AppVersion&message=2.4.2&color=success&logo=) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2021-02-03
+Release date: 2021-02-03
 
 * Update Traefik to 2.4.2
 
 
 ## 9.14.0  ![AppVersion: 2.4.0](https://img.shields.io/static/v1?label=AppVersion&message=2.4.0&color=success&logo=) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2021-02-01
+Release date: 2021-02-01
 
 * Enable Kubernetes Gateway provider with an experimental flag
 
@@ -10553,35 +10553,35 @@ index 50cab94..56485ad 100644
 
 ## 9.13.0  ![AppVersion: 2.4.0](https://img.shields.io/static/v1?label=AppVersion&message=2.4.0&color=success&logo=) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2021-01-22
+Release date: 2021-01-22
 
 * Update Traefik to 2.4 and add resources
 
 
 ## 9.12.3  ![AppVersion: 2.3.6](https://img.shields.io/static/v1?label=AppVersion&message=2.3.6&color=success&logo=) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2020-12-31
+Release date: 2020-12-31
 
 * Revert API Upgrade
 
 
 ## 9.12.2  ![AppVersion: 2.3.6](https://img.shields.io/static/v1?label=AppVersion&message=2.3.6&color=success&logo=) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2020-12-31
+Release date: 2020-12-31
 
 * Bump Traefik to 2.3.6
 
 
 ## 9.12.1  ![AppVersion: 2.3.3](https://img.shields.io/static/v1?label=AppVersion&message=2.3.3&color=success&logo=) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2020-12-30
+Release date: 2020-12-30
 
 * Resolve #303, change CRD version from v1beta1 to v1
 
 
 ## 9.12.0  ![AppVersion: 2.3.3](https://img.shields.io/static/v1?label=AppVersion&message=2.3.3&color=success&logo=) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2020-12-30
+Release date: 2020-12-30
 
 * Implement support for DaemonSet
 
@@ -10607,7 +10607,7 @@ index 60a721d..50cab94 100644
 
 ## 9.11.0  ![AppVersion: 2.3.3](https://img.shields.io/static/v1?label=AppVersion&message=2.3.3&color=success&logo=) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2020-11-20
+Release date: 2020-11-20
 
 * add podLabels - custom labels
 
@@ -10631,21 +10631,21 @@ index a187df7..60a721d 100644
 
 ## 9.10.2  ![AppVersion: 2.3.3](https://img.shields.io/static/v1?label=AppVersion&message=2.3.3&color=success&logo=) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2020-11-20
+Release date: 2020-11-20
 
 * Bump Traefik to 2.3.3
 
 
 ## 9.10.1  ![AppVersion: 2.3.1](https://img.shields.io/static/v1?label=AppVersion&message=2.3.1&color=success&logo=) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2020-11-04
+Release date: 2020-11-04
 
 * Specify IngressClass resource when checking for cluster capability
 
 
 ## 9.10.0  ![AppVersion: 2.3.1](https://img.shields.io/static/v1?label=AppVersion&message=2.3.1&color=success&logo=) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2020-11-03
+Release date: 2020-11-03
 
 * Add list of watched provider namespaces
 
@@ -10673,7 +10673,7 @@ index e6b85ca..a187df7 100644
 
 ## 9.9.0  ![AppVersion: 2.3.1](https://img.shields.io/static/v1?label=AppVersion&message=2.3.1&color=success&logo=) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2020-11-03
+Release date: 2020-11-03
 
 * Add additionalVolumeMounts for traefik container
 
@@ -10701,14 +10701,14 @@ index 37dd151..e6b85ca 100644
 
 ## 9.8.4  ![AppVersion: 2.3.1](https://img.shields.io/static/v1?label=AppVersion&message=2.3.1&color=success&logo=) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2020-11-03
+Release date: 2020-11-03
 
 * fix: multiple ImagePullSecrets
 
 
 ## 9.8.3  ![AppVersion: 2.3.1](https://img.shields.io/static/v1?label=AppVersion&message=2.3.1&color=success&logo=) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2020-10-30
+Release date: 2020-10-30
 
 * Add imagePullSecrets
 
@@ -10733,14 +10733,14 @@ index 87f60c0..37dd151 100644
 
 ## 9.8.2  ![AppVersion: 2.3.1](https://img.shields.io/static/v1?label=AppVersion&message=2.3.1&color=success&logo=) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2020-10-28
+Release date: 2020-10-28
 
 * Add chart repo to source
 
 
 ## 9.8.1  ![AppVersion: 2.3.1](https://img.shields.io/static/v1?label=AppVersion&message=2.3.1&color=success&logo=) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2020-10-23
+Release date: 2020-10-23
 
 * fix semver compare
 
@@ -10765,7 +10765,7 @@ index 4ca1f8f..87f60c0 100644
 
 ## 9.8.0  ![AppVersion: 2.3.1](https://img.shields.io/static/v1?label=AppVersion&message=2.3.1&color=success&logo=) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2020-10-20
+Release date: 2020-10-20
 
 * feat: Enable entrypoint tls config + TLSOption
 
@@ -10812,7 +10812,7 @@ index eee3622..4ca1f8f 100644
 
 ## 9.7.0  ![AppVersion: 2.3.1](https://img.shields.io/static/v1?label=AppVersion&message=2.3.1&color=success&logo=) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2020-10-15
+Release date: 2020-10-15
 
 * Add a configuration option for an emptyDir as plugin storage
 
@@ -10844,7 +10844,7 @@ index b7153a1..eee3622 100644
 
 ## 9.6.0  ![AppVersion: 2.3.1](https://img.shields.io/static/v1?label=AppVersion&message=2.3.1&color=success&logo=) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2020-10-15
+Release date: 2020-10-15
 
 * Add additional volumes for init and additional containers
 
@@ -10878,14 +10878,14 @@ index 9bac45e..b7153a1 100644
 
 ## 9.5.2  ![AppVersion: 2.3.1](https://img.shields.io/static/v1?label=AppVersion&message=2.3.1&color=success&logo=) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2020-10-15
+Release date: 2020-10-15
 
 * Replace extensions with policy because of deprecation
 
 
 ## 9.5.1  ![AppVersion: 2.3.1](https://img.shields.io/static/v1?label=AppVersion&message=2.3.1&color=success&logo=) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2020-10-14
+Release date: 2020-10-14
 
 * Template custom volume name
 
@@ -10918,7 +10918,7 @@ index 5a8d8ea..9bac45e 100644
 
 ## 9.5.0  ![AppVersion: 2.3.1](https://img.shields.io/static/v1?label=AppVersion&message=2.3.1&color=success&logo=) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2020-10-02
+Release date: 2020-10-02
 
 * Create PodSecurityPolicy and RBAC when needed.
 
@@ -10944,7 +10944,7 @@ index 8c4d866..5a8d8ea 100644
 
 ## 9.4.3  ![AppVersion: 2.3.1](https://img.shields.io/static/v1?label=AppVersion&message=2.3.1&color=success&logo=) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2020-10-02
+Release date: 2020-10-02
 
 * Update traefik to v2.3.1
 
@@ -10968,21 +10968,21 @@ index 3df75a4..8c4d866 100644
 
 ## 9.4.2  ![AppVersion: 2.3.0](https://img.shields.io/static/v1?label=AppVersion&message=2.3.0&color=success&logo=) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2020-10-02
+Release date: 2020-10-02
 
 * Add Artifact Hub repository metadata file
 
 
 ## 9.4.1  ![AppVersion: 2.3.0](https://img.shields.io/static/v1?label=AppVersion&message=2.3.0&color=success&logo=) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2020-10-01
+Release date: 2020-10-01
 
 * Fix broken chart icon url
 
 
 ## 9.4.0  ![AppVersion: 2.3.0](https://img.shields.io/static/v1?label=AppVersion&message=2.3.0&color=success&logo=) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2020-10-01
+Release date: 2020-10-01
 
 * Allow to specify custom labels on Service
 
@@ -11006,7 +11006,7 @@ index a6175ff..3df75a4 100644
 
 ## 9.3.0  ![AppVersion: 2.3.0](https://img.shields.io/static/v1?label=AppVersion&message=2.3.0&color=success&logo=) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2020-09-24
+Release date: 2020-09-24
 
 * Release Traefik 2.3
 
@@ -11047,14 +11047,14 @@ index fba955d..a6175ff 100644
 
 ## 9.2.1  ![AppVersion: 2.2.8](https://img.shields.io/static/v1?label=AppVersion&message=2.2.8&color=success&logo=) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2020-09-18
+Release date: 2020-09-18
 
 * Add new helm url
 
 
 ## 9.2.0  ![AppVersion: 2.2.8](https://img.shields.io/static/v1?label=AppVersion&message=2.2.8&color=success&logo=) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2020-09-16
+Release date: 2020-09-16
 
 * chore: move to new organization.
 
@@ -11078,7 +11078,7 @@ index 9f52c39..fba955d 100644
 
 ## 9.1.1  ![AppVersion: 2.2.8](https://img.shields.io/static/v1?label=AppVersion&message=2.2.8&color=success&logo=) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2020-09-04
+Release date: 2020-09-04
 
 * Update reference to using kubectl proxy to kubectl port-forward
 
@@ -11102,7 +11102,7 @@ index 7b74a39..9f52c39 100644
 
 ## 9.1.0  ![AppVersion: 2.2.8](https://img.shields.io/static/v1?label=AppVersion&message=2.2.8&color=success&logo=) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2020-08-24
+Release date: 2020-08-24
 
 * PublishedService option
 
@@ -11130,28 +11130,28 @@ index e161a14..7b74a39 100644
 
 ## 9.0.0  ![AppVersion: 2.2.8](https://img.shields.io/static/v1?label=AppVersion&message=2.2.8&color=success&logo=) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2020-08-21
+Release date: 2020-08-21
 
 * feat: Move Chart apiVersion: v2
 
 
 ## 8.13.3  ![AppVersion: 2.2.8](https://img.shields.io/static/v1?label=AppVersion&message=2.2.8&color=success&logo=) ![Helm: v2](https://img.shields.io/static/v1?label=Helm&message=v2&color=inactive&logo=helm) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2020-08-21
+Release date: 2020-08-21
 
 * bug: Check for port config
 
 
 ## 8.13.2  ![AppVersion: 2.2.8](https://img.shields.io/static/v1?label=AppVersion&message=2.2.8&color=success&logo=) ![Helm: v2](https://img.shields.io/static/v1?label=Helm&message=v2&color=inactive&logo=helm) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2020-08-19
+Release date: 2020-08-19
 
 * Fix log level configuration
 
 
 ## 8.13.1  ![AppVersion: 2.2.8](https://img.shields.io/static/v1?label=AppVersion&message=2.2.8&color=success&logo=) ![Helm: v2](https://img.shields.io/static/v1?label=Helm&message=v2&color=inactive&logo=helm) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2020-08-18
+Release date: 2020-08-18
 
 * Dont redirect to websecure by default
 
@@ -11175,7 +11175,7 @@ index 67276f7..e161a14 100644
 
 ## 8.13.0  ![AppVersion: 2.2.8](https://img.shields.io/static/v1?label=AppVersion&message=2.2.8&color=success&logo=) ![Helm: v2](https://img.shields.io/static/v1?label=Helm&message=v2&color=inactive&logo=helm) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2020-08-18
+Release date: 2020-08-18
 
 * Add logging, and http redirect config
 
@@ -11250,7 +11250,7 @@ index 6f79580..67276f7 100644
 
 ## 8.12.0  ![AppVersion: 2.2.8](https://img.shields.io/static/v1?label=AppVersion&message=2.2.8&color=success&logo=) ![Helm: v2](https://img.shields.io/static/v1?label=Helm&message=v2&color=inactive&logo=helm) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2020-08-14
+Release date: 2020-08-14
 
 * Add image pull policy
 
@@ -11273,7 +11273,7 @@ index 10b3949..6f79580 100644
 
 ## 8.11.0  ![AppVersion: 2.2.8](https://img.shields.io/static/v1?label=AppVersion&message=2.2.8&color=success&logo=) ![Helm: v2](https://img.shields.io/static/v1?label=Helm&message=v2&color=inactive&logo=helm) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2020-08-12
+Release date: 2020-08-12
 
 * Add dns policy option
 
@@ -11297,7 +11297,7 @@ index 80ddaaa..10b3949 100644
 
 ## 8.10.0  ![AppVersion: 2.2.8](https://img.shields.io/static/v1?label=AppVersion&message=2.2.8&color=success&logo=) ![Helm: v2](https://img.shields.io/static/v1?label=Helm&message=v2&color=inactive&logo=helm) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2020-08-11
+Release date: 2020-08-11
 
 * Add hostIp to port configuration
 
@@ -11325,7 +11325,7 @@ index 936ab92..80ddaaa 100644
 
 ## 8.9.2  ![AppVersion: 2.2.8](https://img.shields.io/static/v1?label=AppVersion&message=2.2.8&color=success&logo=) ![Helm: v2](https://img.shields.io/static/v1?label=Helm&message=v2&color=inactive&logo=helm) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2020-08-10
+Release date: 2020-08-10
 
 * Bump Traefik to 2.2.8
 
@@ -11349,7 +11349,7 @@ index 42ee893..936ab92 100644
 
 ## 8.9.1  ![AppVersion: 2.2.5](https://img.shields.io/static/v1?label=AppVersion&message=2.2.5&color=success&logo=) ![Helm: v2](https://img.shields.io/static/v1?label=Helm&message=v2&color=inactive&logo=helm) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2020-07-15
+Release date: 2020-07-15
 
 * Upgrade traefik version
 
@@ -11373,7 +11373,7 @@ index a7fb668..42ee893 100644
 
 ## 8.9.0  ![AppVersion: 2.2.1](https://img.shields.io/static/v1?label=AppVersion&message=2.2.1&color=success&logo=) ![Helm: v2](https://img.shields.io/static/v1?label=Helm&message=v2&color=inactive&logo=helm) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2020-07-08
+Release date: 2020-07-08
 
 * run init container to set proper permissions on volume
 
@@ -11405,7 +11405,7 @@ index 62e3a77..a7fb668 100644
 
 ## 8.8.1  ![AppVersion: 2.2.1](https://img.shields.io/static/v1?label=AppVersion&message=2.2.1&color=success&logo=) ![Helm: v2](https://img.shields.io/static/v1?label=Helm&message=v2&color=inactive&logo=helm) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2020-07-02
+Release date: 2020-07-02
 
 * Additional container fix
 
@@ -11429,7 +11429,7 @@ index 85df29c..62e3a77 100644
 
 ## 8.8.0  ![AppVersion: 2.2.1](https://img.shields.io/static/v1?label=AppVersion&message=2.2.1&color=success&logo=) ![Helm: v2](https://img.shields.io/static/v1?label=Helm&message=v2&color=inactive&logo=helm) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2020-07-01
+Release date: 2020-07-01
 
 * added additionalContainers option to chart
 
@@ -11453,14 +11453,14 @@ index 6a9dfd8..85df29c 100644
 
 ## 8.7.2  ![AppVersion: 2.2.1](https://img.shields.io/static/v1?label=AppVersion&message=2.2.1&color=success&logo=) ![Helm: v2](https://img.shields.io/static/v1?label=Helm&message=v2&color=inactive&logo=helm) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2020-06-30
+Release date: 2020-06-30
 
 * Update image
 
 
 ## 8.7.1  ![AppVersion: 2.2.1](https://img.shields.io/static/v1?label=AppVersion&message=2.2.1&color=success&logo=) ![Helm: v2](https://img.shields.io/static/v1?label=Helm&message=v2&color=inactive&logo=helm) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2020-06-26
+Release date: 2020-06-26
 
 * Update values.yaml
 
@@ -11484,7 +11484,7 @@ index 05f9eab..6a9dfd8 100644
 
 ## 8.7.0  ![AppVersion: 2.2.1](https://img.shields.io/static/v1?label=AppVersion&message=2.2.1&color=success&logo=) ![Helm: v2](https://img.shields.io/static/v1?label=Helm&message=v2&color=inactive&logo=helm) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2020-06-23
+Release date: 2020-06-23
 
 * Add option to disable providers
 
@@ -11516,14 +11516,14 @@ index 102ae00..05f9eab 100644
 
 ## 8.6.1  ![AppVersion: 2.2.1](https://img.shields.io/static/v1?label=AppVersion&message=2.2.1&color=success&logo=) ![Helm: v2](https://img.shields.io/static/v1?label=Helm&message=v2&color=inactive&logo=helm) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2020-06-18
+Release date: 2020-06-18
 
 * Fix read-only /tmp
 
 
 ## 8.6.0  ![AppVersion: 2.2.1](https://img.shields.io/static/v1?label=AppVersion&message=2.2.1&color=success&logo=) ![Helm: v2](https://img.shields.io/static/v1?label=Helm&message=v2&color=inactive&logo=helm) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2020-06-17
+Release date: 2020-06-17
 
 * Add existing PVC support(#158)
 
@@ -11546,7 +11546,7 @@ index b2f4fc3..102ae00 100644
 
 ## 8.5.0  ![AppVersion: 2.2.1](https://img.shields.io/static/v1?label=AppVersion&message=2.2.1&color=success&logo=) ![Helm: v2](https://img.shields.io/static/v1?label=Helm&message=v2&color=inactive&logo=helm) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2020-06-16
+Release date: 2020-06-16
 
 * UDP support
 
@@ -11586,7 +11586,7 @@ index 9a9b668..b2f4fc3 100644
 
 ## 8.4.1  ![AppVersion: 2.2.1](https://img.shields.io/static/v1?label=AppVersion&message=2.2.1&color=success&logo=) ![Helm: v2](https://img.shields.io/static/v1?label=Helm&message=v2&color=inactive&logo=helm) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2020-06-10
+Release date: 2020-06-10
 
 * Fix PDB with minAvailable set
 
@@ -11610,7 +11610,7 @@ index e812b98..9a9b668 100644
 
 ## 8.4.0  ![AppVersion: 2.2.1](https://img.shields.io/static/v1?label=AppVersion&message=2.2.1&color=success&logo=) ![Helm: v2](https://img.shields.io/static/v1?label=Helm&message=v2&color=inactive&logo=helm) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2020-06-09
+Release date: 2020-06-09
 
 * Add pod disruption budget (#192)
 
@@ -11638,7 +11638,7 @@ index 5f44e5c..e812b98 100644
 
 ## 8.3.0  ![AppVersion: 2.2.1](https://img.shields.io/static/v1?label=AppVersion&message=2.2.1&color=success&logo=) ![Helm: v2](https://img.shields.io/static/v1?label=Helm&message=v2&color=inactive&logo=helm) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2020-06-08
+Release date: 2020-06-08
 
 * Add option to disable RBAC and ServiceAccount
 
@@ -11674,7 +11674,7 @@ index 96bba18..5f44e5c 100644
 
 ## 8.2.1  ![AppVersion: 2.2.1](https://img.shields.io/static/v1?label=AppVersion&message=2.2.1&color=success&logo=) ![Helm: v2](https://img.shields.io/static/v1?label=Helm&message=v2&color=inactive&logo=helm) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2020-05-25
+Release date: 2020-05-25
 
 * Remove suggested providers.kubernetesingress value
 
@@ -11701,14 +11701,14 @@ index e35bdf9..96bba18 100644
 
 ## 8.2.0  ![AppVersion: 2.2.1](https://img.shields.io/static/v1?label=AppVersion&message=2.2.1&color=success&logo=) ![Helm: v2](https://img.shields.io/static/v1?label=Helm&message=v2&color=inactive&logo=helm) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2020-05-18
+Release date: 2020-05-18
 
 * Add kubernetes ingress by default
 
 
 ## 8.1.5  ![AppVersion: 2.2.1](https://img.shields.io/static/v1?label=AppVersion&message=2.2.1&color=success&logo=) ![Helm: v2](https://img.shields.io/static/v1?label=Helm&message=v2&color=inactive&logo=helm) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2020-05-18
+Release date: 2020-05-18
 
 * Fix example log params in values.yml
 
@@ -11736,7 +11736,7 @@ index abe2334..e35bdf9 100644
 
 ## 8.1.4  ![AppVersion: 2.2.1](https://img.shields.io/static/v1?label=AppVersion&message=2.2.1&color=success&logo=) ![Helm: v2](https://img.shields.io/static/v1?label=Helm&message=v2&color=inactive&logo=helm) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2020-04-30
+Release date: 2020-04-30
 
 * Update Traefik to v2.2.1
 
@@ -11760,7 +11760,7 @@ index 57cc7e1..abe2334 100644
 
 ## 8.1.3  ![AppVersion: 2.2.0](https://img.shields.io/static/v1?label=AppVersion&message=2.2.0&color=success&logo=) ![Helm: v2](https://img.shields.io/static/v1?label=Helm&message=v2&color=inactive&logo=helm) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2020-04-29
+Release date: 2020-04-29
 
 * Clarify additionnal arguments log
 
@@ -11787,7 +11787,7 @@ index d639f72..57cc7e1 100644
 
 ## 8.1.2  ![AppVersion: 2.2.0](https://img.shields.io/static/v1?label=AppVersion&message=2.2.0&color=success&logo=) ![Helm: v2](https://img.shields.io/static/v1?label=Helm&message=v2&color=inactive&logo=helm) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2020-04-23
+Release date: 2020-04-23
 
 * Remove invalid flags. (#161)
 
@@ -11811,14 +11811,14 @@ index 0e7aaef..d639f72 100644
 
 ## 8.1.1  ![AppVersion: 2.2.0](https://img.shields.io/static/v1?label=AppVersion&message=2.2.0&color=success&logo=) ![Helm: v2](https://img.shields.io/static/v1?label=Helm&message=v2&color=inactive&logo=helm) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2020-04-23
+Release date: 2020-04-23
 
 * clarify project philosophy and guidelines
 
 
 ## 8.1.0  ![AppVersion: 2.2.0](https://img.shields.io/static/v1?label=AppVersion&message=2.2.0&color=success&logo=) ![Helm: v2](https://img.shields.io/static/v1?label=Helm&message=v2&color=inactive&logo=helm) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2020-04-22
+Release date: 2020-04-22
 
 * Add priorityClassName & securityContext
 
@@ -11854,7 +11854,7 @@ index d55a40a..0e7aaef 100644
 
 ## 8.0.4  ![AppVersion: 2.2.0](https://img.shields.io/static/v1?label=AppVersion&message=2.2.0&color=success&logo=) ![Helm: v2](https://img.shields.io/static/v1?label=Helm&message=v2&color=inactive&logo=helm) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2020-04-20
+Release date: 2020-04-20
 
 * Possibility to bind environment variables via envFrom
 
@@ -11882,7 +11882,7 @@ index 7f8092e..d55a40a 100644
 
 ## 8.0.3  ![AppVersion: 2.2.0](https://img.shields.io/static/v1?label=AppVersion&message=2.2.0&color=success&logo=) ![Helm: v2](https://img.shields.io/static/v1?label=Helm&message=v2&color=inactive&logo=helm) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2020-04-15
+Release date: 2020-04-15
 
 * Add support for data volume subPath. (#147)
 
@@ -11905,7 +11905,7 @@ index 152339b..7f8092e 100644
 
 ## 8.0.2  ![AppVersion: 2.2.0](https://img.shields.io/static/v1?label=AppVersion&message=2.2.0&color=success&logo=) ![Helm: v2](https://img.shields.io/static/v1?label=Helm&message=v2&color=inactive&logo=helm) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2020-04-10
+Release date: 2020-04-10
 
 * Ability to add custom labels to dashboard's IngressRoute
 
@@ -11929,14 +11929,14 @@ index 5d294b7..152339b 100644
 
 ## 8.0.1  ![AppVersion: 2.2.0](https://img.shields.io/static/v1?label=AppVersion&message=2.2.0&color=success&logo=) ![Helm: v2](https://img.shields.io/static/v1?label=Helm&message=v2&color=inactive&logo=helm) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2020-04-10
+Release date: 2020-04-10
 
 * rbac does not need "pods" per documentation
 
 
 ## 8.0.0  ![AppVersion: 2.2.0](https://img.shields.io/static/v1?label=AppVersion&message=2.2.0&color=success&logo=) ![Helm: v2](https://img.shields.io/static/v1?label=Helm&message=v2&color=inactive&logo=helm) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2020-04-07
+Release date: 2020-04-07
 
 * follow helm best practices
 
@@ -11969,7 +11969,7 @@ index e61a9fd..5d294b7 100644
 
 ## 7.2.1  ![AppVersion: 2.2.0](https://img.shields.io/static/v1?label=AppVersion&message=2.2.0&color=success&logo=) ![Helm: v2](https://img.shields.io/static/v1?label=Helm&message=v2&color=inactive&logo=helm) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2020-04-07
+Release date: 2020-04-07
 
 * add annotations to ingressRoute
 
@@ -11993,14 +11993,14 @@ index 15d1c25..e61a9fd 100644
 
 ## 7.2.0  ![AppVersion: 2.2.0](https://img.shields.io/static/v1?label=AppVersion&message=2.2.0&color=success&logo=) ![Helm: v2](https://img.shields.io/static/v1?label=Helm&message=v2&color=inactive&logo=helm) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2020-04-03
+Release date: 2020-04-03
 
 * Add support for helm 2
 
 
 ## 7.1.0  ![AppVersion: 2.2.0](https://img.shields.io/static/v1?label=AppVersion&message=2.2.0&color=success&logo=) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2020-03-31
+Release date: 2020-03-31
 
 * Add support for externalIPs
 
@@ -12024,7 +12024,7 @@ index 6d6d13f..15d1c25 100644
 
 ## 7.0.0  ![AppVersion: 2.2.0](https://img.shields.io/static/v1?label=AppVersion&message=2.2.0&color=success&logo=) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2020-03-27
+Release date: 2020-03-27
 
 * Remove secretsEnv value key
 
@@ -12070,7 +12070,7 @@ index 1ac720d..6d6d13f 100644
 
 ## 6.4.0  ![AppVersion: 2.2.0](https://img.shields.io/static/v1?label=AppVersion&message=2.2.0&color=success&logo=) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2020-03-27
+Release date: 2020-03-27
 
 * Add ability to set serviceAccount annotations
 
@@ -12095,7 +12095,7 @@ index 85abe42..1ac720d 100644
 
 ## 6.3.0  ![AppVersion: 2.2.0](https://img.shields.io/static/v1?label=AppVersion&message=2.2.0&color=success&logo=) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2020-03-27
+Release date: 2020-03-27
 
 * hpa
 
@@ -12133,7 +12133,7 @@ index 2f5d132..85abe42 100644
 
 ## 6.2.0  ![AppVersion: 2.2.0](https://img.shields.io/static/v1?label=AppVersion&message=2.2.0&color=success&logo=) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2020-03-26
+Release date: 2020-03-26
 
 * Update to v2.2 (#96)
 
@@ -12157,7 +12157,7 @@ index ebd2fde..2f5d132 100644
 
 ## 6.1.2  ![AppVersion: 2.1.8](https://img.shields.io/static/v1?label=AppVersion&message=2.1.8&color=success&logo=) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2020-03-20
+Release date: 2020-03-20
 
 * Upgrade traefik version
 
@@ -12181,7 +12181,7 @@ index 65c7665..ebd2fde 100644
 
 ## 6.1.1  ![AppVersion: 2.1.4](https://img.shields.io/static/v1?label=AppVersion&message=2.1.4&color=success&logo=) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2020-03-20
+Release date: 2020-03-20
 
 * Upgrade traefik version
 
@@ -12205,7 +12205,7 @@ index 89c7ac1..65c7665 100644
 
 ## 6.1.0  ![AppVersion: 2.1.3](https://img.shields.io/static/v1?label=AppVersion&message=2.1.3&color=success&logo=) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2020-03-20
+Release date: 2020-03-20
 
 * Add ability to add annotations to deployment
 
@@ -12229,14 +12229,14 @@ index 8d66111..89c7ac1 100644
 
 ## 6.0.2  ![AppVersion: 2.1.3](https://img.shields.io/static/v1?label=AppVersion&message=2.1.3&color=success&logo=) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2020-03-16
+Release date: 2020-03-16
 
 * Correct storage class key name
 
 
 ## 6.0.1  ![AppVersion: 2.1.3](https://img.shields.io/static/v1?label=AppVersion&message=2.1.3&color=success&logo=) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2020-03-16
+Release date: 2020-03-16
 
 * Change default values of arrays from objects to actual arrays
 
@@ -12276,7 +12276,7 @@ index 490b2b6..8d66111 100644
 
 ## 6.0.0  ![AppVersion: 2.1.3](https://img.shields.io/static/v1?label=AppVersion&message=2.1.3&color=success&logo=) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2020-03-15
+Release date: 2020-03-15
 
 * Cleanup
 
@@ -12351,7 +12351,7 @@ index 7aebefe..490b2b6 100644
 
 ## 5.6.0  ![AppVersion: 2.1.3](https://img.shields.io/static/v1?label=AppVersion&message=2.1.3&color=success&logo=) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2020-03-12
+Release date: 2020-03-12
 
 * Add field enabled for resources
 
@@ -12392,7 +12392,7 @@ index 38bb263..7aebefe 100644
 
 ## 5.5.0  ![AppVersion: 2.1.3](https://img.shields.io/static/v1?label=AppVersion&message=2.1.3&color=success&logo=) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2020-03-12
+Release date: 2020-03-12
 
 * expose hostnetwork option
 
@@ -12438,7 +12438,7 @@ index ecb2833..38bb263 100644
 
 ## 5.4.0  ![AppVersion: 2.1.3](https://img.shields.io/static/v1?label=AppVersion&message=2.1.3&color=success&logo=) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2020-03-12
+Release date: 2020-03-12
 
 * Add support for hostport
 
@@ -12479,7 +12479,7 @@ index ec1d619..ecb2833 100644
 
 ## 5.3.3  ![AppVersion: 2.1.3](https://img.shields.io/static/v1?label=AppVersion&message=2.1.3&color=success&logo=) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2020-03-12
+Release date: 2020-03-12
 
 * Fix replica check
 
@@ -12503,35 +12503,35 @@ index 7f31548..ec1d619 100644
 
 ## 5.3.2  ![AppVersion: 2.1.3](https://img.shields.io/static/v1?label=AppVersion&message=2.1.3&color=success&logo=) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2020-03-11
+Release date: 2020-03-11
 
 * Fixed typo in README
 
 
 ## 5.3.1  ![AppVersion: 2.1.3](https://img.shields.io/static/v1?label=AppVersion&message=2.1.3&color=success&logo=) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2020-03-11
+Release date: 2020-03-11
 
 * Production ready
 
 
 ## 5.3.0  ![AppVersion: 2.1.3](https://img.shields.io/static/v1?label=AppVersion&message=2.1.3&color=success&logo=) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2020-03-11
+Release date: 2020-03-11
 
 * Not authorise acme if replica > 1
 
 
 ## 5.2.1  ![AppVersion: 2.1.3](https://img.shields.io/static/v1?label=AppVersion&message=2.1.3&color=success&logo=) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2020-03-11
+Release date: 2020-03-11
 
 * Fix volume mount
 
 
 ## 5.2.0  ![AppVersion: 2.1.3](https://img.shields.io/static/v1?label=AppVersion&message=2.1.3&color=success&logo=) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2020-03-11
+Release date: 2020-03-11
 
 * Add secret as env var
 
@@ -12569,7 +12569,7 @@ index ccea845..7f31548 100644
 
 ## 5.1.0  ![AppVersion: 2.1.3](https://img.shields.io/static/v1?label=AppVersion&message=2.1.3&color=success&logo=) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2020-03-10
+Release date: 2020-03-10
 
 * Enhance security by add loadBalancerSourceRanges to lockdown ip address.
 
@@ -12594,7 +12594,7 @@ index 78bbee0..ccea845 100644
 
 ## 5.0.0  ![AppVersion: 2.1.3](https://img.shields.io/static/v1?label=AppVersion&message=2.1.3&color=success&logo=) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2020-03-10
+Release date: 2020-03-10
 
 * Expose dashboard by default but only on traefik entrypoint
 
@@ -12625,7 +12625,7 @@ index a442fca..78bbee0 100644
 
 ## 4.1.3  ![AppVersion: 2.1.3](https://img.shields.io/static/v1?label=AppVersion&message=2.1.3&color=success&logo=) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2020-03-10
+Release date: 2020-03-10
 
 * Add annotations for PVC (#98)
 
@@ -12648,7 +12648,7 @@ index 8b2f4db..a442fca 100644
 
 ## 4.1.2  ![AppVersion: 2.1.3](https://img.shields.io/static/v1?label=AppVersion&message=2.1.3&color=success&logo=) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2020-03-10
+Release date: 2020-03-10
 
 * Added persistent volume support. (#86)
 
@@ -12685,7 +12685,7 @@ index 2a2554f..8b2f4db 100644
 
 ## 4.1.1  ![AppVersion: 2.1.3](https://img.shields.io/static/v1?label=AppVersion&message=2.1.3&color=success&logo=) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2020-03-10
+Release date: 2020-03-10
 
 * Add values to mount secrets or configmaps as volumes to the traefik pod (#84)
 
@@ -12724,7 +12724,7 @@ index 5401832..2a2554f 100644
 
 ## 4.1.0  ![AppVersion: 2.1.3](https://img.shields.io/static/v1?label=AppVersion&message=2.1.3&color=success&logo=) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2020-03-10
+Release date: 2020-03-10
 
 * Add podAnnotations to the deployment (#83)
 
@@ -12748,21 +12748,21 @@ index 5eab74b..5401832 100644
 
 ## 4.0.0  ![AppVersion: 2.1.3](https://img.shields.io/static/v1?label=AppVersion&message=2.1.3&color=success&logo=) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2020-03-06
+Release date: 2020-03-06
 
 * Migrate to helm v3 (#94)
 
 
 ## 3.5.0  ![AppVersion: 2.1.3](https://img.shields.io/static/v1?label=AppVersion&message=2.1.3&color=success&logo=) ![Helm: v2](https://img.shields.io/static/v1?label=Helm&message=v2&color=inactive&logo=helm) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2020-02-18
+Release date: 2020-02-18
 
 * Publish helm chart (#81)
 
 
 ## 3.4.0  ![AppVersion: 2.1.3](https://img.shields.io/static/v1?label=AppVersion&message=2.1.3&color=success&logo=) ![Helm: v2](https://img.shields.io/static/v1?label=Helm&message=v2&color=inactive&logo=helm) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2020-02-13
+Release date: 2020-02-13
 
 * fix: tests.
 * feat: bump traefik to v2.1.3
@@ -12799,7 +12799,7 @@ index bcc42f8..5eab74b 100644
 
 ## 3.3.3  ![AppVersion: 2.1.1](https://img.shields.io/static/v1?label=AppVersion&message=2.1.1&color=success&logo=) ![Helm: v2](https://img.shields.io/static/v1?label=Helm&message=v2&color=inactive&logo=helm) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2020-02-05
+Release date: 2020-02-05
 
 * fix: deployment environment variables.
 * fix: chart version.
@@ -12807,21 +12807,21 @@ index bcc42f8..5eab74b 100644
 
 ## 3.3.2  ![AppVersion: 2.1.1](https://img.shields.io/static/v1?label=AppVersion&message=2.1.1&color=success&logo=) ![Helm: v2](https://img.shields.io/static/v1?label=Helm&message=v2&color=inactive&logo=helm) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2020-02-03
+Release date: 2020-02-03
 
 * ix: deployment environment variables.
 
 
 ## 3.3.1  ![AppVersion: 2.1.1](https://img.shields.io/static/v1?label=AppVersion&message=2.1.1&color=success&logo=) ![Helm: v2](https://img.shields.io/static/v1?label=Helm&message=v2&color=inactive&logo=helm) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2020-01-27
+Release date: 2020-01-27
 
 * fix: deployment environment variables.
 
 
 ## 3.3.0  ![AppVersion: 2.1.1](https://img.shields.io/static/v1?label=AppVersion&message=2.1.1&color=success&logo=) ![Helm: v2](https://img.shields.io/static/v1?label=Helm&message=v2&color=inactive&logo=helm) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2020-01-24
+Release date: 2020-01-24
 
 * Enable configuration of environment variables in traefik deployment (#71)
 
@@ -12850,14 +12850,14 @@ index 4462359..bcc42f8 100644
 
 ## 3.2.1  ![AppVersion: 2.1.1](https://img.shields.io/static/v1?label=AppVersion&message=2.1.1&color=success&logo=) ![Helm: v2](https://img.shields.io/static/v1?label=Helm&message=v2&color=inactive&logo=helm) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2020-01-22
+Release date: 2020-01-22
 
 * Add Unit Tests for the chart (#60)
 
 
 ## 3.2.0  ![AppVersion: 2.1.1](https://img.shields.io/static/v1?label=AppVersion&message=2.1.1&color=success&logo=) ![Helm: v2](https://img.shields.io/static/v1?label=Helm&message=v2&color=inactive&logo=helm) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2020-01-22
+Release date: 2020-01-22
 
 * Make NodePort configurable (#67)
 
@@ -12887,7 +12887,7 @@ index b1fe42a..4462359 100644
 
 ## 3.1.0  ![AppVersion: 2.1.1](https://img.shields.io/static/v1?label=AppVersion&message=2.1.1&color=success&logo=) ![Helm: v2](https://img.shields.io/static/v1?label=Helm&message=v2&color=inactive&logo=helm) ![Helm: v3](https://img.shields.io/static/v1?label=Helm&message=v3&color=informational&logo=helm)
 
-**Release date:** 2020-01-20
+Release date: 2020-01-20
 
 * Switch Chart linting to ct (#59)
 

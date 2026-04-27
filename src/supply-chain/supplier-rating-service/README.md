@@ -1,10 +1,10 @@
-# supplier-rating-service
+﻿# supplier-rating-service
 
 > Tracks and scores supplier performance across on-time delivery rate, defect rate, fill rate, and lead time accuracy.
 
 ## Overview
 
-The supplier-rating-service provides a continuous, data-driven scorecard for every supplier in the ShopOS supply chain. It consumes purchase order and shipment events from Kafka and aggregates performance metrics across four key dimensions: on-time delivery rate, defect/rejection rate, fill rate, and lead time accuracy. Scores are weighted, normalised to a 0–100 composite, and persisted in PostgreSQL. Vendor managers and the vendor-service query this service to surface scorecards, trigger supplier reviews, and feed automated disqualification workflows.
+The supplier-rating-service provides a continuous, data-driven scorecard for every supplier in the ShopOS supply chain. It consumes purchase order and shipment events from Kafka and aggregates performance metrics across four key dimensions: on-time delivery rate, defect/rejection rate, fill rate, and lead time accuracy. Scores are weighted, normalised to a 0â€“100 composite, and persisted in PostgreSQL. Vendor managers and the vendor-service query this service to surface scorecards, trigger supplier reviews, and feed automated disqualification workflows.
 
 ## Architecture
 
@@ -32,7 +32,7 @@ graph TD
 
 - Consume shipment and purchase order events to record delivery outcomes
 - Calculate rolling KPIs: on-time delivery rate, defect rate, fill rate, lead time accuracy
-- Compute a weighted composite score (0–100) per supplier per configurable period
+- Compute a weighted composite score (0â€“100) per supplier per configurable period
 - Persist score history for trend analysis and audit
 - Emit `supplychain.supplier.underperforming` when composite score falls below threshold
 - Expose gRPC endpoints for scorecard queries, score history, and manual adjustment
@@ -60,11 +60,11 @@ service SupplierRatingService {
 
 ## Dependencies
 
-**Upstream (callers)**
-- `vendor-service` — queries supplier scorecard for approval workflows
-- `purchase-order-service` — triggers score recalculation on PO closure
+Upstream (callers)
+- `vendor-service` â€” queries supplier scorecard for approval workflows
+- `purchase-order-service` â€” triggers score recalculation on PO closure
 
-**Downstream (calls out to)**
+Downstream (calls out to)
 - None (leaf scoring service)
 
 ## Environment Variables
@@ -72,7 +72,7 @@ service SupplierRatingService {
 | Variable | Default | Description |
 |---|---|---|
 | `GRPC_PORT` | `50194` | Port the gRPC server listens on |
-| `DATABASE_URL` | — | PostgreSQL connection string (required) |
+| `DATABASE_URL` | â€” | PostgreSQL connection string (required) |
 | `WEIGHT_ON_TIME_DELIVERY` | `0.35` | Scoring weight for on-time delivery |
 | `WEIGHT_DEFECT_RATE` | `0.30` | Scoring weight for defect/rejection rate |
 | `WEIGHT_FILL_RATE` | `0.20` | Scoring weight for order fill rate |
@@ -87,6 +87,6 @@ docker-compose up supplier-rating-service
 
 ## Health Check
 
-`GET /healthz` → `{"status":"ok"}`
+`GET /healthz` â†’ `{"status":"ok"}`
 
-gRPC health: `grpc.health.v1.Health/Check` → `SERVING`
+gRPC health: `grpc.health.v1.Health/Check` â†’ `SERVING`

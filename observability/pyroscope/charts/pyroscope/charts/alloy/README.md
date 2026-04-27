@@ -1,4 +1,4 @@
-# Grafana Alloy Helm chart
+﻿# Grafana Alloy Helm chart
 
 ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![Version: 1.5.2](https://img.shields.io/badge/Version-1.5.2-informational?style=flat-square) ![AppVersion: v1.12.2](https://img.shields.io/badge/AppVersion-v1.12.2-informational?style=flat-square)
 
@@ -218,7 +218,7 @@ Valid settings are `experimental`, `public-preview`, and `generally-available`.
 `alloy.extraArgs` allows for passing extra arguments to the Grafana Alloy
 container. The list of available arguments is documented on [alloy run][].
 
-> **WARNING**: Using `alloy.extraArgs` does not have a stable API. Things may
+> WARNING: Using `alloy.extraArgs` does not have a stable API. Things may
 > break between Chart upgrade if an argument gets added to the template.
 
 [alloy run]: https://grafana.com/docs/alloy/latest/reference/cli/run/
@@ -280,7 +280,7 @@ components like [discovery.kubernetes][] to work properly.
 
 `controller.autoscaling` is intended to be used with [clustered][] mode.
 
-> **WARNING**: Using `controller.autoscaling` for any other Grafana Alloy
+> WARNING: Using `controller.autoscaling` for any other Grafana Alloy
 > configuration could lead to redundant or double telemetry collection.
 
 [clustered]: https://grafana.com/docs/alloy/latest/reference/cli/run/#clustered-mode

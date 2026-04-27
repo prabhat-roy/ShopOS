@@ -1,10 +1,10 @@
-# feedback-service
+﻿# feedback-service
 
 > Post-purchase feedback collection with automated sentiment tagging.
 
 ## Overview
 
-The feedback-service captures short-form feedback from customers after a purchase or interaction and applies automated sentiment analysis to tag each submission as positive, neutral, or negative. It is lighter-weight than the survey-service — designed for quick thumbs-up/down or 1–5 star feedback flows with an optional comment field. Sentiment tags feed into analytics dashboards for product and operations teams.
+The feedback-service captures short-form feedback from customers after a purchase or interaction and applies automated sentiment analysis to tag each submission as positive, neutral, or negative. It is lighter-weight than the survey-service â€” designed for quick thumbs-up/down or 1â€“5 star feedback flows with an optional comment field. Sentiment tags feed into analytics dashboards for product and operations teams.
 
 ## Architecture
 
@@ -40,7 +40,7 @@ graph LR
 
 ## API / Interface
 
-**gRPC service:** `FeedbackService` (port 50182)
+gRPC service: `FeedbackService` (port 50182)
 
 | Method | Request | Response | Description |
 |---|---|---|---|
@@ -56,19 +56,19 @@ graph LR
 | Topic | Direction | Description |
 |---|---|---|
 | `commerce.order.fulfilled` | Consumes | Triggers feedback invitation after delivery |
-| `customerexperience.feedback.submitted` | Publishes | Fired on new submission — consumed by sentiment service |
+| `customerexperience.feedback.submitted` | Publishes | Fired on new submission â€” consumed by sentiment service |
 | `notification.email.requested` | Publishes | Sends thank-you email after feedback |
 
 ## Dependencies
 
-**Upstream (callers)**
-- `api-gateway` — customer-facing feedback submission
-- `admin-portal` — moderation and analytics views
+Upstream (callers)
+- `api-gateway` â€” customer-facing feedback submission
+- `admin-portal` â€” moderation and analytics views
 
-**Downstream (calls / consumes)**
-- `sentiment-analysis-service` — receives `feedback.submitted` events and posts back sentiment tags
-- `order-service` — validates order ownership before accepting feedback
-- `notification-orchestrator` / Kafka — sends thank-you notifications
+Downstream (calls / consumes)
+- `sentiment-analysis-service` â€” receives `feedback.submitted` events and posts back sentiment tags
+- `order-service` â€” validates order ownership before accepting feedback
+- `notification-orchestrator` / Kafka â€” sends thank-you notifications
 
 ## Environment Variables
 
@@ -90,4 +90,4 @@ docker-compose up feedback-service
 
 ## Health Check
 
-`GET /healthz` → `{"status":"ok"}`
+`GET /healthz` â†’ `{"status":"ok"}`

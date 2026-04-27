@@ -1,4 +1,4 @@
-# Sealed Secrets
+﻿# Sealed Secrets
 
 Sealed Secrets are "one-way" encrypted K8s Secrets that can be created by anyone, but can only be decrypted by the controller running in the target cluster recovering the original object.
 
@@ -54,7 +54,7 @@ helm install my-release sealed-secrets/sealed-secrets
 
 The command deploys the Sealed Secrets controller on the Kubernetes cluster in the default configuration. The [Parameters](#parameters) section lists the parameters that can be configured during installation.
 
-> **Tip**: List all releases using `helm list`
+> Tip: List all releases using `helm list`
 
 ## Uninstalling the Chart
 
@@ -276,13 +276,13 @@ Alternatively, you can override `fullnameOverride` on the helm chart install.
 
 ## Configuration and installation details
 
-- In the case that **serviceAccount.create** is `false` and **rbac.create** is `true` it is expected for a ServiceAccount with the name **serviceAccount.name** to exist _in the same namespace as this chart_ before the installation.
-- If **rbac.create** is `true, by default *clusterRoles* are created. To switch to namespaced *Roles*:
-  1. set the required namespaces in **additionalNamespaces**
-  2. set **rbac.clusterRole** to `false`
-  3. set **rbac.namespacedRoles** to `true`
-- If **serviceAccount.create** is `true` there cannot be an existing service account with the name **serviceAccount.name**.
-- If a secret with name **secretName** does not exist _in the same namespace as this chart_, then on install one will be created. If a secret already exists with this name the keys inside will be used.
+- In the case that serviceAccount.create is `false` and rbac.create is `true` it is expected for a ServiceAccount with the name serviceAccount.name to exist _in the same namespace as this chart_ before the installation.
+- If rbac.create is `true, by default *clusterRoles* are created. To switch to namespaced *Roles*:
+  1. set the required namespaces in additionalNamespaces
+  2. set rbac.clusterRole to `false`
+  3. set rbac.namespacedRoles to `true`
+- If serviceAccount.create is `true` there cannot be an existing service account with the name serviceAccount.name.
+- If a secret with name secretName does not exist _in the same namespace as this chart_, then on install one will be created. If a secret already exists with this name the keys inside will be used.
 - OpenShift: unset the runAsUser and fsGroup like this when installing in a custom namespace:
 
 ```yaml

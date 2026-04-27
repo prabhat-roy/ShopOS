@@ -1,4 +1,4 @@
-# brand-service
+﻿# brand-service
 
 > Brand profiles, logos, and product-brand associations.
 
@@ -83,24 +83,24 @@ service BrandService {
 
 ## Kafka Topics
 
-Not applicable — brand-service is gRPC-only.
+Not applicable â€” brand-service is gRPC-only.
 
 ## Dependencies
 
-**Upstream** (calls these):
-- `media-asset-service` — resolves logo asset IDs to URLs (optional enrichment)
+Upstream (calls these):
+- `media-asset-service` â€” resolves logo asset IDs to URLs (optional enrichment)
 
-**Downstream** (called by these):
-- `product-catalog-service` — validates brand assignment on product create/update
-- `search-service` — `ListBrands` for facet indexing
-- `seo-service` — `GetBrand` for brand page meta tags
-- `api-gateway` — brand listing and brand page data
+Downstream (called by these):
+- `product-catalog-service` â€” validates brand assignment on product create/update
+- `search-service` â€” `ListBrands` for facet indexing
+- `seo-service` â€” `GetBrand` for brand page meta tags
+- `api-gateway` â€” brand listing and brand page data
 
 ## Environment Variables
 
 | Variable | Default | Description |
 |---|---|---|
-| `DATABASE_URL` | — | PostgreSQL connection string |
+| `DATABASE_URL` | â€” | PostgreSQL connection string |
 | `GRPC_PORT` | `50072` | gRPC listening port |
 | `MEDIA_ASSET_SERVICE_ADDR` | `media-asset-service:50140` | Media asset service address |
 
@@ -112,6 +112,6 @@ docker-compose up brand-service
 
 ## Health Check
 
-`GET /healthz` — `{"status":"ok"}`
+`GET /healthz` â€” `{"status":"ok"}`
 
 gRPC health protocol: `grpc.health.v1.Health/Check` on port `50072`

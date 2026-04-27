@@ -1,4 +1,4 @@
-# Redis
+﻿# Redis
 
 [Redis](http://redis.io/) is an advanced key-value cache and store. It is often referred to as a data structure server since keys can contain strings, hashes, lists, sets, sorted sets, bitmaps and hyperloglogs.
 
@@ -43,7 +43,7 @@ helm install dandydev/redis-ha
 
 The command deploys Redis on the Kubernetes cluster in the default configuration. By default this chart install one master pod containing redis master container and sentinel container along with 2 redis slave pods each containing their own sentinel sidecars. The [configuration](#configuration) section lists the parameters that can be configured during installation.
 
-> **Tip**: List all releases using `helm list`
+> Tip: List all releases using `helm list`
 
 ## Uninstalling the Chart
 
@@ -370,7 +370,7 @@ Alternatively, a YAML file that specifies the values for the parameters can be p
 helm install -f values.yaml dandydev/redis-ha
 ```
 
-> **Tip**: You can use the default [values.yaml](values.yaml)
+> Tip: You can use the default [values.yaml](values.yaml)
 
 ## Custom Redis and Sentinel config options
 
@@ -387,14 +387,14 @@ For example `repl-timeout 60` would be added to the `redis.config` section of th
 
 Note:
 
-1. Some config options should be renamed by redis version，e.g.:
+1. Some config options should be renamed by redis versionï¼Œe.g.:
 
    ```yml
-   # In redis 5.x，see https://raw.githubusercontent.com/antirez/redis/5.0/redis.conf
+   # In redis 5.xï¼Œsee https://raw.githubusercontent.com/antirez/redis/5.0/redis.conf
    min-replicas-to-write: 1
    min-replicas-max-lag: 5
 
-   # In redis 4.x and redis 3.x，see https://raw.githubusercontent.com/antirez/redis/4.0/redis.conf and https://raw.githubusercontent.com/antirez/redis/3.0/redis.conf
+   # In redis 4.x and redis 3.xï¼Œsee https://raw.githubusercontent.com/antirez/redis/4.0/redis.conf and https://raw.githubusercontent.com/antirez/redis/3.0/redis.conf
    min-slaves-to-write 1
    min-slaves-max-lag 5
    ```
@@ -479,10 +479,10 @@ The proposed solution is currently implemented as a sidecar container that runs 
 
 # Change Log
 
-## 4.14.9 - ** POTENTIAL BREAKING CHANGE. **
+## 4.14.9 -  POTENTIAL BREAKING CHANGE. 
 Introduced the ability to change the Haproxy Deployment container pod
-- Container port in redis-haproxy-deployment.yam has been changed. Was **redis.port** To **haproxy.containerPort**. Default value is 6379.
-- Port in redis-haproxy-service.yaml has been changed. Was **redis.port** To **haproxy.servicePort**. Default value is 6379.
+- Container port in redis-haproxy-deployment.yam has been changed. Was redis.port To haproxy.containerPort. Default value is 6379.
+- Port in redis-haproxy-service.yaml has been changed. Was redis.port To haproxy.servicePort. Default value is 6379.
 
 ## 4.21.0 - BREAKING CHANGES (Kubernetes Deprecation)
 This version introduced the deprecation of the PSP and subsequently added fields to the securityContexts that were introduced in Kubernetes v1.19:

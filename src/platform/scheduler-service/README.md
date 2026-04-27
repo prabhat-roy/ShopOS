@@ -1,4 +1,4 @@
-# Scheduler Service
+﻿# Scheduler Service
 
 > Cron-style distributed job scheduling for time-triggered platform tasks.
 
@@ -58,15 +58,15 @@ graph LR
 
 ## Dependencies
 
-**Upstream** (services this calls):
-- `PostgreSQL` — job definition and execution history storage
-- Kafka — event delivery for Kafka-mode job dispatch
-- Target gRPC services — called directly for gRPC-mode job dispatch
+Upstream (services this calls):
+- `PostgreSQL` â€” job definition and execution history storage
+- Kafka â€” event delivery for Kafka-mode job dispatch
+- Target gRPC services â€” called directly for gRPC-mode job dispatch
 
-**Downstream** (services that call this):
-- `subscription-billing-service` (commerce) — registers billing cycle jobs
-- `reporting-service` (analytics-ai) — registers scheduled report jobs
-- `admin-portal` (platform) — job management UI
+Downstream (services that call this):
+- `subscription-billing-service` (commerce) â€” registers billing cycle jobs
+- `reporting-service` (analytics-ai) â€” registers scheduled report jobs
+- `admin-portal` (platform) â€” job management UI
 
 ## Environment Variables
 
@@ -94,4 +94,4 @@ skaffold dev --module=scheduler-service
 
 ## Health Check
 
-`GET /healthz` → `{"status":"ok"}`
+`GET /healthz` â†’ `{"status":"ok"}`

@@ -1,4 +1,4 @@
-# recently-viewed-service
+﻿# recently-viewed-service
 
 > Tracks recently viewed products per user using a capped ring buffer in Redis.
 
@@ -28,7 +28,7 @@ graph LR
 ## Responsibilities
 
 - Record a product view event for a user (upsert with current timestamp as score)
-- Maintain a capped ring buffer per user — evict oldest entry when cap is hit
+- Maintain a capped ring buffer per user â€” evict oldest entry when cap is hit
 - Return an ordered list of recently viewed product IDs (most recent first)
 - Optionally enrich product IDs with catalog metadata on request
 - Support clearing the history for a user (GDPR / user preference)
@@ -36,7 +36,7 @@ graph LR
 
 ## API / Interface
 
-**gRPC service:** `RecentlyViewedService` (port 50124)
+gRPC service: `RecentlyViewedService` (port 50124)
 
 | Method | Request | Response | Description |
 |---|---|---|---|
@@ -51,11 +51,11 @@ _This service does not produce or consume Kafka topics._
 
 ## Dependencies
 
-**Upstream (callers)**
-- `api-gateway` — fires `RecordView` on product page loads; fetches list for homepage recommendations widget
+Upstream (callers)
+- `api-gateway` â€” fires `RecordView` on product page loads; fetches list for homepage recommendations widget
 
-**Downstream (calls)**
-- `product-catalog-service` — optionally enriches product IDs with name/image/price when `enrich=true` is requested
+Downstream (calls)
+- `product-catalog-service` â€” optionally enriches product IDs with name/image/price when `enrich=true` is requested
 
 ## Environment Variables
 
@@ -78,4 +78,4 @@ docker-compose up recently-viewed-service
 
 ## Health Check
 
-`GET /healthz` → `{"status":"ok"}`
+`GET /healthz` â†’ `{"status":"ok"}`

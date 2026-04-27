@@ -1,4 +1,4 @@
-# price-optimization-service
+﻿# price-optimization-service
 
 > Dynamic pricing recommendations using ML models trained on demand signals, competitor data, and inventory levels.
 
@@ -54,27 +54,27 @@ service PriceOptimizationService {
 
 | Topic | Role |
 |---|---|
-| `analytics-ai.price.recommendation.generated` | Produced — emitted when a new recommendation batch is computed |
-| `supplychain.inventory.low` | Consumed — triggers clearance pricing recommendations |
+| `analytics-ai.price.recommendation.generated` | Produced â€” emitted when a new recommendation batch is computed |
+| `supplychain.inventory.low` | Consumed â€” triggers clearance pricing recommendations |
 
 ## Dependencies
 
-**Upstream:** pricing-service, scheduler-service (triggers), inventory-service (stock signals)
+Upstream: pricing-service, scheduler-service (triggers), inventory-service (stock signals)
 
-**Downstream:** pricing-service (consumes recommendations), ml-feature-store (feature retrieval)
+Downstream: pricing-service (consumes recommendations), ml-feature-store (feature retrieval)
 
 ## Environment Variables
 
 | Variable | Default | Description |
 |---|---|---|
 | `GRPC_PORT` | `50151` | gRPC server port |
-| `POSTGRES_DSN` | — | PostgreSQL connection string |
+| `POSTGRES_DSN` | â€” | PostgreSQL connection string |
 | `ML_FEATURE_STORE_ADDR` | `ml-feature-store:50152` | Feature store address |
 | `INVENTORY_SERVICE_ADDR` | `inventory-service:50074` | Inventory service address |
 | `KAFKA_BROKERS` | `kafka:9092` | Kafka broker addresses |
 | `MINIO_ENDPOINT` | `minio:9000` | MinIO for model artefact storage |
-| `MINIO_ACCESS_KEY` | — | MinIO access key |
-| `MINIO_SECRET_KEY` | — | MinIO secret key |
+| `MINIO_ACCESS_KEY` | â€” | MinIO access key |
+| `MINIO_SECRET_KEY` | â€” | MinIO secret key |
 | `MINIO_MODEL_BUCKET` | `ml-models` | Bucket for trained models |
 | `DEFAULT_STRATEGY` | `margin_optimisation` | Default pricing strategy |
 | `MIN_MARGIN_PCT` | `0.10` | Absolute minimum margin floor |
@@ -87,4 +87,4 @@ docker-compose up price-optimization-service
 
 ## Health Check
 
-`GET /healthz` → `{"status":"ok"}`
+`GET /healthz` â†’ `{"status":"ok"}`

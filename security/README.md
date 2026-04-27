@@ -1,10 +1,10 @@
-# Security Configuration — ShopOS
+﻿# Security Configuration â€” ShopOS
 
 ShopOS implements a defence-in-depth security posture with controls at every layer: secret
 management, identity, network, runtime, policy enforcement, and static analysis. All tooling
 is open source and is applied as configuration-as-code under this directory.
 
-> **Phase note:** The full security stack is provisioned in **Phase 3**. The configurations
+> Phase note: The full security stack is provisioned in Phase 3. The configurations
 > here are ready to apply once the base platform (Phase 1) and CI/CD (Phase 2) are stable.
 
 ---
@@ -13,15 +13,15 @@ is open source and is applied as configuration-as-code under this directory.
 
 ```
 security/
-├── vault/                  ← Secret management (HashiCorp Vault)
-├── keycloak/               ← Identity provider / SSO (Keycloak)
-├── kyverno/                ← Kubernetes policy engine
-├── falco/                  ← Runtime threat detection
-├── semgrep/                ← SAST rule sets
-├── trivy/                  ← Container and dependency scanning
-├── sonarqube/              ← Code quality and security gate
-├── opa/                    ← Open Policy Agent (API-level authz)
-└── network-policies/       ← Kubernetes NetworkPolicy manifests
+â”œâ”€â”€ vault/                  â† Secret management (HashiCorp Vault)
+â”œâ”€â”€ keycloak/               â† Identity provider / SSO (Keycloak)
+â”œâ”€â”€ kyverno/                â† Kubernetes policy engine
+â”œâ”€â”€ falco/                  â† Runtime threat detection
+â”œâ”€â”€ semgrep/                â† SAST rule sets
+â”œâ”€â”€ trivy/                  â† Container and dependency scanning
+â”œâ”€â”€ sonarqube/              â† Code quality and security gate
+â”œâ”€â”€ opa/                    â† Open Policy Agent (API-level authz)
+â””â”€â”€ network-policies/       â† Kubernetes NetworkPolicy manifests
 ```
 
 ---
@@ -52,7 +52,7 @@ flowchart TB
         KC[Keycloak\nSSO / OIDC / JWT]
     end
 
-    subgraph Mesh["Service Mesh (Istio — Phase 3)"]
+    subgraph Mesh["Service Mesh (Istio â€” Phase 3)"]
         MTLS[mTLS between services]
         AZ[AuthorizationPolicies]
     end
@@ -72,15 +72,15 @@ flowchart TB
 
 ## Tool Reference
 
-### HashiCorp Vault — `vault/`
+### HashiCorp Vault â€” `vault/`
 
 Vault provides dynamic secrets, PKI certificate issuance, and encrypted key-value storage.
 
-- **Auth methods**: Kubernetes ServiceAccount JWT, OIDC (via Keycloak)
-- **Secret engines**: `kv-v2` for static config, `database` for dynamic Postgres credentials,
+- Auth methods: Kubernetes ServiceAccount JWT, OIDC (via Keycloak)
+- Secret engines: `kv-v2` for static config, `database` for dynamic Postgres credentials,
   `pki` for internal TLS certificates
-- **Agent injection**: Vault Agent Injector annotates pods to mount secrets as files or env vars
-- **Lease TTL**: database credentials rotate every 1 hour
+- Agent injection: Vault Agent Injector annotates pods to mount secrets as files or env vars
+- Lease TTL: database credentials rotate every 1 hour
 
 ```bash
 # Bootstrap Vault (after Helm install)
@@ -90,14 +90,14 @@ kubectl apply -f security/vault/vault-auth-role.yaml
 kubectl apply -f security/vault/vault-policies/
 ```
 
-### Keycloak — `keycloak/`
+### Keycloak â€” `keycloak/`
 
 Keycloak is the central identity and access management system for ShopOS.
 
-- **Realms**: `shopos-internal` (employees, admins), `shopos-external` (customers, partners)
-- **Clients**: `api-gateway`, `admin-portal`, `partner-bff`, `backstage`
-- **Flows**: OIDC Authorization Code (web), Client Credentials (service-to-service)
-- **MFA**: TOTP enforced for all admin roles via `mfa-service`
+- Realms: `shopos-internal` (employees, admins), `shopos-external` (customers, partners)
+- Clients: `api-gateway`, `admin-portal`, `partner-bff`, `backstage`
+- Flows: OIDC Authorization Code (web), Client Credentials (service-to-service)
+- MFA: TOTP enforced for all admin roles via `mfa-service`
 
 ```bash
 # Port-forward Keycloak admin console
@@ -105,9 +105,9 @@ kubectl port-forward svc/keycloak 8080:8080 -n shopos-identity
 # http://localhost:8080/admin
 ```
 
-### Kyverno — `kyverno/`
+### Kyverno â€” `kyverno/`
 
-Kyverno enforces Kubernetes policy as admission webhooks — no Rego required.
+Kyverno enforces Kubernetes policy as admission webhooks â€” no Rego required.
 
 Key policies applied:
 
@@ -125,7 +125,7 @@ kubectl apply -f security/kyverno/policies/
 kubectl get policyreport -A   # view compliance report
 ```
 
-### Falco — `falco/`
+### Falco â€” `falco/`
 
 Falco monitors kernel system calls at runtime and alerts on suspicious behaviour.
 
@@ -136,13 +136,13 @@ Notable rules applied:
 - Write to `/etc` or `/bin` inside a running container
 - Unexpected process execution in `shopos-financial` namespace
 
-Alerts are routed to Alertmanager → Slack `#shopos-security`.
+Alerts are routed to Alertmanager â†’ Slack `#shopos-security`.
 
 ```bash
 kubectl logs -n falco -l app=falco -f   # stream Falco alerts
 ```
 
-### Semgrep — `semgrep/`
+### Semgrep â€” `semgrep/`
 
 Semgrep runs SAST analysis in CI for all language rulesets.
 
@@ -160,14 +160,14 @@ Semgrep runs SAST analysis in CI for all language rulesets.
 semgrep --config security/semgrep/rules/ src/commerce/order-service/
 ```
 
-### Trivy — `trivy/`
+### Trivy â€” `trivy/`
 
 Trivy scans container images, filesystems, and Git repositories for CVEs and misconfigurations.
 
-- **Image scan**: every Docker image in CI before push to Harbor
-- **SCA**: `go.mod`, `pom.xml`, `package.json`, `requirements.txt`, `Cargo.toml`
-- **K8s**: periodic cluster scan via `trivy operator`
-- **Severity threshold**: builds fail on `CRITICAL` or `HIGH` unfixed CVEs
+- Image scan: every Docker image in CI before push to Harbor
+- SCA: `go.mod`, `pom.xml`, `package.json`, `requirements.txt`, `Cargo.toml`
+- K8s: periodic cluster scan via `trivy operator`
+- Severity threshold: builds fail on `CRITICAL` or `HIGH` unfixed CVEs
 
 ```bash
 # Scan an image
@@ -180,13 +180,13 @@ trivy fs src/commerce/order-service/
 trivy k8s --report=summary cluster
 ```
 
-### SonarQube — `sonarqube/`
+### SonarQube â€” `sonarqube/`
 
 SonarQube provides code quality gates, duplication detection, and security hotspot analysis.
 
-- **Quality Gate**: must pass before merge to `main`
-- **Coverage threshold**: ≥ 80 % line coverage
-- **Security hotspots**: reviewed and resolved before release
+- Quality Gate: must pass before merge to `main`
+- Coverage threshold: â‰¥ 80 % line coverage
+- Security hotspots: reviewed and resolved before release
 
 ```bash
 # Port-forward SonarQube
@@ -194,18 +194,18 @@ kubectl port-forward svc/sonarqube 9000:9000 -n shopos-infra
 # http://localhost:9000
 ```
 
-### OPA / Gatekeeper — `opa/`
+### OPA / Gatekeeper â€” `opa/`
 
 Open Policy Agent enforces fine-grained API-level authorisation policies for the gRPC/HTTP
 gateway layer. Rego policies define which `sub` (subject) may call which gRPC method.
 
-### Network Policies — `network-policies/`
+### Network Policies â€” `network-policies/`
 
 Kubernetes `NetworkPolicy` manifests enforce east-west traffic segmentation:
 
 - Pods may only receive ingress from their own namespace or explicitly allowed namespaces
 - All cross-domain calls must go via the API Gateway or explicit service-to-service allow rules
-- The `shopos-infra` namespace (databases, Kafka, Vault) only accepts traffic from service pods —
+- The `shopos-infra` namespace (databases, Kafka, Vault) only accepts traffic from service pods â€”
   never from `ingress-nginx` or external sources directly
 
 ---

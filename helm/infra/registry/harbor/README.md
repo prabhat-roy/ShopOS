@@ -1,23 +1,23 @@
-# Harbor — Private OCI Container Registry
+﻿# Harbor â€” Private OCI Container Registry
 
 ## Role in ShopOS
 
-Harbor is the **private container image registry** for ShopOS. It stores all Docker images built
+Harbor is the private container image registry for ShopOS. It stores all Docker images built
 from the 130 microservices, enforces vulnerability scanning with Trivy before images can be deployed,
 signs images with Cosign for supply chain integrity, and provides project-level RBAC to restrict
 who can push and pull images per domain team.
 
-**Key capabilities used in ShopOS:**
+Key capabilities used in ShopOS:
 - OCI image storage for all 130 service images
-- Integrated Trivy scanning — images with critical CVEs are automatically quarantined
-- Cosign content trust — Kubernetes admission controller rejects unsigned images (Phase 3)
-- Project-level RBAC: each domain team (platform, identity, catalog, …) has its own Harbor project
-- Proxy cache — caches Docker Hub, GCR, and GHCR images locally to avoid rate limits
+- Integrated Trivy scanning â€” images with critical CVEs are automatically quarantined
+- Cosign content trust â€” Kubernetes admission controller rejects unsigned images (Phase 3)
+- Project-level RBAC: each domain team (platform, identity, catalog, â€¦) has its own Harbor project
+- Proxy cache â€” caches Docker Hub, GCR, and GHCR images locally to avoid rate limits
 - Webhook notifications to ArgoCD on successful image push
 
 ---
 
-## CI Pipeline → Harbor → Kubernetes
+## CI Pipeline â†’ Harbor â†’ Kubernetes
 
 ```mermaid
 flowchart LR
@@ -41,7 +41,7 @@ flowchart LR
     end
 
     subgraph K8s["Kubernetes"]
-        ADM[Admission Controller<br/>Kyverno — verify signature]
+        ADM[Admission Controller<br/>Kyverno â€” verify signature]
         DEP[Deployment<br/>pulls from Harbor]
     end
 
@@ -63,15 +63,15 @@ flowchart LR
 
 | Harbor Project | Domain | Repositories |
 |---|---|---|
-| `platform` | platform | api-gateway, web-bff, mobile-bff, saga-orchestrator, … |
-| `identity` | identity | auth-service, user-service, session-service, … |
-| `catalog` | catalog | product-catalog-service, pricing-service, search-service, … |
-| `commerce` | commerce | cart-service, order-service, payment-service, … |
-| `supply-chain` | supply-chain | warehouse-service, fulfillment-service, tracking-service, … |
-| `financial` | financial | invoice-service, payout-service, reconciliation-service, … |
-| `cx` | customer-experience | review-rating-service, support-ticket-service, … |
-| `analytics-ai` | analytics-ai | recommendation-service, fraud-detection-service, … |
-| `proxy-cache` | — | docker.io, gcr.io, ghcr.io pull-through |
+| `platform` | platform | api-gateway, web-bff, mobile-bff, saga-orchestrator, â€¦ |
+| `identity` | identity | auth-service, user-service, session-service, â€¦ |
+| `catalog` | catalog | product-catalog-service, pricing-service, search-service, â€¦ |
+| `commerce` | commerce | cart-service, order-service, payment-service, â€¦ |
+| `supply-chain` | supply-chain | warehouse-service, fulfillment-service, tracking-service, â€¦ |
+| `financial` | financial | invoice-service, payout-service, reconciliation-service, â€¦ |
+| `cx` | customer-experience | review-rating-service, support-ticket-service, â€¦ |
+| `analytics-ai` | analytics-ai | recommendation-service, fraud-detection-service, â€¦ |
+| `proxy-cache` | â€” | docker.io, gcr.io, ghcr.io pull-through |
 
 ---
 
@@ -121,7 +121,7 @@ Robot account credentials are stored in Vault (`secret/ci/harbor/robot-account`)
 
 | Severity | Policy |
 |---|---|
-| `CRITICAL` | Block push — image quarantined |
+| `CRITICAL` | Block push â€” image quarantined |
 | `HIGH` | Allow push, alert via webhook to Slack |
 | `MEDIUM` | Allow push, log to audit |
 | `LOW` / `NEGLIGIBLE` | Allow, visible in Harbor UI |
@@ -137,6 +137,6 @@ against policy.
 |---|---|
 | HTTP Port | 5000 |
 | Admin User | `admin` |
-| Admin Password | Set in `harbor.yml` — rotate immediately in production |
+| Admin Password | Set in `harbor.yml` â€” rotate immediately in production |
 | Data Volume | `/data` |
 | Database | PostgreSQL (bundled or external) |

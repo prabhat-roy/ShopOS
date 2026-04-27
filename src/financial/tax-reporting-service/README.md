@@ -1,4 +1,4 @@
-# tax-reporting-service
+﻿# tax-reporting-service
 
 > Generates tax compliance reports and filing-ready exports including VAT returns and 1099 forms.
 
@@ -63,14 +63,14 @@ service TaxReportingService {
 
 ## Dependencies
 
-**Upstream (callers)**
+Upstream (callers)
 - Finance team tooling / admin portal via gRPC
 
-**Downstream (calls out to)**
-- `accounting-service` — journal entry data for tax period aggregation
-- `invoice-service` — invoice line-item tax amounts
-- `payout-service` — seller payout data for 1099 generation
-- `document-service` (content domain) — PDF/XML report storage
+Downstream (calls out to)
+- `accounting-service` â€” journal entry data for tax period aggregation
+- `invoice-service` â€” invoice line-item tax amounts
+- `payout-service` â€” seller payout data for 1099 generation
+- `document-service` (content domain) â€” PDF/XML report storage
 
 ## Environment Variables
 
@@ -81,7 +81,7 @@ service TaxReportingService {
 | `DB_PORT` | `5432` | PostgreSQL port |
 | `DB_NAME` | `tax_reporting_db` | Database name |
 | `DB_USER` | `tax_reporting_svc` | Database user |
-| `DB_PASSWORD` | — | Database password (required) |
+| `DB_PASSWORD` | â€” | Database password (required) |
 | `KAFKA_BROKERS` | `localhost:9092` | Comma-separated Kafka broker list |
 | `ACCOUNTING_GRPC_ADDR` | `accounting-service:50111` | Address of accounting-service |
 | `INVOICE_GRPC_ADDR` | `invoice-service:50110` | Address of invoice-service |
@@ -98,6 +98,6 @@ docker-compose up tax-reporting-service
 
 ## Health Check
 
-`GET /healthz` → `{"status":"ok"}`
+`GET /healthz` â†’ `{"status":"ok"}`
 
-gRPC health: `grpc.health.v1.Health/Check` → `SERVING`
+gRPC health: `grpc.health.v1.Health/Check` â†’ `SERVING`

@@ -1,24 +1,24 @@
-# Gitea — Self-Hosted Git Service
+﻿# Gitea â€” Self-Hosted Git Service
 
 ## Role in ShopOS
 
-Gitea is the **self-hosted Git platform** for ShopOS. It provides source code hosting, code review
-(pull requests), issue tracking, and native CI/CD via Gitea Actions — all without any dependency
+Gitea is the self-hosted Git platform for ShopOS. It provides source code hosting, code review
+(pull requests), issue tracking, and native CI/CD via Gitea Actions â€” all without any dependency
 on GitHub, GitLab, or other external SaaS. In a fully air-gapped or on-premises deployment, Gitea
 is the single source of truth for all source code and GitOps manifests.
 
-**Key capabilities used in ShopOS:**
+Key capabilities used in ShopOS:
 - Git repository hosting for all 130 service source trees
 - Pull request workflow with required reviews before merge
-- Gitea Actions — GitHub Actions-compatible CI syntax, runs on self-hosted runners
+- Gitea Actions â€” GitHub Actions-compatible CI syntax, runs on self-hosted runners
 - Webhook triggers to Tekton Pipelines and ArgoCD on push / merge events
-- Organization and team RBAC — each domain team owns their service repositories
-- Gitea Packages — alternative to Nexus for npm/Docker/PyPI packages (lightweight)
-- Mirror mode — can mirror from GitHub upstream for open-source dependencies
+- Organization and team RBAC â€” each domain team owns their service repositories
+- Gitea Packages â€” alternative to Nexus for npm/Docker/PyPI packages (lightweight)
+- Mirror mode â€” can mirror from GitHub upstream for open-source dependencies
 
 ---
 
-## GitOps Flow: Git Push → Gitea → ArgoCD → Kubernetes
+## GitOps Flow: Git Push â†’ Gitea â†’ ArgoCD â†’ Kubernetes
 
 ```mermaid
 sequenceDiagram
@@ -33,10 +33,10 @@ sequenceDiagram
     Gitea->>Tekton: Webhook POST /tekton/trigger
     Tekton->>Tekton: Build + Test + docker build
     Tekton->>Harbor: docker push image:sha
-    Harbor->>Gitea: Webhook — image scanned & signed
+    Harbor->>Gitea: Webhook â€” image scanned & signed
     Gitea->>Gitea: Gitea Actions: update image tag in gitops repo
     Gitea->>ArgoCd: Webhook POST /api/webhook (gitops repo changed)
-    ArgoCd->>K8s: kubectl apply — sync new image tag
+    ArgoCd->>K8s: kubectl apply â€” sync new image tag
     K8s-->>Dev: Deployment rollout complete
 ```
 
@@ -48,10 +48,10 @@ Gitea organizations mirror the ShopOS domain structure:
 
 | Gitea Organization | Repositories |
 |---|---|
-| `shopos-platform` | api-gateway, web-bff, mobile-bff, saga-orchestrator, … |
-| `shopos-identity` | auth-service, user-service, session-service, … |
-| `shopos-catalog` | product-catalog-service, pricing-service, search-service, … |
-| `shopos-commerce` | cart-service, order-service, payment-service, … |
+| `shopos-platform` | api-gateway, web-bff, mobile-bff, saga-orchestrator, â€¦ |
+| `shopos-identity` | auth-service, user-service, session-service, â€¦ |
+| `shopos-catalog` | product-catalog-service, pricing-service, search-service, â€¦ |
+| `shopos-commerce` | cart-service, order-service, payment-service, â€¦ |
 | `shopos-gitops` | argocd apps, helm values, kubernetes manifests |
 | `shopos-infra` | terraform, crossplane, ansible |
 | `shopos-proto` | shared .proto definitions |
@@ -111,7 +111,7 @@ waiting for the default 3-minute polling interval.
 ```yaml
 # ArgoCD webhook configuration (in argocd-cm ConfigMap)
 # Add Gitea as a webhook source:
-# Settings → Webhooks → http://argocd-server/api/webhook
+# Settings â†’ Webhooks â†’ http://argocd-server/api/webhook
 # Secret: stored in Vault secret/gitops/argocd-webhook
 ```
 

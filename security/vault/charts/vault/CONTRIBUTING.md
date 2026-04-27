@@ -1,10 +1,10 @@
-# Contributing to Vault Helm
+﻿# Contributing to Vault Helm
 
-**Please note:** We take Vault's security and our users' trust very seriously.
+Please note: We take Vault's security and our users' trust very seriously.
 If you believe you have found a security issue in Vault, please responsibly
 disclose by contacting us at security@hashicorp.com.
 
-**First:** if you're unsure or afraid of _anything_, just ask or submit the
+First: if you're unsure or afraid of _anything_, just ask or submit the
 issue or pull request anyways. You won't be yelled at for giving it your best
 effort. The worst that can happen is that you'll be politely asked to change
 something. We appreciate any sort of contributions, and don't want a wall of
@@ -74,7 +74,7 @@ The following are the instructions for running bats tests using a Docker contain
 
 #### Test
 
-**Note:** the following commands should be run from the `vault-helm` directory.
+Note: the following commands should be run from the `vault-helm` directory.
 
 First, build the Docker image for running the tests:
 
@@ -121,7 +121,7 @@ If the acceptance tests fail, deployed resources in the Kubernetes cluster
 may not be properly cleaned up. We recommend recycling the Kubernetes cluster to
 start from a clean slate.
 
-**Note:** There is a Terraform configuration in the
+Note: There is a Terraform configuration in the
 [`test/terraform/`](https://github.com/hashicorp/vault-helm/tree/main/test/terraform) directory
 that can be used to quickly bring up a GKE cluster and configure
 `kubectl` and `helm` locally. This can be used to quickly spin up a test

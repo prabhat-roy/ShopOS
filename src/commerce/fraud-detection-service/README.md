@@ -1,4 +1,4 @@
-# fraud-detection-service
+﻿# fraud-detection-service
 
 > ML-based real-time fraud scoring for orders and payment attempts, with rule-based fallback and automatic model retraining.
 
@@ -19,12 +19,12 @@ flowchart TD
     E --> F[Feature Vector]
     F --> G{ML Model\nScoring}
 
-    G --> H[Risk Score 0.0–1.0]
+    G --> H[Risk Score 0.0â€“1.0]
     H --> I{Threshold\nDecision}
 
     I -->|score < 0.3| J[APPROVED]
-    I -->|0.3 ≤ score < 0.7| K[REVIEW - manual queue]
-    I -->|score ≥ 0.7| L[BLOCKED]
+    I -->|0.3 â‰¤ score < 0.7| K[REVIEW - manual queue]
+    I -->|score â‰¥ 0.7| L[BLOCKED]
 
     J --> M[Return score to caller]
     K --> N[Publish security.fraud.detected\nlevel=REVIEW]
@@ -74,7 +74,7 @@ Proto file: `proto/commerce/fraud_detection.proto`
 
 ## Kafka Topics
 
-**Consumed:**
+Consumed:
 
 | Topic | Purpose |
 |---|---|
@@ -82,7 +82,7 @@ Proto file: `proto/commerce/fraud_detection.proto`
 | `commerce.payment.processed` | Confirmed payment signals |
 | `commerce.payment.failed` | Failed payment signals (card testing indicator) |
 
-**Published:**
+Published:
 
 | Topic | Event Type | Trigger |
 |---|---|---|
@@ -90,18 +90,18 @@ Proto file: `proto/commerce/fraud_detection.proto`
 
 ## Dependencies
 
-**Upstream (callers)**
-- `checkout-service` — synchronous fraud score before payment attempt
+Upstream (callers)
+- `checkout-service` â€” synchronous fraud score before payment attempt
 
-**Downstream (called by this service)**
-- MLflow — model registry for versioned model loading
-- PostgreSQL — transaction signal storage
+Downstream (called by this service)
+- MLflow â€” model registry for versioned model loading
+- PostgreSQL â€” transaction signal storage
 - `device-fingerprint-service` (optional enrichment)
 
-**Kafka consumers of published events**
-- `payment-service` — can block payment on `BLOCK` decision
-- `support-ticket-service` — auto-creates fraud review ticket on `REVIEW`
-- `audit-service` — records all fraud signals
+Kafka consumers of published events
+- `payment-service` â€” can block payment on `BLOCK` decision
+- `support-ticket-service` â€” auto-creates fraud review ticket on `REVIEW`
+- `audit-service` â€” records all fraud signals
 
 ## Environment Variables
 
@@ -132,6 +132,6 @@ docker-compose up fraud-detection-service
 
 ## Health Check
 
-`GET /healthz` → `{"status":"ok"}`
+`GET /healthz` â†’ `{"status":"ok"}`
 
-gRPC health: `grpc.health.v1.Health/Check` → `SERVING`
+gRPC health: `grpc.health.v1.Health/Check` â†’ `SERVING`

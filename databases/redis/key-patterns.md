@@ -1,4 +1,4 @@
-# Redis Key Patterns — ShopOS
+﻿# Redis Key Patterns â€” ShopOS
 
 All keys follow: `{service}:{entity}:{id}[:{field}]`
 
@@ -15,7 +15,7 @@ TTLs are enforced via `EXPIRE` or set at key creation. No key is stored without 
 | `ratelimit:{api_key}:{window}` | String (counter) | 60s | rate-limiter-service | API key rate limiting |
 | `cache:config:{key}` | String | 5m | config-service | Feature flag / config values |
 | `feature:{flag}:{user_id}` | String | 5m | feature-flag-service | Per-user flag override |
-| `idempotency:{service}:{key}` | String | 24h | idempotency-service | Dedup key → response payload |
+| `idempotency:{service}:{key}` | String | 24h | idempotency-service | Dedup key â†’ response payload |
 | `circuit:{service}:{endpoint}` | Hash | 30s | circuit-breaker-service | Circuit state (open/closed/half-open) |
 | `correlationid:{id}` | String | 1h | correlation-id-service | Trace correlation mapping |
 
@@ -23,7 +23,7 @@ TTLs are enforced via `EXPIRE` or set at key creation. No key is stored without 
 
 | Key Pattern | Type | TTL | Service | Description |
 |---|---|---|---|---|
-| `auth:refresh:{token_hash}` | String | 7d | auth-service | Refresh token → user_id lookup |
+| `auth:refresh:{token_hash}` | String | 7d | auth-service | Refresh token â†’ user_id lookup |
 | `auth:blacklist:{jti}` | String | = token exp | auth-service | Revoked JTI blacklist |
 | `mfa:otp:{user_id}:{type}` | String | 5m | mfa-service | OTP code (TOTP/SMS/email) |
 | `mfa:attempts:{user_id}` | String (counter) | 15m | mfa-service | Failed MFA attempt count |
@@ -45,7 +45,7 @@ TTLs are enforced via `EXPIRE` or set at key creation. No key is stored without 
 
 | Key Pattern | Type | TTL | Service | Description |
 |---|---|---|---|---|
-| `cart:{user_id}` | Hash | 7d | cart-service | Cart items (product_id → qty+price JSON) |
+| `cart:{user_id}` | Hash | 7d | cart-service | Cart items (product_id â†’ qty+price JSON) |
 | `cart:guest:{session_id}` | Hash | 24h | cart-service | Guest cart (pre-login) |
 | `flash:sale:{sale_id}:stock` | String (counter) | = sale end | flash-sale-service | Remaining flash-sale units |
 | `waitlist:{product_id}` | List | no TTL | waitlist-service | User IDs waiting for restock |
@@ -90,7 +90,7 @@ TTLs are enforced via `EXPIRE` or set at key creation. No key is stored without 
 ## Naming Conventions
 
 1. Snake_case for field names, colon (`:`) as separator between key parts
-2. UUIDs never abbreviated — always full UUID
+2. UUIDs never abbreviated â€” always full UUID
 3. Counters use `INCR`/`INCRBY`; never read-modify-write in application code
 4. Sets for membership checks (O(1) SISMEMBER), ZSets for ranked/sorted data
 5. Hashes for multi-field objects when you access fields independently
@@ -100,9 +100,9 @@ TTLs are enforced via `EXPIRE` or set at key creation. No key is stored without 
 
 | Domain | Estimated Footprint | Notes |
 |---|---|---|
-| Sessions | ~1GB | 1M active users × 1KB each |
-| Carts | ~500MB | 500K active carts × 1KB |
-| Inventory cache | ~100MB | 500K SKUs × 200B |
-| Recommendations | ~200MB | 100K users × 2KB |
+| Sessions | ~1GB | 1M active users Ã— 1KB each |
+| Carts | ~500MB | 500K active carts Ã— 1KB |
+| Inventory cache | ~100MB | 500K SKUs Ã— 200B |
+| Recommendations | ~200MB | 100K users Ã— 2KB |
 | Rate limiting | ~50MB | ephemeral, auto-expires |
-| **Total** | **~2GB** | Allocate 4GB for headroom |
+| Total | ~2GB | Allocate 4GB for headroom |

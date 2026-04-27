@@ -1,4 +1,4 @@
-<!--- app-name: Thanos -->
+﻿<!--- app-name: Thanos -->
 
 # Bitnami package for Thanos
 
@@ -16,13 +16,13 @@ helm install my-release oci://registry-1.docker.io/bitnamicharts/thanos
 
 Looking to use Thanos in production? Try [VMware Tanzu Application Catalog](https://bitnami.com/enterprise), the commercial edition of the Bitnami catalog.
 
-## ⚠️ Important Notice: Upcoming changes to the Bitnami Catalog
+## âš ï¸ Important Notice: Upcoming changes to the Bitnami Catalog
 
 Beginning August 28th, 2025, Bitnami will evolve its public catalog to offer a curated set of hardened, security-focused images under the new [Bitnami Secure Images initiative](https://news.broadcom.com/app-dev/broadcom-introduces-bitnami-secure-images-for-production-ready-containerized-applications). As part of this transition:
 
 - Granting community users access for the first time to security-optimized versions of popular container images.
-- Bitnami will begin deprecating support for non-hardened, Debian-based software images in its free tier and will gradually remove non-latest tags from the public catalog. As a result, community users will have access to a reduced number of hardened images. These images are published only under the “latest” tag and are intended for development purposes
-- Starting August 28th, over two weeks, all existing container images, including older or versioned tags (e.g., 2.50.0, 10.6), will be migrated from the public catalog (docker.io/bitnami) to the “Bitnami Legacy” repository (docker.io/bitnamilegacy), where they will no longer receive updates.
+- Bitnami will begin deprecating support for non-hardened, Debian-based software images in its free tier and will gradually remove non-latest tags from the public catalog. As a result, community users will have access to a reduced number of hardened images. These images are published only under the â€œlatestâ€ tag and are intended for development purposes
+- Starting August 28th, over two weeks, all existing container images, including older or versioned tags (e.g., 2.50.0, 10.6), will be migrated from the public catalog (docker.io/bitnami) to the â€œBitnami Legacyâ€ repository (docker.io/bitnamilegacy), where they will no longer receive updates.
 - For production workloads and long-term support, users are encouraged to adopt Bitnami Secure Images, which include hardened containers, smaller attack surfaces, CVE transparency (via VEX/KEV), SBOMs, and enterprise support.
 
 These changes aim to improve the security posture of all Bitnami users by promoting best practices for software supply chain integrity and up-to-date deployments. For more details, visit the [Bitnami Secure Images announcement](https://github.com/bitnami/containers/issues/83267).
@@ -49,7 +49,7 @@ helm install my-release oci://REGISTRY_NAME/REPOSITORY_NAME/thanos
 
 These commands deploy Thanos on the Kubernetes cluster with the default configuration. The [configuration](#configuration-and-installation-details) section lists the parameters that can be configured during installation.
 
-> **Tip**: List all releases using `helm list`
+> Tip: List all releases using `helm list`
 
 ## Architecture
 
@@ -211,7 +211,7 @@ This feature can be enabled by using the following values:
 - Alternatively, provide your own Thanos http config file using the value `httpConfig` or `existingHttpConfigSecret`. This may cause any settings under `https.*` or `auth.*` to be ignored, except for the settings related to the TLS certificates. When providing a configuration file using these parameters, the chart Probes will fail to initialize unless one of the following fixes are applied:
   - Set `https.enabled` or `auth.basicAuthUsers` with at least one user, matching the configuration file you provided. That way Probes will be configured with HTTPS and/or basic authentication accordingly.
   - Configure your own Probes using `<component>.customLivenessProbe`, `<component>.customReadinessProbe` and `<component>.customStartupProbe`.
-  - **Not recommended**. Disable the Probes.
+  - Not recommended. Disable the Probes.
 
 ### Store time partitions
 
@@ -221,7 +221,7 @@ Setting time partitions will create N number of store statefulsets based on the 
 
 > Note: leaving the `timePartitioning` list empty (`[]`) will create a single store for all data.
 
-For instance, to use 3 stores you can use a **values.yaml** like the one below:
+For instance, to use 3 stores you can use a values.yaml like the one below:
 
 ```yaml
 timePartitioning:
@@ -264,7 +264,7 @@ You can integrate Thanos with Prometheus & Alertmanager using this chart and the
 
 > Note: in this example we will use MinIO&reg; (subchart) as the Objstore. Every component will be deployed in the "monitoring" namespace.
 
-- Create a **values.yaml** like the one below:
+- Create a values.yaml like the one below:
 
 ```yaml
 objstoreConfig: |-
@@ -1708,7 +1708,7 @@ helm install my-release -f values.yaml oci://REGISTRY_NAME/REPOSITORY_NAME/thano
 ```
 
 > Note: You need to substitute the placeholders `REGISTRY_NAME` and `REPOSITORY_NAME` with a reference to your Helm chart registry and repository. For example, in the case of Bitnami, you need to use `REGISTRY_NAME=registry-1.docker.io` and `REPOSITORY_NAME=bitnamicharts`.
-> **Tip**: You can use the default [values.yaml](https://github.com/bitnami/charts/tree/main/bitnami/thanos/values.yaml)
+> Tip: You can use the default [values.yaml](https://github.com/bitnami/charts/tree/main/bitnami/thanos/values.yaml)
 
 ## Troubleshooting
 
@@ -1920,7 +1920,7 @@ querier.ingress.grpc.secrets[0].key           -> query.ingress.grpc.secrets[0].k
 
 The Ingress API object name for Querier changes from `{{ include "common.names.fullname" . }}` to `{{ include "common.names.fullname" . }}-querier`.
 
-> **NOTE**: Which in most cases (depending on any set values in `fullnameOverride` or `nameOverride`) resolves to the used Helm release name (`.Release.Name`).
+> NOTE: Which in most cases (depending on any set values in `fullnameOverride` or `nameOverride`) resolves to the used Helm release name (`.Release.Name`).
 
 ### To 2.0.0
 

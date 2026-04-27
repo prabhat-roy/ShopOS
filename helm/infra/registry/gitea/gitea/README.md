@@ -1,4 +1,4 @@
-# Gitea Helm Chart <!-- omit from toc -->
+﻿# Gitea Helm Chart <!-- omit from toc -->
 
 - [Introduction](#introduction)
 - [Update and versioning policy](#update-and-versioning-policy)
@@ -110,7 +110,7 @@ Alternatively, the following non-HA replacements are available:
 Updates of sub-charts will be incorporated into the Gitea chart as they are released.
 The reasoning behind this is that new users of the chart will start with the most recent sub-chart dependency versions.
 
-**Note** If you want to stay on an older appVersion of a sub-chart dependency (e.g. PostgreSQL), you need to override the image tag in your `values.yaml` file.
+Note If you want to stay on an older appVersion of a sub-chart dependency (e.g. PostgreSQL), you need to override the image tag in your `values.yaml` file.
 In fact, we recommend to do so right from the start to be independent of major sub-chart dependency changes as they are released.
 There is no need to update to every new PostgreSQL major version - you can happily skip some and do larger updates when you are ready for them.
 
@@ -316,7 +316,7 @@ When `route.host` is set, the chart uses it for `DOMAIN`, `SSH_DOMAIN`, and `ROO
 The session, cache and queue settings are set to use the built-in Valkey Cluster sub-chart dependency.
 If Valkey Cluster is disabled, the chart will fall back to the Gitea defaults which use "memory" for `session` and `cache` and "level" for `queue`.
 
-While these will work and even not cause immediate issues after startup, **they are not recommended for production use**.
+While these will work and even not cause immediate issues after startup, they are not recommended for production use.
 Reasons being that a single pod will take on all the work for `session` and `cache` tasks in its available memory.
 It is likely that the pod will run out of memory or will face substantial memory spikes, depending on the workload.
 External tools such as `valkey-cluster` or `memcached` handle these workloads much better.
@@ -358,7 +358,7 @@ If HA is not needed/desired, the following configurations can be used to deploy 
 2. For a minimal DEV installation (using the built-in sqlite DB instead of Postgres):
 
    This will result in a single-pod Gitea instance _without any dependencies and persistence_.
-   **Do not use this configuration for production use**.
+   Do not use this configuration for production use.
 
    <details>
 
@@ -393,8 +393,8 @@ If HA is not needed/desired, the following configurations can be used to deploy 
 
 ### Additional _app.ini_ settings
 
-> **The [generic](https://docs.gitea.com/administration/config-cheat-sheet#overall-default)
-> section cannot be defined that way.**
+> The [generic](https://docs.gitea.com/administration/config-cheat-sheet#overall-default)
+> section cannot be defined that way.
 
 Some settings inside _app.ini_ (like passwords or whole authentication configurations) must be considered sensitive and therefore should not be passed via plain text inside the _values.yaml_ file.
 In times of _GitOps_ the values.yaml could be stored in a Git repository where sensitive data should never be accessible.
@@ -481,7 +481,7 @@ Priority (highest to lowest) for defining app.ini variables:
 ### External Database
 
 Any external database listed in [https://docs.gitea.com/installation/database-prep](https://docs.gitea.com/installation/database-prep) can be used instead of the built-in PostgreSQL.
-In fact, it is **highly recommended** to use an external database to ensure a stable Gitea installation longterm.
+In fact, it is highly recommended to use an external database to ensure a stable Gitea installation longterm.
 
 If an external database is used, no matter which type, make sure to set `postgresql.enabled` to `false` to disable the use of the built-in PostgreSQL.
 
@@ -579,7 +579,7 @@ valkey-cluster:
   enabled: true
 ```
 
-⚠️ The valkey charts [do not work well with special characters in the password](https://gitea.com/gitea/helm-chart/issues/690).
+âš ï¸ The valkey charts [do not work well with special characters in the password](https://gitea.com/gitea/helm-chart/issues/690).
 Consider omitting such or open an issue in the Bitnami repo and let us know once this got fixed.
 
 ### Persistence
@@ -711,7 +711,7 @@ gitea:
         ...
 ```
 
-⚠️ Some options are just flags and therefore don't have any values.
+âš ï¸ Some options are just flags and therefore don't have any values.
 If they are defined in `gitea.ldap` configuration, they will be passed to the Gitea CLI without any value.
 Affected options:
 
@@ -828,7 +828,7 @@ gitea:
 
 Metrics endpoint `/metrics` can be secured by using `Bearer` token authentication.
 
-**Note:** Providing non-empty `TOKEN` value will also require authentication for `ServiceMonitor`.
+Note: Providing non-empty `TOKEN` value will also require authentication for `ServiceMonitor`.
 
 ```yaml
 gitea:
@@ -1001,7 +1001,7 @@ To comply with the Gitea helm chart definition of the digest parameter, a "custo
 | `image.digest`       | Image digest. Allows to pin the given image tag. Useful for having control over mutable tags like `latest`                                                       | `""`               |
 | `image.pullPolicy`   | Image pull policy                                                                                                                                                | `IfNotPresent`     |
 | `image.rootless`     | Wether or not to pull the rootless version of Gitea, only works on Gitea 1.14.x or higher                                                                        | `true`             |
-| `image.fullOverride` | Completely overrides the image registry, path/image, tag and digest. **Adjust `image.rootless` accordingly and review [Rootless defaults](#rootless-defaults).** | `""`               |
+| `image.fullOverride` | Completely overrides the image registry, path/image, tag and digest. Adjust `image.rootless` accordingly and review [Rootless defaults](#rootless-defaults). | `""`               |
 | `imagePullSecrets`   | Secret to use for pulling the image                                                                                                                              | `[]`               |
 
 ### Security
@@ -1124,7 +1124,7 @@ To comply with the Gitea helm chart definition of the digest parameter, a "custo
 | `extraVolumes`                                    | Additional volumes to mount to the Gitea deployment                                                   | `[]`                   |
 | `extraContainerVolumeMounts`                      | Mounts that are only mapped into the Gitea runtime/main container, to e.g. override custom templates. | `[]`                   |
 | `extraInitVolumeMounts`                           | Mounts that are only mapped into the init-containers. Can be used for additional preconfiguration.    | `[]`                   |
-| `extraVolumeMounts`                               | **DEPRECATED** Additional volume mounts for init containers and the Gitea main container              | `[]`                   |
+| `extraVolumeMounts`                               | DEPRECATED Additional volume mounts for init containers and the Gitea main container              | `[]`                   |
 
 ### Init
 
@@ -1311,7 +1311,7 @@ See [CONTRIBUTORS GUIDE](CONTRIBUTING.md) for details.
 ## Upgrading
 
 This section lists major and breaking changes of each Helm Chart version.
-Please read them carefully to upgrade successfully, especially the change of the **default database backend**!
+Please read them carefully to upgrade successfully, especially the change of the default database backend!
 If you miss this, blindly upgrading may delete your Postgres instance and you may lose your data!
 
 <details>
@@ -1320,7 +1320,7 @@ If you miss this, blindly upgrading may delete your Postgres instance and you ma
 
 <!-- prettier-ignore-start -->
 <!-- markdownlint-disable-next-line -->
-**Breaking changes**
+Breaking changes
 <!-- prettier-ignore-end -->
 
 - Outsourced "Actions" related configuration.
@@ -1345,7 +1345,7 @@ If you miss this, blindly upgrading may delete your Postgres instance and you ma
 
 <!-- prettier-ignore-start -->
 <!-- markdownlint-disable-next-line -->
-**Breaking changes**
+Breaking changes
 <!-- prettier-ignore-end -->
 
 - Update Gitea to 1.23.x (review the [1.23 release blog post](https://blog.gitea.com/release-of-1.23.0/) for all application breaking changes)
@@ -1366,7 +1366,7 @@ If you miss this, blindly upgrading may delete your Postgres instance and you ma
 
 <!-- prettier-ignore-start -->
 <!-- markdownlint-disable-next-line -->
-**Breaking changes**
+Breaking changes
 <!-- prettier-ignore-end -->
 
 - Update PostgreSQL sub-chart dependencies to appVersion 16.x
@@ -1449,7 +1449,7 @@ gitea:
 
 <!-- prettier-ignore-start -->
 <!-- markdownlint-disable-next-line -->
-**Switch to rootless image by default**
+Switch to rootless image by default
 <!-- prettier-ignore-end -->
 
 If you are facing errors like `WARNING: REMOTE HOST IDENTIFICATION HAS CHANGED` due to this automatic transition:
@@ -1457,7 +1457,7 @@ Have a look at [this discussion](https://gitea.com/gitea/helm-gitea/issues/487#i
 
 <!-- prettier-ignore-start -->
 <!-- markdownlint-disable-next-line -->
-**Transitioning from a RWO to RWX Persistent Volume**
+Transitioning from a RWO to RWX Persistent Volume
 <!-- prettier-ignore-end -->
 
 If you want to switch to a RWX volume and go for HA, you need to
@@ -1468,7 +1468,7 @@ If you want to switch to a RWX volume and go for HA, you need to
 
 <!-- prettier-ignore-start -->
 <!-- markdownlint-disable-next-line -->
-**Transitioning from Postgres to Postgres HA**
+Transitioning from Postgres to Postgres HA
 <!-- prettier-ignore-end -->
 
 If you are running with a non-HA PG DB from a previous chart release, you need to set
@@ -1480,7 +1480,7 @@ This is needed to stay with your existing single-instance DB (as the HA-variant 
 
 <!-- prettier-ignore-start -->
 <!-- markdownlint-disable-next-line -->
-**Change of env-to-ini prefix**
+Change of env-to-ini prefix
 <!-- prettier-ignore-end -->
 
 Before this release, the env-to-ini prefix was `ENV_TO_INI__`.
@@ -1508,7 +1508,7 @@ With respect to `values.yaml`, parameters `username`, `database` and `password` 
 `persistence` has also been regrouped under the `primary` key.
 Please adjust your `values.yaml` accordingly.
 
-**Attention**: The Postgres upgrade is not automatically handled by the chart and must be done by yourself.
+Attention: The Postgres upgrade is not automatically handled by the chart and must be done by yourself.
 See [this comment](https://gitea.com/gitea/helm-gitea/issues/452#issuecomment-740885) for an extensive walkthrough.
 We again highly encourage users to use an external (managed) database for production instances.
 
@@ -1531,12 +1531,12 @@ See [Configure commit signing](#configure-commit-signing) for details.
 
 ### Different volume mounts for init-containers and runtime container <!-- omit from toc -->
 
-**The `extraVolumeMounts` is deprecated** in favor of `extraInitVolumeMounts` and `extraContainerVolumeMounts`.
+The `extraVolumeMounts` is deprecated in favor of `extraInitVolumeMounts` and `extraContainerVolumeMounts`.
 You can now have different mounts for the initialization phase and Gitea runtime.
 The deprecated `extraVolumeMounts` will still be available for the time being and is mounted into every container.
 If you want to switch to the new settings and want to mount specific volumes into all containers, you have to configure their mount points within both new settings.
 
-**Combining values from the deprecated setting with values from the new settings is not possible.**
+Combining values from the deprecated setting with values from the new settings is not possible.
 
 ### New `enabled` flag for `startupProbe` <!-- omit from toc -->
 
@@ -1553,7 +1553,7 @@ Otherwise, your defined probe won't be considered after the upgrade.
 
 <summary>To 5.0.0</summary>
 
-> 💥 The Helm Chart now requires Gitea versions of at least 1.11.0.
+> ðŸ’¥ The Helm Chart now requires Gitea versions of at least 1.11.0.
 
 ### Enable Dependencies <!-- omit from toc -->
 
@@ -1589,7 +1589,7 @@ Gitea secret keys (SECRET_KEY, INTERNAL_TOKEN, JWT_SECRET) are now generated aut
 - Existing installs: The secrets won't be deployed, neither via configuration nor via auto generation.
   We explicitly prevent to set new secrets.
 
-> 💡 It would be possible to set new secret keys manually by entering the running container and rewriting the app.ini by hand.
+> ðŸ’¡ It would be possible to set new secret keys manually by entering the running container and rewriting the app.ini by hand.
 > However, this it is not advisable to do so for existing installations.
 > Certain settings like _LDAP_ would not be readable anymore.
 

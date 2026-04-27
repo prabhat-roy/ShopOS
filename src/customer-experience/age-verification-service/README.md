@@ -1,4 +1,4 @@
-# age-verification-service
+﻿# age-verification-service
 
 > Age gate verification for restricted products such as alcohol, tobacco, and adult content.
 
@@ -37,7 +37,7 @@ graph LR
 
 ## API / Interface
 
-**gRPC service:** `AgeVerificationService` (port 50128)
+gRPC service: `AgeVerificationService` (port 50128)
 
 | Method | Request | Response | Description |
 |---|---|---|---|
@@ -54,12 +54,12 @@ _This service does not produce or consume Kafka topics._
 
 ## Dependencies
 
-**Upstream (callers)**
-- `api-gateway` — triggers age gate flow before restricted product page access
-- `checkout-service` — validates age token before processing orders with restricted items
+Upstream (callers)
+- `api-gateway` â€” triggers age gate flow before restricted product page access
+- `checkout-service` â€” validates age token before processing orders with restricted items
 
-**Downstream (calls)**
-- `product-catalog-service` — retrieves age restriction metadata for a product category
+Downstream (calls)
+- `product-catalog-service` â€” retrieves age restriction metadata for a product category
 - External ID verification provider (optional, via HTTP adapter)
 
 ## Environment Variables
@@ -84,4 +84,4 @@ docker-compose up age-verification-service
 
 ## Health Check
 
-`GET /healthz` → `{"status":"ok"}`
+`GET /healthz` â†’ `{"status":"ok"}`
