@@ -26,7 +26,7 @@ Starting with version 16.0, the Prometheus chart requires Helm 3.7+ in order to 
 helm install [RELEASE_NAME] prometheus-community/prometheus
 ```
 
-_See [configuration](#configuration) below._
+See [configuration](#configuration) below.
 
 _See [helm install](https://helm.sh/docs/helm/helm_install/) for command documentation._
 
@@ -75,12 +75,12 @@ Any entries in these which previously included `{{` or `}}` must be escaped with
 
 Require Kubernetes 1.19+
 
-Release 1.0.0 of the _alertmanager_ replaced [configmap-reload](https://github.com/jimmidyson/configmap-reload) with [prometheus-config-reloader](https://github.com/prometheus-operator/prometheus-operator/tree/main/cmd/prometheus-config-reloader).
+Release 1.0.0 of the alertmanager replaced [configmap-reload](https://github.com/jimmidyson/configmap-reload) with [prometheus-config-reloader](https://github.com/prometheus-operator/prometheus-operator/tree/main/cmd/prometheus-config-reloader).
 Extra command-line arguments specified via `configmapReload.prometheus.extraArgs` are not compatible and will break with the new prometheus-config-reloader. Please, refer to the [sources](https://github.com/prometheus-operator/prometheus-operator/blob/main/cmd/prometheus-config-reloader/main.go) in order to make the appropriate adjustment to the extra command-line arguments.
 
 ### To 23.0
 
-Release 5.0.0 of the _kube-state-metrics_ chart introduced a separation of the `image.repository` value in two distinct values:
+Release 5.0.0 of the kube-state-metrics chart introduced a separation of the `image.repository` value in two distinct values:
 
 ```console
  image:
@@ -90,7 +90,7 @@ Release 5.0.0 of the _kube-state-metrics_ chart introduced a separation of the `
 
 If a custom values file or CLI flags set `kube-state.metrics.image.repository`, please, set the new values accordingly.
 
-If you are upgrading _prometheus-pushgateway_ with the chart and _prometheus-pushgateway_ has been deployed as a statefulset with a persistent volume, the statefulset must be deleted before upgrading the chart, e.g.:
+If you are upgrading prometheus-pushgateway with the chart and prometheus-pushgateway has been deployed as a statefulset with a persistent volume, the statefulset must be deleted before upgrading the chart, e.g.:
 
 ```bash
 kubectl delete sts -l app.kubernetes.io/name=prometheus-pushgateway -n monitoring --cascade=orphan

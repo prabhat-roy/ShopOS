@@ -804,7 +804,7 @@ This major release updates the PostgreSQL subchart to its newest major *11.x.x*,
 
 #### Upgrading Instructions
 
-To upgrade to *7.0.0* from *6.x*, it should be done reusing the PVC(s) used to hold the data on your previous release. To do so, follow the instructions below (the following example assumes that the release name is *keycloak* and the release namespace *default*):
+To upgrade to *7.0.0* from *6.x*, it should be done reusing the PVC(s) used to hold the data on your previous release. To do so, follow the instructions below (the following example assumes that the release name is keycloak and the release namespace default):
 
 1. Obtain the credentials and the names of the PVCs used to hold the data on your current release:
 
@@ -845,9 +845,9 @@ kubectl delete pod keycloak-postgresql-0
 #### What changes were introduced in this major version?
 
 - Previous versions of this Helm Chart use `apiVersion: v1` (installable by both Helm 2 and 3), this Helm Chart was updated to `apiVersion: v2` (installable by Helm 3 only). [Here](https://helm.sh/docs/topics/charts/#the-apiversion-field) you can find more information about the `apiVersion` field.
-- Move dependency information from the *requirements.yaml* to the *Chart.yaml*
-- After running *helm dependency update*, a *Chart.lock* file is generated containing the same structure used in the previous *requirements.lock*
-- The different fields present in the *Chart.yaml* file has been ordered alphabetically in a homogeneous way for all the Bitnami Helm Chart.
+- Move dependency information from the requirements.yaml to the Chart.yaml
+- After running helm dependency update, a Chart.lock file is generated containing the same structure used in the previous requirements.lock
+- The different fields present in the Chart.yaml file has been ordered alphabetically in a homogeneous way for all the Bitnami Helm Chart.
 
 #### Considerations when upgrading to this version
 

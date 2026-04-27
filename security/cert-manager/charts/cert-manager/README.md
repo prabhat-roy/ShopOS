@@ -311,7 +311,7 @@ Examples:
 
 Deprecated: per-component registry prefix.  
   
-If set, this value is *prepended* to the image repository that the chart would otherwise render. This applies both when `image.repository` is set and when the repository is computed from  
+If set, this value is prepended to the image repository that the chart would otherwise render. This applies both when `image.repository` is set and when the repository is computed from  
 `imageRegistry` + `imageNamespace` + `image.name`.  
   
 This can produce "double registry" style references such as `legacy.example.io/quay.io/jetstack/...`. Prefer using the global `imageRegistry`/`imageNamespace` values.
@@ -1036,7 +1036,7 @@ If `replicas > 1`, consider setting `webhook.podDisruptionBudget.enabled=true`.
 The number of seconds the API server should wait for the webhook to respond before treating the call as a failure. The value must be between 1 and 30 seconds. For more information, see  
 [Validating webhook configuration v1](https://kubernetes.io/docs/reference/kubernetes-api/extend-resources/validating-webhook-configuration-v1/).  
   
-The default is set to the maximum value of 30 seconds as users sometimes report that the connection between the K8S API server and the cert-manager webhook server times out. If *this* timeout is reached, the error message will be "context deadline exceeded", which doesn't help the user diagnose what phase of the HTTPS connection timed out. For example, it could be during DNS resolution, TCP connection, TLS negotiation, HTTP negotiation, or slow HTTP response from the webhook server. By setting this timeout to its maximum value the underlying timeout error message has more chance of being returned to the end user.
+The default is set to the maximum value of 30 seconds as users sometimes report that the connection between the K8S API server and the cert-manager webhook server times out. If this timeout is reached, the error message will be "context deadline exceeded", which doesn't help the user diagnose what phase of the HTTPS connection timed out. For example, it could be during DNS resolution, TCP connection, TLS negotiation, HTTP negotiation, or slow HTTP response from the webhook server. By setting this timeout to its maximum value the underlying timeout error message has more chance of being returned to the end user.
 #### webhook.config ~ `object`
 > Default value:
 > ```yaml
@@ -1346,7 +1346,7 @@ Optionally set the IP families for the controller Service that should be support
 
 Deprecated: per-component registry prefix.  
   
-If set, this value is *prepended* to the image repository that the chart would otherwise render. This applies both when `webhook.image.repository` is set and when the repository is computed from  
+If set, this value is prepended to the image repository that the chart would otherwise render. This applies both when `webhook.image.repository` is set and when the repository is computed from  
 `imageRegistry` + `imageNamespace` + `webhook.image.name`.  
   
 This can produce "double registry" style references such as `legacy.example.io/quay.io/jetstack/...`. Prefer using the global `imageRegistry`/`imageNamespace` values.
@@ -1831,7 +1831,7 @@ Optional additional labels to add to the CA Injector metrics Service.
 
 Deprecated: per-component registry prefix.  
   
-If set, this value is *prepended* to the image repository that the chart would otherwise render. This applies both when `cainjector.image.repository` is set and when the repository is computed from  
+If set, this value is prepended to the image repository that the chart would otherwise render. This applies both when `cainjector.image.repository` is set and when the repository is computed from  
 `imageRegistry` + `imageNamespace` + `cainjector.image.name`.  
   
 This can produce "double registry" style references such as `legacy.example.io/quay.io/jetstack/...`. Prefer using the global `imageRegistry`/`imageNamespace` values.
@@ -1925,7 +1925,7 @@ enableServiceLinks indicates whether information about services should be inject
 
 Deprecated: per-component registry prefix.  
   
-If set, this value is *prepended* to the image repository that the chart would otherwise render. This applies both when `acmesolver.image.repository` is set and when the repository is computed from  
+If set, this value is prepended to the image repository that the chart would otherwise render. This applies both when `acmesolver.image.repository` is set and when the repository is computed from  
 `imageRegistry` + `imageNamespace` + `acmesolver.image.name`.  
   
 This can produce "double registry" style references such as `legacy.example.io/quay.io/jetstack/...`. Prefer using the global `imageRegistry`/`imageNamespace` values.
@@ -2121,7 +2121,7 @@ Optional additional labels to add to the startupapicheck Pods.
 
 Deprecated: per-component registry prefix.  
   
-If set, this value is *prepended* to the image repository that the chart would otherwise render. This applies both when `startupapicheck.image.repository` is set and when the repository is computed from  
+If set, this value is prepended to the image repository that the chart would otherwise render. This applies both when `startupapicheck.image.repository` is set and when the repository is computed from  
 `imageRegistry` + `imageNamespace` + `startupapicheck.image.name`.  
   
 This can produce "double registry" style references such as `legacy.example.io/quay.io/jetstack/...`. Prefer using the global `imageRegistry`/`imageNamespace` values.

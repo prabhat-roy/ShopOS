@@ -1,10 +1,10 @@
-# loki
+﻿# loki
 
 ![Version: 6.55.0](https://img.shields.io/badge/Version-6.55.0-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 3.6.7](https://img.shields.io/badge/AppVersion-3.6.7-informational?style=flat-square)
 
 Helm chart for Grafana Loki and Grafana Enterprise Logs supporting monolithic, simple scalable, and microservices modes.
 
-## ⚠️ Helm Chart Migration
+## âš ï¸ Helm Chart Migration
 Effective March 16, 2026, the Grafana Loki Helm chart will be forked to a new repository [grafana-community/helm-charts](https://github.com/grafana-community/helm-charts).  The chart in the Loki repository will continue to be maintained for GEL users only.  See [#20705](https://github.com/grafana/loki/issues/20705) for details.
 
 ## Source Code
@@ -29,7 +29,7 @@ Please see our [Helm Contributing Guidelines](./CONTRIBUTING.md) for detailed in
 
 ## Releases
 
-Normally, contributors need _not_ bump the Chart version. A new version of the Chart will follow this cadence:
+Normally, contributors need not bump the Chart version. A new version of the Chart will follow this cadence:
 - Automatic weekly releases
 - Releases that coincide with Loki/GEL releases
 - Manual releases when necessary (ie. to address a CVE or critical bug)

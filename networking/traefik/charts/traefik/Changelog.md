@@ -250,7 +250,7 @@ There are 3 breaking changes in this release:
    * It's possible to use previous versions of the Chart for previous versions of Traefik Hub.
 2. Encoded Characters: Allowed by default in Traefik v3.6.7+ ([opt-in security options](https://github.com/traefik/traefik-helm-chart/blob/master/traefik/values.yaml#L913), [documentation](https://doc.traefik.io/traefik/security/request-path/#encoded-character-filtering))
 3. Ports Configuration: HTTP options now require explicit `http` nesting level with PR https://github.com/traefik/traefik-helm-chart/pull/1603.
-   * There is a _before_ / _after_ example in the PR description.
+   * There is a before / after example in the PR description.
 
 :information_source: Schema validation has been enforced in this release. When it fails, it means that the parameter is not implemented.
 
@@ -605,11 +605,11 @@ Upgrades Notes
 There are two breaking changes in this release:
 
 1. Traefik Proxy v3.6.4+ contains a security fix that is also a breaking change. See [upstream documentation](https://doc.traefik.io/traefik/v3.6/migrate/v3/#v364) for more details.
-2. PR https://github.com/traefik/traefik-helm-chart/pull/1596 align _kubernetesIngressNginx_ provider setting with upstream. There is a _before_ / _after_ example in the PR description
+2. PR https://github.com/traefik/traefik-helm-chart/pull/1596 align kubernetesIngressNginx provider setting with upstream. There is a before / after example in the PR description
 
 If you need to restore Traefik behavior of v3.6.3 or inferior, it can be set with values.
 
-Here is an example on _websecure_ entrypoint:
+Here is an example on websecure entrypoint:
 
 ```yaml
 ports:
@@ -3879,7 +3879,7 @@ Release date: 2024-07-24
 
 Upgrade Notes
 
-There is a breaking upgrade on how to configure Gateway with _values_.
+There is a breaking upgrade on how to configure Gateway with values.
 This release supports Traefik Proxy v3.0 and v3.1.
 
 ### Default value changes
@@ -4875,11 +4875,11 @@ Upgrade Notes
 This is a major breaking upgrade. [Migration guide](https://doc.traefik.io/traefik/v3.0/migration/v2-to-v3/) have been applied on the chart.
 
 It needs a Kubernetes v1.22 or higher.
-All CRDs using _API Group_ `traefik.containo.us` are not supported anymore in Traefik Proxy v3
+All CRDs using API Group `traefik.containo.us` are not supported anymore in Traefik Proxy v3
 
 CRDs needs to be upgraded: `kubectl apply --server-side --force-conflicts -k https://github.com/traefik/traefik-helm-chart/traefik/crds/`
 
-After upgrade, CRDs with _API Group_ `traefik.containo.us` can be removed:
+After upgrade, CRDs with API Group `traefik.containo.us` can be removed:
 
 ```shell
 kubectl delete crds \

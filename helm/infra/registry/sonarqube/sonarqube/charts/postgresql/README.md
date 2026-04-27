@@ -315,7 +315,7 @@ Refer to our detailed [tutorial on backing up and restoring PostgreSQL deploymen
 
 To enable network policy for PostgreSQL, install [a networking plugin that implements the Kubernetes NetworkPolicy spec](https://kubernetes.io/docs/tasks/administer-cluster/declare-network-policy#before-you-begin), and set `networkPolicy.enabled` to `true`.
 
-For Kubernetes v1.5 & v1.6, you must also turn on NetworkPolicy by setting the DefaultDeny namespace annotation. Note: this will enforce policy for _all_ pods in the namespace:
+For Kubernetes v1.5 & v1.6, you must also turn on NetworkPolicy by setting the DefaultDeny namespace annotation. Note: this will enforce policy for all pods in the namespace:
 
 ```console
 kubectl annotate namespace default "net.beta.kubernetes.io/network-policy={\"ingress\":{\"isolation\":\"DefaultDeny\"}}"
@@ -955,25 +955,25 @@ This major version changes the default PostgreSQL image from 14.x to 15.x. Follo
 
 In this version the application version was bumped to _14.x_ series. Also, this major release renames several values in this chart and adds missing features, in order to be inline with the rest of assets in the Bitnami charts repository.
 
-- _replication.enabled_ parameter is deprecated in favor of _architecture_ parameter that accepts two values: _standalone_ and _replication_.
-- _replication.singleService_ and _replication.uniqueServices_ parameters are deprecated. When using replication, each statefulset (primary and read-only) has its own headless service & service allowing to connect to read-only replicas through the service (round-robin) or individually.
-- _postgresqlPostgresPassword_, _postgresqlUsername_, _postgresqlPassword_, _postgresqlDatabase_, _replication.user_, _replication.password_, and _existingSecret_ parameters have been regrouped under the _auth_ map. The _auth_ map uses a new perspective to configure authentication, so please read carefully each sub-parameter description.
-- _extraEnv_ has been deprecated in favor of _primary.extraEnvVars_ and _readReplicas.extraEnvVars_.
-- _postgresqlConfiguration_, _pgHbaConfiguration_, _configurationConfigMap_, _postgresqlExtendedConf_, and _extendedConfConfigMap_ have been deprecated in favor of _primary.configuration_, _primary.pgHbaConfiguration_, _primary.existingConfigmap_, _primary.extendedConfiguration_, and _primary.existingExtendedConfigmap_.
-- _postgresqlInitdbArgs_, _postgresqlInitdbWalDir_, _initdbScripts_, _initdbScriptsConfigMap_, _initdbScriptsSecret_, _initdbUser_ and _initdbPassword_ have been regrouped under the _primary.initdb_ map.
-- _postgresqlMaxConnections_, _postgresqlPostgresConnectionLimit_, _postgresqlDbUserConnectionLimit_, _postgresqlTcpKeepalivesInterval_, _postgresqlTcpKeepalivesIdle_, _postgresqlTcpKeepalivesCount_, _postgresqlStatementTimeout_ and _postgresqlPghbaRemoveFilters_ parameters are deprecated. Use _XXX.extraEnvVars_ instead.
-- _primaryAsStandBy_ has been deprecated in favor of _primary.standby_.
-- _securityContext_ and _containerSecurityContext_ have been deprecated in favor of _primary.podSecurityContext_, _primary.containerSecurityContext_, _readReplicas.podSecurityContext_, and _readReplicas.containerSecurityContext_.
-- _livenessProbe_ and _readinessProbe_ maps have been deprecated in favor of _primary.livenessProbe_, _primary.readinessProbe_, _readReplicas.livenessProbe_ and _readReplicas.readinessProbe_ maps.
-- _persistence_ map has been deprecated in favor of _primary.persistence_ and _readReplicas.persistence_ maps.
-- _networkPolicy_ map has been completely refactored.
-- _service_ map has been deprecated in favor of _primary.service_ and _readReplicas.service_ maps.
-- _metrics.service.port_ has been regrouped under the _metrics.service.ports_ map.
-- _serviceAccount.enabled_ and _serviceAccount.autoMount_ have been deprecated in favor of _serviceAccount.create_ and _serviceAccount.automountServiceAccountToken_.
+- replication.enabled parameter is deprecated in favor of architecture parameter that accepts two values: standalone and replication.
+- replication.singleService and replication.uniqueServices parameters are deprecated. When using replication, each statefulset (primary and read-only) has its own headless service & service allowing to connect to read-only replicas through the service (round-robin) or individually.
+- postgresqlPostgresPassword, postgresqlUsername, postgresqlPassword, postgresqlDatabase, replication.user, replication.password, and existingSecret parameters have been regrouped under the auth map. The auth map uses a new perspective to configure authentication, so please read carefully each sub-parameter description.
+- extraEnv has been deprecated in favor of primary.extraEnvVars and readReplicas.extraEnvVars.
+- postgresqlConfiguration, pgHbaConfiguration, configurationConfigMap, postgresqlExtendedConf, and extendedConfConfigMap have been deprecated in favor of primary.configuration, primary.pgHbaConfiguration, primary.existingConfigmap, primary.extendedConfiguration, and primary.existingExtendedConfigmap.
+- postgresqlInitdbArgs, postgresqlInitdbWalDir, initdbScripts, initdbScriptsConfigMap, initdbScriptsSecret, initdbUser and initdbPassword have been regrouped under the primary.initdb map.
+- postgresqlMaxConnections, postgresqlPostgresConnectionLimit, postgresqlDbUserConnectionLimit, postgresqlTcpKeepalivesInterval, postgresqlTcpKeepalivesIdle, postgresqlTcpKeepalivesCount, postgresqlStatementTimeout and postgresqlPghbaRemoveFilters parameters are deprecated. Use XXX.extraEnvVars instead.
+- primaryAsStandBy has been deprecated in favor of primary.standby.
+- securityContext and containerSecurityContext have been deprecated in favor of primary.podSecurityContext, primary.containerSecurityContext, readReplicas.podSecurityContext, and readReplicas.containerSecurityContext.
+- livenessProbe and readinessProbe maps have been deprecated in favor of primary.livenessProbe, primary.readinessProbe, readReplicas.livenessProbe and readReplicas.readinessProbe maps.
+- persistence map has been deprecated in favor of primary.persistence and readReplicas.persistence maps.
+- networkPolicy map has been completely refactored.
+- service map has been deprecated in favor of primary.service and readReplicas.service maps.
+- metrics.service.port has been regrouped under the metrics.service.ports map.
+- serviceAccount.enabled and serviceAccount.autoMount have been deprecated in favor of serviceAccount.create and serviceAccount.automountServiceAccountToken.
 
 #### How to upgrade to version 11.0.0
 
-To upgrade to _11.0.0_ from _10.x_, it should be done reusing the PVC(s) used to hold the PostgreSQL data on your previous release. To do so, follow the instructions below (the following example assumes that the release name is _postgresql_):
+To upgrade to _11.0.0_ from _10.x_, it should be done reusing the PVC(s) used to hold the PostgreSQL data on your previous release. To do so, follow the instructions below (the following example assumes that the release name is postgresql):
 
 > NOTE: Please, create a backup of your database before running any of these actions.
 
@@ -1031,10 +1031,10 @@ postgresql 08:10:14.72 INFO  ==>  Starting PostgreSQL
 [On November 13, 2020, Helm v2 support was formally finished](https://github.com/helm/charts#status-of-the-project), this major version is the result of the required changes applied to the Helm Chart to be able to incorporate the different features added in Helm v3 and to be consistent with the Helm project itself regarding the Helm v2 EOL.
 
 - Previous versions of this Helm Chart use `apiVersion: v1` (installable by both Helm 2 and 3), this Helm Chart was updated to `apiVersion: v2` (installable by Helm 3 only). [Here](https://helm.sh/docs/topics/charts/#the-apiversion-field) you can find more information about the `apiVersion` field.
-- Move dependency information from the _requirements.yaml_ to the _Chart.yaml_
-- After running _helm dependency update_, a _Chart.lock_ file is generated containing the same structure used in the previous _requirements.lock_
-- The different fields present in the _Chart.yaml_ file has been ordered alphabetically in a homogeneous way for all the Bitnami Helm Chart.
-- The term _master_ has been replaced with _primary_ and _slave_ with _readReplicas_ throughout the chart. Role names have changed from _master_ and _slave_ to _primary_ and _read_.
+- Move dependency information from the requirements.yaml to the Chart.yaml
+- After running helm dependency update, a Chart.lock file is generated containing the same structure used in the previous requirements.lock
+- The different fields present in the Chart.yaml file has been ordered alphabetically in a homogeneous way for all the Bitnami Helm Chart.
+- The term master has been replaced with primary and slave with readReplicas throughout the chart. Role names have changed from master and slave to primary and read.
 
 #### Considerations when upgrading to this version
 
@@ -1049,7 +1049,7 @@ postgresql 08:10:14.72 INFO  ==>  Starting PostgreSQL
 
 #### How to upgrade to version 10.0.0
 
-To upgrade to _10.0.0_ from _9.x_, it should be done reusing the PVC(s) used to hold the PostgreSQL data on your previous release. To do so, follow the instructions below (the following example assumes that the release name is _postgresql_):
+To upgrade to _10.0.0_ from _9.x_, it should be done reusing the PVC(s) used to hold the PostgreSQL data on your previous release. To do so, follow the instructions below (the following example assumes that the release name is postgresql):
 
 > NOTE: Please, create a backup of your database before running any of those actions.
 
@@ -1097,7 +1097,7 @@ In this version the chart was adapted to follow the [Helm standard labels](https
 
 #### How to upgrade to version 9.0.0
 
-To upgrade to _9.0.0_ from _8.x_, it should be done reusing the PVC(s) used to hold the PostgreSQL data on your previous release. To do so, follow the instructions below (the following example assumes that the release name is _postgresql_):
+To upgrade to _9.0.0_ from _8.x_, it should be done reusing the PVC(s) used to hold the PostgreSQL data on your previous release. To do so, follow the instructions below (the following example assumes that the release name is postgresql):
 
 > NOTE: Please, create a backup of your database before running any of those actions.
 

@@ -1145,7 +1145,7 @@ kubectl apply -f https://raw.githubusercontent.com/Kong/charts/main/charts/kong/
 * Added support for controller metrics to the Prometheus resources. This
   requires KIC 2.x. The chart automatically detects if your controller image is
   compatible, but only if your tag is semver-compliant. If you are using an
-  image without a semver-compliant tag (such as `next`) you _must_ set the
+  image without a semver-compliant tag (such as `next`) you must set the
   `ingressController.image.effectiveSemver` value to a semver string
   appropriate for your image (for example, if your image is 2.0.0-based, you
   would set it to `2.0.0`.

@@ -4,7 +4,7 @@ Please note: We take Vault's security and our users' trust very seriously.
 If you believe you have found a security issue in Vault, please responsibly
 disclose by contacting us at security@hashicorp.com.
 
-First: if you're unsure or afraid of _anything_, just ask or submit the
+First: if you're unsure or afraid of anything, just ask or submit the
 issue or pull request anyways. You won't be yelled at for giving it your best
 effort. The worst that can happen is that you'll be politely asked to change
 something. We appreciate any sort of contributions, and don't want a wall of
@@ -125,7 +125,7 @@ Note: There is a Terraform configuration in the
 [`test/terraform/`](https://github.com/hashicorp/vault-helm/tree/main/test/terraform) directory
 that can be used to quickly bring up a GKE cluster and configure
 `kubectl` and `helm` locally. This can be used to quickly spin up a test
-cluster for acceptance tests. Unit tests _do not_ require a running Kubernetes
+cluster for acceptance tests. Unit tests do not require a running Kubernetes
 cluster.
 
 ### Writing Unit Tests

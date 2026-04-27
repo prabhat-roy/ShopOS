@@ -324,11 +324,11 @@ To backup and restore Valkey deployments on Kubernetes, you will need to create 
 
 #### Step 2: Restore the data on the destination cluster
 
-To restore the data in a new cluster, you will need to create a PVC and then upload the *dump.rdb* file to the new volume.
+To restore the data in a new cluster, you will need to create a PVC and then upload the dump.rdb file to the new volume.
 
 Follow the following steps:
 
-- In the [*values.yaml*](https://github.com/bitnami/charts/blob/main/bitnami/valkey/values.yaml) file set the *appendonly* parameter to *no*. You can skip this step if it is already configured as *no*
+- In the [values.yaml](https://github.com/bitnami/charts/blob/main/bitnami/valkey/values.yaml) file set the appendonly parameter to no. You can skip this step if it is already configured as no
 
     ```yaml
     commonConfiguration: |-
@@ -346,7 +346,7 @@ Follow the following steps:
     helm install new-valkey  -f values.yaml .  --set cluster.enabled=true  --set cluster.replicaCount=3
     ```
 
-- Now that the PVC were created, stop it and copy the *dump.rdp* file on the persisted data by using a helping pod.
+- Now that the PVC were created, stop it and copy the dump.rdp file on the persisted data by using a helping pod.
 
     ```text
     $ helm delete new-valkey
@@ -388,7 +388,7 @@ Follow the following steps:
 
 - Restart the cluster:
 
-    > INFO: The *appendonly* parameter can be safely restored to your desired value.
+    > INFO: The appendonly parameter can be safely restored to your desired value.
 
     ```console
     helm install new-valkey  -f values.yaml .  --set cluster.enabled=true  --set cluster.replicaCount=3
@@ -1057,7 +1057,7 @@ This version introduces image verification for security purposes. To disable it,
 
 This major updates all the references from `master/slave` to `primary/replica` to follow the upstream project strategy:
 
-- The term *master* has been replaced by the term *primary*. Therefore, parameters prefixed with `master` are now prefixed with `primary`.
+- The term master has been replaced by the term primary. Therefore, parameters prefixed with `master` are now prefixed with `primary`.
 - Environment variables previously prefixed as `VALKEY_MASTER` or `VALKEY_SENTINEL_MASTER` use `VALKEY_PRIMARY` and `VALKEY_SENTINEL_PRIMARY` now.
 
 Consequences:

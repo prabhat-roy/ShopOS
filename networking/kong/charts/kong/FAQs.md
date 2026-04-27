@@ -1,4 +1,4 @@
-# Frequently Asked Questions (FAQs)
+﻿# Frequently Asked Questions (FAQs)
 
 Despite the title, this is more a list of common problems.
 
@@ -90,7 +90,7 @@ to proceed. Chart versions greater than 1.5.0 delete the job automatically.
 
 Service meshes, such as Istio and Kuma, if deployed in a mode that injects
 a sidecar to Kong, don't make the mesh available to `InitContainer`s,
-because the sidecar starts _after_ all `InitContainer`s finish.
+because the sidecar starts after all `InitContainer`s finish.
 
 By default, this chart uses init containers to ensure that the database is
 online and has migrations applied before starting Kong. This provides for a

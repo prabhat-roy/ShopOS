@@ -29,7 +29,7 @@ helm install [RELEASE_NAME] ingress-nginx/ingress-nginx
 
 The command deploys ingress-nginx on the Kubernetes cluster in the default configuration.
 
-_See [configuration](#configuration) below._
+See [configuration](#configuration) below.
 
 _See [helm install](https://helm.sh/docs/helm/helm_install/) for command documentation._
 

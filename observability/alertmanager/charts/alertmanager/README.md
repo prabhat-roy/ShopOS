@@ -1,4 +1,4 @@
-# Alertmanager
+﻿# Alertmanager
 
 As per [prometheus.io documentation](https://prometheus.io/docs/alerting/latest/alertmanager/):
 > The Alertmanager handles alerts sent by client applications such as the
@@ -25,7 +25,7 @@ The installation instructions use the OCI registry. Refer to the [`helm repo`]([
 helm install [RELEASE_NAME] oci://ghcr.io/prometheus-community/charts/alertmanager
 ```
 
-_See [configuration](#configuration) below._
+See [configuration](#configuration) below.
 
 _See [helm install](https://helm.sh/docs/helm/helm_install/) for command documentation._
 

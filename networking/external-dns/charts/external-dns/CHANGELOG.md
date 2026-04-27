@@ -1,4 +1,4 @@
-# ExternalDNS Helm Chart Changelog
+﻿# ExternalDNS Helm Chart Changelog
 
 All notable changes to this project will be documented in this file.
 
@@ -27,7 +27,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - Grant `networking.k8s.io/ingresses` and `gateway.solo.io/gateways` permissions when using `gloo-proxy` source. ([#5909](https://github.com/kubernetes-sigs/external-dns/pull/5909)) _@cucxabong_
-- Update _ExternalDNS_ OCI image version to [v0.20.0](https://github.com/kubernetes-sigs/external-dns/releases/tag/v0.20.0). ([#6005](https://github.com/kubernetes-sigs/external-dns/pull/6005)) _@vflaux_
+- Update ExternalDNS OCI image version to [v0.20.0](https://github.com/kubernetes-sigs/external-dns/releases/tag/v0.20.0). ([#6005](https://github.com/kubernetes-sigs/external-dns/pull/6005)) _@vflaux_
 
 ### Fixed
 
@@ -43,14 +43,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - Grant `discovery.k8s.io/endpointslices` permission only when using `service` source. ([#5746](https://github.com/kubernetes-sigs/external-dns/pull/5746)) _@vflaux_
-- Update _ExternalDNS_ OCI image version to [v0.19.0](https://github.com/kubernetes-sigs/external-dns/releases/tag/v0.19.0). ([#5819](https://github.com/kubernetes-sigs/external-dns/pull/5819)) _@stevehipwell_
+- Update ExternalDNS OCI image version to [v0.19.0](https://github.com/kubernetes-sigs/external-dns/releases/tag/v0.19.0). ([#5819](https://github.com/kubernetes-sigs/external-dns/pull/5819)) _@stevehipwell_
 
 ## [v1.18.0] - 2025-07-14
 
 ### Changed
 
 - Update RBAC for `Service` source to support `EndpointSlices`. ([#5493](https://github.com/kubernetes-sigs/external-dns/pull/5493)) _@vflaux_
-- Update _ExternalDNS_ OCI image version to [v0.18.0](https://github.com/kubernetes-sigs/external-dns/releases/tag/v0.18.0). ([#5633](https://github.com/kubernetes-sigs/external-dns/pull/5633)) _@elafarge_
+- Update ExternalDNS OCI image version to [v0.18.0](https://github.com/kubernetes-sigs/external-dns/releases/tag/v0.18.0). ([#5633](https://github.com/kubernetes-sigs/external-dns/pull/5633)) _@elafarge_
 
 ### Fixed
 
@@ -64,7 +64,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Allow extraArgs to also be a map enabling overrides of individual values. ([#5293](https://github.com/kubernetes-sigs/external-dns/pull/5293)) _@frittentheke_
 - Update CRD. ([#5287](https://github.com/kubernetes-sigs/external-dns/pull/5287)) _@mloiseleur_
 - Update CRD. ([#5446](https://github.com/kubernetes-sigs/external-dns/pull/5446)) _@mloiseleur_
-- Update _ExternalDNS_ OCI image version to [v0.17.0](https://github.com/kubernetes-sigs/external-dns/releases/tag/v0.17.0). ([#5479](https://github.com/kubernetes-sigs/external-dns/pull/5479)) _@stevehipwell_
+- Update ExternalDNS OCI image version to [v0.17.0](https://github.com/kubernetes-sigs/external-dns/releases/tag/v0.17.0). ([#5479](https://github.com/kubernetes-sigs/external-dns/pull/5479)) _@stevehipwell_
 
 ### Fixed
 
@@ -94,7 +94,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - Regenerate JSON schema with `helm-values-schema-json' plugin. ([#5075](https://github.com/kubernetes-sigs/external-dns/pull/5075)) _@ivankatliarchuk_
-- Update _ExternalDNS_ OCI image version to [v0.16.1](https://github.com/kubernetes-sigs/external-dns/releases/tag/v0.16.1). ([#5201](https://github.com/kubernetes-sigs/external-dns/pull/5201)) _@stevehipwell_
+- Update ExternalDNS OCI image version to [v0.16.1](https://github.com/kubernetes-sigs/external-dns/releases/tag/v0.16.1). ([#5201](https://github.com/kubernetes-sigs/external-dns/pull/5201)) _@stevehipwell_
 
 ## [v1.15.2] - 2025-02-14
 
@@ -117,7 +117,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - Allow templating `serviceaccount.annotations` keys and values, by rendering them using the `tpl` built-in function. ([#4958](https://github.com/kubernetes-sigs/external-dns/pull/4958)) _@fcrespofastly_
-- Updated _ExternalDNS_ OCI image version to [v0.15.1](https://github.com/kubernetes-sigs/external-dns/releases/tag/v0.15.1). ([#5028](https://github.com/kubernetes-sigs/external-dns/pull/5028)) _@stevehipwell_
+- Updated ExternalDNS OCI image version to [v0.15.1](https://github.com/kubernetes-sigs/external-dns/releases/tag/v0.15.1). ([#5028](https://github.com/kubernetes-sigs/external-dns/pull/5028)) _@stevehipwell_
 
 ### Fixed
 
@@ -128,7 +128,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- Updated _ExternalDNS_ OCI image version to [v0.15.0](https://github.com/kubernetes-sigs/external-dns/releases/tag/v0.15.0). ([#4735](https://github.com/kubernetes-sigs/external-dns/pull/4735)) _@stevehipwell_
+- Updated ExternalDNS OCI image version to [v0.15.0](https://github.com/kubernetes-sigs/external-dns/releases/tag/v0.15.0). ([#4735](https://github.com/kubernetes-sigs/external-dns/pull/4735)) _@stevehipwell_
 
 ### Fixed
 
@@ -146,7 +146,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- Updated _ExternalDNS_ OCI image version to [v0.14.2](https://github.com/kubernetes-sigs/external-dns/releases/tag/v0.14.2). ([#4541](https://github.com/kubernetes-sigs/external-dns/pull/4541)) _@stevehipwell_
+- Updated ExternalDNS OCI image version to [v0.14.2](https://github.com/kubernetes-sigs/external-dns/releases/tag/v0.14.2). ([#4541](https://github.com/kubernetes-sigs/external-dns/pull/4541)) _@stevehipwell_
 - Updated `DNSEndpoint` CRD. ([#4541](https://github.com/kubernetes-sigs/external-dns/pull/4541)) _@stevehipwell_
 - Changed the implementation for `revisionHistoryLimit` to be more generic. ([#4541](https://github.com/kubernetes-sigs/external-dns/pull/4541)) _@stevehipwell_
 
@@ -163,7 +163,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- Updated _ExternalDNS_ OCI image version to [v0.14.1](https://github.com/kubernetes-sigs/external-dns/releases/tag/v0.14.1). ([#4357](https://github.com/kubernetes-sigs/external-dns/pull/4357)) _@stevehipwell_
+- Updated ExternalDNS OCI image version to [v0.14.1](https://github.com/kubernetes-sigs/external-dns/releases/tag/v0.14.1). ([#4357](https://github.com/kubernetes-sigs/external-dns/pull/4357)) _@stevehipwell_
 
 ## [v1.14.3] - 2024-01-26
 
@@ -197,7 +197,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - Avoid unnecessary pod restart on each helm chart version. ([#4103](https://github.com/kubernetes-sigs/external-dns/pull/4103)) [@jkroepke](https://github.com/jkroepke)
-- Updated _ExternalDNS_ OCI image version to [v0.14.0](https://github.com/kubernetes-sigs/external-dns/releases/tag/v0.14.0). ([#4073](https://github.com/kubernetes-sigs/external-dns/pull/4073)) [@appkins](https://github.com/appkins)
+- Updated ExternalDNS OCI image version to [v0.14.0](https://github.com/kubernetes-sigs/external-dns/releases/tag/v0.14.0). ([#4073](https://github.com/kubernetes-sigs/external-dns/pull/4073)) [@appkins](https://github.com/appkins)
 
 ### Deprecated
 
@@ -213,7 +213,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - Disallowed privilege escalation in container security context and set the seccomp profile type to `RuntimeDefault`. ([#3689](https://github.com/kubernetes-sigs/external-dns/pull/3689)) [@nrvnrvn](https://github.com/nrvnrvn)
-- Updated _ExternalDNS_ OCI image version to [v0.13.6](https://github.com/kubernetes-sigs/external-dns/releases/tag/v0.13.6). ([#3917](https://github.com/kubernetes-sigs/external-dns/pull/3917)) [@stevehipwell](https://github.com/stevehipwell)
+- Updated ExternalDNS OCI image version to [v0.13.6](https://github.com/kubernetes-sigs/external-dns/releases/tag/v0.13.6). ([#3917](https://github.com/kubernetes-sigs/external-dns/pull/3917)) [@stevehipwell](https://github.com/stevehipwell)
 
 ### Removed
 
@@ -223,7 +223,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### All Changes
 
-- Updated _ExternalDNS_ version to [v0.13.5](https://github.com/kubernetes-sigs/external-dns/releases/tag/v0.13.5). ([#3661](https://github.com/kubernetes-sigs/external-dns/pull/3661)) [@GMartinez-Sisti](https://github.com/GMartinez-Sisti)
+- Updated ExternalDNS version to [v0.13.5](https://github.com/kubernetes-sigs/external-dns/releases/tag/v0.13.5). ([#3661](https://github.com/kubernetes-sigs/external-dns/pull/3661)) [@GMartinez-Sisti](https://github.com/GMartinez-Sisti)
 - Adding missing gateway-httproute cluster role permission. ([#3541](https://github.com/kubernetes-sigs/external-dns/pull/3541)) [@nicon89](https://github.com/nicon89)
 
 ## [v1.12.2] - 2023-03-30
@@ -235,13 +235,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added RBAC for Gateway-API resources to ClusterRole. ([#3499](https://github.com/kubernetes-sigs/external-dns/pull/3499)) [@michaelvl](https://github.com/MichaelVL)
 - Added RBAC for F5 VirtualServer to ClusterRole. ([#3503](https://github.com/kubernetes-sigs/external-dns/pull/3503)) [@mikejoh](https://github.com/mikejoh)
 - Added support for running ExternalDNS with namespaced scope. ([#3403](https://github.com/kubernetes-sigs/external-dns/pull/3403)) [@jkroepke](https://github.com/jkroepke)
-- Updated _ExternalDNS_ version to [v0.13.4](https://github.com/kubernetes-sigs/external-dns/releases/tag/v0.13.4). ([#3516](https://github.com/kubernetes-sigs/external-dns/pull/3516)) [@stevehipwell](https://github.com/stevehipwell)
+- Updated ExternalDNS version to [v0.13.4](https://github.com/kubernetes-sigs/external-dns/releases/tag/v0.13.4). ([#3516](https://github.com/kubernetes-sigs/external-dns/pull/3516)) [@stevehipwell](https://github.com/stevehipwell)
 
 ## [v1.12.1] - 2023-02-06
 
 ### All Changes
 
-- Updated _ExternalDNS_ version to [v0.13.2](https://github.com/kubernetes-sigs/external-dns/releases/tag/v0.13.2). ([#3371](https://github.com/kubernetes-sigs/external-dns/pull/3371)) [@stevehipwell](https://github.com/stevehipwell)
+- Updated ExternalDNS version to [v0.13.2](https://github.com/kubernetes-sigs/external-dns/releases/tag/v0.13.2). ([#3371](https://github.com/kubernetes-sigs/external-dns/pull/3371)) [@stevehipwell](https://github.com/stevehipwell)
 - Added `secretConfiguration.subPath` to mount specific files from secret as a sub-path. ([#3227](https://github.com/kubernetes-sigs/external-dns/pull/3227)) [@jkroepke](https://github.com/jkroepke)
 - Changed to use `registry.k8s.io` instead of `k8s.gcr.io`. ([#3261](https://github.com/kubernetes-sigs/external-dns/pull/3261)) [@johngmyers](https://github.com/johngmyers)
 
@@ -252,7 +252,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added ability to provide ExternalDNS with secret configuration via `secretConfiguration`. ([#3144](https://github.com/kubernetes-sigs/external-dns/pull/3144)) [@jkroepke](https://github.com/jkroepke)
 - Added the ability to template `provider` & `extraArgs`. ([#3144](https://github.com/kubernetes-sigs/external-dns/pull/3144)) [@jkroepke](https://github.com/jkroepke)
 - Added the ability to customise the service account labels. ([#3145](https://github.com/kubernetes-sigs/external-dns/pull/3145)) [@jkroepke](https://github.com/jkroepke)
-- Updated _ExternalDNS_ version to [v0.13.1](https://github.com/kubernetes-sigs/external-dns/releases/tag/v0.13.1). ([#3197](https://github.com/kubernetes-sigs/external-dns/pull/3197)) [@stevehipwell](https://github.com/stevehipwell)
+- Updated ExternalDNS version to [v0.13.1](https://github.com/kubernetes-sigs/external-dns/releases/tag/v0.13.1). ([#3197](https://github.com/kubernetes-sigs/external-dns/pull/3197)) [@stevehipwell](https://github.com/stevehipwell)
 
 ## [v1.11.0] - 2022-08-10
 
@@ -263,7 +263,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- Updated _ExternalDNS_ version to [v0.12.2](https://github.com/kubernetes-sigs/external-dns/releases/tag/v0.12.2). [@stevehipwell](https://github.com/stevehipwell)
+- Updated ExternalDNS version to [v0.12.2](https://github.com/kubernetes-sigs/external-dns/releases/tag/v0.12.2). [@stevehipwell](https://github.com/stevehipwell)
 - Changed default deployment strategy to `Recreate`. [mac-chaffee](https://github.com/mac-chaffee)
 
 ## [v1.10.1] - 2022-07-11
@@ -282,7 +282,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- Update _ExternalDNS_ version to [v0.12.0](https://github.com/kubernetes-sigs/external-dns/releases/tag/v0.12.0). [@vojtechmares](https://github.com/vojtechmares)
+- Update ExternalDNS version to [v0.12.0](https://github.com/kubernetes-sigs/external-dns/releases/tag/v0.12.0). [@vojtechmares](https://github.com/vojtechmares)
 - Set resource namespaces to `{{ .Release.Namespace }}` in the templates instead of waiting until apply time for inference. [@stevehipwell](https://github.com/stevehipwell)
 - Fixed `rbac.additionalPermissions` default value.([#2796](https://github.com/kubernetes-sigs/external-dns/pull/2796)) [@tamalsaha](https://github.com/tamalsaha)
 
@@ -290,7 +290,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- Update _ExternalDNS_ version to [v0.11.0](https://github.com/kubernetes-sigs/external-dns/releases/tag/v0.11.0). ([#2690](https://github.com/kubernetes-sigs/external-dns/pull/2690)) [@stevehipwell](https://github.com/stevehipwell)
+- Update ExternalDNS version to [v0.11.0](https://github.com/kubernetes-sigs/external-dns/releases/tag/v0.11.0). ([#2690](https://github.com/kubernetes-sigs/external-dns/pull/2690)) [@stevehipwell](https://github.com/stevehipwell)
 
 ## [v1.8.0] - 2022-04-13
 

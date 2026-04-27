@@ -49,7 +49,7 @@ gRPC service: `CompareService` (port 50123)
 
 ## Kafka Topics
 
-_This service does not produce or consume Kafka topics._
+This service does not produce or consume Kafka topics.
 
 ## Dependencies
 

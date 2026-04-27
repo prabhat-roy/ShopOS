@@ -531,7 +531,7 @@ when manual action is necessary to update CRDs. This CRD handling strategy is
 recommended for most users.
 
 Some users may wish to manage their CRDs automatically. If you manage your CRDs
-this way, we _strongly_ recommend that you back up all associated custom
+this way, we strongly recommend that you back up all associated custom
 resources in the event you need to recover from unintended CRD deletion.
 
 While Helm 3's CRD management system is recommended, there is no simple means
@@ -541,7 +541,7 @@ resources, delete your release, reinstall, and restore your custom resources
 after). As such, the chart detects if you currently use release-managed CRDs
 and continues to use the old CRD templates when using chart version 2.0+. If
 you do (your resources will have a `meta.helm.sh/release-name` annotation), we
-_strongly_ recommend that you back up all associated custom resources in the
+strongly recommend that you back up all associated custom resources in the
 event you need to recover from unintended CRD deletion.
 
 ### InitContainers
@@ -698,7 +698,7 @@ is similar, and used when Vitals is enabled on Kong Enterprise control plane
 nodes.
 
 `udpProxy` is used for UDP stream listens (Kubernetes does not yet support
-mixed TCP/UDP LoadBalancer Services). It _does not_ support the `http`, `tls`,
+mixed TCP/UDP LoadBalancer Services). It does not support the `http`, `tls`,
 or `ingress` sections, as it is used only for stream listens.
 
 | Parameter                         | Description                                                                               | Default                  |

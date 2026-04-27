@@ -182,8 +182,8 @@ Next, login to the PostgreSQL server using the `psql` client and add the PAM aut
 
 The chart handles two main flows of traffic information:
 
-- Connections between end-clients and Pgpool-II (sometimes referred to as *frontend* connections).
-- Internal connections between Pgpool-II and PostgreSQL nodes (sometimes referred to as *backend* connections).
+- Connections between end-clients and Pgpool-II (sometimes referred to as frontend connections).
+- Internal connections between Pgpool-II and PostgreSQL nodes (sometimes referred to as backend connections).
 
 The Bitnami postgresql-ha chart allows configuring the securitization of both types of traffic using TLS.
 
@@ -219,7 +219,7 @@ For example:
 
 ##### Enable client certificate authentication
 
-When TLS is configured for *frontend* connections, the server can be configured to authenticate clients by verifying their provided TLS certificate is valid and trusted. Hence, the client will not be sent a password prompt.
+When TLS is configured for frontend connections, the server can be configured to authenticate clients by verifying their provided TLS certificate is valid and trusted. Hence, the client will not be sent a password prompt.
 
 You can enable this authentication feature additionally specifying the following parameter:
 
@@ -266,7 +266,7 @@ For example:
 
 > Note: Certificates permissions: PostgreSQL requires certain permissions on sensitive files (such as certificate keys) to start up. Due to an on-going [issue](https://github.com/kubernetes/kubernetes/issues/57923) regarding K8s permissions and the use of `containerSecurityContext.runAsUser`, an init container will adapt the permissions to ensure everything works as expected.
 
-If you want to encrypt both *frontend* and *backend* traffics, you may use the same secret for Pgpool and PostgreSQL TLS configuration.
+If you want to encrypt both frontend and backend traffics, you may use the same secret for Pgpool and PostgreSQL TLS configuration.
 
 ### repmgr.conf / postgresql.conf / pg_hba.conf / pgpool.conf / pool_hba.conf files as configMap
 
@@ -1167,9 +1167,9 @@ As an alternative to this feature, users can still use the equivalent parameters
 #### What changes were introduced in this major version?
 
 - Previous versions of this Helm Chart use `apiVersion: v1` (installable by both Helm 2 and 3), this Helm Chart was updated to `apiVersion: v2` (installable by Helm 3 only). [Here](https://helm.sh/docs/topics/charts/#the-apiversion-field) you can find more information about the `apiVersion` field.
-- Move dependency information from the *requirements.yaml* to the *Chart.yaml*
-- After running `helm dependency update`, a *Chart.lock* file is generated containing the same structure used in the previous *requirements.lock*
-- The different fields present in the *Chart.yaml* file has been ordered alphabetically in a homogeneous way for all the Bitnami Helm Charts
+- Move dependency information from the requirements.yaml to the Chart.yaml
+- After running `helm dependency update`, a Chart.lock file is generated containing the same structure used in the previous requirements.lock
+- The different fields present in the Chart.yaml file has been ordered alphabetically in a homogeneous way for all the Bitnami Helm Charts
 
 #### Considerations when upgrading to this version
 

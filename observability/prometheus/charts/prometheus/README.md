@@ -26,7 +26,7 @@ Starting with version 16.0, the Prometheus chart requires Helm 3.7+ in order to 
 helm install [RELEASE_NAME] oci://ghcr.io/prometheus-community/charts/prometheus
 ```
 
-_See [configuration](#configuration) below._
+See [configuration](#configuration) below.
 
 _See [helm install](https://helm.sh/docs/helm/helm_install/) for command documentation._
 
@@ -82,13 +82,13 @@ Users who currently apply custom relabelings with the `endpoints` labels should 
 Scrape configs previously defined in field `serverFiles."prometheus.yml".scrape_configs`
 (array) have been moved in the new field `scrapeConfigs` (map). The contents of the scrape configs have not changed.
 
-Each scrape config can be disabled by setting `enabled` to _false_, each key becomes the
+Each scrape config can be disabled by setting `enabled` to false, each key becomes the
 default value of `job_name`. Further scrape configs can be inserted as new keys whereby these get enabled by default. A scrape config expects native Prometheus' configuration.
 
 Field `extraScrapeConfigs` can still be used for additional scrape configs and is not affected by the change.
 
 Using the new field is not mandatory, `serverFiles."prometheus.yml".scrape_configs` works in the same way
-as before but is _unset_ by default. Users wishing to continue using this field via a custom values file should unset
+as before but is unset by default. Users wishing to continue using this field via a custom values file should unset
 `scrapeConfigs` before upgrading:
 
 ```yaml
@@ -119,7 +119,7 @@ scrapeConfigs:
       password_file: /etc/private/auth-passwd
 ```
 
-- Disable scrape config _kubernetes-pods-slow_
+- Disable scrape config kubernetes-pods-slow
 
 ```yaml
 scrapeConfigs:
@@ -127,7 +127,7 @@ scrapeConfigs:
     enabled: false
 ```
 
-- Add a new scrape config with `job_name` set to _foo_ (gets enabled by default)
+- Add a new scrape config with `job_name` set to foo (gets enabled by default)
 
 ```yaml
 scrapeConfigs:
@@ -161,12 +161,12 @@ Any entries in these which previously included `{{` or `}}` must be escaped with
 
 Require Kubernetes 1.19+
 
-Release 1.0.0 of the _alertmanager_ replaced [configmap-reload](https://github.com/jimmidyson/configmap-reload) with [prometheus-config-reloader](https://github.com/prometheus-operator/prometheus-operator/tree/main/cmd/prometheus-config-reloader).
+Release 1.0.0 of the alertmanager replaced [configmap-reload](https://github.com/jimmidyson/configmap-reload) with [prometheus-config-reloader](https://github.com/prometheus-operator/prometheus-operator/tree/main/cmd/prometheus-config-reloader).
 Extra command-line arguments specified via `configmapReload.prometheus.extraArgs` are not compatible and will break with the new prometheus-config-reloader. Please, refer to the [sources](https://github.com/prometheus-operator/prometheus-operator/blob/main/cmd/prometheus-config-reloader/main.go) in order to make the appropriate adjustment to the extra command-line arguments.
 
 #### To 23.0
 
-Release 5.0.0 of the _kube-state-metrics_ chart introduced a separation of the `image.repository` value in two distinct values:
+Release 5.0.0 of the kube-state-metrics chart introduced a separation of the `image.repository` value in two distinct values:
 
 ```console
  image:
@@ -176,7 +176,7 @@ Release 5.0.0 of the _kube-state-metrics_ chart introduced a separation of the `
 
 If a custom values file or CLI flags set `kube-state.metrics.image.repository`, please, set the new values accordingly.
 
-If you are upgrading _prometheus-pushgateway_ with the chart and _prometheus-pushgateway_ has been deployed as a statefulset with a persistent volume, the statefulset must be deleted before upgrading the chart, e.g.:
+If you are upgrading prometheus-pushgateway with the chart and prometheus-pushgateway has been deployed as a statefulset with a persistent volume, the statefulset must be deleted before upgrading the chart, e.g.:
 
 ```bash
 kubectl delete sts -l app.kubernetes.io/name=prometheus-pushgateway -n monitoring --cascade=orphan

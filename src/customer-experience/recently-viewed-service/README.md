@@ -47,7 +47,7 @@ gRPC service: `RecentlyViewedService` (port 50124)
 
 ## Kafka Topics
 
-_This service does not produce or consume Kafka topics._
+This service does not produce or consume Kafka topics.
 
 ## Dependencies
 

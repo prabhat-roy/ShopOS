@@ -493,7 +493,7 @@ release will actually manage the CRD. Check to see which release has
 `ingressController.installCRDs: true` to determine which does so if you have
 multiple releases. When using this management method, upgrading a release to
 chart 1.11.0 will delete the KongCredential CRD during the upgrade, which will
-_delete any existing KongCredential resources_. To avoid losing configuration,
+delete any existing KongCredential resources. To avoid losing configuration,
 check to see if your CRD is managed:
 
 ```
@@ -577,7 +577,7 @@ to make any other configuration changes when upgrading to 1.9.0.
 
 If you do override `waitImage.repository` to use a custom image, you must
 switch to a custom image that provides a `bash` executable. Note that busybox
-images, or images derived from it, do _not_ include a `bash` executable. We
+images, or images derived from it, do not include a `bash` executable. We
 recommend switching to an image derived from the public bash Docker image or a
 base operating system image that provides a `bash` executable.
 

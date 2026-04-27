@@ -1,6 +1,6 @@
 ﻿# Falco
 
-[Falco](https://falco.org) is a *Cloud Native Runtime Security* tool designed to detect anomalous activity in your applications. You can use Falco to monitor runtime security of your Kubernetes applications and internal components.
+[Falco](https://falco.org) is a Cloud Native Runtime Security tool designed to detect anomalous activity in your applications. You can use Falco to monitor runtime security of your Kubernetes applications and internal components.
 
 ## Introduction
 
@@ -29,7 +29,7 @@ helm install falco falcosecurity/falco \
     --namespace falco
 ```
 
-After a few minutes Falco instances should be running on all your nodes. The status of Falco pods can be inspected through *kubectl*:
+After a few minutes Falco instances should be running on all your nodes. The status of Falco pods can be inspected through kubectl:
 ```bash
 kubectl get pods -n falco -o wide
 ```
@@ -41,7 +41,7 @@ falco-57w7q   1/1     Running   0          3m12s   10.244.0.1   control-plane   
 falco-h4596   1/1     Running   0          3m12s   10.244.1.2   worker-node-1   <none>           <none>
 falco-kb55h   1/1     Running   0          3m12s   10.244.2.3   worker-node-2   <none>           <none>
 ```
-The cluster in our example has three nodes, one *control-plane* node and two *worker* nodes. The default configuration in [values.yaml](./values.yaml) of our helm chart deploys Falco using a `daemonset`. That's the reason why we have one Falco pod in each node.
+The cluster in our example has three nodes, one control-plane node and two worker nodes. The default configuration in [values.yaml](./values.yaml) of our helm chart deploys Falco using a `daemonset`. That's the reason why we have one Falco pod in each node.
 > Tip: List Falco release using `helm list -n falco`, a release is a name used to track a specific deployment.
 
 ### Falco, Event Sources and Kubernetes
@@ -57,7 +57,7 @@ Falco needs a driver to analyze the system workload and pass security events to 
 * [Kernel module](https://falco.org/docs/concepts/event-sources/kernel/#kernel-module)
 * [Legacy eBPF probe](https://falco.org/docs/concepts/event-sources/kernel/#legacy-ebpf-probe)
 
-The driver must be loaded on the node where Falco is running. Falco now prefers the Modern eBPF probe by default. When using falcoctl with `driver.kind=auto`, it will automatically choose the best driver for your system. Specifically, it first attempts to use the Modern eBPF probe (which is shipped directly within the Falco binary) and will fall back to the _kernel module_ or the _original eBPF probe_ if the necessary BPF features are not available.
+The driver must be loaded on the node where Falco is running. Falco now prefers the Modern eBPF probe by default. When using falcoctl with `driver.kind=auto`, it will automatically choose the best driver for your system. Specifically, it first attempts to use the Modern eBPF probe (which is shipped directly within the Falco binary) and will fall back to the kernel module or the original eBPF probe if the necessary BPF features are not available.
 
 ##### Pre-built drivers
 
@@ -78,12 +78,12 @@ In that case you can use an alternative `falco-driver-loader` image flavor (e.g.
 For more information please refer to the documentation regarding the [currently supported images](https://github.com/falcosecurity/falco/blob/master/docker/README.md).
 
 #### About Plugins
-[Plugins](https://falco.org/docs/plugins/) are used to extend Falco to support new data sources. The current plugin framework supports *plugins* with the following *capabilities*:
+[Plugins](https://falco.org/docs/plugins/) are used to extend Falco to support new data sources. The current plugin framework supports plugins with the following capabilities:
 
 * Event sourcing capability;
 * Field extraction capability;
 
-Plugin capabilities are *composable*, we can have a single plugin with both capabilities. Or on the other hand, we can load two different plugins each with its capability, one plugin as a source of events and another as an extractor. A good example of this is the [Kubernetes Audit Events](https://github.com/falcosecurity/plugins/tree/master/plugins/k8saudit) and the [Falcosecurity Json](https://github.com/falcosecurity/plugins/tree/master/plugins/json) *plugins*. By deploying them both we have support for the K8s Audit Logs in Falco
+Plugin capabilities are composable, we can have a single plugin with both capabilities. Or on the other hand, we can load two different plugins each with its capability, one plugin as a source of events and another as an extractor. A good example of this is the [Kubernetes Audit Events](https://github.com/falcosecurity/plugins/tree/master/plugins/k8saudit) and the [Falcosecurity Json](https://github.com/falcosecurity/plugins/tree/master/plugins/json) plugins. By deploying them both we have support for the K8s Audit Logs in Falco
 
 Note that the driver is not required when using plugins.
 
@@ -141,7 +141,7 @@ Historically rules files and plugins used to be shipped inside the Falco docker 
 
 The default configuration of the chart for new installations is to use the falcoctl tool to handle artifacts. The chart will deploy two new containers along the Falco one:
 * `falcoctl-artifact-install` an init container that makes sure to install the configured artifacts before the Falco container starts;
-* `falcoctl-artifact-follow` a sidecar container that periodically checks for new artifacts (currently only *falco-rules*) and downloads them;
+* `falcoctl-artifact-follow` a sidecar container that periodically checks for new artifacts (currently only falco-rules) and downloads them;
 
 For more info on how to enable/disable and configure the falcoctl tool checkout the config values [here](./README.md#Configuration) and the [upgrading notes](./BREAKING-CHANGES.md#300)
 
@@ -200,7 +200,7 @@ helm install falco falcosecurity/falco \
 ```
 
 #### Deployment
-In the scenario when Falco is used with plugins as data sources, then the best option is to deploy it as a k8s `deployment`. Plugins could be of two types, the ones that follow the push model or the pull model. A plugin that adopts the firs model expects to receive the data from a remote source in a given endpoint. They just expose and endpoint and wait for data to be posted, for example [Kubernetes Audit Events](https://github.com/falcosecurity/plugins/tree/master/plugins/k8saudit) expects the data to be sent by the *k8s api server* when configured in such way. On the other hand other plugins that abide by the pull model retrieves the data from a given remote service.
+In the scenario when Falco is used with plugins as data sources, then the best option is to deploy it as a k8s `deployment`. Plugins could be of two types, the ones that follow the push model or the pull model. A plugin that adopts the firs model expects to receive the data from a remote source in a given endpoint. They just expose and endpoint and wait for data to be posted, for example [Kubernetes Audit Events](https://github.com/falcosecurity/plugins/tree/master/plugins/k8saudit) expects the data to be sent by the k8s api server when configured in such way. On the other hand other plugins that abide by the pull model retrieves the data from a given remote service.
 The following points explain why a k8s `deployment` is suitable when deploying Falco with plugins:
 
 * need to be reachable when ingesting logs directly from remote services;
@@ -239,7 +239,7 @@ In order to enable the logs to be emitted without delays you need to set `.Value
 ## K8s-metacollector
 Starting from Falco `0.37` the old [k8s-client](https://github.com/falcosecurity/falco/issues/2973) has been removed.
 A new component named [k8s-metacollector](https://github.com/falcosecurity/k8s-metacollector) replaces it.
-The *k8s-metacollector* is a self-contained module that can be deployed within a Kubernetes cluster to perform the task of gathering metadata
+The k8s-metacollector is a self-contained module that can be deployed within a Kubernetes cluster to perform the task of gathering metadata
 from various Kubernetes resources and subsequently transmitting this collected metadata to designated subscribers.
 
 Kubernetes' resources for which metadata will be collected and sent to Falco:
@@ -251,9 +251,9 @@ Kubernetes' resources for which metadata will be collected and sent to Falco:
 * services;
 
 ### Plugin
-Since the *k8s-metacollector* is standalone, deployed in the cluster as a deployment, Falco instances need to connect to the component
+Since the k8s-metacollector is standalone, deployed in the cluster as a deployment, Falco instances need to connect to the component
 in order to retrieve the `metadata`. Here it comes the [k8smeta](https://github.com/falcosecurity/plugins/tree/master/plugins/k8smeta) plugin.
-The plugin gathers details about Kubernetes resources from the *k8s-metacollector*. It then stores this information
+The plugin gathers details about Kubernetes resources from the k8s-metacollector. It then stores this information
 in tables and provides access to Falco upon request. The plugin specifically acquires data for the node where the
 associated Falco instance is deployed, resulting in node-level granularity.
 
@@ -415,7 +415,7 @@ falco:
 Here is the explanation of the above configuration:
 * disable the drivers by setting `driver.enabled=false`;
 * disable the collectors by setting `collectors.enabled=false`;
-* deploy the Falco using a k8s *deployment* by setting `controller.kind=deployment`;
+* deploy the Falco using a k8s deployment by setting `controller.kind=deployment`;
 * make our Falco instance reachable by the `k8s api-server` by configuring a service for it in `services`;
 * enable the `falcoctl-artifact-install` init container;
 * configure `falcoctl-artifact-install` to install the required plugins;
@@ -433,7 +433,7 @@ helm install falco falcosecurity/falco \
     --namespace falco \
     -f ./values-k8saudit.yaml
 ```
-After a few minutes a Falco instance should be running on your cluster. The status of Falco pod can be inspected through *kubectl*:
+After a few minutes a Falco instance should be running on your cluster. The status of Falco pod can be inspected through kubectl:
 ```bash
 kubectl get pods -n falco -o wide
 ```
@@ -444,7 +444,7 @@ NAME                     READY   STATUS    RESTARTS   AGE    IP           NODE  
 falco-64484d9579-qckms   1/1     Running   0          101s   10.244.2.2   worker-node-2   <none>           <none>
 ```
 
-Furthermore you can check that Falco logs through *kubectl logs*
+Furthermore you can check that Falco logs through kubectl logs
 
 ```bash
 kubectl logs -n falco falco-64484d9579-qckms
@@ -676,7 +676,7 @@ The following table lists the main configurable parameters of the falco chart v8
 | falco.capture.enabled | bool | `false` | Set to true to enable event capturing. |
 | falco.capture.mode | string | `"rules"` | Capture mode. Can be "rules" or "all_rules". |
 | falco.capture.path_prefix | string | `"/tmp/falco"` | Prefix for capture files. Falco appends a timestamp and event number to ensure unique filenames. |
-| falco.config_files | list | `["/etc/falco/config.d"]` | Allow to load additional configs files, beside the main one.  Their loading is assumed to be made *after* main config file has been processed, exactly in the order they are specified. Therefore, loaded config files *can* override values from main config file. Also, nested include is not allowed, ie: included config files won't be able to include other config files.  Like for 'rules_files', specifying a folder will load all the configs files present in it in a lexicographical order.  3 merge-strategies are available: `append` (default):   * existing sequence keys will be appended   * existing scalar keys will be overridden   * non-existing keys will be added `override`:   * existing keys will be overridden   * non-existing keys will be added `add-only`:   * existing keys will be ignored   * non-existing keys will be added  Each item on the list can be either a yaml map or a simple string. The simple string will be interpreted as the config file path, and the `append` merge-strategy will be enforced. When the item is a yaml map instead, it will be of the form: `   path: foo\n   strategy: X`. When `strategy` is omitted, once again `append` is used.  When a merge-strategy is enabled for a folder entry, all the included config files will use that merge-strategy. |
+| falco.config_files | list | `["/etc/falco/config.d"]` | Allow to load additional configs files, beside the main one.  Their loading is assumed to be made after main config file has been processed, exactly in the order they are specified. Therefore, loaded config files can override values from main config file. Also, nested include is not allowed, ie: included config files won't be able to include other config files.  Like for 'rules_files', specifying a folder will load all the configs files present in it in a lexicographical order.  3 merge-strategies are available: `append` (default):   * existing sequence keys will be appended   * existing scalar keys will be overridden   * non-existing keys will be added `override`:   * existing keys will be overridden   * non-existing keys will be added `add-only`:   * existing keys will be ignored   * non-existing keys will be added  Each item on the list can be either a yaml map or a simple string. The simple string will be interpreted as the config file path, and the `append` merge-strategy will be enforced. When the item is a yaml map instead, it will be of the form: `   path: foo\n   strategy: X`. When `strategy` is omitted, once again `append` is used.  When a merge-strategy is enabled for a folder entry, all the included config files will use that merge-strategy. |
 | falco.falco_libs | object | `{"snaplen":80,"thread_table_auto_purging_interval_s":300,"thread_table_auto_purging_thread_timeout_s":300,"thread_table_size":262144}` | Falco's performance and resource utilization can be fine-tuned by adjusting `falco_libs` parameters. For advanced users and specific use cases only.  |
 | falco.falco_libs.snaplen | int | `80` | Set how many bytes are collected of each I/O buffer for 'syscall' events. Use this option with caution since it can have a strong performance impact. |
 | falco.falco_libs.thread_table_auto_purging_interval_s | int | `300` | Interval at which the automatic threads purging routine runs, in seconds. Theautomatic threads purging is essential for Falco to remove stale inactive/dead threads from its internal threadtable. The presence of this kind of threads could be the results of multiple conditions, process exit events dropping or event re-ordering being the most probable ones. Reducing the interval can help in better memory management, but as a consequence, could impact the CPU usage. |
@@ -717,8 +717,8 @@ The following table lists the main configurable parameters of the falco chart v8
 | falco.libs_logger.severity | string | `"info"` | The minimum log level to include in the `libs` logs. Only logs of a certain severity level or higher will be emitted. Supported levels: "fatal", "critical", "error", "warning", "notice", "info", "debug", "trace". |
 | falco.load_plugins | list | `[]` | List of plugins to load. NOTICE: Falco default value for this setting differs from the one used in this Helm chart. For `container` and `k8saudit` plugins, this Helm chart provides a managed integreation. To use these plugins with this chart, please refer to `collectors` settings. |
 | falco.log_level | string | `"info"` | The `log_level` setting determines the minimum log level to include in Falco's logs related to the functioning of the software. This setting is separate from the `priority` field of rules and specifically controls the log level of Falco's operational logging. By specifying a log level, you can control the verbosity of Falco's operational logs. Only logs of a certain severity level or higher will be emitted. Supported levels: "emergency", "alert", "critical", "error", "warning", "notice", "info", "debug". |
-| falco.log_stderr | bool | `true` | Send information logs to stderr. Note that these are just Falco lifecycle (and possibly error) logs. These are *not* alerts related to Falco outputs, so must not be considered as security notification logs! |
-| falco.log_syslog | bool | `true` | Send information logs to syslog. Note that these are just Falco lifecycle (and possibly error) logs. These are *not* alerts related to Falco outputs, so must not be considered as security notification logs! |
+| falco.log_stderr | bool | `true` | Send information logs to stderr. Note that these are just Falco lifecycle (and possibly error) logs. These are not alerts related to Falco outputs, so must not be considered as security notification logs! |
+| falco.log_syslog | bool | `true` | Send information logs to syslog. Note that these are just Falco lifecycle (and possibly error) logs. These are not alerts related to Falco outputs, so must not be considered as security notification logs! |
 | falco.output_timeout | int | `2000` | The `output_timeout` parameter specifies the duration, in milliseconds, to wait before considering the deadline exceeded. By default, the timeout is set to 2000ms (2 seconds), meaning that the consumer of Falco outputs can block the Falco output channel for up to 2 seconds without triggering a timeout error.  Falco actively monitors the performance of output channels. With this setting the timeout error can be logged, but please note that this requires setting Falco's operational logs `log_level` to a minimum of `notice`.  It's important to note that Falco outputs will not be discarded from the output queue. This means that if an output channel becomes blocked indefinitely, it indicates a potential issue that needs to be addressed by the user. |
 | falco.outputs_queue | object | `{"capacity":0}` | Configure the output queue capacity.  Falco utilizes tbb::concurrent_bounded_queue for handling outputs, and this parameter allows you to customize the queue capacity. Please refer to the official documentation: https://uxlfoundation.github.io/oneTBB/main/tbb_userguide/Concurrent_Queue_Classes.html. On a healthy system with optimized Falco rules, the queue should not fill up. If it does, it is most likely happening due to the entire event flow being too slow, indicating that the server is under heavy load.  In the case of an unbounded queue, if the available memory on the system is consumed, the Falco process would be OOM killed. When using this option and setting the capacity, the current event would be dropped, and the event loop would continue. This behavior mirrors kernel-side event drops when the buffer between kernel space and user space is full. |
 | falco.outputs_queue.capacity | int | `0` | The maximum number of items allowed in the queue is determined by this value. Setting the value to 0 (which is the default) is equivalent to keeping the queue unbounded. In other words, when this configuration is set to 0, the number of allowed items is effectively set to the largest possible long value, disabling this setting. |

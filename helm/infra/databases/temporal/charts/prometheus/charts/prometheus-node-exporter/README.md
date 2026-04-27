@@ -1,4 +1,4 @@
-# Prometheus Node Exporter
+﻿# Prometheus Node Exporter
 
 Prometheus exporter for hardware and OS metrics exposed by *NIX kernels, written in Go with pluggable metric collectors.
 
@@ -19,7 +19,7 @@ _See [helm repo](https://helm.sh/docs/helm/helm_repo/) for command documentation
 helm install [RELEASE_NAME] prometheus-community/prometheus-node-exporter
 ```
 
-_See [configuration](#configuring) below._
+See [configuration](#configuring) below.
 
 _See [helm install](https://helm.sh/docs/helm/helm_install/) for command documentation._
 

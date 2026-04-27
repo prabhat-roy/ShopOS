@@ -1,4 +1,4 @@
-# kube-state-metrics Helm Chart
+﻿# kube-state-metrics Helm Chart
 
 Installs the [kube-state-metrics agent](https://github.com/kubernetes/kube-state-metrics).
 
@@ -17,7 +17,7 @@ The installation instructions use the OCI registry. Refer to the [`helm repo`]([
 helm install [RELEASE_NAME] oci://ghcr.io/prometheus-community/charts/kube-state-metrics [flags]
 ```
 
-_See [configuration](#configuration) below._
+See [configuration](#configuration) below.
 
 _See [helm install](https://helm.sh/docs/helm/helm_install/) for command documentation._
 

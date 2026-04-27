@@ -108,7 +108,7 @@ When installing `rulesfile` artifacts `falcoctl` will try to resolve its depende
 
 ## 3.0.0
 
-The new chart deploys new _k8s_ resources and new configuration variables have been added to the `values.yaml` file. People upgrading the chart from `v2.x.y` have to port their configuration variables to the new `values.yaml` file used by the `v3.0.0` chart.
+The new chart deploys new k8s resources and new configuration variables have been added to the `values.yaml` file. People upgrading the chart from `v2.x.y` have to port their configuration variables to the new `values.yaml` file used by the `v3.0.0` chart.
 
 If you still want to use the old values, because you do not want to take advantage of the new and shiny falcoctl tool then just run:
 
@@ -128,18 +128,18 @@ NOTE: The new version of Falco itself, installed by the chart, does not introduc
 
 [Falcoctl](https://github.com/falcosecurity/falcoctl) is a new tool born to automatize operations when deploying Falco.
 
-Before the `v3.0.0` of the charts _rulesfiles_ and _plugins_ were shipped bundled in the Falco docker image. It precluded the possibility to update the _rulesfiles_ and _plugins_ until a new version of Falco was released. Operators had to manually update the _rulesfiles_ or add new _plugins_ to Falco. The process was cumbersome and error-prone. Operators had to create their own Falco docker images with the new plugins baked into it or wait for a new Falco release.
+Before the `v3.0.0` of the charts rulesfiles and plugins were shipped bundled in the Falco docker image. It precluded the possibility to update the rulesfiles and plugins until a new version of Falco was released. Operators had to manually update the rulesfiles or add new plugins to Falco. The process was cumbersome and error-prone. Operators had to create their own Falco docker images with the new plugins baked into it or wait for a new Falco release.
 
 Starting from the `v3.0.0` chart release, we add support for falcoctl in the charts. By deploying it alongside Falco it allows to:
 
-- _install_ artifacts of the Falco ecosystem (i.e plugins and rules at the moment of writing)
-- _follow_ those artifacts(only _rulesfile_ artifacts are recommended), to keep them up-to-date with the latest releases of the Falcosecurity organization. This allows, for instance, to update rules detecting new vulnerabilities or security issues without the need to redeploy Falco.
+- install artifacts of the Falco ecosystem (i.e plugins and rules at the moment of writing)
+- follow those artifacts(only rulesfile artifacts are recommended), to keep them up-to-date with the latest releases of the Falcosecurity organization. This allows, for instance, to update rules detecting new vulnerabilities or security issues without the need to redeploy Falco.
 
-The chart deploys _falcoctl_ using an _init container_ and/or _sidecar container_. The first one is used to install artifacts and make them available to Falco at start-up time, the latter runs alongside Falco and updates the local artifacts when new updates are detected.
+The chart deploys falcoctl using an init container and/or sidecar container. The first one is used to install artifacts and make them available to Falco at start-up time, the latter runs alongside Falco and updates the local artifacts when new updates are detected.
 
 Based on your deployment scenario:
 
-1. Falco without _plugins_ and you just want to upgrade to the new Falco version:
+1. Falco without plugins and you just want to upgrade to the new Falco version:
    ```bash=
    helm upgrade falco falcosecurity/falco \
        --namespace=falco \
@@ -147,8 +147,8 @@ Based on your deployment scenario:
        --set falcoctl.artifact.install.enabled=false \
        --set falcoctl.artifact.follow.enabled=false
    ```
-   When upgrading an existing release, _helm_ uses the new chart version. Since we added new template files and changed the values schema(added new parameters) we explicitly disable the falcoctl tool. By doing so, the command will reuse the existing configuration but will deploy Falco version `0.34.0`
-2. Falco without _plugins_ and you want to automatically get new _falco-rules_ as soon as they are released:
+   When upgrading an existing release, helm uses the new chart version. Since we added new template files and changed the values schema(added new parameters) we explicitly disable the falcoctl tool. By doing so, the command will reuse the existing configuration but will deploy Falco version `0.34.0`
+2. Falco without plugins and you want to automatically get new falco-rules as soon as they are released:
 
    ```bash=
    helm upgrade falco falcosecurity/falco \
@@ -158,10 +158,10 @@ Based on your deployment scenario:
    Helm first applies the values coming from the new chart version, then overrides them using the values of the previous release. The outcome is a new release of Falco that:
    - uses the previous configuration;
    - runs Falco version `0.34.0`;
-   - uses falcoctl to install and automatically update the [_falco-rules_](https://github.com/falcosecurity/rules/);
+   - uses falcoctl to install and automatically update the [falco-rules](https://github.com/falcosecurity/rules/);
    - checks for new updates every 6h (default value).
 
-3. Falco with _plugins_ and you want just to upgrade Falco:
+3. Falco with plugins and you want just to upgrade Falco:
    ```bash=
    helm upgrade falco falcosecurity/falco \
        --namespace=falco \
@@ -170,7 +170,7 @@ Based on your deployment scenario:
        --set falcoctl.artifact.follow.enabled=false
    ```
    Very similar to scenario `1.`
-4. Falco with plugins and you want to use falcoctl to download the plugins' _rulesfiles_:
+4. Falco with plugins and you want to use falcoctl to download the plugins' rulesfiles:
    - Save falcoctl configuration to file:
 
      ```yaml=
@@ -251,8 +251,8 @@ Based on your deployment scenario:
      EOF
      ```
 
-   - Set `falcoctl.artifact.install.enabled=true` to install _rulesfiles_ of the loaded plugins. Configure falcoctl to install the _rulesfiles_ of the plugins you are loading with Falco. For example, if you are loading k8saudit plugin then you need to set `falcoctl.config.artifact.install.refs=[k8saudit-rules:0.5]`. When Falco is deployed the falcoctl init container will download the specified artifacts based on their tag.
-   - Set `falcoctl.artifact.follow.enabled=true` to keep updated _rulesfiles_ of the loaded plugins.
+   - Set `falcoctl.artifact.install.enabled=true` to install rulesfiles of the loaded plugins. Configure falcoctl to install the rulesfiles of the plugins you are loading with Falco. For example, if you are loading k8saudit plugin then you need to set `falcoctl.config.artifact.install.refs=[k8saudit-rules:0.5]`. When Falco is deployed the falcoctl init container will download the specified artifacts based on their tag.
+   - Set `falcoctl.artifact.follow.enabled=true` to keep updated rulesfiles of the loaded plugins.
    - Proceed to upgrade your Falco release by running:
      ```bash=
      helm upgrade falco falcosecurity/falco \
@@ -289,7 +289,7 @@ the Falco image. Still, this solution has some drawbacks such as users having to
 to get the latest version of those rulesfiles. Or they could manually update them by using the [custom rules](.
 /README.md#loading-custom-rules).
 
-We came up with a better solution and that is falcoctl. Users can configure the falcoctl tool to fetch and install the latest rulesfiles as provided by the _falcosecurity_ organization. For more info, please check the falcoctl section.
+We came up with a better solution and that is falcoctl. Users can configure the falcoctl tool to fetch and install the latest rulesfiles as provided by the falcosecurity organization. For more info, please check the falcoctl section.
 
 NOTE: if any user (wrongly) used to customize those files before deploying Falco please switch to using the
 [custom rules](./README.md#loading-custom-rules).

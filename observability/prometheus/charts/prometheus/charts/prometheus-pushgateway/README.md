@@ -1,4 +1,4 @@
-# Prometheus Pushgateway
+﻿# Prometheus Pushgateway
 
 This chart bootstraps a Prometheus [Pushgateway](http://github.com/prometheus/pushgateway) deployment on a [Kubernetes](http://kubernetes.io) cluster using the [Helm](https://helm.sh) package manager.
 
@@ -19,7 +19,7 @@ The installation instructions use the OCI registry. Refer to the [`helm repo`]([
 helm install [RELEASE_NAME] oci://ghcr.io/prometheus-community/charts/prometheus-pushgateway
 ```
 
-_See [configuration](#configuration) below._
+See [configuration](#configuration) below.
 
 _See [helm install](https://helm.sh/docs/helm/helm_install/) for command documentation._
 

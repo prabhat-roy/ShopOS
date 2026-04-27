@@ -1,4 +1,4 @@
-# MinIO Community Helm Chart
+﻿# MinIO Community Helm Chart
 
 [![Slack](https://slack.min.io/slack?type=svg)](https://slack.min.io) [![license](https://img.shields.io/badge/license-AGPL%20V3-blue)](https://github.com/minio/minio/blob/master/LICENSE)
 
@@ -106,7 +106,7 @@ NetworkPolicy spec](https://kubernetes.io/docs/tasks/administer-cluster/declare-
 and set `networkPolicy.enabled` to `true`.
 
 For Kubernetes v1.5 & v1.6, you must also turn on NetworkPolicy by setting
-the DefaultDeny namespace annotation. Note: this will enforce policy for *all* pods in the namespace:
+the DefaultDeny namespace annotation. Note: this will enforce policy for all pods in the namespace:
 
 ```
 kubectl annotate namespace default "net.beta.kubernetes.io/network-policy={\"ingress\":{\"isolation\":\"DefaultDeny\"}}"

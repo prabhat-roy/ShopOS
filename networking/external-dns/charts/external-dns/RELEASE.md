@@ -1,11 +1,11 @@
-### Added
+﻿### Added
 
 - Add option to set `annotationPrefix` ([#5889](https://github.com/kubernetes-sigs/external-dns/pull/5889)) _@lexfrei_
 
 ### Changed
 
 - Grant `networking.k8s.io/ingresses` and `gateway.solo.io/gateways` permissions when using `gloo-proxy` source. ([#5909](https://github.com/kubernetes-sigs/external-dns/pull/5909)) _@cucxabong_
-- Update _ExternalDNS_ OCI image version to [v0.20.0](https://github.com/kubernetes-sigs/external-dns/releases/tag/v0.20.0). ([#6005](https://github.com/kubernetes-sigs/external-dns/pull/6005)) _@vflaux_
+- Update ExternalDNS OCI image version to [v0.20.0](https://github.com/kubernetes-sigs/external-dns/releases/tag/v0.20.0). ([#6005](https://github.com/kubernetes-sigs/external-dns/pull/6005)) _@vflaux_
 
 ### Fixed
 

@@ -1,4 +1,4 @@
-<!--- app-name: Common -->
+﻿<!--- app-name: Common -->
 
 # Common library for Bitnami packages
 
@@ -38,7 +38,7 @@ Those are hardened, minimal CVE images built and maintained by Bitnami. Bitnami 
 - Vulnerability Triage & Prioritization with VEX Statements, KEV and EPSS Scores
 - Compliance focus with FIPS, STIG, and air-gap options, including secure bill of materials (SBOM)
 - Software supply chain provenance attestation through in-toto
-- First class support for the internet’s favorite Helm charts
+- First class support for the internetâ€™s favorite Helm charts
 
 Each image comes with valuable security metadata. You can view the metadata in [our public catalog here](https://app-catalog.vmware.com/bitnami/apps). Note: Some data is only available with [commercial subscriptions to BSI](https://bitnami.com/).
 
@@ -189,7 +189,7 @@ The following table lists the helpers available in the library which are scoped 
 | `common.utils.secret.getvalue`  | Print instructions to get a secret value.                                                                                                       | `dict "secret" "secret-name" "field" "secret-value-field" "context" $` |
 | `common.utils.getValueFromKey`  | Gets a value from `.Values` object given its key path                                                                                           | `dict "key" "path.to.key" "context" $`                                 |
 | `common.utils.getKeyFromList`   | Returns first `.Values` key with a defined value or first of the list if all non-defined                                                        | `dict "keys" (list "path.to.key1" "path.to.key2") "context" $`         |
-| `common.utils.checksumTemplate` | Checksum a template at "path" containing a *single* resource (ConfigMap,Secret) for use in pod annotations, excluding the metadata (see #18376) | `dict "path" "/configmap.yaml" "context" $`                            |
+| `common.utils.checksumTemplate` | Checksum a template at "path" containing a single resource (ConfigMap,Secret) for use in pod annotations, excluding the metadata (see #18376) | `dict "path" "/configmap.yaml" "context" $`                            |
 
 ### Validations
 
@@ -379,7 +379,7 @@ helm install test mychart --set path.to.value00="",path.to.value01=""
 
 - Previous versions of this Helm Chart use `apiVersion: v1` (installable by both Helm 2 and 3), this Helm Chart was updated to `apiVersion: v2` (installable by Helm 3 only). [Here](https://helm.sh/docs/topics/charts/#the-apiversion-field) you can find more information about the `apiVersion` field.
 - Use `type: library`. [Here](https://v3.helm.sh/docs/faq/#library-chart-support) you can find more information.
-- The different fields present in the *Chart.yaml* file has been ordered alphabetically in a homogeneous way for all the Bitnami Helm Charts
+- The different fields present in the Chart.yaml file has been ordered alphabetically in a homogeneous way for all the Bitnami Helm Charts
 
 #### Considerations when upgrading to this version
 

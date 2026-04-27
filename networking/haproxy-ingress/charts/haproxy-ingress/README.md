@@ -173,7 +173,7 @@ Parameter | Description | Default
 `controller.daemonset.hostPorts.https` | If `controller.daemonset.useHostPort` is `true` and this is non-empty sets the hostPort for https | `"443"`
 `controller.daemonset.hostPorts.tcp` | If `controller.daemonset.useHostPort` is `true` use hostport for these ports from `tcp` | `[]`
 `controller.daemonset.extraHostPorts` | If `controller.daemonset.useHostPort` is `true` configure additional host ports mapping. Each entry should specify `containerPort`, `hostPort` and optional `hostIP` | `[]`
-`controller.updateStrategy` | the update strategy settings | _see defaults below_
+`controller.updateStrategy` | the update strategy settings | see defaults below
 `controller.updateStrategy.type` | the update strategy type to use | `RollingUpdate`
 `controller.updateStrategy.rollingUpdate.maxUnavailable` | the max number of unavailable controllers when doing rolling updates | `1`
 `controller.minReadySeconds` | seconds to avoid killing pods before we are ready | `0`
@@ -274,7 +274,7 @@ Parameter | Description | Default
 `defaultBackend.replicaCount` | the number of replicas to deploy (when `controller.kind` is `Deployment`) | `1`
 `defaultBackend.minAvailable` | PodDisruptionBudget minimum available default backend pods | `1`
 `defaultBackend.podSecurityContext` | custom POD security context for the default backend | `{runAsNonRoot: true, runAsUser: 65000, runAsGroup: 65000, fsGroup: 65000}`
-`defaultBackend.resources` | default backend pod resources | _see defaults below_
+`defaultBackend.resources` | default backend pod resources | see defaults below
 `defaultBackend.resources.limits.cpu` | default backend cpu resources limit | `10m`
 `defaultBackend.resources.limits.memory` | default backend memory resources limit | `20Mi`
 `defaultBackend.service.name` | name of default backend service to create | `ingress-default-backend`

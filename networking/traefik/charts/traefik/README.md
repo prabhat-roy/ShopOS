@@ -92,7 +92,7 @@ helm list # should display two charts installed
 
 ## Verification
 
-Starting with v37.0.0, chart releases are signed using *provenance files*.
+Starting with v37.0.0, chart releases are signed using provenance files.
 
 To verify the chart, follow these steps:
 

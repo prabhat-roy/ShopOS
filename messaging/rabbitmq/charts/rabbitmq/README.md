@@ -130,11 +130,11 @@ To enable TLS support, first generate the certificates as described in the [Rabb
 Once the certificates are generated, you have two alternatives:
 
 - Create a secret with the certificates and associate the secret when deploying the chart
-- Include the certificates in the *values.yaml* file when deploying the chart
+- Include the certificates in the values.yaml file when deploying the chart
 
-Set the *auth.tls.failIfNoPeerCert* parameter to *false* to allow a TLS connection if the client fails to provide a certificate.
+Set the auth.tls.failIfNoPeerCert parameter to false to allow a TLS connection if the client fails to provide a certificate.
 
-Set the *auth.tls.sslOptionsVerify* to *verify_peer* to force a node to perform peer verification. When set to *verify_none*, peer verification will be disabled and certificate exchange won't be performed.
+Set the auth.tls.sslOptionsVerify to verify_peer to force a node to perform peer verification. When set to verify_none, peer verification will be disabled and certificate exchange won't be performed.
 
 This chart also facilitates the creation of TLS secrets for use with the Ingress controller (although this is not mandatory). There are several common use cases:
 
@@ -377,7 +377,7 @@ accepts query parameters to choose which metric families you would like to see. 
 Erlang, connection, or channel metrics.
 
 Additionally, there is a [third metrics endpoint](https://www.rabbitmq.com/docs/prometheus#per-object-endpoint):
-`GET /metrics/per-object`. which returns *all* per-object metrics. However, this can be computationally expensive on a
+`GET /metrics/per-object`. which returns all per-object metrics. However, this can be computationally expensive on a
 large cluster with many objects, and so RabbitMQ docs suggest using `GET /metrics/detailed` mentioned above to filter
 your scraping and only fetch the per-object metrics that are needed for a given monitoring application.
 

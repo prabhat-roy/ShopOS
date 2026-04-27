@@ -207,13 +207,13 @@ extraObjects:
 
 To expose the dashboard without IngressRoute, it's more complicated and less
 secure. You'll need to create an internal Service exposing the Traefik API with
-special _traefik_ entrypoint. This internal Service can be created from another tool,
+special traefik entrypoint. This internal Service can be created from another tool,
 with the `extraObjects` section or using [custom services](#add-custom-internal-services).
 
 You'll need to double-check:
 
 1. Service selector with your setup.
-2. Middleware annotation on the ingress, _default_ should be replaced with Traefik's namespace
+2. Middleware annotation on the ingress, default should be replaced with Traefik's namespace
 
 ```yaml
 ingressRoute:
@@ -1119,7 +1119,7 @@ tlsOptions:
 
 An experimental build of Traefik Proxy is available on a specific community repository: `traefik/traefik`.
 
-The tag does not follow semver, so it requires a _versionOverride_:
+The tag does not follow semver, so it requires a versionOverride:
 
 ```yaml
 image:
@@ -1132,7 +1132,7 @@ versionOverride: v3.4
 
 An optional support of this operator is included in this Chart. See documentation of this operator for more details.
 
-It can be used with those _values_:
+It can be used with those values:
 
 ```yaml
 metrics:
@@ -1177,7 +1177,7 @@ metrics:
 
 ## Use Kubernetes Gateway API
 
-One can use the new stable Kubernetes gateway API provider by setting the following _values_:
+One can use the new stable Kubernetes gateway API provider by setting the following values:
 
 ```yaml
 providers:
@@ -1251,7 +1251,7 @@ Once it's applied, whoami should be accessible on [whoami.docker.localhost](http
 
 ## Use Kubernetes Gateway API with cert-manager
 
-One can use the new stable Kubernetes Gateway API provider with automatic TLS certificate delivery (with cert-manager) by setting the following _values_:
+One can use the new stable Kubernetes Gateway API provider with automatic TLS certificate delivery (with cert-manager) by setting the following values:
 
 ```yaml
 providers:
@@ -1355,7 +1355,7 @@ Once it's applied, whoami should be accessible on https://whoami.docker.localhos
 
 ## Use Kubernetes Ingress NGINX Provider
 
-Starting with Traefik Proxy v3.6.2, one can use the Kubernetes Ingress NGINX provider by setting the following _values_:
+Starting with Traefik Proxy v3.6.2, one can use the Kubernetes Ingress NGINX provider by setting the following values:
 
 ```yaml
 providers:
@@ -1501,7 +1501,7 @@ The same Ingress resource is now served by both NGINX and Traefik! You can verif
 
 ## Use Knative Provider
 
-Starting with Traefik Proxy v3.6, one can use the Knative provider (_experimental_) by setting the following _values_:
+Starting with Traefik Proxy v3.6, one can use the Knative provider (experimental) by setting the following values:
 
 ```yaml
 experimental:

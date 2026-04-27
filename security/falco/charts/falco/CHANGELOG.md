@@ -554,10 +554,10 @@ The new chart introduces some breaking changes. For folks upgrading Falco please
 * Drop support for falcosecuriy/falco image, only the init container approach is supported out of the box;
 * Simplify the driver-loader init container logic;
 * Support falcoctl tool in the chart:
-  * Install the *rulesfile* artifacts;
-  * Follow the *rulesfile* artifacts in order to have the latest rules once they are released from falcosecurity org;
+  * Install the rulesfile artifacts;
+  * Follow the rulesfile artifacts in order to have the latest rules once they are released from falcosecurity org;
 * Support the modern-bpf probe a new driver (experimental)
-* Add a new file *BREAKING_CHANGES.md* to document the breaking changes and how to update the new chart.
+* Add a new file BREAKING_CHANGES.md to document the breaking changes and how to update the new chart.
 
 ## v2.5.5
 
@@ -583,7 +583,7 @@ The new chart introduces some breaking changes. For folks upgrading Falco please
 
 * Support custom dictionaries when setting environment variables
 
-Note: this is a breaking change. If you were passing _objects_ to `extra.env` or `driver.loader.initContainer.env` , you will need to update your values file to pass _lists_.
+Note: this is a breaking change. If you were passing objects to `extra.env` or `driver.loader.initContainer.env` , you will need to update your values file to pass lists.
 
 ## v2.4.7
 
@@ -717,7 +717,7 @@ update(falco/OWNERS): move inactive approvers to emeritus_approvers
 
 Note
 *This release is a complete refactor of the Falco Helm Chart. Thus, it introduces some breaking changes.*
-*Please, do not reuse values from previous chart installations.*
+Please, do not reuse values from previous chart installations.
 
 * Upgrade Falco to 0.32.1
 * Massive refactoring of the chart implementation

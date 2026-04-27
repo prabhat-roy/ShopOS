@@ -1,4 +1,4 @@
-# kube-state-metrics Helm Chart
+﻿# kube-state-metrics Helm Chart
 
 Installs the [kube-state-metrics agent](https://github.com/kubernetes/kube-state-metrics).
 
@@ -18,7 +18,7 @@ _See [helm repo](https://helm.sh/docs/helm/helm_repo/) for command documentation
 helm install [RELEASE_NAME] prometheus-community/kube-state-metrics [flags]
 ```
 
-_See [configuration](#configuration) below._
+See [configuration](#configuration) below.
 
 _See [helm install](https://helm.sh/docs/helm/helm_install/) for command documentation._
 

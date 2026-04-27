@@ -218,7 +218,7 @@ valkey-cli -a $VALKEY_PASSWORD CLUSTER FORGET b23bcffa1fd64368d445c1d9bd9aeb9264
 
 To use a password file for Valkey you need to create a secret containing the password.
 
-> *NOTE*: It is important that the file with the password must be called `valkey-password`
+> NOTE: It is important that the file with the password must be called `valkey-password`
 
 And then deploy the Helm Chart using the secret name as parameter:
 
@@ -349,7 +349,7 @@ To enable network policy for Valkey, install
 and set `networkPolicy.enabled` to `true`.
 
 For Kubernetes v1.5 & v1.6, you must also turn on NetworkPolicy by setting
-the DefaultDeny namespace annotation. Note: this will enforce policy for *all* pods in the namespace:
+the DefaultDeny namespace annotation. Note: this will enforce policy for all pods in the namespace:
 
 ```console
 kubectl annotate namespace default "net.beta.kubernetes.io/network-policy={\"ingress\":{\"isolation\":\"DefaultDeny\"}}"
@@ -739,7 +739,7 @@ This version introduces image verification for security purposes. To disable it,
 
 This major updates all the references from `master/slave` to `primary/replica` to follow the upstream project strategy:
 
-- The term *master* has been replaced by the term *primary*. Therefore, parameters prefixed with `master` are now prefixed with `primary`.
+- The term master has been replaced by the term primary. Therefore, parameters prefixed with `master` are now prefixed with `primary`.
 - Environment variables previously prefixed as `VALKEY_MASTER` or `VALKEY_SENTINEL_MASTER` use `VALKEY_PRIMARY` and `VALKEY_SENTINEL_PRIMARY` now.
 
 Consequences:
