@@ -41,7 +41,7 @@ Argo CD supports Helm hooks natively by converting them to Argo CD PreSync hooks
 
 #### Installing CRDs Outside the Chart
 
-Some users would prefer to install the CRDs _outside_ of the chart. You can disable the CRD installation of this chart by using `--set crds.install=false` when installing the chart.
+Some users would prefer to install the CRDs outside of the chart. You can disable the CRD installation of this chart by using `--set crds.install=false` when installing the chart.
 
 Helm cannot upgrade custom resource definitions in the `<chart>/crds` folder [by design](https://helm.sh/docs/chart_best_practices/custom_resource_definitions/#some-caveats-and-explanations). Starting with 3.4.0 (chart version 0.19.0), the CRDs have been moved to `<chart>/templates` to address this design decision.
 

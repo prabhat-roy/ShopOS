@@ -17,7 +17,7 @@
     - [Rootless Defaults](#rootless-defaults)
     - [Session, Cache and Queue](#session-cache-and-queue)
   - [Single-Pod Configurations](#single-pod-configurations)
-  - [Additional _app.ini_ settings](#additional-appini-settings)
+  - [Additional app.ini settings](#additional-appini-settings)
     - [User defined environment variables in app.ini](#user-defined-environment-variables-in-appini)
   - [External Database](#external-database)
   - [Ports and external url](#ports-and-external-url)
@@ -357,7 +357,7 @@ If HA is not needed/desired, the following configurations can be used to deploy 
 
 2. For a minimal DEV installation (using the built-in sqlite DB instead of Postgres):
 
-   This will result in a single-pod Gitea instance _without any dependencies and persistence_.
+   This will result in a single-pod Gitea instance without any dependencies and persistence.
    Do not use this configuration for production use.
 
    <details>
@@ -391,16 +391,16 @@ If HA is not needed/desired, the following configurations can be used to deploy 
 
    </details>
 
-### Additional _app.ini_ settings
+### Additional app.ini settings
 
 > The [generic](https://docs.gitea.com/administration/config-cheat-sheet#overall-default)
 > section cannot be defined that way.
 
-Some settings inside _app.ini_ (like passwords or whole authentication configurations) must be considered sensitive and therefore should not be passed via plain text inside the _values.yaml_ file.
-In times of _GitOps_ the values.yaml could be stored in a Git repository where sensitive data should never be accessible.
+Some settings inside app.ini (like passwords or whole authentication configurations) must be considered sensitive and therefore should not be passed via plain text inside the values.yaml file.
+In times of GitOps the values.yaml could be stored in a Git repository where sensitive data should never be accessible.
 
 The Helm Chart supports this approach and let the user define custom sources like
-Kubernetes Secrets to be loaded as environment variables during _app.ini_ creation or update.
+Kubernetes Secrets to be loaded as environment variables during app.ini creation or update.
 
 ```yaml
 gitea:
@@ -411,10 +411,10 @@ gitea:
         name: gitea-app-ini-plaintext
 ```
 
-This would mount the two additional volumes (`oauth` and `some-additionals`) from different sources to the init container where the _app.ini_ gets updated.
-All files mounted that way will be read and converted to environment variables and then added to the _app.ini_ using [environment-to-ini](https://github.com/go-gitea/gitea/tree/main/contrib/environment-to-ini).
+This would mount the two additional volumes (`oauth` and `some-additionals`) from different sources to the init container where the app.ini gets updated.
+All files mounted that way will be read and converted to environment variables and then added to the app.ini using [environment-to-ini](https://github.com/go-gitea/gitea/tree/main/contrib/environment-to-ini).
 
-The key of such additional source represents the section inside the _app.ini_.
+The key of such additional source represents the section inside the app.ini.
 The value for each key can be multiline ini-like definitions.
 
 In example, the referenced `gitea-app-ini-plaintext` could look like this.
@@ -450,9 +450,9 @@ stringData:
 #### User defined environment variables in app.ini
 
 Users are able to define their own environment variables, which are loaded into the containers.
-We also support to directly interact with the generated _app.ini_.
+We also support to directly interact with the generated app.ini.
 
-To inject self defined variables into the _app.ini_ a certain format needs to be honored.
+To inject self defined variables into the app.ini a certain format needs to be honored.
 This is described in detail on the [env-to-ini](https://github.com/go-gitea/gitea/tree/main/contrib/environment-to-ini) page.
 
 Prior to Gitea 1.20 and Chart 9.0.0 the helm chart had a custom prefix `ENV_TO_INI`.
@@ -1591,13 +1591,13 @@ Gitea secret keys (SECRET_KEY, INTERNAL_TOKEN, JWT_SECRET) are now generated aut
 
 > ðŸ’¡ It would be possible to set new secret keys manually by entering the running container and rewriting the app.ini by hand.
 > However, this it is not advisable to do so for existing installations.
-> Certain settings like _LDAP_ would not be readable anymore.
+> Certain settings like LDAP would not be readable anymore.
 
 ### Probes <!-- omit from toc -->
 
 `gitea.customLivenessProbe`, `gitea.customReadinessProbe` and `gitea.customStartupProbe` have been removed.
 
-They are replaced by the settings `gitea.livenessProbe`, `gitea.readinessProbe` and `gitea.startupProbe` which are now fully configurable and used _as-is_ for
+They are replaced by the settings `gitea.livenessProbe`, `gitea.readinessProbe` and `gitea.startupProbe` which are now fully configurable and used as-is for
 a Chart deployment.
 If you have customized their values instead of using the `custom` prefixed settings, please ensure that you remove the `enabled` property from each of them.
 
@@ -1676,7 +1676,7 @@ Generally spoken, this might not be a breaking change, but it is worth to be men
 
 Prior to `4.0.0` only one init container was used to both setup directories and configure Gitea.
 As of now the actual Gitea configuration is separated from the other pre-execution.
-This also includes the execution of _initPreScript_.
+This also includes the execution of initPreScript.
 If you have such script, please be aware of this.
 Dynamically prepare the Gitea setup during execution by e.g. adding environment variables to the execution context won't work anymore.
 

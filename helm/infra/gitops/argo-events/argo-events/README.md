@@ -34,7 +34,7 @@ NAME: my-release
 
 ### Custom resource definitions
 
-Some users would prefer to install the CRDs _outside_ of the chart. You can disable the CRD installation of this chart by using `--set crds.install=false` when installing the chart.
+Some users would prefer to install the CRDs outside of the chart. You can disable the CRD installation of this chart by using `--set crds.install=false` when installing the chart.
 
 You can install the CRDs manually from `templates/crds` folder.
 

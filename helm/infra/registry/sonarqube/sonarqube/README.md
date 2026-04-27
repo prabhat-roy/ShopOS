@@ -173,7 +173,7 @@ Alternatively, you can use a ConfigMap or a Secret with the environment variable
 
 The chart can optionally start a sidecar exporter for [Prometheus](https://prometheus.io/) to expose JMX metrics. The metrics endpoint is exposed in a separate service.
 
-To start the sidecar Prometheus exporter, set the *metrics.jmx.enabled* parameter to *true* when deploying the chart. Refer to the chart parameters for the default port number.
+To start the sidecar Prometheus exporter, set the metrics.jmx.enabled parameter to true when deploying the chart. Refer to the chart parameters for the default port number.
 
 Metrics can be scraped from within the cluster using any of the following approaches:
 
@@ -189,7 +189,7 @@ Metrics can be scraped from within the cluster using any of the following approa
             prometheus.io/path: "/"
     ```
 
-- Creating a ServiceMonitor (when the Prometheus Operator is available in the cluster). You can do this setting the *metrics.serviceMonitor.enabled* parameter to *true* when deploying the chart.
+- Creating a ServiceMonitor (when the Prometheus Operator is available in the cluster). You can do this setting the metrics.serviceMonitor.enabled parameter to true when deploying the chart.
 - Using something similar to the [example Prometheus scrape configuration](https://github.com/prometheus/prometheus/blob/master/documentation/examples/prometheus-kubernetes.yml).
 
 If metrics are to be scraped from outside the cluster, the Kubernetes API proxy can be utilized to access the endpoint.
@@ -697,7 +697,7 @@ This major release updates the PostgreSQL subchart to its newest major *11.x.x*,
 
 #### Upgrading Instructions
 
-To upgrade to *1.0.0* from *0.x*, it should be done reusing the PVC(s) used to hold the data on your previous release. To do so, follow the instructions below (the following example assumes that the release name is *sonarqube* and the release namespace *default*):
+To upgrade to *1.0.0* from *0.x*, it should be done reusing the PVC(s) used to hold the data on your previous release. To do so, follow the instructions below (the following example assumes that the release name is sonarqube and the release namespace default):
 
 1. Obtain the credentials and the names of the PVCs used to hold the data on your current release:
 
