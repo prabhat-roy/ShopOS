@@ -560,7 +560,7 @@ spec:
 
                                 The `region` field is not needed if you use [EKS Pod Identities](https://docs.aws.amazon.com/eks/latest/userguide/pod-identities.html).
                                 Instead an AWS_REGION environment variable is added to the cert-manager controller Pod by:
-                                [Amazon EKS Pod Identity Agent](https://github.com/aws/eks-pod-identity-agent),
+                                [Amazon EKS Pod Identity Agent](https://github.com/aws/app-k8s-pod-identity-agent),
                                 In this case this `region` field value is ignored.
                               type: string
                             role:

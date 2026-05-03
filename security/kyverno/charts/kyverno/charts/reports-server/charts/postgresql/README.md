@@ -1,4 +1,4 @@
-﻿<!--- app-name: PostgreSQL -->
+<!--- app-name: PostgreSQL -->
 
 # Bitnami package for PostgreSQL
 

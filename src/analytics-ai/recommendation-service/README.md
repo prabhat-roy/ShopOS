@@ -1,10 +1,10 @@
-﻿# recommendation-service
+# recommendation-service
 
 > Collaborative filtering and content-based product recommendations served via gRPC.
 
 ## Overview
 
-The recommendation-service delivers personalised product recommendations throughout the ShopOS storefront â€” "You may also like", "Frequently bought together", and "Trending in your category" widgets. It combines collaborative filtering (user-item interaction signals) with content-based similarity (product attributes and embeddings) to generate ranked recommendation lists. Models are trained offline and served online through a low-latency gRPC API backed by a feature store.
+The recommendation-service delivers personalised product recommendations throughout the ShopOS storefront — "You may also like", "Frequently bought together", and "Trending in your category" widgets. It combines collaborative filtering (user-item interaction signals) with content-based similarity (product attributes and embeddings) to generate ranked recommendation lists. Models are trained offline and served online through a low-latency gRPC API backed by a feature store.
 
 ## Architecture
 
@@ -63,8 +63,8 @@ service RecommendationService {
 
 | Topic | Role |
 |---|---|
-| `analytics.product.clicked` | Consumed (via data-pipeline) â€” click signal for model training |
-| `commerce.order.placed` | Consumed (via data-pipeline) â€” purchase signal for collaborative filter |
+| `analytics.product.clicked` | Consumed (via data-pipeline) — click signal for model training |
+| `commerce.order.placed` | Consumed (via data-pipeline) — purchase signal for collaborative filter |
 
 ## Dependencies
 
@@ -80,8 +80,8 @@ Downstream: web-bff, mobile-bff, notification-orchestrator (email campaign batch
 | `ML_FEATURE_STORE_ADDR` | `ml-feature-store:50152` | Feature store address |
 | `PRODUCT_CATALOG_ADDR` | `product-catalog-service:50070` | Product catalog address |
 | `MINIO_ENDPOINT` | `minio:9000` | MinIO for model artefact storage |
-| `MINIO_ACCESS_KEY` | â€” | MinIO access key |
-| `MINIO_SECRET_KEY` | â€” | MinIO secret key |
+| `MINIO_ACCESS_KEY` | — | MinIO access key |
+| `MINIO_SECRET_KEY` | — | MinIO secret key |
 | `MINIO_MODEL_BUCKET` | `ml-models` | Bucket for trained model artefacts |
 | `DEFAULT_RECOMMENDATION_COUNT` | `20` | Default number of recommendations returned |
 | `MODEL_REFRESH_INTERVAL_HOURS` | `6` | How often to reload model artefacts from MinIO |
@@ -95,4 +95,4 @@ docker-compose up recommendation-service
 
 ## Health Check
 
-`GET /healthz` â†’ `{"status":"ok"}`
+`GET /healthz` → `{"status":"ok"}`

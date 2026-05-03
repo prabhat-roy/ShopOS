@@ -1,0 +1,83 @@
+# Pyrra SLO definitions — one per tier-0 service. Pyrra emits multi-burn-rate
+# Prometheus rules for Alertmanager.
+apiVersion: pyrra.dev/v1alpha1
+kind: ServiceLevelObjective
+metadata: { name: api-gateway-availability, namespace: monitoring }
+spec:
+  target: "99.95"
+  window: 30d
+  description: "API gateway 5xx availability"
+  indicator:
+    ratio:
+      grouping: []
+      errors: { metric: 'http_requests_total{namespace="platform",app="api-gateway",code=~"5.."}' }
+      total:  { metric: 'http_requests_total{namespace="platform",app="api-gateway"}' }
+---
+apiVersion: pyrra.dev/v1alpha1
+kind: ServiceLevelObjective
+metadata: { name: checkout-success, namespace: monitoring }
+spec:
+  target: "99.9"
+  window: 30d
+  description: "Checkout completion rate"
+  indicator:
+    ratio:
+      errors: { metric: 'checkout_attempt_total{result="failed"}' }
+      total:  { metric: 'checkout_attempt_total' }
+---
+apiVersion: pyrra.dev/v1alpha1
+kind: ServiceLevelObjective
+metadata: { name: payment-success, namespace: monitoring }
+spec:
+  target: "99.95"
+  window: 30d
+  description: "Payment authorization success rate"
+  indicator:
+    ratio:
+      errors: { metric: 'payment_authorization_total{result="failed"}' }
+      total:  { metric: 'payment_authorization_total' }
+---
+apiVersion: pyrra.dev/v1alpha1
+kind: ServiceLevelObjective
+metadata: { name: search-latency, namespace: monitoring }
+spec:
+  target: "99"
+  window: 30d
+  description: "95% of search requests under 250ms"
+  indicator:
+    latency:
+      success: { metric: 'http_request_duration_seconds_bucket{namespace="catalog",app="search-service",le="0.25"}' }
+      total:   { metric: 'http_request_duration_seconds_count{namespace="catalog",app="search-service"}' }
+---
+apiVersion: pyrra.dev/v1alpha1
+kind: ServiceLevelObjective
+metadata: { name: auth-availability, namespace: monitoring }
+spec:
+  target: "99.99"
+  window: 30d
+  indicator:
+    ratio:
+      errors: { metric: 'http_requests_total{namespace="identity",app="auth-service",code=~"5.."}' }
+      total:  { metric: 'http_requests_total{namespace="identity",app="auth-service"}' }
+---
+apiVersion: pyrra.dev/v1alpha1
+kind: ServiceLevelObjective
+metadata: { name: order-placement-success, namespace: monitoring }
+spec:
+  target: "99.9"
+  window: 30d
+  indicator:
+    ratio:
+      errors: { metric: 'order_creation_total{result="failed"}' }
+      total:  { metric: 'order_creation_total' }
+---
+apiVersion: pyrra.dev/v1alpha1
+kind: ServiceLevelObjective
+metadata: { name: storefront-availability, namespace: monitoring }
+spec:
+  target: "99.95"
+  window: 30d
+  indicator:
+    ratio:
+      errors: { metric: 'http_requests_total{namespace="shopos-web",app="storefront",code=~"5.."}' }
+      total:  { metric: 'http_requests_total{namespace="shopos-web",app="storefront"}' }

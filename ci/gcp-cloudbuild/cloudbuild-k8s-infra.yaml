@@ -23,7 +23,7 @@ steps:
     args:
       - -c
       - |
-        cd infra/terraform/gcp/gke
+        cd infra/terraform/gcp/app-k8s
         terraform init \
           -backend-config="bucket=${_TF_STATE_BUCKET}" \
           -backend-config="prefix=gke/${_ENVIRONMENT}"
@@ -35,7 +35,7 @@ steps:
     args:
       - -c
       - |
-        cd infra/terraform/gcp/gke
+        cd infra/terraform/gcp/app-k8s
         terraform plan \
           -var="project_id=${PROJECT_ID}" \
           -var="region=${_REGION}" \
@@ -51,7 +51,7 @@ steps:
       - -c
       - |
         [ "${_ACTION}" = "APPLY" ] || exit 0
-        cd infra/terraform/gcp/gke
+        cd infra/terraform/gcp/app-k8s
         terraform apply tfplan
         terraform output -json > /workspace/gke-outputs.json
     waitFor: [tf-plan]
@@ -63,7 +63,7 @@ steps:
       - -c
       - |
         [ "${_ACTION}" = "DESTROY" ] || exit 0
-        cd infra/terraform/gcp/gke
+        cd infra/terraform/gcp/app-k8s
         terraform destroy -auto-approve \
           -var="project_id=${PROJECT_ID}" \
           -var="region=${_REGION}" \

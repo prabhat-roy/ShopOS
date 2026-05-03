@@ -1,0 +1,17 @@
+# Grafana Incident — open-source incident management; pairs with Grafana OnCall.
+apiVersion: helm.cattle.io/v1
+kind: HelmChart
+metadata: { name: grafana-incident, namespace: monitoring }
+spec:
+  repo: https://grafana.github.io/helm-charts
+  chart: grafana-incident
+  version: 1.0.4
+  targetNamespace: monitoring
+  valuesContent: |-
+    replicas: 2
+    config:
+      slack:
+        signingSecret: ${SLACK_SIGNING_SECRET}
+        botToken:      ${SLACK_BOT_TOKEN}
+      grafanaURL: https://grafana.shopos.example.com
+      onCallURL:  https://oncall.shopos.example.com

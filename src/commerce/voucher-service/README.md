@@ -1,10 +1,10 @@
-﻿# voucher-service
+# voucher-service
 
 > Generates, validates, and tracks redemption of single-use and multi-use vouchers for promotions and campaigns.
 
 ## Overview
 
-The voucher-service manages promotional vouchers distinct from coupon codes handled by promotions-service. Vouchers are typically used for targeted campaigns â€” customer win-back, referral rewards, partner co-marketing â€” and can be generated in bulk or individually. Each voucher has a redemption policy (single-use or limited multi-use), monetary or percentage value, and optional audience restrictions. Voucher state and redemption history are persisted in PostgreSQL.
+The voucher-service manages promotional vouchers distinct from coupon codes handled by promotions-service. Vouchers are typically used for targeted campaigns — customer win-back, referral rewards, partner co-marketing — and can be generated in bulk or individually. Each voucher has a redemption policy (single-use or limited multi-use), monetary or percentage value, and optional audience restrictions. Voucher state and redemption history are persisted in PostgreSQL.
 
 ## Architecture
 
@@ -69,14 +69,14 @@ Proto file: `proto/commerce/voucher.proto`
 ## Dependencies
 
 Upstream (callers)
-- `checkout-service` â€” validate and redeem voucher at checkout
-- `web-bff` â€” pre-checkout voucher validation
-- `admin-portal` â€” campaign and voucher management
-- `notification-orchestrator` â€” retrieves voucher details for email personalisation
+- `checkout-service` — validate and redeem voucher at checkout
+- `web-bff` — pre-checkout voucher validation
+- `admin-portal` — campaign and voucher management
+- `notification-orchestrator` — retrieves voucher details for email personalisation
 
 Downstream (called by this service)
-- PostgreSQL â€” voucher and redemption persistence
-- Kafka â€” analytics and notification events
+- PostgreSQL — voucher and redemption persistence
+- Kafka — analytics and notification events
 
 ## Environment Variables
 
@@ -104,6 +104,6 @@ docker-compose up voucher-service
 
 ## Health Check
 
-`GET /healthz` â†’ `{"status":"ok"}`
+`GET /healthz` → `{"status":"ok"}`
 
-gRPC health: `grpc.health.v1.Health/Check` â†’ `SERVING`
+gRPC health: `grpc.health.v1.Health/Check` → `SERVING`

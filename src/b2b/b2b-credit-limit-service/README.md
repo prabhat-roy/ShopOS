@@ -1,4 +1,4 @@
-﻿# b2b-credit-limit-service
+# b2b-credit-limit-service
 
 > Manages credit limits per B2B organization, tracks utilization in real time, and alerts when thresholds are approached or breached.
 
@@ -67,10 +67,10 @@ graph TD
 ## Dependencies
 
 Upstream (calls this service)
-- `checkout-service` â€” synchronous credit check before order placement
+- `checkout-service` — synchronous credit check before order placement
 
 Downstream (this service calls)
-- `organization-service` â€” validates organization identity and fetches org metadata
+- `organization-service` — validates organization identity and fetches org metadata
 
 ## Environment Variables
 
@@ -81,7 +81,7 @@ Downstream (this service calls)
 | `DB_PORT` | `5432` | PostgreSQL port |
 | `DB_NAME` | `credit_limit_db` | Database name |
 | `DB_USER` | `credit_user` | Database username |
-| `DB_PASSWORD` | â€” | Database password (required) |
+| `DB_PASSWORD` | — | Database password (required) |
 | `KAFKA_BOOTSTRAP_SERVERS` | `localhost:9092` | Kafka broker addresses |
 | `ORGANIZATION_SERVICE_ADDR` | `organization-service:50160` | Address of organization-service |
 | `ALERT_THRESHOLD_WARNING` | `75` | Utilization % that triggers a warning alert |
@@ -96,6 +96,6 @@ docker-compose up b2b-credit-limit-service
 
 ## Health Check
 
-`GET /healthz` â†’ `{"status":"ok"}`
+`GET /healthz` → `{"status":"ok"}`
 
-gRPC health: `grpc.health.v1.Health/Check` â†’ `SERVING`
+gRPC health: `grpc.health.v1.Health/Check` → `SERVING`

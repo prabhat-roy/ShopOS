@@ -1,0 +1,57 @@
+# Default deny-all in every business namespace. Allow rules below grant least-privilege per-service access.
+apiVersion: security.istio.io/v1
+kind: AuthorizationPolicy
+metadata: { name: deny-all, namespace: commerce }
+spec: {}
+---
+apiVersion: security.istio.io/v1
+kind: AuthorizationPolicy
+metadata: { name: deny-all, namespace: financial }
+spec: {}
+---
+apiVersion: security.istio.io/v1
+kind: AuthorizationPolicy
+metadata: { name: deny-all, namespace: identity }
+spec: {}
+---
+# Allow BFFs/gateway to call commerce reads
+apiVersion: security.istio.io/v1
+kind: AuthorizationPolicy
+metadata: { name: allow-bff-to-cart, namespace: commerce }
+spec:
+  selector: { matchLabels: { app: cart-service } }
+  rules:
+    - from:
+        - source:
+            principals:
+              - "cluster.local/ns/platform/sa/web-bff"
+              - "cluster.local/ns/platform/sa/mobile-bff"
+              - "cluster.local/ns/platform/sa/api-gateway"
+      to:
+        - operation: { methods: [GET, POST, PUT, DELETE], ports: ["50080"] }
+---
+apiVersion: security.istio.io/v1
+kind: AuthorizationPolicy
+metadata: { name: allow-checkout-to-payment, namespace: commerce }
+spec:
+  selector: { matchLabels: { app: payment-service } }
+  rules:
+    - from: [{ source: { principals: ["cluster.local/ns/commerce/sa/checkout-service"] } }]
+      to: [{ operation: { methods: [POST], paths: ["/grpc.health.v1.Health/Check","/Payment/*"] } }]
+---
+apiVersion: security.istio.io/v1
+kind: AuthorizationPolicy
+metadata: { name: allow-order-to-fulfillment, namespace: supply-chain }
+spec:
+  selector: { matchLabels: { app: fulfillment-service } }
+  rules:
+    - from: [{ source: { principals: ["cluster.local/ns/commerce/sa/order-service"] } }]
+---
+# Allow ingress gateway to reach BFFs
+apiVersion: security.istio.io/v1
+kind: AuthorizationPolicy
+metadata: { name: allow-ingress-to-bff, namespace: platform }
+spec:
+  selector: { matchLabels: { tier: edge } }
+  rules:
+    - from: [{ source: { namespaces: [istio-system] } }]

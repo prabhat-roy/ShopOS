@@ -27,9 +27,9 @@ on:
         options: [dev, staging, prod]
 
 env:
-  TF_DIR_AWS:   infra/terraform/aws/eks
-  TF_DIR_GCP:   infra/terraform/gcp/gke
-  TF_DIR_AZURE: infra/terraform/azure/aks
+  TF_DIR_AWS:   infra/terraform/aws/app-k8s
+  TF_DIR_GCP:   infra/terraform/gcp/app-k8s
+  TF_DIR_AZURE: infra/terraform/azure/app-k8s
 
 permissions:
   contents: read
@@ -142,7 +142,7 @@ jobs:
 
       - name: Get AKS credentials
         if: inputs.action == 'CREATE' && inputs.cloud_provider == 'azure'
-        uses: azure/aks-set-context@v4
+        uses: azure/app-k8s-set-context@v4
         with:
           resource-group: shopos-rg-${{ inputs.environment }}
           cluster-name: shopos-${{ inputs.environment }}

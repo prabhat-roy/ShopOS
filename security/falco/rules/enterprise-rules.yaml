@@ -1,47 +1,153 @@
-- rule: Unexpected outbound connection
-  desc: Detect unexpected outbound connections from shopos services
-  condition: >
-    outbound and container and
-    k8s.ns.name startswith "shopos-" and
-    not fd.sip in (allowed_outbound_ips)
-  output: >
-    Unexpected outbound connection from shopos service
-    (user=%user.name command=%proc.cmdline connection=%fd.name
-     container=%container.id image=%container.image.repository
-     k8s_pod=%k8s.pod.name ns=%k8s.ns.name)
-  priority: WARNING
-  tags: [network, shopos]
+# Falco enterprise rules — applied across all 22 ShopOS namespaces. Routed to
+# Slack (warning+) and PagerDuty (critical) via Falcosidekick → Alertmanager.
 
-- rule: Sensitive file read in container
-  desc: Detect reads of sensitive files in shopos containers
+- macro: shopos_namespaces
   condition: >
-    open_read and container and
-    k8s.ns.name startswith "shopos-" and
-    fd.name in (/etc/shadow, /etc/passwd, /root/.ssh/id_rsa)
+    k8s.ns.name in (platform, identity, catalog, commerce, supply-chain,
+                    financial, customer-experience, communications, content,
+                    analytics-ai, b2b, integrations, affiliate, marketplace,
+                    gamification, developer-platform, compliance, sustainability,
+                    events-ticketing, auction, rental, shopos-web, infra,
+                    monitoring, databases, streaming)
+
+- macro: allowed_outbound_ips
+  condition: fd.sip in ("10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16")
+
+- list: shopos_payment_pods
+  items: [payment-service, checkout-service, payout-service, wallet-service, gift-card-service]
+
+- list: trusted_image_registries
+  items: ["ghcr.io/shopos", "harbor.shopos.example.com/shopos", "docker.io/shopos"]
+
+# ----- T1: shell in container -----
+- rule: Shell spawned in shopos container
+  desc: Detect any interactive shell process inside a ShopOS container.
+  condition: >
+    spawned_process and container and shopos_namespaces and
+    proc.name in (bash, sh, zsh, dash, ksh, ash, fish)
   output: >
-    Sensitive file read in container
-    (file=%fd.name user=%user.name container=%container.id
-     image=%container.image.repository ns=%k8s.ns.name)
+    Shell spawned in container (user=%user.name shell=%proc.name parent=%proc.pname
+    container=%container.id image=%container.image.repository ns=%k8s.ns.name pod=%k8s.pod.name)
+  priority: WARNING
+  tags: [process, shopos, mitre_execution]
+
+# ----- T2: sensitive file reads -----
+- rule: Sensitive file read in shopos container
+  desc: Read of credential / private key files inside a container.
+  condition: >
+    open_read and container and shopos_namespaces and
+    (fd.name in (/etc/shadow, /etc/passwd, /etc/sudoers) or
+     fd.name pmatch (/root/.ssh/*, /home/*/.ssh/id_*, /var/run/secrets/kubernetes.io/serviceaccount/token))
+  output: >
+    Sensitive file read (file=%fd.name user=%user.name container=%container.id
+    image=%container.image.repository ns=%k8s.ns.name pod=%k8s.pod.name)
   priority: CRITICAL
+  tags: [filesystem, shopos, mitre_credential_access]
+
+# ----- T3: write below /etc, /usr, /lib -----
+- rule: Write below system dirs
+  desc: A process modified a system directory inside a container.
+  condition: >
+    open_write and container and shopos_namespaces and
+    (fd.name startswith /etc or fd.name startswith /usr or fd.name startswith /lib) and
+    not proc.name in (apt, apt-get, dpkg, yum, dnf, apk, dockerd, containerd)
+  output: >
+    System dir write (file=%fd.name proc=%proc.name container=%container.id
+    image=%container.image.repository ns=%k8s.ns.name pod=%k8s.pod.name)
+  priority: WARNING
   tags: [filesystem, shopos]
 
-- rule: Shell spawned in container
-  desc: A shell was spawned in a shopos container
+# ----- T4: payment-service crypto exfiltration -----
+- rule: Payment service unexpected outbound
+  desc: Outbound network from a payment-handling pod to non-allowlisted destination.
   condition: >
-    spawned_process and container and
-    k8s.ns.name startswith "shopos-" and
-    proc.name in (bash, sh, zsh, dash, ksh)
+    outbound and container and k8s.pod.name in (shopos_payment_pods) and
+    not allowed_outbound_ips and
+    not fd.sip in (api.stripe.com, api.paypal.com, api.adyen.com)
   output: >
-    Shell spawned in shopos container
-    (user=%user.name shell=%proc.name parent=%proc.pname
-     container=%container.id image=%container.image.repository
-     ns=%k8s.ns.name pod=%k8s.pod.name)
+    PAYMENT EXFIL ATTEMPT (pod=%k8s.pod.name dest=%fd.sip dport=%fd.sport
+    proc=%proc.name container=%container.id)
+  priority: CRITICAL
+  tags: [network, payment, shopos, mitre_exfiltration]
+
+# ----- T5: untrusted image -----
+- rule: Image not from trusted registry
+  desc: A pod started from a container image outside the trusted registries.
+  condition: >
+    container.started and container and shopos_namespaces and
+    not container.image.repository startswith "ghcr.io/shopos" and
+    not container.image.repository startswith "harbor.shopos.example.com/shopos" and
+    not container.image.repository startswith "docker.io/shopos"
+  output: >
+    Untrusted image (image=%container.image.repository pod=%k8s.pod.name
+    ns=%k8s.ns.name)
+  priority: WARNING
+  tags: [supply_chain, shopos]
+
+# ----- T6: privilege escalation -----
+- rule: Setuid via execve
+  desc: Setuid system call observed.
+  condition: >
+    spawned_process and container and shopos_namespaces and
+    (proc.name in (sudo, su, doas, pkexec) or evt.type=setuid)
+  output: >
+    Privilege escalation attempt (proc=%proc.name user=%user.name container=%container.id
+    pod=%k8s.pod.name ns=%k8s.ns.name)
+  priority: CRITICAL
+  tags: [process, shopos, mitre_privilege_escalation]
+
+# ----- T7: package manager run inside container -----
+- rule: Package management in container
+  desc: A package manager was run inside a running container (suggests post-deploy modification).
+  condition: >
+    spawned_process and container and shopos_namespaces and
+    proc.name in (apt, apt-get, dpkg, yum, dnf, apk, pip, pip3, npm, gem, cargo)
+  output: >
+    Package manager in container (proc=%proc.name args=%proc.cmdline pod=%k8s.pod.name)
   priority: WARNING
   tags: [process, shopos]
 
-- macro: allowed_outbound_ips
-  condition: fd.sip in (
-    "10.0.0.0/8",
-    "172.16.0.0/12",
-    "192.168.0.0/16"
-  )
+# ----- T8: container escape primitive -----
+- rule: Mount inside container
+  desc: A mount syscall happened inside an unprivileged container.
+  condition: evt.type=mount and container and shopos_namespaces and not container.privileged=true
+  output: >
+    Suspicious mount (mountpath=%fd.name proc=%proc.name container=%container.id
+    pod=%k8s.pod.name ns=%k8s.ns.name)
+  priority: CRITICAL
+  tags: [container_escape, shopos]
+
+# ----- T9: cryptominer signatures -----
+- rule: Crypto miner process
+  desc: Common cryptominer binary observed.
+  condition: >
+    spawned_process and container and shopos_namespaces and
+    proc.name in (xmrig, minerd, cgminer, sgminer, ethminer, t-rex)
+  output: >
+    Cryptominer detected (proc=%proc.name container=%container.id pod=%k8s.pod.name)
+  priority: CRITICAL
+  tags: [process, shopos, mitre_impact]
+
+# ----- T10: kube-api access from non-system pod -----
+- rule: Kube-API access from app pod
+  desc: A pod talked to kube-apiserver but it shouldn't (app code does not use the API).
+  condition: >
+    outbound and container and shopos_namespaces and
+    fd.sip in (kube-apiserver) and
+    not k8s.ns.name in (kube-system, infra, monitoring) and
+    not k8s.pod.label.app in (cert-manager, external-secrets, argocd-application-controller)
+  output: >
+    App pod called kube-API (pod=%k8s.pod.name ns=%k8s.ns.name proc=%proc.name)
+  priority: WARNING
+  tags: [network, shopos]
+
+# ----- T11: outbound to public internet from internal-only namespace -----
+- rule: Internal-only namespace egress
+  desc: Pods in databases/, streaming/ should never call public internet.
+  condition: >
+    outbound and container and k8s.ns.name in (databases, streaming) and
+    not allowed_outbound_ips
+  output: >
+    Internal-only ns egress (ns=%k8s.ns.name pod=%k8s.pod.name dest=%fd.sip)
+  priority: WARNING
+  tags: [network, shopos]

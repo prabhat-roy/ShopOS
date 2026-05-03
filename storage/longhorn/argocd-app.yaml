@@ -1,0 +1,41 @@
+# Source: storage/longhorn/longhorn.yaml
+# This Application installs the same Helm chart on any K8s cluster (not just k3s).
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: longhorn
+  namespace: argocd
+  finalizers: [resources-finalizer.argocd.argoproj.io]
+spec:
+  project: shopos-infra
+  source:
+    repoURL: https://charts.longhorn.io
+    chart: longhorn
+    targetRevision: '1.7.1'
+    helm:
+      releaseName: longhorn
+      values: |
+        persistence:
+          defaultClass: false
+          defaultClassReplicaCount: 3
+          reclaimPolicy: Retain
+        defaultSettings:
+          backupTarget: s3://shopos-longhorn-backups@us-east-1/
+          backupTargetCredentialSecret: longhorn-s3-credentials
+          defaultDataPath: /var/lib/longhorn
+          replicaSoftAntiAffinity: false
+          storageOverProvisioningPercentage: 100
+          taintToleration: "node-role.kubernetes.io/storage=true:NoSchedule"
+          systemManagedComponentsNodeSelector: "node-role.kubernetes.io/storage:true"
+        csi:
+          kubeletRootDir: /var/lib/kubelet
+        metrics:
+          serviceMonitor: { enabled: true }
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: longhorn-system
+  syncPolicy:
+    automated: { prune: false, selfHeal: true }
+    syncOptions: [CreateNamespace=true, ServerSideApply=true]
+    retry: { limit: 5, backoff: { duration: 30s, maxDuration: 5m, factor: 2 } }

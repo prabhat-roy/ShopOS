@@ -1,4 +1,4 @@
-﻿# Config Service
+# Config Service
 
 > Centralised distributed configuration store with hot-reload support.
 
@@ -47,15 +47,15 @@ graph LR
 
 ## Kafka Topics
 
-N/A â€” the Config Service uses gRPC streaming for change propagation, not Kafka.
+N/A — the Config Service uses gRPC streaming for change propagation, not Kafka.
 
 ## Dependencies
 
 Upstream (services this calls):
-- `etcd` â€” persistent key-value storage backend
+- `etcd` — persistent key-value storage backend
 
 Downstream (services that call this):
-- All platform microservices â€” fetch runtime configuration on startup and via watch
+- All platform microservices — fetch runtime configuration on startup and via watch
 
 ## Environment Variables
 
@@ -79,4 +79,4 @@ skaffold dev --module=config-service
 
 ## Health Check
 
-`GET /healthz` â†’ `{"status":"ok"}`
+`GET /healthz` → `{"status":"ok"}`

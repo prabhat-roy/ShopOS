@@ -1,0 +1,28 @@
+replicaCount: 2
+image:
+  repository: ghcr.io/shopos/returns-grading-service
+  tag: latest
+  pullPolicy: IfNotPresent
+service:
+  type: ClusterIP
+  port: 50375
+resources:
+  requests: { cpu: 100m, memory: 128Mi }
+  limits:   { cpu: 1, memory: 512Mi }
+hpa:
+  enabled: true
+  minReplicas: 2
+  maxReplicas: 10
+  cpuTarget: 70
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 65532
+  fsGroup: 65532
+containerSecurityContext:
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: true
+  capabilities: { drop: [ALL] }
+serviceAccount:
+  create: true
+  annotations: {}
+domain: supply-chain

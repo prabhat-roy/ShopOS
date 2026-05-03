@@ -1,4 +1,4 @@
-﻿
+
 # Change Log
 
 This file documents all notable changes to `k8s-metacollector` Helm Chart. The release

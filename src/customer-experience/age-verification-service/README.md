@@ -1,4 +1,4 @@
-﻿# age-verification-service
+# age-verification-service
 
 > Age gate verification for restricted products such as alcohol, tobacco, and adult content.
 
@@ -55,11 +55,11 @@ This service does not produce or consume Kafka topics.
 ## Dependencies
 
 Upstream (callers)
-- `api-gateway` â€” triggers age gate flow before restricted product page access
-- `checkout-service` â€” validates age token before processing orders with restricted items
+- `api-gateway` — triggers age gate flow before restricted product page access
+- `checkout-service` — validates age token before processing orders with restricted items
 
 Downstream (calls)
-- `product-catalog-service` â€” retrieves age restriction metadata for a product category
+- `product-catalog-service` — retrieves age restriction metadata for a product category
 - External ID verification provider (optional, via HTTP adapter)
 
 ## Environment Variables
@@ -84,4 +84,4 @@ docker-compose up age-verification-service
 
 ## Health Check
 
-`GET /healthz` â†’ `{"status":"ok"}`
+`GET /healthz` → `{"status":"ok"}`

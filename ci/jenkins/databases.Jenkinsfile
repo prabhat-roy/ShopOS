@@ -163,6 +163,153 @@ pipeline {
             }
         }
 
+        stage('CockroachDB') {
+            when { expression { params.ACTION == 'INSTALL' } }
+            steps {
+                catchError(buildResult: 'UNSTABLE', stageResult: 'FAILURE') {
+                    sh """
+                        helm upgrade --install cockroachdb helm/infra/databases/cockroachdb \
+                            --namespace databases \
+                            --set statefulset.replicas=3 \
+                            --set storage.persistentVolume.size=20Gi \
+                            --set tls.enabled=false \
+                            --set conf.cluster-name=shopos-crdb \
+                            --wait --timeout=10m
+                        echo "CockroachDB installed"
+                    """
+                }
+            }
+        }
+
+        stage('YugabyteDB') {
+            when { expression { params.ACTION == 'INSTALL' } }
+            steps {
+                catchError(buildResult: 'UNSTABLE', stageResult: 'FAILURE') {
+                    sh """
+                        helm upgrade --install yugabytedb helm/infra/databases/yugabytedb \
+                            --namespace databases \
+                            --set replicas.master=1 \
+                            --set replicas.tserver=1 \
+                            --set storage.master.size=10Gi \
+                            --set storage.tserver.size=10Gi \
+                            --set resource.master.requests.cpu=200m \
+                            --set resource.master.requests.memory=512Mi \
+                            --set resource.tserver.requests.cpu=200m \
+                            --set resource.tserver.requests.memory=512Mi \
+                            --wait --timeout=10m
+                        echo "YugabyteDB installed"
+                    """
+                }
+            }
+        }
+
+        stage('SurrealDB') {
+            when { expression { params.ACTION == 'INSTALL' } }
+            steps {
+                catchError(buildResult: 'UNSTABLE', stageResult: 'FAILURE') {
+                    sh """
+                        helm upgrade --install surrealdb helm/infra/databases/surrealdb \
+                            --namespace databases \
+                            --set image.tag=2.1 \
+                            --set persistence.size=10Gi \
+                            --set resources.requests.memory=512Mi \
+                            --set resources.requests.cpu=250m \
+                            --wait --timeout=8m
+                        echo "SurrealDB installed"
+                    """
+                }
+            }
+        }
+
+        stage('EventStoreDB') {
+            when { expression { params.ACTION == 'INSTALL' } }
+            steps {
+                catchError(buildResult: 'UNSTABLE', stageResult: 'FAILURE') {
+                    sh """
+                        helm upgrade --install eventstore helm/infra/databases/eventstore \
+                            --namespace databases \
+                            --set persistence.size=10Gi \
+                            --set eventstore.cluster.size=1 \
+                            --set eventstore.insecure=true \
+                            --wait --timeout=8m
+                        echo "EventStoreDB installed"
+                    """
+                }
+            }
+        }
+
+        stage('Valkey') {
+            when { expression { params.ACTION == 'INSTALL' } }
+            steps {
+                catchError(buildResult: 'UNSTABLE', stageResult: 'FAILURE') {
+                    sh """
+                        helm upgrade --install valkey helm/infra/databases/valkey \
+                            --namespace databases \
+                            --set replica.replicaCount=1 \
+                            --set master.persistence.size=8Gi \
+                            --set auth.enabled=false \
+                            --wait --timeout=8m
+                        echo "Valkey installed (Redis-compatible cache, complements Dragonfly + Redis)"
+                    """
+                }
+            }
+        }
+
+        stage('Typesense') {
+            when { expression { params.ACTION == 'INSTALL' } }
+            steps {
+                catchError(buildResult: 'UNSTABLE', stageResult: 'FAILURE') {
+                    sh """
+                        helm upgrade --install typesense helm/infra/databases/typesense \
+                            --namespace databases \
+                            --set persistence.size=8Gi \
+                            --set typesense.apiKey=shopos-typesense-key \
+                            --set resources.requests.memory=512Mi \
+                            --set resources.requests.cpu=250m \
+                            --wait --timeout=8m
+                        echo "Typesense installed (typo-tolerant instant search — frontend autocomplete)"
+                    """
+                }
+            }
+        }
+
+        stage('Manticore Search') {
+            when { expression { params.ACTION == 'INSTALL' } }
+            steps {
+                catchError(buildResult: 'UNSTABLE', stageResult: 'FAILURE') {
+                    sh """
+                        helm upgrade --install manticore helm/infra/databases/manticore-search \
+                            --namespace databases \
+                            --set persistence.size=8Gi \
+                            --set resources.requests.memory=512Mi \
+                            --set resources.requests.cpu=250m \
+                            --wait --timeout=8m
+                        echo "Manticore Search installed (Sphinx fork — full-text on logs/audit data)"
+                    """
+                }
+            }
+        }
+
+        stage('SeaweedFS') {
+            when { expression { params.ACTION == 'INSTALL' } }
+            steps {
+                catchError(buildResult: 'UNSTABLE', stageResult: 'FAILURE') {
+                    sh """
+                        helm upgrade --install seaweedfs helm/infra/databases/seaweedfs \
+                            --namespace databases \
+                            --set master.replicas=1 \
+                            --set volume.replicas=1 \
+                            --set filer.replicas=1 \
+                            --set s3.enabled=true \
+                            --set master.data.size=4Gi \
+                            --set volume.data.size=10Gi \
+                            --wait --timeout=10m
+                        echo "SeaweedFS installed (S3-compatible distributed storage — complements MinIO)"
+                    """
+                }
+            }
+        }
+
         stage('Apply OpenSearch Schemas') {
             when { expression { params.ACTION == 'INSTALL' } }
             steps {
@@ -248,6 +395,18 @@ pipeline {
                 sh """
                     helm uninstall timescaledb -n databases --ignore-not-found || true
                     kubectl delete pvc -l app.kubernetes.io/instance=timescaledb -n databases --ignore-not-found || true
+                """
+            }
+        }
+
+        stage('Uninstall New Databases') {
+            when { expression { params.ACTION == 'UNINSTALL' } }
+            steps {
+                sh """
+                    for r in cockroachdb yugabytedb surrealdb eventstore valkey typesense manticore seaweedfs; do
+                        helm uninstall \$r -n databases --ignore-not-found || true
+                        kubectl delete pvc -l app.kubernetes.io/instance=\$r -n databases --ignore-not-found || true
+                    done
                 """
             }
         }

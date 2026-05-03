@@ -1,4 +1,4 @@
-﻿# Load Generator
+# Load Generator
 
 > Synthetic traffic generator for performance testing and chaos engineering.
 
@@ -22,14 +22,14 @@ graph LR
 | Component | Technology |
 |---|---|
 | Language | Python |
-| Database | â€” |
+| Database | — |
 | Protocol | HTTP |
 | Port | 8089 |
 
 ## Responsibilities
 
 - Execute configurable traffic scenarios against the api-gateway
-- Simulate realistic user journeys: browse â†’ search â†’ add to cart â†’ checkout
+- Simulate realistic user journeys: browse → search → add to cart → checkout
 - Support concurrent virtual user ramp-up and sustained load profiles
 - Record request latency, error rate, and throughput per scenario step
 - Expose live test progress and metrics via a REST control API
@@ -48,16 +48,16 @@ graph LR
 
 ## Kafka Topics
 
-N/A â€” the Load Generator produces HTTP traffic, not Kafka events.
+N/A — the Load Generator produces HTTP traffic, not Kafka events.
 
 ## Dependencies
 
 Upstream (services this calls):
-- `api-gateway` (platform) â€” target for all synthetic traffic
+- `api-gateway` (platform) — target for all synthetic traffic
 
 Downstream (services that call this):
-- CI/CD pipelines â€” trigger load tests post-deployment
-- Operations teams â€” manual performance and chaos baseline testing
+- CI/CD pipelines — trigger load tests post-deployment
+- Operations teams — manual performance and chaos baseline testing
 
 ## Environment Variables
 
@@ -82,4 +82,4 @@ skaffold dev --module=load-generator
 
 ## Health Check
 
-`GET /healthz` â†’ `{"status":"ok"}`
+`GET /healthz` → `{"status":"ok"}`

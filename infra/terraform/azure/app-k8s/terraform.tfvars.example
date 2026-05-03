@@ -1,0 +1,12 @@
+subscription_id    = "your-azure-subscription-id"
+region             = "East US"
+name               = "shopos-app-k8s"
+environment        = "dev"
+kubernetes_version = null              # null = AKS default; or pin to e.g. "1.30.5"
+vpc_cidr           = "10.1.0.0/16"
+subnet_cidr        = "10.1.0.0/20"
+service_cidr       = "10.100.0.0/16"
+dns_service_ip     = "10.100.0.10"
+system_node_count  = 1
+system_vm_size     = "Standard_D4s_v3"
+availability_zones = ["1", "2", "3"]

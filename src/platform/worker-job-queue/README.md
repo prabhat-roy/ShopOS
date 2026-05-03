@@ -1,10 +1,10 @@
-﻿# Worker Job Queue
+# Worker Job Queue
 
 > Reliable background job processing queue backed by Redis for async task execution.
 
 ## Overview
 
-The Worker Job Queue provides a durable, prioritised background job processing system for tasks that should not block synchronous request paths â€” such as sending emails, generating reports, resizing images, or running batch updates. Jobs are enqueued via gRPC, persisted in Redis queues, and processed by worker goroutines with configurable concurrency. Failed jobs are retried with exponential back-off before being sent to the dead-letter queue.
+The Worker Job Queue provides a durable, prioritised background job processing system for tasks that should not block synchronous request paths — such as sending emails, generating reports, resizing images, or running batch updates. Jobs are enqueued via gRPC, persisted in Redis queues, and processed by worker goroutines with configurable concurrency. Failed jobs are retried with exponential back-off before being sent to the dead-letter queue.
 
 ## Architecture
 
@@ -49,18 +49,18 @@ graph LR
 
 ## Kafka Topics
 
-N/A â€” this service uses Redis queues, not Kafka, for job storage and signalling.
+N/A — this service uses Redis queues, not Kafka, for job storage and signalling.
 
 ## Dependencies
 
 Upstream (services this calls):
-- `Redis` â€” job queue storage and worker coordination
-- `dead-letter-service` (platform) â€” receives permanently failed jobs
+- `Redis` — job queue storage and worker coordination
+- `dead-letter-service` (platform) — receives permanently failed jobs
 
 Downstream (services that call this):
-- `email-service` (communications) â€” enqueues email delivery jobs
-- `image-processing-service` (content) â€” enqueues image resize jobs
-- `data-export-service` (content) â€” enqueues bulk export jobs
+- `email-service` (communications) — enqueues email delivery jobs
+- `image-processing-service` (content) — enqueues image resize jobs
+- `data-export-service` (content) — enqueues bulk export jobs
 - Any service requiring deferred background processing
 
 ## Environment Variables
@@ -88,4 +88,4 @@ skaffold dev --module=worker-job-queue
 
 ## Health Check
 
-`GET /healthz` â†’ `{"status":"ok"}`
+`GET /healthz` → `{"status":"ok"}`

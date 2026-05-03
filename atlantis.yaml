@@ -14,7 +14,7 @@ projects:
 
   # ─── AWS ─────────────────────────────────────────────────────────────────
   - name: aws-eks
-    dir: infra/terraform/aws/eks
+    dir: infra/terraform/aws/app-k8s
     workspace: production
     terraform_version: v1.9.8
     autoplan:
@@ -43,7 +43,7 @@ projects:
 
   # ─── GCP ─────────────────────────────────────────────────────────────────
   - name: gcp-gke
-    dir: infra/terraform/gcp/gke
+    dir: infra/terraform/gcp/app-k8s
     workspace: production
     terraform_version: v1.9.8
     autoplan:
@@ -72,7 +72,7 @@ projects:
 
   # ─── Azure ───────────────────────────────────────────────────────────────
   - name: azure-aks
-    dir: infra/terraform/azure/aks
+    dir: infra/terraform/azure/app-k8s
     workspace: production
     terraform_version: v1.9.8
     autoplan:

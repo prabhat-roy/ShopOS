@@ -1,0 +1,32 @@
+# Source: infra/crossplane/crossplane-install.yaml
+# This Application installs the same Helm chart on any K8s cluster (not just k3s).
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: crossplane
+  namespace: argocd
+  finalizers: [resources-finalizer.argocd.argoproj.io]
+spec:
+  project: shopos-infra
+  source:
+    repoURL: https://charts.crossplane.io/stable
+    chart: crossplane
+    targetRevision: '1.17.1'
+    helm:
+      releaseName: crossplane
+      values: |
+        provider:
+          packages:
+            - xpkg.upbound.io/upbound/provider-aws:v1.14.0
+            - xpkg.upbound.io/upbound/provider-gcp:v1.8.0
+            - xpkg.upbound.io/upbound/provider-azure:v1.5.0
+            - xpkg.upbound.io/crossplane-contrib/provider-helm:v0.19.0
+            - xpkg.upbound.io/crossplane-contrib/provider-kubernetes:v0.14.0
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: crossplane-system
+  syncPolicy:
+    automated: { prune: false, selfHeal: true }
+    syncOptions: [CreateNamespace=true, ServerSideApply=true]
+    retry: { limit: 5, backoff: { duration: 30s, maxDuration: 5m, factor: 2 } }

@@ -28,6 +28,28 @@ pipeline {
         booleanParam(name: 'OPENCOST',            defaultValue: true, description: 'OpenCost — per-namespace Kubernetes cost attribution')
         booleanParam(name: 'TELEPORT',            defaultValue: true, description: 'Teleport — zero-trust SSH and Kubernetes access')
         booleanParam(name: 'CONDUKTOR_GATEWAY',   defaultValue: true, description: 'Conduktor Gateway — Kafka policy enforcement proxy')
+        // ── Platform engineering ─────────────────────────────────────
+        booleanParam(name: 'UNLEASH',            defaultValue: true, description: 'Unleash — feature flag management UI + SDK')
+        booleanParam(name: 'GRAFANA_ONCALL',     defaultValue: true, description: 'Grafana OnCall — open-source on-call scheduling and escalation')
+        booleanParam(name: 'CACHET',             defaultValue: true, description: 'Cachet — public status page (driven by Uptime Kuma)')
+        booleanParam(name: 'NOMAD',              defaultValue: true, description: 'Nomad — non-containerised + batch workload orchestrator')
+        booleanParam(name: 'BOUNDARY',           defaultValue: true, description: 'Boundary — zero-trust SSH/RDP without VPN, full session recording')
+        booleanParam(name: 'WAYPOINT',           defaultValue: true, description: 'Waypoint — app deployment abstraction (one config for K8s/Nomad/ECS)')
+        booleanParam(name: 'ATLANTIS',           defaultValue: true, description: 'Atlantis — Terraform GitOps (plan on PR, apply on merge)')
+        booleanParam(name: 'DRIFTCTL',           defaultValue: true, description: 'Driftctl — weekly Terraform vs cloud drift detection')
+        // ── Data orchestration (complementing Airflow) ───────────────
+        booleanParam(name: 'PREFECT',            defaultValue: true, description: 'Prefect — Python-native workflow orchestration')
+        booleanParam(name: 'DAGSTER',            defaultValue: true, description: 'Dagster — data asset orchestration with lineage')
+        booleanParam(name: 'APACHE_CAMEL',       defaultValue: true, description: 'Apache Camel K — enterprise integration patterns (300+ connectors)')
+        // ── API gateways (complementing Traefik/Kong/Istio) ──────────
+        booleanParam(name: 'APISIX',             defaultValue: true, description: 'Apache APISIX — Lua-plugin cloud-native API gateway')
+        booleanParam(name: 'APISIX_DASHBOARD',   defaultValue: true, description: 'APISIX Dashboard — APISIX management UI')
+        booleanParam(name: 'TYK_GATEWAY',        defaultValue: true, description: 'Tyk Gateway — API management with built-in dev portal')
+        booleanParam(name: 'HASURA',             defaultValue: true, description: 'Hasura — instant GraphQL on PostgreSQL (eliminates CRUD boilerplate)')
+        // ── Test infrastructure ──────────────────────────────────────
+        booleanParam(name: 'WIREMOCK',           defaultValue: true, description: 'WireMock — third-party API mocking server for integration tests')
+        booleanParam(name: 'TOXIPROXY',          defaultValue: true, description: 'Toxiproxy — network fault injection (latency, drops, timeouts)')
+        booleanParam(name: 'K6_OPERATOR',        defaultValue: true, description: 'k6 Operator — run k6 load tests as Kubernetes Jobs')
     }
 
     stages {
@@ -307,6 +329,331 @@ pipeline {
             }
         }
 
+        // ── Platform Engineering ──────────────────────────────────────────────
+
+        stage('Unleash') {
+            when { expression { params.ACTION == 'INSTALL' && params.UNLEASH } }
+            steps {
+                catchError(buildResult: 'UNSTABLE', stageResult: 'FAILURE') {
+                    sh """
+                        kubectl create namespace platform --dry-run=client -o yaml | kubectl apply -f -
+                        helm upgrade --install unleash helm/infra/platform/unleash \
+                            --namespace platform \
+                            --set env.databaseUrl=postgres://postgres:postgres@postgres.default.svc.cluster.local/unleash \
+                            --set persistence.size=2Gi \
+                            --wait --timeout=8m
+                        echo "Unleash installed — feature flag platform with audit trail"
+                    """
+                }
+            }
+        }
+
+        stage('Grafana OnCall') {
+            when { expression { params.ACTION == 'INSTALL' && params.GRAFANA_ONCALL } }
+            steps {
+                catchError(buildResult: 'UNSTABLE', stageResult: 'FAILURE') {
+                    sh """
+                        kubectl create namespace platform --dry-run=client -o yaml | kubectl apply -f -
+                        helm upgrade --install grafana-oncall helm/infra/platform/grafana-oncall \
+                            --namespace platform \
+                            --set database.type=postgresql \
+                            --set externalPostgresql.host=postgres.default.svc.cluster.local \
+                            --set externalRedis.host=redis.default.svc.cluster.local \
+                            --set engine.replicas=1 \
+                            --wait --timeout=10m
+                        echo "Grafana OnCall installed — escalation policies + Slack/PagerDuty sync"
+                    """
+                }
+            }
+        }
+
+        stage('Cachet') {
+            when { expression { params.ACTION == 'INSTALL' && params.CACHET } }
+            steps {
+                catchError(buildResult: 'UNSTABLE', stageResult: 'FAILURE') {
+                    sh """
+                        kubectl create namespace platform --dry-run=client -o yaml | kubectl apply -f -
+                        helm upgrade --install cachet helm/infra/platform/cachet \
+                            --namespace platform \
+                            --set env.dbDriver=pgsql \
+                            --set env.dbHost=postgres.default.svc.cluster.local \
+                            --set env.dbDatabase=cachet \
+                            --set env.appKey=base64:CHANGE_ME \
+                            --set persistence.size=1Gi \
+                            --wait --timeout=8m
+                        echo "Cachet installed — public status page driven by Uptime Kuma probes"
+                    """
+                }
+            }
+        }
+
+        stage('Nomad') {
+            when { expression { params.ACTION == 'INSTALL' && params.NOMAD } }
+            steps {
+                catchError(buildResult: 'UNSTABLE', stageResult: 'FAILURE') {
+                    sh """
+                        kubectl create namespace platform --dry-run=client -o yaml | kubectl apply -f -
+                        helm upgrade --install nomad helm/infra/platform/nomad \
+                            --namespace platform \
+                            --set server.replicas=1 \
+                            --set client.enabled=true \
+                            --set persistence.size=2Gi \
+                            --wait --timeout=8m
+                        echo "Nomad installed — non-containerised + batch workload orchestrator"
+                    """
+                }
+            }
+        }
+
+        stage('Boundary') {
+            when { expression { params.ACTION == 'INSTALL' && params.BOUNDARY } }
+            steps {
+                catchError(buildResult: 'UNSTABLE', stageResult: 'FAILURE') {
+                    sh """
+                        kubectl create namespace platform --dry-run=client -o yaml | kubectl apply -f -
+                        helm upgrade --install boundary helm/infra/platform/boundary \
+                            --namespace platform \
+                            --set controller.replicas=1 \
+                            --set worker.replicas=1 \
+                            --set externalPostgresql.host=postgres.default.svc.cluster.local \
+                            --wait --timeout=8m
+                        echo "Boundary installed — zero-trust SSH to prod DBs/servers, session recording"
+                    """
+                }
+            }
+        }
+
+        stage('Waypoint') {
+            when { expression { params.ACTION == 'INSTALL' && params.WAYPOINT } }
+            steps {
+                catchError(buildResult: 'UNSTABLE', stageResult: 'FAILURE') {
+                    sh """
+                        kubectl create namespace platform --dry-run=client -o yaml | kubectl apply -f -
+                        helm upgrade --install waypoint helm/infra/platform/waypoint \
+                            --namespace platform \
+                            --set server.replicas=1 \
+                            --set persistence.size=2Gi \
+                            --wait --timeout=8m
+                        echo "Waypoint installed — app deployment abstraction (K8s/Nomad/ECS)"
+                    """
+                }
+            }
+        }
+
+        stage('Atlantis') {
+            when { expression { params.ACTION == 'INSTALL' && params.ATLANTIS } }
+            steps {
+                catchError(buildResult: 'UNSTABLE', stageResult: 'FAILURE') {
+                    sh """
+                        kubectl create namespace platform --dry-run=client -o yaml | kubectl apply -f -
+                        helm upgrade --install atlantis helm/infra/platform/atlantis \
+                            --namespace platform \
+                            --set github.user=shopos-bot \
+                            --set github.token=PLACEHOLDER \
+                            --set repoConfig=infra/atlantis/atlantis.yaml \
+                            --set persistence.size=4Gi \
+                            --wait --timeout=8m
+                        echo "Atlantis installed — Terraform GitOps (plan on PR, apply on merge)"
+                    """
+                }
+            }
+        }
+
+        stage('Driftctl') {
+            when { expression { params.ACTION == 'INSTALL' && params.DRIFTCTL } }
+            steps {
+                catchError(buildResult: 'UNSTABLE', stageResult: 'FAILURE') {
+                    sh """
+                        kubectl create namespace platform --dry-run=client -o yaml | kubectl apply -f -
+                        helm upgrade --install driftctl helm/infra/platform/driftctl \
+                            --namespace platform \
+                            --set schedule="0 6 * * 1" \
+                            --set tfStateBucket=shopos-tfstate \
+                            --wait --timeout=5m
+                        echo "Driftctl installed — weekly drift report (Terraform state vs cloud)"
+                    """
+                }
+            }
+        }
+
+        // ── Data Orchestration (complementing Airflow) ───────────────────────
+
+        stage('Prefect') {
+            when { expression { params.ACTION == 'INSTALL' && params.PREFECT } }
+            steps {
+                catchError(buildResult: 'UNSTABLE', stageResult: 'FAILURE') {
+                    sh """
+                        helm upgrade --install prefect helm/infra/platform/prefect \
+                            --namespace data-platform \
+                            --set server.replicas=1 \
+                            --set agent.replicas=1 \
+                            --set postgresql.host=postgres.default.svc.cluster.local \
+                            --wait --timeout=8m
+                        echo "Prefect installed — Python-native workflow orchestrator (complements Airflow)"
+                    """
+                }
+            }
+        }
+
+        stage('Dagster') {
+            when { expression { params.ACTION == 'INSTALL' && params.DAGSTER } }
+            steps {
+                catchError(buildResult: 'UNSTABLE', stageResult: 'FAILURE') {
+                    sh """
+                        helm upgrade --install dagster helm/infra/platform/dagster \
+                            --namespace data-platform \
+                            --set dagsterWebserver.replicaCount=1 \
+                            --set dagsterDaemon.enabled=true \
+                            --set postgresql.enabled=false \
+                            --set generatePostgresqlPasswordSecret=false \
+                            --set global.postgresqlSecretName=dagster-postgresql-secret \
+                            --wait --timeout=8m
+                        echo "Dagster installed — data asset orchestrator with lineage-first model"
+                    """
+                }
+            }
+        }
+
+        stage('Apache Camel K') {
+            when { expression { params.ACTION == 'INSTALL' && params.APACHE_CAMEL } }
+            steps {
+                catchError(buildResult: 'UNSTABLE', stageResult: 'FAILURE') {
+                    sh """
+                        helm upgrade --install apache-camel helm/infra/platform/apache-camel \
+                            --namespace data-platform \
+                            --set platform.build.registry.address=harbor.registry.svc.cluster.local \
+                            --wait --timeout=10m
+                        echo "Apache Camel K installed — 300+ enterprise integration connectors"
+                    """
+                }
+            }
+        }
+
+        // ── API Gateways (complementing Traefik / Kong / Istio) ──────────────
+
+        stage('Apache APISIX') {
+            when { expression { params.ACTION == 'INSTALL' && params.APISIX } }
+            steps {
+                catchError(buildResult: 'UNSTABLE', stageResult: 'FAILURE') {
+                    sh """
+                        kubectl create namespace api-gateway --dry-run=client -o yaml | kubectl apply -f -
+                        helm upgrade --install apisix helm/infra/data/apisix \
+                            --namespace api-gateway \
+                            --set gateway.type=ClusterIP \
+                            --set ingress-controller.enabled=true \
+                            --set etcd.replicaCount=1 \
+                            --wait --timeout=10m
+                        echo "APISIX installed — cloud-native API gateway (Lua plugin ecosystem)"
+                    """
+                }
+            }
+        }
+
+        stage('APISIX Dashboard') {
+            when { expression { params.ACTION == 'INSTALL' && params.APISIX_DASHBOARD } }
+            steps {
+                catchError(buildResult: 'UNSTABLE', stageResult: 'FAILURE') {
+                    sh """
+                        kubectl create namespace api-gateway --dry-run=client -o yaml | kubectl apply -f -
+                        helm upgrade --install apisix-dashboard helm/infra/data/apisix-dashboard \
+                            --namespace api-gateway \
+                            --set config.conf.etcd.endpoints={apisix-etcd.api-gateway.svc.cluster.local:2379} \
+                            --wait --timeout=5m
+                        echo "APISIX Dashboard installed — APISIX management UI"
+                    """
+                }
+            }
+        }
+
+        stage('Tyk Gateway') {
+            when { expression { params.ACTION == 'INSTALL' && params.TYK_GATEWAY } }
+            steps {
+                catchError(buildResult: 'UNSTABLE', stageResult: 'FAILURE') {
+                    sh """
+                        kubectl create namespace api-gateway --dry-run=client -o yaml | kubectl apply -f -
+                        helm upgrade --install tyk-gateway helm/infra/data/tyk-gateway \
+                            --namespace api-gateway \
+                            --set tyk.useStandalone=true \
+                            --set redis.host=redis.default.svc.cluster.local \
+                            --set redis.port=6379 \
+                            --wait --timeout=8m
+                        echo "Tyk Gateway installed — API management with built-in developer portal"
+                    """
+                }
+            }
+        }
+
+        stage('Hasura') {
+            when { expression { params.ACTION == 'INSTALL' && params.HASURA } }
+            steps {
+                catchError(buildResult: 'UNSTABLE', stageResult: 'FAILURE') {
+                    sh """
+                        kubectl create namespace api-gateway --dry-run=client -o yaml | kubectl apply -f -
+                        helm upgrade --install hasura helm/infra/data/hasura \
+                            --namespace api-gateway \
+                            --set env.HASURA_GRAPHQL_DATABASE_URL=postgres://postgres:postgres@postgres.default.svc.cluster.local/postgres \
+                            --set env.HASURA_GRAPHQL_ADMIN_SECRET=shopos-hasura-admin-secret \
+                            --set env.HASURA_GRAPHQL_ENABLE_CONSOLE=true \
+                            --wait --timeout=8m
+                        echo "Hasura installed — instant GraphQL on PostgreSQL (eliminates CRUD boilerplate)"
+                    """
+                }
+            }
+        }
+
+        // ── Test Infrastructure ──────────────────────────────────────────────
+
+        stage('WireMock') {
+            when { expression { params.ACTION == 'INSTALL' && params.WIREMOCK } }
+            steps {
+                catchError(buildResult: 'UNSTABLE', stageResult: 'FAILURE') {
+                    sh """
+                        kubectl create namespace contract-testing --dry-run=client -o yaml | kubectl apply -f -
+                        helm upgrade --install wiremock helm/infra/testing/wiremock \
+                            --namespace contract-testing \
+                            --set replicaCount=1 \
+                            --set persistence.size=1Gi \
+                            --wait --timeout=5m
+                        kubectl create configmap wiremock-mappings \
+                            --from-file=testing/wiremock/mappings/ \
+                            -n contract-testing --dry-run=client -o yaml | kubectl apply -f - 2>/dev/null || true
+                        echo "WireMock installed — mock third-party APIs for integration tests"
+                    """
+                }
+            }
+        }
+
+        stage('Toxiproxy') {
+            when { expression { params.ACTION == 'INSTALL' && params.TOXIPROXY } }
+            steps {
+                catchError(buildResult: 'UNSTABLE', stageResult: 'FAILURE') {
+                    sh """
+                        kubectl create namespace contract-testing --dry-run=client -o yaml | kubectl apply -f -
+                        helm upgrade --install toxiproxy helm/infra/testing/toxiproxy \
+                            --namespace contract-testing \
+                            --set replicaCount=1 \
+                            --wait --timeout=5m
+                        echo "Toxiproxy installed — network fault injection (latency, drops, timeouts)"
+                    """
+                }
+            }
+        }
+
+        stage('k6 Operator') {
+            when { expression { params.ACTION == 'INSTALL' && params.K6_OPERATOR } }
+            steps {
+                catchError(buildResult: 'UNSTABLE', stageResult: 'FAILURE') {
+                    sh """
+                        kubectl create namespace load-testing --dry-run=client -o yaml | kubectl apply -f -
+                        helm upgrade --install k6-operator helm/infra/testing/k6-operator \
+                            --namespace load-testing \
+                            --wait --timeout=5m
+                        echo "k6 Operator installed — run k6 load tests as Kubernetes Jobs"
+                    """
+                }
+            }
+        }
+
         // ── Verify ────────────────────────────────────────────────────────────
 
         stage('Verify Tooling') {
@@ -329,11 +676,66 @@ pipeline {
                     kubectl get pods -n teleport-cluster 2>/dev/null || true
                     echo "=== Conduktor Gateway ==="
                     kubectl get pods -n messaging 2>/dev/null || true
+                    echo "=== Platform engineering namespace ==="
+                    kubectl get pods -n platform 2>/dev/null || true
+                    echo "=== API gateway namespace ==="
+                    kubectl get pods -n api-gateway 2>/dev/null || true
+                    echo "=== Load-testing namespace (k6 operator) ==="
+                    kubectl get pods -n load-testing 2>/dev/null || true
                 """
             }
         }
 
         // ── UNINSTALL ─────────────────────────────────────────────────────────
+
+        stage('Uninstall Test Infrastructure') {
+            when { expression { params.ACTION == 'UNINSTALL' } }
+            steps {
+                sh '''
+                    helm uninstall k6-operator -n load-testing --ignore-not-found || true
+                    kubectl delete namespace load-testing --ignore-not-found || true
+                    for r in toxiproxy wiremock; do
+                        helm uninstall $r -n contract-testing --ignore-not-found || true
+                    done
+                '''
+            }
+        }
+
+        stage('Uninstall API Gateways') {
+            when { expression { params.ACTION == 'UNINSTALL' } }
+            steps {
+                sh '''
+                    for r in hasura tyk-gateway apisix-dashboard apisix; do
+                        helm uninstall $r -n api-gateway --ignore-not-found || true
+                    done
+                    kubectl delete namespace api-gateway --ignore-not-found || true
+                '''
+            }
+        }
+
+        stage('Uninstall Data Orchestration') {
+            when { expression { params.ACTION == 'UNINSTALL' } }
+            steps {
+                sh '''
+                    for r in apache-camel dagster prefect; do
+                        helm uninstall $r -n data-platform --ignore-not-found || true
+                    done
+                '''
+            }
+        }
+
+        stage('Uninstall Platform Engineering') {
+            when { expression { params.ACTION == 'UNINSTALL' } }
+            steps {
+                sh '''
+                    for r in driftctl atlantis waypoint boundary nomad cachet grafana-oncall unleash; do
+                        helm uninstall $r -n platform --ignore-not-found || true
+                    done
+                    kubectl delete pvc --all -n platform --ignore-not-found || true
+                    kubectl delete namespace platform --ignore-not-found || true
+                '''
+            }
+        }
 
         stage('Uninstall Conduktor Gateway') {
             when { expression { params.ACTION == 'UNINSTALL' && params.CONDUKTOR_GATEWAY } }

@@ -1,0 +1,34 @@
+# Source: security/kubescape/kubescape.yaml
+# This Application installs the same Helm chart on any K8s cluster (not just k3s).
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: kubescape-operator
+  namespace: argocd
+  finalizers: [resources-finalizer.argocd.argoproj.io]
+spec:
+  project: shopos-infra
+  source:
+    repoURL: https://kubescape.github.io/helm-charts/
+    chart: kubescape-operator
+    targetRevision: '1.21.0'
+    helm:
+      releaseName: kubescape-operator
+      values: |
+        capabilities:
+          configurationScan: enable
+          relevancy: enable
+          vulnerabilityScan: enable
+          networkPolicyService: enable
+          runtimeDetection: enable
+        nodeAgent:
+          config: { maxLearningPeriod: 24h }
+        storage: { storageClassName: fast-ssd, size: 50Gi }
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: kubescape
+  syncPolicy:
+    automated: { prune: false, selfHeal: true }
+    syncOptions: [CreateNamespace=true, ServerSideApply=true]
+    retry: { limit: 5, backoff: { duration: 30s, maxDuration: 5m, factor: 2 } }

@@ -1,4 +1,4 @@
-﻿# Web BFF
+# Web BFF
 
 > Backend-for-Frontend tailored for the ShopOS web application.
 
@@ -25,7 +25,7 @@ graph LR
 | Component | Technology |
 |---|---|
 | Language | Go |
-| Database | â€” |
+| Database | — |
 | Protocol | REST |
 | Port | 8081 |
 
@@ -52,21 +52,21 @@ graph LR
 
 ## Kafka Topics
 
-N/A â€” the Web BFF is a synchronous aggregation layer and does not interact with Kafka directly.
+N/A — the Web BFF is a synchronous aggregation layer and does not interact with Kafka directly.
 
 ## Dependencies
 
 Upstream (services this calls):
-- `product-catalog-service` (catalog) â€” product data
-- `pricing-service` (catalog) â€” pricing data
-- `inventory-service` (catalog) â€” stock levels
-- `cart-service` (commerce) â€” cart state
-- `order-service` (commerce) â€” order history
-- `user-service` (identity) â€” user profile
-- `recommendation-service` (analytics-ai) â€” personalised recommendations
+- `product-catalog-service` (catalog) — product data
+- `pricing-service` (catalog) — pricing data
+- `inventory-service` (catalog) — stock levels
+- `cart-service` (commerce) — cart state
+- `order-service` (commerce) — order history
+- `user-service` (identity) — user profile
+- `recommendation-service` (analytics-ai) — personalised recommendations
 
 Downstream (services that call this):
-- `api-gateway` (platform) â€” routes web client traffic here
+- `api-gateway` (platform) — routes web client traffic here
 
 ## Environment Variables
 
@@ -94,4 +94,4 @@ skaffold dev --module=web-bff
 
 ## Health Check
 
-`GET /healthz` â†’ `{"status":"ok"}`
+`GET /healthz` → `{"status":"ok"}`

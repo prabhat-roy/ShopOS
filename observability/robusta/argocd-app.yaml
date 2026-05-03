@@ -1,0 +1,58 @@
+# Source: observability/robusta/robusta.yaml
+# This Application installs the same Helm chart on any K8s cluster (not just k3s).
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: robusta
+  namespace: argocd
+  finalizers: [resources-finalizer.argocd.argoproj.io]
+spec:
+  project: shopos-infra
+  source:
+    repoURL: https://robusta-charts.storage.googleapis.com
+    chart: robusta
+    targetRevision: '0.13.3'
+    helm:
+      releaseName: robusta
+      values: |
+        clusterName: shopos-prod
+        sinksConfig:
+          - slack_sink:
+              name: main_slack_sink
+              slack_channel: "#shopos-alerts"
+              api_key: "${SLACK_BOT_TOKEN}"
+        playbookRepos: {}
+        builtinPlaybooks:
+          - triggers:
+              - on_pod_crash_loop: {}
+            actions:
+              - logs_enricher: {}
+              - pod_events_enricher: {}
+          - triggers:
+              - on_deployment_update: {}
+            actions:
+              - deployment_events_enricher: {}
+          - triggers:
+              - on_pod_oom_killed: {}
+            actions:
+              - logs_enricher: {}
+              - oom_killer_enricher: {}
+          - triggers:
+              - on_node_not_ready: {}
+            actions:
+              - node_status_enricher: {}
+          - triggers:
+              - on_prometheus_alert:
+                  alert_name: KubeJobFailed
+            actions:
+              - job_events_enricher: {}
+              - job_pod_enricher: {}
+        enabledPlaybooks: []
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: monitoring
+  syncPolicy:
+    automated: { prune: false, selfHeal: true }
+    syncOptions: [CreateNamespace=true, ServerSideApply=true]
+    retry: { limit: 5, backoff: { duration: 30s, maxDuration: 5m, factor: 2 } }

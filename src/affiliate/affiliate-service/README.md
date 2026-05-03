@@ -1,4 +1,4 @@
-﻿# affiliate-service
+# affiliate-service
 
 > Manages affiliate partner accounts, tracking links, commission tier rules, and click/conversion attribution for the affiliate programme.
 
@@ -64,9 +64,9 @@ service AffiliateService {
 ## Dependencies
 
 Upstream (callers)
-- `api-gateway` â€” resolves affiliate tracking links on incoming requests
-- `commission-payout-service` â€” queries commission tier for payout calculation
-- `referral-service` â€” resolves affiliate account for referred customers
+- `api-gateway` — resolves affiliate tracking links on incoming requests
+- `commission-payout-service` — queries commission tier for payout calculation
+- `referral-service` — resolves affiliate account for referred customers
 
 Downstream (calls out to)
 - None (authoritative source for affiliate data)
@@ -76,8 +76,8 @@ Downstream (calls out to)
 | Variable | Default | Description |
 |---|---|---|
 | `GRPC_PORT` | `50200` | Port the gRPC server listens on |
-| `DATABASE_URL` | â€” | PostgreSQL connection string (required) |
-| `TRACKING_LINK_BASE_URL` | â€” | Base URL for generated tracking links |
+| `DATABASE_URL` | — | PostgreSQL connection string (required) |
+| `TRACKING_LINK_BASE_URL` | — | Base URL for generated tracking links |
 | `COOKIE_TTL_DAYS` | `30` | Attribution cookie lifetime in days |
 | `DEFAULT_COMMISSION_PERCENT` | `5.0` | Default commission rate for new affiliates |
 | `KAFKA_BROKERS` | `localhost:9092` | Comma-separated Kafka broker list |
@@ -91,6 +91,6 @@ docker-compose up affiliate-service
 
 ## Health Check
 
-`GET /healthz` â†’ `{"status":"ok"}`
+`GET /healthz` → `{"status":"ok"}`
 
-gRPC health: `grpc.health.v1.Health/Check` â†’ `SERVING`
+gRPC health: `grpc.health.v1.Health/Check` → `SERVING`

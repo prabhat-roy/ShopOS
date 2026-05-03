@@ -1,10 +1,10 @@
-﻿# logistics-provider-integration
+# logistics-provider-integration
 
 > Provides unified logistics API adapters for ShipBob and ShipStation, supporting rate shopping, label creation, and shipment tracking.
 
 ## Overview
 
-The logistics-provider-integration service abstracts the differences between third-party logistics (3PL) and shipping platform APIs behind a single internal interface. The fulfillment and shipping domains call this service to get live rate quotes, create shipments, purchase labels, and receive tracking updates â€” all without knowing which logistics provider is fulfilling a specific order. Provider routing is based on configuration per warehouse or SKU class.
+The logistics-provider-integration service abstracts the differences between third-party logistics (3PL) and shipping platform APIs behind a single internal interface. The fulfillment and shipping domains call this service to get live rate quotes, create shipments, purchase labels, and receive tracking updates — all without knowing which logistics provider is fulfilling a specific order. Provider routing is based on configuration per warehouse or SKU class.
 
 ## Architecture
 
@@ -64,8 +64,8 @@ graph TD
 ## Dependencies
 
 Upstream (calls this service)
-- `shipping-service` â€” rate shopping and label creation
-- `fulfillment-service` â€” shipment creation for warehouse fulfillment
+- `shipping-service` — rate shopping and label creation
+- `fulfillment-service` — shipment creation for warehouse fulfillment
 
 Downstream (this service calls)
 - ShipBob REST API
@@ -78,11 +78,11 @@ Downstream (this service calls)
 | `SERVER_PORT` | `50174` | gRPC server port |
 | `KAFKA_BOOTSTRAP_SERVERS` | `localhost:9092` | Kafka broker addresses |
 | `DEFAULT_PROVIDER` | `SHIPSTATION` | Default logistics provider adapter |
-| `SHIPBOB_PAT` | â€” | ShipBob Personal Access Token |
-| `SHIPBOB_CHANNEL_ID` | â€” | ShipBob channel ID |
-| `SHIPSTATION_API_KEY` | â€” | ShipStation API key |
-| `SHIPSTATION_API_SECRET` | â€” | ShipStation API secret |
-| `WEBHOOK_BASE_URL` | â€” | Public base URL for provider tracking webhooks |
+| `SHIPBOB_PAT` | — | ShipBob Personal Access Token |
+| `SHIPBOB_CHANNEL_ID` | — | ShipBob channel ID |
+| `SHIPSTATION_API_KEY` | — | ShipStation API key |
+| `SHIPSTATION_API_SECRET` | — | ShipStation API secret |
+| `WEBHOOK_BASE_URL` | — | Public base URL for provider tracking webhooks |
 | `RATE_CACHE_TTL_SECONDS` | `300` | Seconds to cache rate quotes |
 | `LOG_LEVEL` | `info` | Logging level |
 
@@ -94,6 +94,6 @@ docker-compose up logistics-provider-integration
 
 ## Health Check
 
-`GET /healthz` â†’ `{"status":"ok"}`
+`GET /healthz` → `{"status":"ok"}`
 
-gRPC health: `grpc.health.v1.Health/Check` â†’ `SERVING`
+gRPC health: `grpc.health.v1.Health/Check` → `SERVING`

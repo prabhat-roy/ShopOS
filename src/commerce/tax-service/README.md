@@ -1,4 +1,4 @@
-﻿# tax-service
+# tax-service
 
 > Calculates applicable taxes for orders by jurisdiction, supporting VAT, GST, and US sales tax rules.
 
@@ -56,12 +56,12 @@ The tax-service does not produce or consume Kafka topics. Tax figures are embedd
 ## Dependencies
 
 Upstream (callers)
-- `checkout-service` â€” tax estimate during checkout flow
-- `order-service` â€” confirmed tax on order creation
-- `invoice-service` â€” tax lines on invoices
+- `checkout-service` — tax estimate during checkout flow
+- `order-service` — confirmed tax on order creation
+- `invoice-service` — tax lines on invoices
 
 Downstream (called by this service)
-- External tax provider API (Avalara / TaxJar) â€” optional, for high-compliance mode
+- External tax provider API (Avalara / TaxJar) — optional, for high-compliance mode
 - No database dependencies; jurisdiction rules loaded from config files at startup
 
 ## Environment Variables
@@ -87,6 +87,6 @@ docker-compose up tax-service
 
 ## Health Check
 
-`GET /healthz` â†’ `{"status":"ok"}`
+`GET /healthz` → `{"status":"ok"}`
 
-gRPC health: `grpc.health.v1.Health/Check` â†’ `SERVING`
+gRPC health: `grpc.health.v1.Health/Check` → `SERVING`

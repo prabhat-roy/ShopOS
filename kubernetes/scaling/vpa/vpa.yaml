@@ -1,0 +1,25 @@
+# Vertical Pod Autoscaler (VPA) — recommendation mode by default; Goldilocks UI surfaces recs.
+apiVersion: helm.cattle.io/v1
+kind: HelmChart
+metadata: { name: vpa, namespace: kube-system }
+spec:
+  repo: https://charts.fairwinds.com/stable
+  chart: vpa
+  version: 4.5.0
+  targetNamespace: kube-system
+  valuesContent: |-
+    recommender: { enabled: true, extraArgs: { recommendation-margin-fraction: "0.15" } }
+    updater: { enabled: false }   # recommendation-only; do NOT auto-evict pods
+    admissionController: { enabled: false }
+---
+apiVersion: helm.cattle.io/v1
+kind: HelmChart
+metadata: { name: goldilocks, namespace: goldilocks }
+spec:
+  repo: https://charts.fairwinds.com/stable
+  chart: goldilocks
+  version: 9.0.0
+  targetNamespace: goldilocks
+  valuesContent: |-
+    dashboard: { enabled: true, replicaCount: 2 }
+    controller: { enabled: true }

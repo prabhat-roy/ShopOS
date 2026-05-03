@@ -1,0 +1,27 @@
+groups:
+  - name: financial.alerts
+    interval: 30s
+    rules:
+      - alert: PayoutBatchFailed
+        expr: increase(payout_batch_failed_total[15m]) > 0
+        for: 0m
+        labels: { severity: critical, team: financial, page: pagerduty }
+        annotations: { summary: "Payout batch failed in last 15m" }
+
+      - alert: ReconciliationLag
+        expr: time() - reconciliation_last_completed_timestamp_seconds > 21600
+        for: 5m
+        labels: { severity: warning, team: financial }
+        annotations: { summary: "Reconciliation hasn't completed in 6h" }
+
+      - alert: ChargebackRateHigh
+        expr: rate(chargeback_received_total[1h]) / rate(payment_processed_total[1h]) > 0.01
+        for: 1h
+        labels: { severity: warning, team: financial }
+        annotations: { summary: "Chargeback rate >1% over 1h" }
+
+      - alert: InvoiceStuckInDraft
+        expr: invoice_count{status="draft"} > 1000
+        for: 30m
+        labels: { severity: warning, team: financial }
+        annotations: { summary: ">1000 invoices stuck in draft state" }

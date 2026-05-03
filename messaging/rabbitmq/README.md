@@ -1,4 +1,4 @@
-﻿# RabbitMQ â€” ShopOS Messaging Layer
+# RabbitMQ — ShopOS Messaging Layer
 
 ## Role in ShopOS
 
@@ -9,9 +9,9 @@ event bus for domain events and analytics, RabbitMQ covers:
 | Use Case | Details |
 |---|---|
 | Task queues | Discrete units of work dispatched to a worker pool (e.g. background jobs, report generation, image resizing) |
-| Delayed / scheduled messages | `x-delayed-message` plugin â€” retry-after-delay, scheduled notifications |
+| Delayed / scheduled messages | `x-delayed-message` plugin — retry-after-delay, scheduled notifications |
 | RPC over AMQP | Request-reply pattern for synchronous-feeling async calls (reply-to + correlation-id) |
-| Fan-out notifications | Single publish â†’ multiple notification channels (email, SMS, push) via fanout exchange |
+| Fan-out notifications | Single publish → multiple notification channels (email, SMS, push) via fanout exchange |
 | Dead-letter handling | Automatic routing of failed messages for inspection and manual replay |
 | Priority queues | `worker.jobs` supports 10 priority levels for urgent vs. batch work |
 
@@ -89,7 +89,7 @@ graph LR
 |---|---|---|---|
 | `commerce.orders` | topic | `order.*` | Order lifecycle events |
 | `commerce.payments` | topic | `payment.*` | Payment events |
-| `notifications` | fanout | â€” | Broadcast to all notification channels |
+| `notifications` | fanout | — | Broadcast to all notification channels |
 | `dead-letter` | direct | `dead-letter.queue` | Catch undeliverable / expired messages |
 | `commerce.orders.delayed` | x-delayed-message/topic | `order.*` | Retry-after-delay, scheduled reminders |
 | `worker.tasks` | direct | `job` | Dispatch background jobs |
@@ -103,7 +103,7 @@ graph LR
 | `notification.email` | `notifications` | 24 h | 500,000 | Outbound emails |
 | `notification.sms` | `notifications` | 1 h | 100,000 | SMS messages |
 | `notification.push` | `notifications` | 1 h | 200,000 | Push notifications |
-| `worker.jobs` | `worker.tasks` | 7 d | 1,000,000 | Background jobs (priority 0â€“10) |
+| `worker.jobs` | `worker.tasks` | 7 d | 1,000,000 | Background jobs (priority 0–10) |
 | `dead-letter.queue` | `dead-letter` | 30 d | 100,000 | Failed messages |
 
 ---
@@ -138,7 +138,7 @@ ch.Publish(
 msgs, _ := ch.Consume(
     "order.processing",
     "order-service-consumer",
-    false, // autoAck â€” always false; ack manually after processing
+    false, // autoAck — always false; ack manually after processing
     false, false, false, nil,
 )
 
@@ -151,7 +151,7 @@ for msg := range msgs {
 }
 ```
 
-### RPC Pattern (Node.js â€” currency-service calling pricing-service)
+### RPC Pattern (Node.js — currency-service calling pricing-service)
 
 ```js
 // Caller
@@ -190,7 +190,7 @@ docker-compose up rabbitmq
 # Management UI
 open http://localhost:15672   # user: shopos / pass: shopos
 
-# Prometheus metrics (Phase 4 â€” enable prometheus plugin first)
+# Prometheus metrics (Phase 4 — enable prometheus plugin first)
 # open http://localhost:15692/metrics
 ```
 

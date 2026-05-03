@@ -1,0 +1,29 @@
+# Source: observability/komodor/komodor.yaml
+# This Application installs the same Helm chart on any K8s cluster (not just k3s).
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: komodor-agent
+  namespace: argocd
+  finalizers: [resources-finalizer.argocd.argoproj.io]
+spec:
+  project: shopos-infra
+  source:
+    repoURL: https://helm-charts.komodor.io
+    chart: komodor-agent
+    targetRevision: '4.4.0'
+    helm:
+      releaseName: komodor-agent
+      values: |
+        apiKey: ${KOMODOR_API_KEY}
+        clusterName: shopos-prod
+        eventsCollector: { enabled: true }
+        metricsCollector: { enabled: true }
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: monitoring
+  syncPolicy:
+    automated: { prune: false, selfHeal: true }
+    syncOptions: [CreateNamespace=true, ServerSideApply=true]
+    retry: { limit: 5, backoff: { duration: 30s, maxDuration: 5m, factor: 2 } }

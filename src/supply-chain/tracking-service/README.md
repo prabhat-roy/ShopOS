@@ -1,4 +1,4 @@
-﻿# tracking-service
+# tracking-service
 
 > Ingests carrier webhook events and maintains a real-time shipment tracking event timeline.
 
@@ -52,7 +52,7 @@ service TrackingService {
 ```
 
 Webhook endpoint (HTTP):
-- `POST /webhooks/carrier/{carrier-id}` â€” receives raw carrier tracking payloads
+- `POST /webhooks/carrier/{carrier-id}` — receives raw carrier tracking payloads
 
 ## Kafka Topics
 
@@ -65,10 +65,10 @@ Webhook endpoint (HTTP):
 
 Upstream (callers)
 - Carrier systems via HTTP webhooks
-- `fulfillment-service` â€” shipment registration trigger via Kafka
+- `fulfillment-service` — shipment registration trigger via Kafka
 
 Downstream (calls out to)
-- `carrier-integration-service` â€” for on-demand tracking polls when webhooks are delayed
+- `carrier-integration-service` — for on-demand tracking polls when webhooks are delayed
 
 ## Environment Variables
 
@@ -79,9 +79,9 @@ Downstream (calls out to)
 | `MONGODB_URI` | `mongodb://localhost:27017/tracking` | MongoDB connection string |
 | `KAFKA_BROKERS` | `localhost:9092` | Comma-separated Kafka broker list |
 | `CARRIER_GRPC_ADDR` | `carrier-integration-service:50106` | Address of carrier-integration-service |
-| `WEBHOOK_SECRET_FEDEX` | â€” | Shared secret for FedEx webhook validation |
-| `WEBHOOK_SECRET_UPS` | â€” | Shared secret for UPS webhook validation |
-| `WEBHOOK_SECRET_DHL` | â€” | Shared secret for DHL webhook validation |
+| `WEBHOOK_SECRET_FEDEX` | — | Shared secret for FedEx webhook validation |
+| `WEBHOOK_SECRET_UPS` | — | Shared secret for UPS webhook validation |
+| `WEBHOOK_SECRET_DHL` | — | Shared secret for DHL webhook validation |
 | `LOG_LEVEL` | `info` | Logging level |
 
 ## Running Locally
@@ -92,6 +92,6 @@ docker-compose up tracking-service
 
 ## Health Check
 
-`GET /healthz` â†’ `{"status":"ok"}`
+`GET /healthz` → `{"status":"ok"}`
 
-gRPC health: `grpc.health.v1.Health/Check` â†’ `SERVING`
+gRPC health: `grpc.health.v1.Health/Check` → `SERVING`

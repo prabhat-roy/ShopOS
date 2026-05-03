@@ -1,4 +1,4 @@
-﻿# Helm Chart for Harbor
+# Helm Chart for Harbor
 
 Notes: The master branch is in heavy development, please use the other stable versions instead. A highly available solution for Harbor based on chart can be found [here](docs/High%20Availability.md). And refer to the [guide](docs/Upgrade.md) to upgrade the existing deployment.
 
@@ -30,8 +30,8 @@ The following items can be set via `--set` flag during installation or configure
 - Ingress: The ingress controller must be installed in the Kubernetes cluster.
   Notes: if TLS is disabled, the port must be included in the command when pulling/pushing images. Refer to issue [#5291](https://github.com/goharbor/harbor/issues/5291) for details.
 - ClusterIP: Exposes the service on a cluster-internal IP. Choosing this value makes the service only reachable from within the cluster.
-- NodePort: Exposes the service on each Nodeâ€™s IP at a static port (the NodePort). Youâ€™ll be able to contact the NodePort service, from outside the cluster, by requesting `NodeIP:NodePort`.
-- LoadBalancer: Exposes the service externally using a cloud providerâ€™s load balancer.
+- NodePort: Exposes the service on each Node’s IP at a static port (the NodePort). You’ll be able to contact the NodePort service, from outside the cluster, by requesting `NodeIP:NodePort`.
+- LoadBalancer: Exposes the service externally using a cloud provider’s load balancer.
 - Gateway APIs: Exposes the service using gateway-api CRDs using HTTPRoute. Requires v1.0.0+
 
 #### Configure the external URL

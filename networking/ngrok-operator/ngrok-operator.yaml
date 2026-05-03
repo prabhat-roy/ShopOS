@@ -1,0 +1,13 @@
+# ngrok Kubernetes Operator — public ingress for PR preview environments.
+apiVersion: helm.cattle.io/v1
+kind: HelmChart
+metadata: { name: ngrok-operator, namespace: networking }
+spec:
+  repo: https://charts.ngrok.com
+  chart: ngrok-operator
+  version: 0.16.0
+  targetNamespace: networking
+  valuesContent: |-
+    credentials: { secret: { name: ngrok-credentials } }
+    region: us
+    metaData: { environment: pr-preview }

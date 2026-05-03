@@ -16,7 +16,7 @@ spec:
       default: gcp
     - name: tf-dir
       description: Terraform module path relative to source root
-      default: infra/terraform/gcp/gke
+      default: infra/terraform/gcp/app-k8s
     - name: action
       description: "plan | apply | destroy"
       default: plan
@@ -151,7 +151,7 @@ spec:
     - name: cloud-provider
       default: gcp
     - name: tf-dir
-      default: infra/terraform/gcp/gke
+      default: infra/terraform/gcp/app-k8s
     - name: action
       default: plan
     - name: repo-url

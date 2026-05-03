@@ -1,0 +1,67 @@
+# VirtualServices — retries, timeouts, fault injection for canary, header-based routing.
+apiVersion: networking.istio.io/v1
+kind: Gateway
+metadata: { name: shopos-public, namespace: istio-system }
+spec:
+  selector: { istio: ingressgateway }
+  servers:
+    - port: { number: 443, name: https, protocol: HTTPS }
+      hosts: ["shop.example.com","admin.example.com","seller.example.com","partner.example.com","developers.example.com"]
+      tls: { mode: SIMPLE, credentialName: shopos-tls }
+    - port: { number: 80, name: http, protocol: HTTP }
+      hosts: ["*"]
+      tls: { httpsRedirect: true }
+---
+apiVersion: networking.istio.io/v1
+kind: VirtualService
+metadata: { name: storefront-vs, namespace: shopos-web }
+spec:
+  hosts: ["shop.example.com"]
+  gateways: ["istio-system/shopos-public"]
+  http:
+    - match: [{ uri: { prefix: "/api/" } }]
+      route:
+        - destination: { host: web-bff.platform.svc.cluster.local, port: { number: 8081 } }
+      timeout: 10s
+      retries: { attempts: 2, perTryTimeout: 5s, retryOn: "5xx,reset,connect-failure" }
+    - route:
+        - destination: { host: storefront.shopos-web.svc.cluster.local, port: { number: 3000 } }
+      timeout: 30s
+---
+apiVersion: networking.istio.io/v1
+kind: VirtualService
+metadata: { name: admin-vs, namespace: shopos-web }
+spec:
+  hosts: ["admin.example.com"]
+  gateways: ["istio-system/shopos-public"]
+  http:
+    - match: [{ uri: { prefix: "/api/" } }]
+      route: [{ destination: { host: api-gateway.platform.svc.cluster.local, port: { number: 8080 } } }]
+      timeout: 10s
+    - route: [{ destination: { host: admin-dashboard.shopos-web.svc.cluster.local, port: { number: 3001 } } }]
+---
+apiVersion: networking.istio.io/v1
+kind: VirtualService
+metadata: { name: cart-canary, namespace: commerce }
+spec:
+  hosts: ["cart-service.commerce.svc.cluster.local"]
+  http:
+    - match: [{ headers: { x-canary: { exact: "true" } } }]
+      route: [{ destination: { host: cart-service.commerce.svc.cluster.local, subset: canary }, weight: 100 }]
+      timeout: 5s
+      retries: { attempts: 3, perTryTimeout: 2s }
+    - route:
+        - destination: { host: cart-service.commerce.svc.cluster.local, subset: stable }
+          weight: 100
+      timeout: 5s
+      retries: { attempts: 3, perTryTimeout: 2s, retryOn: "5xx,reset" }
+---
+apiVersion: networking.istio.io/v1
+kind: VirtualService
+metadata: { name: payment-vs, namespace: commerce }
+spec:
+  hosts: ["payment-service.commerce.svc.cluster.local"]
+  http:
+    - route: [{ destination: { host: payment-service.commerce.svc.cluster.local } }]
+      timeout: 30s
+      retries: { attempts: 0 }   # never retry payment writes

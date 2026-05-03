@@ -1,4 +1,4 @@
-﻿# ADR-001: gRPC for All Synchronous Internal Communication
+# ADR-001: gRPC for All Synchronous Internal Communication
 
 Status: Accepted  
 Date: 2024-01-15  
@@ -8,7 +8,7 @@ Deciders: Platform Architecture Team
 
 ## Context
 
-ShopOS comprises 154 microservices across 13 domains. Services frequently make synchronous calls to each other â€” `checkout-service` calls `cart-service`, `inventory-service`, `payment-service`, `tax-service`, and `shipping-service` within a single request.
+ShopOS comprises 154 microservices across 13 domains. Services frequently make synchronous calls to each other — `checkout-service` calls `cart-service`, `inventory-service`, `payment-service`, `tax-service`, and `shipping-service` within a single request.
 
 We evaluated three options:
 
@@ -33,11 +33,11 @@ gRPC with Protocol Buffers for all synchronous service-to-service communication.
 
 ## Rationale
 
-1. Schema enforcement â€” Protobuf contracts are machine-checked at compile time; breaking changes are caught before deployment.
-2. Performance â€” Binary serialisation is 3â€“10Ã— smaller than JSON and 2â€“5Ã— faster to parse â€” critical for high-frequency checkout flows.
-3. Code generation â€” `protoc` generates client and server stubs for all 8 languages used in ShopOS.
-4. Streaming â€” gRPC supports server-streaming, client-streaming, and bidirectional streaming (e.g., live-chat-service).
-5. Polyglot parity â€” Every language in ShopOS has a mature, well-maintained gRPC library.
+1. Schema enforcement — Protobuf contracts are machine-checked at compile time; breaking changes are caught before deployment.
+2. Performance — Binary serialisation is 3–10× smaller than JSON and 2–5× faster to parse — critical for high-frequency checkout flows.
+3. Code generation — `protoc` generates client and server stubs for all 8 languages used in ShopOS.
+4. Streaming — gRPC supports server-streaming, client-streaming, and bidirectional streaming (e.g., live-chat-service).
+5. Polyglot parity — Every language in ShopOS has a mature, well-maintained gRPC library.
 
 ---
 

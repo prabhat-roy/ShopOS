@@ -1,4 +1,4 @@
-﻿# Jaeger Helm Chart
+# Jaeger Helm Chart
 
 > âš ï¸ Experimental: This chart is under active development with no stability guarantees. Breaking changes may occur in minor versions.
 

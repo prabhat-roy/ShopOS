@@ -1,14 +1,14 @@
-﻿# Grafana Pyroscope â€” Continuous Profiling
+# Grafana Pyroscope — Continuous Profiling
 
-Grafana Pyroscope provides always-on continuous profiling for all 130 ShopOS services, capturing CPU usage, memory allocations, goroutine/thread counts, and lock contention as flame graphs â€” without requiring manual profiling sessions.
+Grafana Pyroscope provides always-on continuous profiling for all 130 ShopOS services, capturing CPU usage, memory allocations, goroutine/thread counts, and lock contention as flame graphs — without requiring manual profiling sessions.
 
 ## Role in ShopOS
 
-- Continuous profiling â€” profiling data is collected 24/7 in production with low overhead (typically <1% CPU), unlike on-demand profilers that require reproduction of an issue
-- Flame graph analysis â€” identifies hot code paths across services; correlates with traces (Jaeger/Zipkin) and metrics (Prometheus) for full observability context in Grafana
-- Performance regression detection â€” Pyroscope stores historical profiles, enabling before/after comparisons across deploys to catch performance regressions before they reach production
-- Multi-tenant â€” profiles are tagged with `service.name`, `environment`, and `version` labels, allowing filtering across all 130 services in a single Pyroscope instance
-- Diff profiles â€” compare two time ranges or two service versions side-by-side to isolate the exact functions responsible for a slowdown
+- Continuous profiling — profiling data is collected 24/7 in production with low overhead (typically <1% CPU), unlike on-demand profilers that require reproduction of an issue
+- Flame graph analysis — identifies hot code paths across services; correlates with traces (Jaeger/Zipkin) and metrics (Prometheus) for full observability context in Grafana
+- Performance regression detection — Pyroscope stores historical profiles, enabling before/after comparisons across deploys to catch performance regressions before they reach production
+- Multi-tenant — profiles are tagged with `service.name`, `environment`, and `version` labels, allowing filtering across all 130 services in a single Pyroscope instance
+- Diff profiles — compare two time ranges or two service versions side-by-side to isolate the exact functions responsible for a slowdown
 
 ## Supported Languages in ShopOS
 
@@ -87,6 +87,6 @@ Pyroscope is added as a data source in Grafana (`http://pyroscope:4040`). The Ex
 
 ## Configuration Notes
 
-- Storage backend: filesystem (`/data`) â€” suitable for single-node dev/staging. For production, use object storage (S3/GCS/MinIO) by changing `storage.backend`.
+- Storage backend: filesystem (`/data`) — suitable for single-node dev/staging. For production, use object storage (S3/GCS/MinIO) by changing `storage.backend`.
 - Retention: controlled by `max_block_duration: 1h` and Pyroscope's compaction. Default retention is ~7 days on filesystem.
-- Ingestion limits: set to 4 MB/s per tenant with 8 MB burst â€” adjust if high-cardinality services (e.g., analytics pipeline) exceed limits.
+- Ingestion limits: set to 4 MB/s per tenant with 8 MB burst — adjust if high-cardinality services (e.g., analytics pipeline) exceed limits.

@@ -1,4 +1,4 @@
-﻿# OpenSearch Helm Chart
+# OpenSearch Helm Chart
 
 This Helm chart installs [OpenSearch](https://github.com/opensearch-project/OpenSearch) with configurable TLS, RBAC and much more configurations. This chart caters a number of different use cases and setups.
 

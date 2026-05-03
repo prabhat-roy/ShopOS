@@ -1,9 +1,9 @@
-﻿# GitOps â€” ShopOS
+# GitOps — ShopOS
 
 ShopOS follows the GitOps operating model: Git is the single source of truth for both
 application config and infrastructure state. All deployments are driven by reconciliation
 loops rather than imperative scripts. The GitOps toolchain is built entirely on the Argo
-project and Flux CD.
+project and Flux CD. Both ArgoCD ApplicationSet and Flux HelmReleases cover all 303
 
 ---
 
@@ -11,62 +11,62 @@ project and Flux CD.
 
 ```
 gitops/
-â”œâ”€â”€ charts/                             â† Standalone Helm charts to install GitOps tools
-â”‚   â”œâ”€â”€ argocd/                         â† ArgoCD chart (quay.io/argoproj/argocd:v2.12.0)
-â”‚   â”œâ”€â”€ argo-rollouts/                  â† Argo Rollouts chart
-â”‚   â”œâ”€â”€ argo-workflows/                 â† Argo Workflows chart
-â”‚   â”œâ”€â”€ argo-events/                    â† Argo Events chart
-â”‚   â”œâ”€â”€ argocd-image-updater/           â† ArgoCD Image Updater chart
-â”‚   â”œâ”€â”€ fluxcd/                         â† Flux CD chart
-â”‚   â”œâ”€â”€ flagger/                        â† Flagger progressive delivery chart
-â”‚   â”œâ”€â”€ weave-gitops/                   â† Weave GitOps dashboard chart
-â”‚   â”œâ”€â”€ sealed-secrets/                 â† Sealed Secrets controller chart
-â”‚   â”œâ”€â”€ external-secrets/               â† External Secrets Operator chart
-â”‚   â”œâ”€â”€ vcluster/                       â† vCluster virtual K8s chart
-â”‚   â””â”€â”€ gimlet/                         â† Gimlet developer platform chart
-â”‚
-â”œâ”€â”€ argocd/
-â”‚   â”œâ”€â”€ app-of-apps.yaml                â† Root ArgoCD Application (bootstraps everything)
-â”‚   â”œâ”€â”€ applicationsets/
-â”‚   â”‚   â””â”€â”€ all-services.yaml           â† ApplicationSet covering all 154 services
-â”‚   â””â”€â”€ projects/                       â† AppProject per domain (13 total)
-â”‚       â”œâ”€â”€ platform-project.yaml
-â”‚       â”œâ”€â”€ identity-project.yaml
-â”‚       â”œâ”€â”€ catalog-project.yaml
-â”‚       â”œâ”€â”€ commerce-project.yaml
-â”‚       â”œâ”€â”€ supply-chain-project.yaml
-â”‚       â”œâ”€â”€ financial-project.yaml
-â”‚       â”œâ”€â”€ customer-experience-project.yaml
-â”‚       â”œâ”€â”€ communications-project.yaml
-â”‚       â”œâ”€â”€ content-project.yaml
-â”‚       â”œâ”€â”€ analytics-ai-project.yaml
-â”‚       â”œâ”€â”€ b2b-project.yaml
-â”‚       â”œâ”€â”€ integrations-project.yaml
-â”‚       â””â”€â”€ affiliate-project.yaml
-â”‚
-â”œâ”€â”€ flux/
-â”‚   â”œâ”€â”€ base/                           â† Shared Flux resources (GitRepository + HelmReleases)
-â”‚   â”‚   â”œâ”€â”€ kustomization.yaml
-â”‚   â”‚   â”œâ”€â”€ gitrepository.yaml
-â”‚   â”‚   â””â”€â”€ helm-releases.yaml          â† HelmRelease objects for all key services
-â”‚   â””â”€â”€ clusters/
-â”‚       â”œâ”€â”€ production/                 â† Production overlay (replica=3, higher resources)
-â”‚       â”‚   â”œâ”€â”€ kustomization.yaml
-â”‚       â”‚   â””â”€â”€ namespaces.yaml
-â”‚       â””â”€â”€ staging/                    â† Staging overlay (replica=1, lower resources)
-â”‚           â”œâ”€â”€ kustomization.yaml
-â”‚           â””â”€â”€ namespaces.yaml
-â”‚
-â”œâ”€â”€ argo-rollouts/
-â”‚   â”œâ”€â”€ canary-template.yaml            â† Canary rollout template (10â†’25â†’50â†’100%)
-â”‚   â””â”€â”€ bluegreen-template.yaml         â† Blue-green rollout template
-â”‚
-â”œâ”€â”€ argo-events/
-â”‚   â””â”€â”€ github-eventsource.yaml         â† GitHub webhook EventSource + Sensor â†’ Tekton
-â”‚
-â””â”€â”€ argo-workflows/
-    â”œâ”€â”€ ci-build-workflow.yaml          â† CI pipeline (cloneâ†’testâ†’buildâ†’scanâ†’pushâ†’gitops update)
-    â””â”€â”€ ml-training-workflow.yaml       â† ML model training workflow
+├── charts/                             ← Standalone Helm charts to install GitOps tools
+│   ├── argocd/                         ← ArgoCD chart (quay.io/argoproj/argocd:v2.12.0)
+│   ├── argo-rollouts/                  ← Argo Rollouts chart
+│   ├── argo-workflows/                 ← Argo Workflows chart
+│   ├── argo-events/                    ← Argo Events chart
+│   ├── argocd-image-updater/           ← ArgoCD Image Updater chart
+│   ├── fluxcd/                         ← Flux CD chart
+│   ├── flagger/                        ← Flagger progressive delivery chart
+│   ├── weave-gitops/                   ← Weave GitOps dashboard chart
+│   ├── sealed-secrets/                 ← Sealed Secrets controller chart
+│   ├── external-secrets/               ← External Secrets Operator chart
+│   ├── vcluster/                       ← vCluster virtual K8s chart
+│   └── gimlet/                         ← Gimlet developer platform chart
+│
+├── argocd/
+│   ├── app-of-apps.yaml                ← Root ArgoCD Application (bootstraps everything)
+│   ├── applicationsets/
+│   │   └── all-services.yaml           ← ApplicationSet covering all 303 services
+│   └── projects/                       ← AppProject per domain (13 total)
+│       ├── platform-project.yaml
+│       ├── identity-project.yaml
+│       ├── catalog-project.yaml
+│       ├── commerce-project.yaml
+│       ├── supply-chain-project.yaml
+│       ├── financial-project.yaml
+│       ├── customer-experience-project.yaml
+│       ├── communications-project.yaml
+│       ├── content-project.yaml
+│       ├── analytics-ai-project.yaml
+│       ├── b2b-project.yaml
+│       ├── integrations-project.yaml
+│       └── affiliate-project.yaml
+│
+├── flux/
+│   ├── base/                           ← Shared Flux resources (GitRepository + HelmReleases)
+│   │   ├── kustomization.yaml
+│   │   ├── gitrepository.yaml
+│   │   └── helm-releases.yaml          ← HelmRelease objects for all key services
+│   └── clusters/
+│       ├── production/                 ← Production overlay (replica=3, higher resources)
+│       │   ├── kustomization.yaml
+│       │   └── namespaces.yaml
+│       └── staging/                    ← Staging overlay (replica=1, lower resources)
+│           ├── kustomization.yaml
+│           └── namespaces.yaml
+│
+├── argo-rollouts/
+│   ├── canary-template.yaml            ← Canary rollout template (10→25→50→100%)
+│   └── bluegreen-template.yaml         ← Blue-green rollout template
+│
+├── argo-events/
+│   └── github-eventsource.yaml         ← GitHub webhook EventSource + Sensor → Tekton
+│
+└── argo-workflows/
+    ├── ci-build-workflow.yaml          ← CI pipeline (clone→test→build→scan→push→gitops update)
+    └── ml-training-workflow.yaml       ← ML model training workflow
 ```
 
 ---
@@ -81,16 +81,16 @@ to `infra.env`.
 | Tool | Namespace | Port | Credentials |
 |---|---|---|---|
 | ArgoCD | `argocd` | 8080 | admin / read from `argocd-initial-admin-secret` |
-| Argo Rollouts | `argo-rollouts` | 3100 | â€” |
+| Argo Rollouts | `argo-rollouts` | 3100 | — |
 | Argo Workflows | `argo-workflows` | 2746 | admin / admin |
-| Argo Events | `argo-events` | 7777 | â€” |
-| ArgoCD Image Updater | `argocd` | 8080 | â€” |
-| Flux CD | `flux-system` | 9292 | â€” |
-| Flagger | `flagger` | 10080 | â€” |
+| Argo Events | `argo-events` | 7777 | — |
+| ArgoCD Image Updater | `argocd` | 8080 | — |
+| Flux CD | `flux-system` | 9292 | — |
+| Flagger | `flagger` | 10080 | — |
 | Weave GitOps | `weave-gitops` | 9001 | admin / admin |
-| Sealed Secrets | `sealed-secrets` | 8080 | â€” |
-| External Secrets | `external-secrets` | 8080 | â€” |
-| vCluster | `vcluster` | 8443 | â€” |
+| Sealed Secrets | `sealed-secrets` | 8080 | — |
+| External Secrets | `external-secrets` | 8080 | — |
+| vCluster | `vcluster` | 8443 | — |
 | Gimlet | `gimlet` | 9000 | admin / gimlet |
 
 ---
@@ -104,7 +104,7 @@ flowchart LR
     REPO -->|Webhook| AE[Argo Events\nGitHub EventSource]
     AE -->|Trigger| AW[Argo Workflows\nCI Build Workflow]
 
-    AW -->|clone â†’ test â†’ build â†’ scan| SCAN{Trivy scan\npassed?}
+    AW -->|clone → test → build → scan| SCAN{Trivy scan\npassed?}
     SCAN -->|No| FAIL([Build failed])
     SCAN -->|Yes| REG[Harbor Registry\nimage:SHA]
     AW -->|Update image tag in gitops/| REPO
@@ -125,7 +125,7 @@ flowchart LR
 
 ---
 
-## ArgoCD â€” App-of-Apps Pattern
+## ArgoCD — App-of-Apps Pattern
 
 ArgoCD continuously reconciles the desired state in Git with the live state in Kubernetes.
 ShopOS uses the App-of-Apps pattern: a single root `Application` (`app-of-apps.yaml`)
@@ -133,8 +133,8 @@ points at `gitops/argocd/applicationsets/` which contains an `ApplicationSet` th
 generates one ArgoCD `Application` per service (154 total).
 
 - Sync policy: `automated` with `selfHeal: true` and `prune: true`
-- Projects: one `AppProject` per domain â€” scopes each team to their own namespace
-- ApplicationSet: list generator covering all 154 services across 13 domains
+- Projects: one `AppProject` per domain — scopes each team to their own namespace
+- ApplicationSet: list generator covering all 303 services across 13 domains
 
 ```bash
 # Bootstrap the app-of-apps (ArgoCD must already be installed)
@@ -143,7 +143,7 @@ kubectl apply -f gitops/argocd/app-of-apps.yaml -n argocd
 # Port-forward ArgoCD UI
 kubectl port-forward svc/argocd-server -n argocd 8080:80
 
-# CLI â€” sync a specific application
+# CLI — sync a specific application
 argocd app sync order-service
 
 # Force hard refresh
@@ -155,7 +155,7 @@ argocd app rollback order-service
 
 ---
 
-## Flux CD â€” Base / Overlay Pattern
+## Flux CD — Base / Overlay Pattern
 
 Flux CD manages HelmReleases for all key services using a base/overlay pattern.
 `flux/base/` holds the shared HelmRelease definitions; `clusters/production/` and
@@ -179,12 +179,12 @@ flux reconcile kustomization flux-system
 
 ---
 
-## Argo Rollouts â€” Progressive Delivery
+## Argo Rollouts — Progressive Delivery
 
 Argo Rollouts replaces standard `Deployment` objects with `Rollout` CRDs supporting
 canary and blue-green strategies with automated Prometheus analysis at each step.
 
-- Canary (default): 10% â†’ 25% â†’ 50% â†’ 75% â†’ 100% with pause between each step
+- Canary (default): 10% → 25% → 50% → 75% → 100% with pause between each step
 - Blue-green: instant cutover with pre-promotion analysis gate
 - Auto-rollback: triggered when error rate exceeds 1% or p99 latency breaches SLO
 
@@ -208,13 +208,13 @@ and pull_request events on the ShopOS repo and fires a Sensor that creates a Tek
 `PipelineRun` to trigger the CI build.
 
 Key event sources:
-- `github` â€” push/PR on `shopos` repo â†’ triggers CI pipeline
-- `kafka` â€” `analytics.*` topic messages â†’ triggers data pipeline workflows
-- `calendar` â€” nightly trigger for scheduled reconciliation jobs
+- `github` — push/PR on `shopos` repo → triggers CI pipeline
+- `kafka` — `analytics.*` topic messages → triggers data pipeline workflows
+- `calendar` — nightly trigger for scheduled reconciliation jobs
 
 ---
 
-## Argo Workflows â€” CI Pipeline
+## Argo Workflows — CI Pipeline
 
 `argo-workflows/ci-build-workflow.yaml` is a `WorkflowTemplate` that runs a full
 CI pipeline as a DAG:
@@ -236,6 +236,33 @@ CI pipeline as a DAG:
 |---|---|---|---|
 | `staging` | Flux + ArgoCD | Canary (2 steps), replica=1 | Yes |
 | `production` | ArgoCD + Argo Rollouts | Canary (4 steps) with Prometheus analysis | Manual promote after 25% |
+
+---
+
+## Adding a service to GitOps
+
+After creating a new chart under `helm/services/<svc>/`, add the matching entry
+in two places (both files are hand-edited):
+
+```yaml
+# gitops/argocd/applicationsets/all-services.yaml
+- { service: <svc>, domain: <domain>, namespace: shopos-<domain> }
+
+# gitops/flux/base/helm-releases.yaml
+---
+apiVersion: helm.toolkit.fluxcd.io/v2beta1
+kind: HelmRelease
+metadata: { name: <svc>, namespace: shopos-<domain> }
+spec:
+  interval: 5m
+  chart: { spec: { chart: helm/services/<svc>, sourceRef: { kind: GitRepository, name: shopos, namespace: flux-system } } }
+  values:
+    image: { repository: ghcr.io/shopos/<svc>, tag: latest }
+    namespaceOverride: shopos-<domain>
+    domain: <domain>
+```
+
+ArgoCD picks it up on the next 3-min reconcile.
 
 ---
 

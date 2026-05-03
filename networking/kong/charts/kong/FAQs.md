@@ -1,4 +1,4 @@
-﻿# Frequently Asked Questions (FAQs)
+# Frequently Asked Questions (FAQs)
 
 Despite the title, this is more a list of common problems.
 

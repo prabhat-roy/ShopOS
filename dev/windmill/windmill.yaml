@@ -1,0 +1,17 @@
+# Windmill — internal scripts + APIs as a service; replaces Retool/AWS Lambda for ad-hoc tools.
+apiVersion: helm.cattle.io/v1
+kind: HelmChart
+metadata: { name: windmill, namespace: developer-platform }
+spec:
+  repo: https://windmill-labs.github.io/windmill-helm-charts/
+  chart: windmill
+  version: 2.0.213
+  targetNamespace: developer-platform
+  valuesContent: |-
+    windmill:
+      databaseUrlSecretName: windmill-db
+      baseUrl: https://windmill.shopos.example.com
+    workers: [{ name: default, replicas: 4, tag: default }, { name: native, replicas: 2, tag: native }]
+    postgresql: { enabled: false }
+    minio: { enabled: false }
+    ingress: { enabled: true, className: istio, hosts: ["windmill.shopos.example.com"] }

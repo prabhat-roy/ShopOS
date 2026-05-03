@@ -44,6 +44,12 @@ pipeline {
         booleanParam(name: 'ROBUSTA',              defaultValue: true,  description: 'Robusta — Kubernetes alerting and runbook automation')
         booleanParam(name: 'OPENCOST',             defaultValue: true,  description: 'OpenCost — Kubernetes cost monitoring')
         booleanParam(name: 'GOLDILOCKS',           defaultValue: true,  description: 'Goldilocks — resource request/limit recommendations')
+        booleanParam(name: 'GRAFANA_MIMIR',        defaultValue: true,  description: 'Grafana Mimir — multi-tenant Prometheus long-term storage')
+        booleanParam(name: 'VICTORIA_LOGS',        defaultValue: true,  description: 'VictoriaLogs — high-volume log storage (overflow tier complementing Loki)')
+        booleanParam(name: 'SIGNOZ',               defaultValue: true,  description: 'SigNoz — full-stack OTel-native observability for analytics-ai domain')
+        booleanParam(name: 'KIALI',                defaultValue: true,  description: 'Kiali — Istio service mesh observability UI')
+        booleanParam(name: 'NETDATA',              defaultValue: true,  description: 'Netdata — real-time per-second host metrics')
+        booleanParam(name: 'PERSES',               defaultValue: true,  description: 'Perses — GitOps-native dashboards-as-code')
     }
 
     stages {
@@ -398,7 +404,182 @@ pipeline {
             }
         }
 
+        // ── Vendored helm/infra/observability charts (no groovy script needed) ──
+
+        stage('Grafana Mimir') {
+            when { expression { params.ACTION == 'INSTALL' && params.GRAFANA_MIMIR } }
+            steps {
+                catchError(buildResult: 'UNSTABLE', stageResult: 'FAILURE') {
+                    sh '''
+                        kubectl create namespace monitoring --dry-run=client -o yaml | kubectl apply -f -
+                        helm upgrade --install grafana-mimir helm/infra/observability/grafana-mimir \
+                            --namespace monitoring \
+                            --set minio.enabled=true \
+                            --set ingester.replicas=1 \
+                            --set store_gateway.replicas=1 \
+                            --set compactor.replicas=1 \
+                            --set distributor.replicas=1 \
+                            --set querier.replicas=1 \
+                            --wait --timeout=10m
+                        echo "Grafana Mimir installed (multi-tenant Prometheus storage — partitions metrics per team)"
+                    '''
+                }
+            }
+        }
+
+        stage('VictoriaLogs') {
+            when { expression { params.ACTION == 'INSTALL' && params.VICTORIA_LOGS } }
+            steps {
+                catchError(buildResult: 'UNSTABLE', stageResult: 'FAILURE') {
+                    sh '''
+                        kubectl create namespace monitoring --dry-run=client -o yaml | kubectl apply -f -
+                        helm upgrade --install victoria-logs helm/infra/observability/victoria-logs \
+                            --namespace monitoring \
+                            --set persistentVolume.size=20Gi \
+                            --set resources.requests.memory=512Mi \
+                            --set resources.requests.cpu=250m \
+                            --wait --timeout=8m
+                        echo "VictoriaLogs installed (high-volume overflow log storage — analytics + CDN access logs)"
+                    '''
+                }
+            }
+        }
+
+        stage('SigNoz') {
+            when { expression { params.ACTION == 'INSTALL' && params.SIGNOZ } }
+            steps {
+                catchError(buildResult: 'UNSTABLE', stageResult: 'FAILURE') {
+                    sh '''
+                        kubectl create namespace signoz --dry-run=client -o yaml | kubectl apply -f -
+                        helm upgrade --install signoz helm/infra/observability/signoz \
+                            --namespace signoz \
+                            --set clickhouse.replicaCount=1 \
+                            --set zookeeper.replicaCount=1 \
+                            --set queryService.resources.requests.memory=256Mi \
+                            --set queryService.resources.requests.cpu=100m \
+                            --wait --timeout=12m
+                        echo "SigNoz installed (full-stack OTel-native observability — analytics-ai domain audience)"
+                    '''
+                }
+            }
+        }
+
+        stage('Kiali') {
+            when { expression { params.ACTION == 'INSTALL' && params.KIALI } }
+            steps {
+                catchError(buildResult: 'UNSTABLE', stageResult: 'FAILURE') {
+                    sh '''
+                        kubectl create namespace istio-system --dry-run=client -o yaml | kubectl apply -f -
+                        helm upgrade --install kiali helm/infra/observability/kiali \
+                            --namespace istio-system \
+                            --set auth.strategy=anonymous \
+                            --set deployment.ingress.enabled=true \
+                            --set external_services.prometheus.url=http://prometheus.monitoring:9090 \
+                            --set external_services.tracing.url=http://jaeger-query.tracing:16686 \
+                            --set external_services.grafana.url=http://grafana.monitoring:3000 \
+                            --wait --timeout=8m
+                        echo "Kiali installed (Istio service mesh topology, mTLS status, traffic — SRE audience)"
+                    '''
+                }
+            }
+        }
+
+        stage('Netdata') {
+            when { expression { params.ACTION == 'INSTALL' && params.NETDATA } }
+            steps {
+                catchError(buildResult: 'UNSTABLE', stageResult: 'FAILURE') {
+                    sh '''
+                        kubectl create namespace monitoring --dry-run=client -o yaml | kubectl apply -f -
+                        helm upgrade --install netdata helm/infra/observability/netdata \
+                            --namespace monitoring \
+                            --set parent.enabled=true \
+                            --set parent.replicaCount=1 \
+                            --set child.enabled=true \
+                            --set parent.persistence.size=4Gi \
+                            --wait --timeout=8m
+                        echo "Netdata installed (real-time per-second host metrics — DaemonSet on every node)"
+                    '''
+                }
+            }
+        }
+
+        stage('Perses') {
+            when { expression { params.ACTION == 'INSTALL' && params.PERSES } }
+            steps {
+                catchError(buildResult: 'UNSTABLE', stageResult: 'FAILURE') {
+                    sh '''
+                        kubectl create namespace monitoring --dry-run=client -o yaml | kubectl apply -f -
+                        helm upgrade --install perses helm/infra/observability/perses \
+                            --namespace monitoring \
+                            --set persistence.size=2Gi \
+                            --set resources.requests.memory=256Mi \
+                            --set resources.requests.cpu=100m \
+                            --wait --timeout=6m
+                        echo "Perses installed (GitOps-native dashboards-as-code — complements Grafana)"
+                    '''
+                }
+            }
+        }
+
         // ── UNINSTALL (reverse order) ─────────────────────────────────────────
+
+        stage('Uninstall Perses') {
+            when { expression { params.ACTION == 'UNINSTALL' && params.PERSES } }
+            steps {
+                sh '''
+                    helm uninstall perses -n monitoring --ignore-not-found || true
+                '''
+            }
+        }
+
+        stage('Uninstall Netdata') {
+            when { expression { params.ACTION == 'UNINSTALL' && params.NETDATA } }
+            steps {
+                sh '''
+                    helm uninstall netdata -n monitoring --ignore-not-found || true
+                '''
+            }
+        }
+
+        stage('Uninstall Kiali') {
+            when { expression { params.ACTION == 'UNINSTALL' && params.KIALI } }
+            steps {
+                sh '''
+                    helm uninstall kiali -n istio-system --ignore-not-found || true
+                '''
+            }
+        }
+
+        stage('Uninstall SigNoz') {
+            when { expression { params.ACTION == 'UNINSTALL' && params.SIGNOZ } }
+            steps {
+                sh '''
+                    helm uninstall signoz -n signoz --ignore-not-found || true
+                    kubectl delete pvc --all -n signoz --ignore-not-found || true
+                    kubectl delete namespace signoz --ignore-not-found || true
+                '''
+            }
+        }
+
+        stage('Uninstall VictoriaLogs') {
+            when { expression { params.ACTION == 'UNINSTALL' && params.VICTORIA_LOGS } }
+            steps {
+                sh '''
+                    helm uninstall victoria-logs -n monitoring --ignore-not-found || true
+                    kubectl delete pvc -l app.kubernetes.io/instance=victoria-logs -n monitoring --ignore-not-found || true
+                '''
+            }
+        }
+
+        stage('Uninstall Grafana Mimir') {
+            when { expression { params.ACTION == 'UNINSTALL' && params.GRAFANA_MIMIR } }
+            steps {
+                sh '''
+                    helm uninstall grafana-mimir -n monitoring --ignore-not-found || true
+                    kubectl delete pvc -l app.kubernetes.io/instance=grafana-mimir -n monitoring --ignore-not-found || true
+                '''
+            }
+        }
 
         stage('Uninstall Goldilocks') {
             when { expression { params.ACTION == 'UNINSTALL' && params.GOLDILOCKS } }

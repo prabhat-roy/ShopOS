@@ -1,4 +1,4 @@
-﻿# Gitea Helm Chart <!-- omit from toc -->
+# Gitea Helm Chart <!-- omit from toc -->
 
 - [Introduction](#introduction)
 - [Update and versioning policy](#update-and-versioning-policy)

@@ -5,7 +5,7 @@ trigger:
   branches:
     include: [main]
   paths:
-    include: [infra/terraform/azure/aks/**]
+    include: [infra/terraform/azure/app-k8s/**]
 
 pool:
   vmImage: ubuntu-latest
@@ -13,7 +13,7 @@ pool:
 variables:
   - group: shopos-azure-credentials
   - name: TF_DIR
-    value: infra/terraform/azure/aks
+    value: infra/terraform/azure/app-k8s
   - name: ENVIRONMENT
     value: dev
   - name: TF_IN_AUTOMATION

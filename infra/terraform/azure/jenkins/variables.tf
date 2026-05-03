@@ -3,9 +3,9 @@ variable "subscription_id" {
   description = "Azure subscription ID"
 }
 
-variable "location" {
+variable "name" {
   type    = string
-  default = "East US"
+  default = "jenkins"
 }
 
 variable "environment" {
@@ -13,17 +13,18 @@ variable "environment" {
   default = "dev"
 }
 
-variable "name" {
-  type    = string
-  default = "jenkins"
+variable "region" {
+  type        = string
+  default     = "East US"
+  description = "Azure location"
 }
 
-variable "address_space" {
+variable "vpc_cidr" {
   type    = string
   default = "10.0.0.0/16"
 }
 
-variable "subnet_prefix" {
+variable "subnet_cidr" {
   type    = string
   default = "10.0.1.0/24"
 }
@@ -43,12 +44,13 @@ variable "admin_username" {
   default = "ubuntu"
 }
 
-variable "ssh_pub_key_path" {
-  type        = string
-  description = "Path to the SSH public key file for VM access"
+variable "ui_source_cidr" {
+  type    = string
+  default = "0.0.0.0/0"
 }
 
-variable "private_key_path" {
+variable "ssh_pub_key_path" {
   type        = string
-  description = "Path to the SSH private key file used by the provisioner"
+  default     = null
+  description = "Optional override; defaults to ~/.ssh/id_ed25519.pub or id_rsa.pub"
 }

@@ -1,193 +1,177 @@
-﻿# Infrastructure as Code â€” ShopOS
+# Infrastructure — ShopOS
 
-All cloud infrastructure for ShopOS is provisioned and managed with Terraform.
-It covers Kubernetes clusters, managed databases, networking, and object storage
-across AWS, GCP, and Azure from a single, consistent module interface.
+All cloud + on-prem infrastructure: IaC, control-plane bootstrap, HA databases, connection
+pooling, alternative caches, search engines, GitOps for Terraform, image baking, and
+non-K8s workloads (Nomad).
 
 ---
 
-## Directory Structure
+## Layout
 
 ```
 infra/
-â””â”€â”€ terraform/
-    â”œâ”€â”€ modules/
-    â”‚   â”œâ”€â”€ gke/                    â† Google Kubernetes Engine cluster
-    â”‚   â”œâ”€â”€ eks/                    â† Amazon EKS cluster
-    â”‚   â”œâ”€â”€ aks/                    â† Azure AKS cluster
-    â”‚   â”œâ”€â”€ vpc/                    â† VPC / VNet networking (per cloud)
-    â”‚   â”œâ”€â”€ postgres/               â† Managed PostgreSQL (Cloud SQL / RDS / Azure DB)
-    â”‚   â”œâ”€â”€ redis/                  â† Managed Redis (Memorystore / ElastiCache)
-    â”‚   â””â”€â”€ storage/                â† Object storage buckets (GCS / S3 / Azure Blob)
-    â”œâ”€â”€ aws/
-    â”‚   â”œâ”€â”€ jenkins/                â† Jenkins CI server on EC2
-    â”‚   â””â”€â”€ eks/                    â† EKS Auto Mode cluster
-    â”œâ”€â”€ gcp/
-    â”‚   â”œâ”€â”€ jenkins/                â† Jenkins CI server on Compute Engine
-    â”‚   â””â”€â”€ gke/                    â† GKE Autopilot cluster
-    â”œâ”€â”€ azure/
-    â”‚   â”œâ”€â”€ jenkins/                â† Jenkins CI server on Azure VM
-    â”‚   â””â”€â”€ aks/                    â† AKS with Node Auto Provisioning
-    â””â”€â”€ backend.tf                  â† Remote state (GCS / S3)
+├── terraform/         Primary IaC: EKS / GKE / AKS modules + Jenkins on each cloud
+├── opentofu/          OpenTofu mirror (OSI-licensed alternative; same module interfaces)
+├── crossplane/        K8s-native IaC (developer self-service: claim a database/queue/bucket)
+├── ansible/           K8s node bootstrap roles (common, docker, k8s-node, jenkins)
+├── packer/            VM image automation (Jenkins agent AMI, K8s node base AMI, GCE images)
+├── nomad/             HashiCorp Nomad — non-containerized + batch workloads (legacy + ML training)
+├── atlantis/          Terraform GitOps — plan on PR comment, apply on merge (production AWS only)
+├── patroni/           HA PostgreSQL (3-node primary/replica with etcd failover)
+├── pgbouncer/         PostgreSQL connection pooler (transaction mode, 2000 max client conns)
+├── dragonfly/         Redis-compatible multi-threaded store (4× throughput vs Redis)
+└── meilisearch/       Fast typo-tolerant product search engine
 ```
 
 ---
 
-## Provisioning Flow
+## Who runs what — laptop vs Jenkins
 
-```mermaid
-flowchart TD
-    ENG([Engineer / CI Pipeline]) --> PLAN
+The chicken-and-egg rule: **the Jenkins server itself is provisioned from a laptop**.
+Once Jenkins is up, **everything else** is provisioned by Jenkins pipelines.
 
-    subgraph Terraform["Terraform â€” Cloud Resources"]
-        PLAN[terraform plan] --> APPLY[terraform apply]
-        APPLY --> VPC[VPC / VNet]
-        APPLY --> K8S[K8s Cluster\nGKE / EKS / AKS]
-        APPLY --> DB[Managed Databases\nPostgres, Redis]
-        APPLY --> STORE[Object Storage\nGCS / S3 / Azure Blob]
-    end
-
-    K8S -->|kubeconfig| HELM[Helm / ArgoCD\ndeploy ShopOS services]
-    HELM --> DONE([Platform Running])
-```
-
----
-
-## Kubernetes Clusters
-
-All three providers create a production-grade, private cluster with:
-- Multi-AZ (3 availability zones)
-- Private nodes with NAT egress
-- Managed control plane
-- Latest stable Kubernetes version
-- Workload Identity / OIDC enabled
-
-| Cloud | Service | Mode | Terraform path |
+| Layer | Run from | Tool | Pipeline / path |
 |---|---|---|---|
-| AWS | EKS | Auto Mode (fully managed nodes) | `terraform/aws/eks/` |
-| GCP | GKE | Autopilot (fully managed nodes) | `terraform/gcp/gke/` |
-| Azure | AKS | Node Auto Provisioning | `terraform/azure/aks/` |
+| Jenkins server (3 clouds) | **Laptop** | Terraform | [`terraform/aws/jenkins/`](terraform/aws/jenkins/), [`terraform/gcp/jenkins/`](terraform/gcp/jenkins/), [`terraform/azure/jenkins/`](terraform/azure/jenkins/) |
+| K8s clusters (prod) | Jenkins | Terraform | [`ci/jenkins/k8s-infra.Jenkinsfile`](../ci/jenkins/k8s-infra.Jenkinsfile) → [`terraform/<cloud>/app-k8s/`](terraform/) |
+| K8s clusters (dev/staging) | Jenkins | OpenTofu | same pipeline, IaC_TOOL=opentofu → [`opentofu/<cloud>/app-k8s/`](opentofu/) |
+| Node bootstrap | Jenkins | Ansible | [`scripts/groovy/run-ansible.groovy`](../scripts/groovy/run-ansible.groovy) (RUN_ANSIBLE=true on k8s-infra) |
+| Immutable AMI/GCE images | Jenkins | Packer | [`ci/jenkins/infra-images.Jenkinsfile`](../ci/jenkins/infra-images.Jenkinsfile) → [`packer/jenkins-agent/`](packer/jenkins-agent/), [`packer/k8s-node-base/`](packer/k8s-node-base/) |
+| Cost / drift / lint | Jenkins | Infracost + Driftctl + tflint + Atlantis-validate + inframap | [`ci/jenkins/infra-quality.Jenkinsfile`](../ci/jenkins/infra-quality.Jenkinsfile) (weekly cron + manual) |
+| Runtime self-service | Jenkins | Crossplane | [`ci/jenkins/cluster-bootstrap.Jenkinsfile`](../ci/jenkins/cluster-bootstrap.Jenkinsfile) → claims/compositions in [`crossplane/`](crossplane/) |
+| Atlantis (Terraform GitOps) | Jenkins | Atlantis | [`ci/jenkins/tooling.Jenkinsfile`](../ci/jenkins/tooling.Jenkinsfile) installs Atlantis from [`atlantis/`](atlantis/) |
+| Non-K8s workloads | Jenkins | Nomad + Waypoint + Boundary | [`ci/jenkins/tooling.Jenkinsfile`](../ci/jenkins/tooling.Jenkinsfile) |
+| Data-tier HA | Jenkins | Patroni + PgBouncer + Dragonfly + Meilisearch | [`ci/jenkins/databases.Jenkinsfile`](../ci/jenkins/databases.Jenkinsfile) (also installs CockroachDB / YugabyteDB / SurrealDB / EventStore / Valkey / Typesense / Manticore / SeaweedFS) |
 
-### AWS â€” EKS Auto Mode
+## Tool responsibility (non-overlapping scope)
+
+| Tool | Scope |
+|---|---|
+| Terraform | All three clouds — production. Single source of truth. Used from laptop for Jenkins, from Jenkins for app-k8s. |
+| OpenTofu | Non-prod (dev / staging) ephemeral environments. Same module shape, OSI-licensed. |
+| Crossplane | Runtime developer self-service in K8s (claim DB / queue / bucket). |
+| Ansible | Post-provisioning OS configuration — hardening, K8s node bootstrap, STIG, also runs as a Packer provisioner. |
+| Packer | Bake immutable VM/AMI base images (Jenkins agent + K8s node). Speed up cold starts. |
+| Nomad | Non-containerised workloads + batch (ML training, long-running pipelines, periodic tasks). |
+| Atlantis | GitOps for Terraform — plan on PR comment, apply on merge. AWS prod only. |
+| Infracost | Cost delta on every Terraform PR (blocks > $500/month increase). |
+| Driftctl | Weekly scheduled scan: Terraform state vs actual cloud resources. |
+| Waypoint | App deployment abstraction — one config for K8s/Nomad/ECS. Used for non-core services. |
+| Boundary | Zero-trust SSH/RDP without VPN, full session recording. |
+| Patroni | PostgreSQL HA — 3-node Raft-managed cluster with etcd failover. |
+| PgBouncer | Connection pooler — transaction mode, in front of Patroni primary. |
+| Dragonfly | Redis-compatible cache when single-threaded Redis is the bottleneck. |
+| Meilisearch | Fast product search alternative to Elasticsearch. |
+
+---
+
+## Kubernetes clusters
+
+| Cloud | Service | Mode | Path |
+|---|---|---|---|
+| AWS | EKS | Auto Mode (managed nodes) | [`terraform/aws/app-k8s/`](terraform/aws/app-k8s/) |
+| GCP | GKE | Autopilot | [`terraform/gcp/app-k8s/`](terraform/gcp/app-k8s/) |
+| Azure | AKS | Node Auto Provisioning | [`terraform/azure/app-k8s/`](terraform/azure/app-k8s/) |
+
+All three are private clusters across 3 AZs with Workload Identity / IRSA / Managed Identity
+enabled. Terraform.tfvars.example is provided in each module.
 
 ```bash
-cd infra/terraform/aws/eks
-cp terraform.tfvars.example terraform.tfvars
-# Edit: region, cluster_name, vpc_cidr, availability_zones
-
-terraform init
-terraform apply
+# AWS EKS Auto Mode
+cd infra/terraform/aws/app-k8s && cp terraform.tfvars.example terraform.tfvars && terraform init && terraform apply
 aws eks update-kubeconfig --region us-east-1 --name shopos-eks
-kubectl get nodes
-```
 
-### GCP â€” GKE Autopilot
+# GCP GKE Autopilot
+cd infra/terraform/gcp/app-k8s && terraform apply
+gcloud container clusters get-credentials shopos-gke --region us-central1
 
-```bash
-cd infra/terraform/gcp/gke
-cp terraform.tfvars.example terraform.tfvars
-# Edit: project_id, region, cluster_name
-
-terraform init
-terraform apply
-gcloud container clusters get-credentials shopos-gke \
-  --region us-central1 --project YOUR_PROJECT_ID
-kubectl get nodes
-```
-
-### Azure â€” AKS Node Auto Provisioning
-
-```bash
-cd infra/terraform/azure/aks
-cp terraform.tfvars.example terraform.tfvars
-# Edit: subscription_id, location, cluster_name
-
-terraform init
-terraform apply
-az aks get-credentials \
-  --resource-group shopos-aks-rg --name shopos-aks --overwrite-existing
-kubectl get nodes
-```
-
-### Destroy
-
-```bash
-terraform destroy    # in the relevant terraform/{aws|gcp|azure}/{eks|gke|aks}/ directory
+# Azure AKS NAP
+cd infra/terraform/azure/app-k8s && terraform apply
+az aks get-credentials --resource-group shopos-aks-rg --name shopos-aks
 ```
 
 ---
 
-## Jenkins CI Server
+## Jenkins CI server (laptop-provisioned)
 
-Jenkins can be provisioned on any cloud using Terraform. It is fully configured on first
-boot via `scripts/bash/jenkins-install.sh` â€” no manual steps required.
+Jenkins is **always** provisioned by Terraform from a laptop — never from another Jenkins
+job (chicken-and-egg). Cloud-init runs `scripts/bash/jenkins-install.sh` on first boot to
+install Jenkins, Docker, kubectl, helm, terraform, and 30+ other tools. The default
+credentials are `admin/admin` — change after first login.
 
-| Cloud | Terraform path | Instance type | OS |
+| Cloud | Path | Instance | OS |
 |---|---|---|---|
-| AWS | `terraform/aws/jenkins/` | t3.xlarge (4 vCPU / 16 GB) | Ubuntu 24.04 |
-| GCP | `terraform/gcp/jenkins/` | n2-standard-4 (4 vCPU / 16 GB) | Ubuntu 24.04 |
-| Azure | `terraform/azure/jenkins/` | Standard_D4s_v3 (4 vCPU / 16 GB) | Ubuntu 24.04 |
+| AWS | [`terraform/aws/jenkins/`](terraform/aws/jenkins/) | t3.xlarge | Ubuntu 24.04 |
+| GCP | [`terraform/gcp/jenkins/`](terraform/gcp/jenkins/) | n2-standard-4 | Ubuntu 24.04 |
+| Azure | [`terraform/azure/jenkins/`](terraform/azure/jenkins/) | Standard_D4s_v3 | Ubuntu 24.04 |
 
 ```bash
-# Example: Jenkins on AWS
 cd infra/terraform/aws/jenkins
-cp terraform.tfvars.example terraform.tfvars
-# Edit: key_name, private_key_path
-
-terraform init
-terraform apply          # ~8â€“12 min including Jenkins install
+terraform apply       # ~8–12 min including Jenkins install
 terraform output jenkins_url
 ```
 
-Default credentials: username `admin`, password `admin`.  
-Change after first login: top-right username â†’ Configure â†’ Password â†’ Save.
-
 ---
 
-## Module Usage
+## High-availability data tier
 
-```hcl
-# Example: GKE cluster
-module "gke" {
-  source       = "../../modules/gke"
-  project_id   = var.project_id
-  region       = "us-central1"
-  cluster_name = "shopos-staging"
-  node_pools = [
-    { name = "general", machine_type = "n2-standard-4", min_count = 3, max_count = 10 },
-    { name = "compute", machine_type = "c2-standard-8",  min_count = 0, max_count = 5 }
-  ]
-}
+```bash
+# Patroni Postgres HA (3 nodes)
+kubectl apply -f infra/patroni/
 
-# Example: Managed PostgreSQL
-module "postgres" {
-  source       = "../../modules/postgres"
-  project_id   = var.project_id
-  region       = "us-central1"
-  tier         = "db-n1-standard-4"
-  database     = "shopos"
-}
+# PgBouncer in front of Patroni primary
+kubectl apply -f infra/pgbouncer/
+
+# Dragonfly (Redis-compatible) for high-throughput cache hot paths
+kubectl apply -f infra/dragonfly/
+
+# Meilisearch for product search
+kubectl apply -f infra/meilisearch/
 ```
 
+The application-tier services in [`src/`](../src/) are wired to point at:
+- `postgres-primary.databases.svc:5432` → PgBouncer → Patroni primary
+- `dragonfly.databases.svc:6379` (Redis-compatible)
+- `meilisearch.databases.svc:7700`
+
 ---
 
-## Environment Parity
+## Atlantis GitOps for Terraform
+
+Atlantis runs in [`atlantis/`](atlantis/). On every PR touching `infra/terraform/aws/`,
+Atlantis runs `terraform plan`, posts the diff as a PR comment, and `terraform apply` on
+merge. Required for all AWS production changes.
+
+---
+
+## Nomad
+
+[`nomad/`](nomad/) contains:
+- `nomad-values.yaml` — Nomad cluster config
+- `nomad.hcl` — server config
+- `batch-jobs/demand-forecast.nomad` — example batch ML job
+- `legacy-services/` — non-containerized legacy workloads
+
+Used when Kubernetes is overkill (one-shot batch jobs, legacy binaries that won't containerize).
+
+---
+
+## Environment parity
 
 | Config | dev | staging | prod |
 |---|---|---|---|
-| Node pool size | 3 nodes | 6 nodes | 12â€“30 nodes (autoscaled) |
-| Postgres instance | `db-f1-micro` / `db.t3.small` | `db-n1-standard-2` | `db-n1-standard-8` HA |
-| Redis | Single node | Single node | Cluster, 3 replicas |
-| Multi-AZ | No | No | Yes |
-| Remote state | `shopos-tf-dev` bucket | `shopos-tf-staging` bucket | `shopos-tf-prod` bucket |
+| Node pool size | 3 | 6 | 12–30 (Karpenter autoscaled) |
+| Postgres | `db-f1-micro` | `db-n1-standard-2` | `db-n1-standard-8` HA via Patroni |
+| Redis | Single node | Single node | Dragonfly cluster, 3 replicas |
+| Multi-AZ | No | No | Yes (3 AZ) |
+| Remote state bucket | `shopos-tf-dev` | `shopos-tf-staging` | `shopos-tf-prod` |
+| Atlantis-gated | No | No | Yes |
+| Cosign verify on admission | No | Yes (warn) | Yes (block) |
 
 ---
 
 ## References
 
-- [Terraform Documentation](https://developer.hashicorp.com/terraform/docs)
-- [EKS Auto Mode](https://docs.aws.amazon.com/eks/latest/userguide/automode.html)
-- [GKE Autopilot](https://cloud.google.com/kubernetes-engine/docs/concepts/autopilot-overview)
-- [AKS Node Auto Provisioning](https://learn.microsoft.com/en-us/azure/aks/node-autoprovision)
-- [ShopOS Helm Charts](../helm/README.md)
-- [ShopOS GitOps](../gitops/README.md)
+- [GitOps (ArgoCD/Flux on top of these clusters)](../gitops/README.md)
+- [Helm charts](../helm/README.md)
+- [Crossplane database claim example](crossplane/)

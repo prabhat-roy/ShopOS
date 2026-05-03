@@ -1,4 +1,4 @@
-﻿# push-notification-service
+# push-notification-service
 
 > Consumes `notification.push.requested` events and delivers mobile push notifications via FCM and APNs.
 
@@ -36,7 +36,7 @@ graph LR
 - Resolve device tokens for the target user from Redis (registered by mobile clients via `RegisterDevice`)
 - Fan out to multiple devices per user (user may have multiple devices)
 - Route to FCM for Android tokens and APNs for iOS tokens
-- Handle token invalidation â€” remove expired/invalid tokens on provider feedback
+- Handle token invalidation — remove expired/invalid tokens on provider feedback
 - Support notification types: `ALERT`, `DATA`, `SILENT`
 - Enforce per-user and per-device rate limits
 - Publish delivery result events back to Kafka
@@ -63,12 +63,12 @@ gRPC service: (device token management, internal use)
 ## Dependencies
 
 Upstream (consumes from / called by)
-- `notification-orchestrator` â€” publishes validated push requests via Kafka
-- `mobile-bff` â€” registers/deregisters device tokens via gRPC
+- `notification-orchestrator` — publishes validated push requests via Kafka
+- `mobile-bff` — registers/deregisters device tokens via gRPC
 
 Downstream (calls)
-- Firebase FCM â€” Android push delivery
-- Apple APNs â€” iOS push delivery
+- Firebase FCM — Android push delivery
+- Apple APNs — iOS push delivery
 
 ## Environment Variables
 
@@ -95,4 +95,4 @@ docker-compose up push-notification-service
 
 ## Health Check
 
-`GET /healthz` â†’ `{"status":"ok"}`
+`GET /healthz` → `{"status":"ok"}`

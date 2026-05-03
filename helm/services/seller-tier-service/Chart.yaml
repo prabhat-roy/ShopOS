@@ -1,0 +1,6 @@
+apiVersion: v2
+name: seller-tier-service
+description: ShopOS seller-tier-service (marketplace)
+type: application
+version: 0.1.0
+appVersion: "1.0.0"

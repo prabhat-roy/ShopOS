@@ -1,0 +1,14 @@
+# Komodor watcher — open-source K8s troubleshooting agent. Surfaces "what changed" timelines per resource.
+apiVersion: helm.cattle.io/v1
+kind: HelmChart
+metadata: { name: komodor-agent, namespace: monitoring }
+spec:
+  repo: https://helm-charts.komodor.io
+  chart: komodor-agent
+  version: 4.4.0
+  targetNamespace: monitoring
+  valuesContent: |-
+    apiKey: ${KOMODOR_API_KEY}
+    clusterName: shopos-prod
+    eventsCollector: { enabled: true }
+    metricsCollector: { enabled: true }

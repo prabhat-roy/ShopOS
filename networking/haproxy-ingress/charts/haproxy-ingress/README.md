@@ -1,4 +1,4 @@
-﻿# HAProxy Ingress helm chart
+# HAProxy Ingress helm chart
 
 [HAProxy Ingress](https://github.com/jcmoraisjr/haproxy-ingress) is an Ingress controller that uses ConfigMap to store the global haproxy configuration, and ingress annotations to configure per-backend settings.
 

@@ -154,16 +154,18 @@ steps:
             --namespace external-secrets --create-namespace \
             --set installCRDs=true --wait --timeout 5m
           # Bootstrap ClusterSecretStore for GCP Secret Manager
-          kubectl apply -f - <<EOF
-apiVersion: external-secrets.io/v1beta1
-kind: ClusterSecretStore
-metadata:
-  name: gcp-secret-manager
-spec:
-  provider:
-    gcpsm:
-      projectID: ${PROJECT_ID}
-EOF
+          cat > /tmp/css.yaml <<'YAMLEOF'
+          apiVersion: external-secrets.io/v1beta1
+          kind: ClusterSecretStore
+          metadata:
+            name: gcp-secret-manager
+          spec:
+            provider:
+              gcpsm:
+                projectID: PROJECT_ID_PLACEHOLDER
+          YAMLEOF
+          sed -i "s|PROJECT_ID_PLACEHOLDER|${PROJECT_ID}|g" /tmp/css.yaml
+          kubectl apply -f /tmp/css.yaml
         fi
     env:
       - CLOUDSDK_CONTAINER_CLUSTER=${_CLUSTER_NAME}

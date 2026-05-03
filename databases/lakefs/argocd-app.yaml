@@ -1,0 +1,38 @@
+# Source: databases/lakefs/lakefs.yaml
+# This Application installs the same Helm chart on any K8s cluster (not just k3s).
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: lakefs
+  namespace: argocd
+  finalizers: [resources-finalizer.argocd.argoproj.io]
+spec:
+  project: shopos-infra
+  source:
+    repoURL: https://charts.lakefs.io
+    chart: lakefs
+    targetRevision: '1.4.4'
+    helm:
+      releaseName: lakefs
+      values: |
+        replicaCount: 3
+        lakefsConfig: |
+          database:
+            type: postgres
+            postgres: { connection_string: "postgres://lakefs:${LAKEFS_DB_PASSWORD}@postgres-primary.databases.svc:5432/lakefs" }
+          blockstore:
+            type: s3
+            s3: { region: us-east-1, endpoint: "http://minio.databases.svc:9000", force_path_style: true }
+          auth:
+            encrypt: { secret_key: ${LAKEFS_AUTH_SECRET} }
+        ingress:
+          enabled: true
+          hostname: lakefs.shopos.example.com
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: databases
+  syncPolicy:
+    automated: { prune: false, selfHeal: true }
+    syncOptions: [CreateNamespace=true, ServerSideApply=true]
+    retry: { limit: 5, backoff: { duration: 30s, maxDuration: 5m, factor: 2 } }

@@ -1,4 +1,4 @@
-﻿# reconciliation-service
+# reconciliation-service
 
 > Reconciles platform payment records against bank and payment-processor statements, detecting and flagging discrepancies.
 
@@ -79,8 +79,8 @@ Upstream (callers)
 - Kafka events from `payout-service`
 
 Downstream (calls out to)
-- `accounting-service` â€” journal entry lookup for cross-referencing
-- `notification-orchestrator` (communications domain) â€” exception alerts to finance team (via Kafka)
+- `accounting-service` — journal entry lookup for cross-referencing
+- `notification-orchestrator` (communications domain) — exception alerts to finance team (via Kafka)
 
 ## Environment Variables
 
@@ -90,7 +90,7 @@ Downstream (calls out to)
 | `DB_PORT` | `5432` | PostgreSQL port |
 | `DB_NAME` | `reconciliation_db` | Database name |
 | `DB_USER` | `reconciliation_svc` | Database user |
-| `DB_PASSWORD` | â€” | Database password (required) |
+| `DB_PASSWORD` | — | Database password (required) |
 | `KAFKA_BROKERS` | `localhost:9092` | Comma-separated Kafka broker list |
 | `KAFKA_GROUP_ID` | `reconciliation-consumer` | Kafka consumer group ID |
 | `ACCOUNTING_GRPC_ADDR` | `accounting-service:50111` | Address of accounting-service |
@@ -107,4 +107,4 @@ docker-compose up reconciliation-service
 
 ## Health Check
 
-`GET /healthz` â†’ `{"status":"ok"}`
+`GET /healthz` → `{"status":"ok"}`

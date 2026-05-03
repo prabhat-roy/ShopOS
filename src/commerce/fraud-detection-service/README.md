@@ -1,4 +1,4 @@
-﻿# fraud-detection-service
+# fraud-detection-service
 
 > ML-based real-time fraud scoring for orders and payment attempts, with rule-based fallback and automatic model retraining.
 
@@ -19,7 +19,7 @@ flowchart TD
     E --> F[Feature Vector]
     F --> G{ML Model\nScoring}
 
-    G --> H[Risk Score 0.0â€“1.0]
+    G --> H[Risk Score 0.0–1.0]
     H --> I{Threshold\nDecision}
 
     I -->|score < 0.3| J[APPROVED]
@@ -91,17 +91,17 @@ Published:
 ## Dependencies
 
 Upstream (callers)
-- `checkout-service` â€” synchronous fraud score before payment attempt
+- `checkout-service` — synchronous fraud score before payment attempt
 
 Downstream (called by this service)
-- MLflow â€” model registry for versioned model loading
-- PostgreSQL â€” transaction signal storage
+- MLflow — model registry for versioned model loading
+- PostgreSQL — transaction signal storage
 - `device-fingerprint-service` (optional enrichment)
 
 Kafka consumers of published events
-- `payment-service` â€” can block payment on `BLOCK` decision
-- `support-ticket-service` â€” auto-creates fraud review ticket on `REVIEW`
-- `audit-service` â€” records all fraud signals
+- `payment-service` — can block payment on `BLOCK` decision
+- `support-ticket-service` — auto-creates fraud review ticket on `REVIEW`
+- `audit-service` — records all fraud signals
 
 ## Environment Variables
 
@@ -132,6 +132,6 @@ docker-compose up fraud-detection-service
 
 ## Health Check
 
-`GET /healthz` â†’ `{"status":"ok"}`
+`GET /healthz` → `{"status":"ok"}`
 
-gRPC health: `grpc.health.v1.Health/Check` â†’ `SERVING`
+gRPC health: `grpc.health.v1.Health/Check` → `SERVING`

@@ -1,0 +1,27 @@
+# Source: networking/metallb/metallb.yaml
+# This Application installs the same Helm chart on any K8s cluster (not just k3s).
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: metallb
+  namespace: argocd
+  finalizers: [resources-finalizer.argocd.argoproj.io]
+spec:
+  project: shopos-infra
+  source:
+    repoURL: https://metallb.github.io/metallb
+    chart: metallb
+    targetRevision: '0.14.8'
+    helm:
+      releaseName: metallb
+      values: |
+        speaker: { enabled: true, frr: { enabled: true } }
+        controller: { enabled: true }
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: metallb-system
+  syncPolicy:
+    automated: { prune: false, selfHeal: true }
+    syncOptions: [CreateNamespace=true, ServerSideApply=true]
+    retry: { limit: 5, backoff: { duration: 30s, maxDuration: 5m, factor: 2 } }

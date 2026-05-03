@@ -1038,7 +1038,7 @@ artifactRepository:
     # # This secret is expected to have the key 'account-access-key',
     # # containing the base64 encoded credentials to the storage account.
     # # If a managed identity has been assigned to the machines running the
-    # # workflow (e.g., https://docs.microsoft.com/en-us/azure/aks/use-managed-identity)
+    # # workflow (e.g., https://docs.microsoft.com/en-us/azure/app-k8s/use-managed-identity)
     # # then accountKeySecret is not needed, and useSDKCreds should be
     # # set to true instead:
     # useSDKCreds: true

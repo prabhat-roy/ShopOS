@@ -1,0 +1,27 @@
+# Redpanda — Kafka-API-compatible streaming platform; lower latency than JVM Kafka.
+# Used for ultra-low-latency analytics/eventing workloads alongside the primary Strimzi Kafka.
+apiVersion: helm.cattle.io/v1
+kind: HelmChart
+metadata: { name: redpanda, namespace: streaming }
+spec:
+  repo: https://charts.redpanda.com
+  chart: redpanda
+  version: 5.9.5
+  targetNamespace: streaming
+  valuesContent: |-
+    statefulset:
+      replicas: 3
+    resources:
+      cpu: { cores: 4 }
+      memory: { container: { max: 8Gi } }
+    storage:
+      persistentVolume:
+        enabled: true
+        size: 100Gi
+        storageClass: fast-ssd
+    tls: { enabled: true, certs: { default: { caEnabled: true } } }
+    auth: { sasl: { enabled: true, mechanism: SCRAM-SHA-512 } }
+    monitoring: { enabled: true }
+    console:
+      enabled: true
+      console: { config: { kafka: { brokers: ["redpanda-0.redpanda.streaming.svc:9093"] } } }

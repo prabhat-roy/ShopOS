@@ -1,0 +1,37 @@
+{
+  "consumer": { "name": "order-service" },
+  "provider": { "name": "inventory-service" },
+  "interactions": [
+    {
+      "description": "POST /inventory/reserve atomically reserves stock for an order",
+      "providerStates": [{ "name": "warehouse W-1 has 50 of SKU-1001 available" }],
+      "request": {
+        "method": "POST", "path": "/v1/inventory/reserve",
+        "headers": { "Content-Type": "application/json" },
+        "body": { "order_id": "ord-9001", "lines": [
+          { "sku": "SKU-1001", "qty": 2, "warehouse_id": "W-1" }
+        ] }
+      },
+      "response": {
+        "status": 200, "headers": { "Content-Type": "application/json" },
+        "body": { "reservation_id": "res-1234", "expires_at": "2026-05-02T12:30:00Z",
+                  "lines": [{ "sku": "SKU-1001", "reserved_qty": 2 }] }
+      }
+    },
+    {
+      "description": "POST /inventory/reserve returns 409 when insufficient stock",
+      "providerStates": [{ "name": "warehouse W-1 has 1 of SKU-1001 available" }],
+      "request": {
+        "method": "POST", "path": "/v1/inventory/reserve",
+        "headers": { "Content-Type": "application/json" },
+        "body": { "order_id": "ord-9002", "lines": [
+          { "sku": "SKU-1001", "qty": 5, "warehouse_id": "W-1" }
+        ] }
+      },
+      "response": {
+        "status": 409,
+        "body": { "error": "insufficient_stock", "sku": "SKU-1001", "available": 1 }
+      }
+    }
+  ]
+}

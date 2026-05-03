@@ -1,6 +1,6 @@
-﻿# ShopOS â€” Architecture Diagrams
+# ShopOS — Architecture Diagrams
 
-> 230 services Â· 19 domains Â· 13 languages Â· full open-source stack
+> 230 services · 19 domains · 13 languages · full open-source stack
 
 ---
 
@@ -21,7 +21,7 @@ graph TB
     classDef cicd      fill:#32CD32,stroke:#006400,color:#fff
     classDef infra     fill:#DAA520,stroke:#8B6914,color:#fff
 
-    %% â”€â”€ USER CHANNELS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    %% ── USER CHANNELS ─────────────────────────────────────────
     subgraph USERS["ðŸ‘¥  User Channels"]
         direction LR
         U1["ðŸŒ Browser"]:::user
@@ -32,7 +32,7 @@ graph TB
         U6["ðŸª Seller"]:::user
     end
 
-    %% â”€â”€ EDGE â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    %% ── EDGE ──────────────────────────────────────────────────
     subgraph EDGE["ðŸ›¡ï¸  Edge Layer"]
         direction LR
         WAF["Coraza WAF\n(OWASP CRS)"]:::edge
@@ -40,7 +40,7 @@ graph TB
         CM["cert-manager\nTLS Automation"]:::edge
     end
 
-    %% â”€â”€ FRONTENDS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    %% ── FRONTENDS ─────────────────────────────────────────────
     subgraph FE["ðŸ–¥ï¸  Frontend Applications  (6 apps)"]
         direction LR
         FE1["Next.js 14\nStorefront\n:3000"]:::frontend
@@ -51,108 +51,108 @@ graph TB
         FE6["React + Vite\nDev Portal\n:3004"]:::frontend
     end
 
-    %% â”€â”€ API GATEWAY LAYER â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    %% ── API GATEWAY LAYER ─────────────────────────────────────
     subgraph GW["ðŸ”€  API Gateway Layer"]
         direction LR
-        AGW["API Gateway\nGo Â· :8080\nJWT Â· Routing Â· RateLimit"]:::gateway
-        WBFF["Web BFF\nGo Â· :8081"]:::gateway
-        MBFF["Mobile BFF\nNode.js Â· :8082"]:::gateway
-        PBFF["Partner BFF\nGo Â· :8083"]:::gateway
-        GQL["GraphQL Gateway\nGo Â· :8086"]:::gateway
+        AGW["API Gateway\nGo · :8080\nJWT · Routing · RateLimit"]:::gateway
+        WBFF["Web BFF\nGo · :8081"]:::gateway
+        MBFF["Mobile BFF\nNode.js · :8082"]:::gateway
+        PBFF["Partner BFF\nGo · :8083"]:::gateway
+        GQL["GraphQL Gateway\nGo · :8086"]:::gateway
     end
 
-    %% â”€â”€ PLATFORM SERVICES â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    %% ── PLATFORM SERVICES ─────────────────────────────────────
     subgraph PLAT["âš™ï¸  Platform Services  (27)"]
         direction LR
-        P1["Saga Orchestrator\nGo Â· Kafka"]:::platform
-        P2["Event Store\nGo Â· Postgres"]:::platform
-        P3["Scheduler\nGo Â· Postgres"]:::platform
-        P4["Audit Service\nJava Â· Kafka"]:::platform
-        P5["Webhook Service\nGo Â· HTTP/Kafka"]:::platform
-        P6["Tenant Service\nGo Â· Postgres"]:::platform
+        P1["Saga Orchestrator\nGo · Kafka"]:::platform
+        P2["Event Store\nGo · Postgres"]:::platform
+        P3["Scheduler\nGo · Postgres"]:::platform
+        P4["Audit Service\nJava · Kafka"]:::platform
+        P5["Webhook Service\nGo · HTTP/Kafka"]:::platform
+        P6["Tenant Service\nGo · Postgres"]:::platform
         P7["+ 21 more\nplatform services"]:::platform
     end
 
-    %% â”€â”€ BUSINESS DOMAINS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    %% ── BUSINESS DOMAINS ──────────────────────────────────────
     subgraph DOM["ðŸ¢  Business Domain Services  (197 services across 18 domains)"]
         direction TB
 
         subgraph D1["ðŸ” Identity (11)"]
             direction LR
-            D1A["auth-service\nRust Â· :50060"]:::domain
-            D1B["user-service\nJava Â· :50061"]:::domain
-            D1C["session-service\nGo Â· Redis"]:::domain
-            D1D["mfa Â· gdpr Â· sso\npermission Â· api-key\n+ 4 more"]:::domain
+            D1A["auth-service\nRust · :50060"]:::domain
+            D1B["user-service\nJava · :50061"]:::domain
+            D1C["session-service\nGo · Redis"]:::domain
+            D1D["mfa · gdpr · sso\npermission · api-key\n+ 4 more"]:::domain
         end
 
         subgraph D2["ðŸ“¦ Catalog (15)"]
             direction LR
-            D2A["product-catalog\nGo Â· MongoDB"]:::domain
-            D2B["pricing-service\nJava Â· Postgres"]:::domain
-            D2C["search-service\nPython Â· ES"]:::domain
-            D2D["inventory Â· category\nbrand Â· bundle\n+ 9 more"]:::domain
+            D2A["product-catalog\nGo · MongoDB"]:::domain
+            D2B["pricing-service\nJava · Postgres"]:::domain
+            D2C["search-service\nPython · ES"]:::domain
+            D2D["inventory · category\nbrand · bundle\n+ 9 more"]:::domain
         end
 
         subgraph D3["ðŸ›’ Commerce (28)"]
             direction LR
-            D3A["cart-service\nC# Â· Redis"]:::domain
-            D3B["order-service\nKotlin Â· Postgres"]:::domain
-            D3C["payment-service\nJava Â· Postgres"]:::domain
-            D3D["shipping-service\nRust Â· Postgres"]:::domain
-            D3E["checkout Â· promotions\nfraud-detection Â· loyalty\n+ 24 more"]:::domain
+            D3A["cart-service\nC# · Redis"]:::domain
+            D3B["order-service\nKotlin · Postgres"]:::domain
+            D3C["payment-service\nJava · Postgres"]:::domain
+            D3D["shipping-service\nRust · Postgres"]:::domain
+            D3E["checkout · promotions\nfraud-detection · loyalty\n+ 24 more"]:::domain
         end
 
         subgraph D4["ðŸšš Supply Chain (17)"]
             direction LR
-            D4A["vendor-service\nJava Â· Postgres"]:::domain
-            D4B["warehouse-service\nGo Â· Postgres"]:::domain
-            D4C["fulfillment Â· tracking\ncarrier Â· customs\n+ 13 more"]:::domain
+            D4A["vendor-service\nJava · Postgres"]:::domain
+            D4B["warehouse-service\nGo · Postgres"]:::domain
+            D4C["fulfillment · tracking\ncarrier · customs\n+ 13 more"]:::domain
         end
 
         subgraph D5["ðŸ’° Financial (15)"]
             direction LR
-            D5A["invoice-service\nJava Â· Postgres"]:::domain
-            D5B["payout-service\nJava Â· Postgres"]:::domain
-            D5C["accounting Â· kyc-aml\nreconciliation Â· tax\n+ 11 more"]:::domain
+            D5A["invoice-service\nJava · Postgres"]:::domain
+            D5B["payout-service\nJava · Postgres"]:::domain
+            D5C["accounting · kyc-aml\nreconciliation · tax\n+ 11 more"]:::domain
         end
 
         subgraph D6["ðŸŽ¯ Customer Experience (17)"]
             direction LR
-            D6A["review-service\nNode.js Â· MongoDB"]:::domain
-            D6B["support-tickets\nJava Â· Postgres"]:::domain
-            D6C["wishlist Â· compare\nsurvey Â· consent\n+ 13 more"]:::domain
+            D6A["review-service\nNode.js · MongoDB"]:::domain
+            D6B["support-tickets\nJava · Postgres"]:::domain
+            D6C["wishlist · compare\nsurvey · consent\n+ 13 more"]:::domain
         end
 
         subgraph D7["ðŸ“¨ Communications (12)"]
             direction LR
-            D7A["email-service\nPython Â· Kafka"]:::domain
-            D7B["sms Â· push Â· whatsapp\ntelegram Â· chatbot\n+ 7 more"]:::domain
+            D7A["email-service\nPython · Kafka"]:::domain
+            D7B["sms · push · whatsapp\ntelegram · chatbot\n+ 7 more"]:::domain
         end
 
         subgraph D8["ðŸ–¼ï¸ Content (9)"]
             direction LR
-            D8A["media-asset\nGo Â· MinIO"]:::domain
-            D8B["cms-service\nNode.js Â· MongoDB"]:::domain
-            D8C["video Â· document\ni18n Â· sitemap\n+ 5 more"]:::domain
+            D8A["media-asset\nGo · MinIO"]:::domain
+            D8B["cms-service\nNode.js · MongoDB"]:::domain
+            D8C["video · document\ni18n · sitemap\n+ 5 more"]:::domain
         end
 
         subgraph D9["ðŸ¤– Analytics & AI (13)"]
             direction LR
-            D9A["recommendation\nPython Â· gRPC"]:::domain
-            D9B["ml-feature-store\nPython Â· Postgres"]:::domain
-            D9C["personalization Â· analytics\nsentiment Â· clv\n+ 9 more"]:::domain
+            D9A["recommendation\nPython · gRPC"]:::domain
+            D9B["ml-feature-store\nPython · Postgres"]:::domain
+            D9C["personalization · analytics\nsentiment · clv\n+ 9 more"]:::domain
         end
 
         subgraph D10["ðŸ­ B2B (10)"]
             direction LR
-            D10A["org-service\nJava Â· Postgres"]:::domain
-            D10B["contract Â· quote-rfq\nedi Â· approval\n+ 6 more"]:::domain
+            D10A["org-service\nJava · Postgres"]:::domain
+            D10B["contract · quote-rfq\nedi · approval\n+ 6 more"]:::domain
         end
 
         subgraph D11["ðŸ”Œ Integrations (14)"]
             direction LR
-            D11A["erp-integration\nJava Â· gRPC"]:::domain
-            D11B["crm Â· payment-gw\nmarketplace-conn\n+ 11 more"]:::domain
+            D11A["erp-integration\nJava · gRPC"]:::domain
+            D11B["crm · payment-gw\nmarketplace-conn\n+ 11 more"]:::domain
         end
 
         subgraph D12["Other Domains (30)"]
@@ -166,7 +166,7 @@ graph TB
         end
     end
 
-    %% â”€â”€ MESSAGING â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    %% ── MESSAGING ─────────────────────────────────────────────
     subgraph MSG["ðŸ“¨  Messaging & Streaming"]
         direction LR
         KA["Apache Kafka 7.7\nDomain Events\nAvro + Schema Registry"]:::messaging
@@ -176,24 +176,24 @@ graph TB
         FL["Apache Flink 1.20\nStream Processing\nFraud & Analytics"]:::messaging
     end
 
-    %% â”€â”€ DATA STORES â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    %% ── DATA STORES ───────────────────────────────────────────
     subgraph DS["ðŸ—„ï¸  Data Stores  (13 engines)"]
         direction LR
         PG["PostgreSQL 16\nPatroni HA\n3-node cluster"]:::data
-        MG["MongoDB 8.0\nCatalog Â· CMS\nReviews"]:::data
-        RD["Redis 7\n+ Dragonfly\nCache Â· Sessions"]:::data
+        MG["MongoDB 8.0\nCatalog · CMS\nReviews"]:::data
+        RD["Redis 7\n+ Dragonfly\nCache · Sessions"]:::data
         EL["Elasticsearch 8\nFull-text Search\nFaceted Filtering"]:::data
         CA["Cassandra 5\nAnalytics Events"]:::data
-        MI["MinIO\nObject Storage\nImages Â· Videos"]:::data
+        MI["MinIO\nObject Storage\nImages · Videos"]:::data
         NJ["Neo4j 5\nGraph DB\nRecommendations"]:::data
         WV["Weaviate 1.26\nVector DB\nSemantic Search"]:::data
         CH["ClickHouse 24\nOLAP Analytics\nRevenue Reports"]:::data
-        TS["TimescaleDB\nTime-series\nMetrics Â· Inventory"]:::data
+        TS["TimescaleDB\nTime-series\nMetrics · Inventory"]:::data
         ET["etcd 3.5\nDistributed Config\nFeature Flags"]:::data
         MS["Meilisearch\nProduct Search\nTypo-tolerant"]:::data
     end
 
-    %% â”€â”€ CONNECTIONS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+    %% ── CONNECTIONS ───────────────────────────────────────────
     USERS  -->|"HTTPS / WSS"| EDGE
     EDGE   -->|"Routed"| FE
     FE     -->|"REST /api proxy"| GW
@@ -219,14 +219,14 @@ graph LR
     classDef rt    fill:#8B008B,stroke:#4B0082,color:#fff
 
     subgraph IAM["ðŸ”‘  Identity & Access"]
-        KC["Keycloak 25\nSSO Â· OIDC Â· SAML"]:::sec
+        KC["Keycloak 25\nSSO · OIDC · SAML"]:::sec
         DEX["Dex\nOIDC Federation"]:::sec
         SPIRE["SPIFFE/SPIRE\nWorkload Identity\nmTLS Certs"]:::sec
         OFG["OpenFGA\nRelationship Auth\n(ReBAC)"]:::sec
     end
 
     subgraph SECRETS["ðŸ”  Secrets Management"]
-        VLT["HashiCorp Vault\nDynamic Secrets\nPKI Â· Encryption"]:::vault
+        VLT["HashiCorp Vault\nDynamic Secrets\nPKI · Encryption"]:::vault
         ESO["External Secrets\nOperator"]:::vault
         SOPS["SOPS\nEncrypted GitOps"]:::vault
         SS["Sealed Secrets\nK8s native"]:::vault
@@ -234,7 +234,7 @@ graph LR
 
     subgraph MESH["ðŸ•¸ï¸  Service Mesh"]
         ISTIO["Istio\nmTLS everywhere\nTraffic policies"]:::mesh
-        CILIUM["Cilium eBPF\nCNI Â· NetworkPolicy\nL3/L4/L7"]:::mesh
+        CILIUM["Cilium eBPF\nCNI · NetworkPolicy\nL3/L4/L7"]:::mesh
         CONSUL["Consul 1.19\nService Discovery\nHealth checks"]:::mesh
     end
 
@@ -289,15 +289,15 @@ graph TB
     end
 
     subgraph COLLECT["ðŸ”„  Collection & Aggregation"]
-        OTCOL["OTel Collector\nProcessor Â· Exporter"]:::inst
+        OTCOL["OTel Collector\nProcessor · Exporter"]:::inst
         FLUENT["Fluent Bit\n+ Fluentd\nLog shipping"]:::log
     end
 
     subgraph METRICS["ðŸ“ˆ  Metrics"]
-        PROM["Prometheus\nScrape Â· Alert"]:::metric
+        PROM["Prometheus\nScrape · Alert"]:::metric
         THANOS["Thanos\nLong-term storage\nGlobal query"]:::metric
         VM["VictoriaMetrics\nHigh-cardinality\nalternative"]:::metric
-        AM["Alertmanager\nAlert routing\nPagerDuty Â· Slack"]:::metric
+        AM["Alertmanager\nAlert routing\nPagerDuty · Slack"]:::metric
     end
 
     subgraph LOGS["ðŸ“‹  Logs"]
@@ -315,7 +315,7 @@ graph TB
     subgraph DASH["ðŸ“Š  Dashboards & Alerting"]
         GRAF["Grafana\nUnified dashboards\n100+ panels"]:::dash
         KIBANA["Kibana\nLog analytics"]:::dash
-        PLAUS["Plausible\nWeb analytics\n(GDPR Â· no cookies)"]:::dash
+        PLAUS["Plausible\nWeb analytics\n(GDPR · no cookies)"]:::dash
         OPENRP["OpenReplay\nSession replay\nSelf-hosted"]:::dash
         UKUMA["Uptime Kuma\nStatus pages"]:::slo
     end
@@ -362,9 +362,9 @@ graph LR
 
     subgraph CI["ðŸ”§  CI Platforms  (15)"]
         direction TB
-        JEN["Jenkins\nPrimary Â· 12 pipelines"]:::ci
+        JEN["Jenkins\nPrimary · 12 pipelines"]:::ci
         GHA["GitHub Actions\n12 workflows"]:::ci
-        GL["GitLab CI Â· Drone\nWoodpecker Â· Dagger\nTekton Â· Concourse\nCircleCI Â· GoCD\nTravis Â· Harness\nAzure DevOps\nAWS CodePipeline\nGCP Cloud Build"]:::ci
+        GL["GitLab CI · Drone\nWoodpecker · Dagger\nTekton · Concourse\nCircleCI · GoCD\nTravis · Harness\nAzure DevOps\nAWS CodePipeline\nGCP Cloud Build"]:::ci
     end
 
     subgraph QUALITY["ðŸ”  Quality Gates"]
@@ -378,7 +378,7 @@ graph LR
 
     subgraph REG["ðŸ“¦  Artifact Registry"]
         HARBOR["Harbor\nContainer images"]:::reg
-        NEXUS["Nexus 3.71\nMaven Â· npm Â· PyPI"]:::reg
+        NEXUS["Nexus 3.71\nMaven · npm · PyPI"]:::reg
         CHART["ChartMuseum\nHelm charts"]:::reg
         ZOT["Zot\nOCI registry"]:::reg
     end
@@ -386,8 +386,8 @@ graph LR
     subgraph GITOPS["ðŸ”„  GitOps Controllers"]
         ARGO["ArgoCD\nApp-of-Apps\n230 applications"]:::gitops
         FLUX["Flux CD\n230 HelmReleases"]:::gitops
-        AE["Argo Events\nGitHub Â· Kafka\nWebhook triggers"]:::gitops
-        AW["Argo Workflows\nCI build Â· ML train\nDB migration\nSecurity scan"]:::gitops
+        AE["Argo Events\nGitHub · Kafka\nWebhook triggers"]:::gitops
+        AW["Argo Workflows\nCI build · ML train\nDB migration\nSecurity scan"]:::gitops
     end
 
     subgraph DEPLOY["ðŸš€  Progressive Delivery"]
@@ -426,34 +426,34 @@ graph TB
     classDef ml     fill:#32CD32,stroke:#006400,color:#fff
 
     subgraph OLTP["ðŸ”·  Transactional (OLTP)"]
-        PG["PostgreSQL 16\nPatroni 3-node HA\nPgBouncer pool\nidentity Â· commerce\nfinancial Â· platform"]:::oltp
-        TS["TimescaleDB\nTime-series extension\nmetrics Â· inventory\npage views"]:::oltp
+        PG["PostgreSQL 16\nPatroni 3-node HA\nPgBouncer pool\nidentity · commerce\nfinancial · platform"]:::oltp
+        TS["TimescaleDB\nTime-series extension\nmetrics · inventory\npage views"]:::oltp
     end
 
     subgraph DOC["ðŸŸ   Document Stores"]
-        MONGO["MongoDB 8.0\nproduct catalog\ncms Â· reviews Â· tracking"]:::doc
+        MONGO["MongoDB 8.0\nproduct catalog\ncms · reviews · tracking"]:::doc
     end
 
     subgraph CACHE["ðŸ”´  Cache & Session"]
-        REDIS["Redis 7\nsessions Â· cart\nrate limits Â· pub/sub"]:::cache
-        DRAG["Dragonfly\nRedis-compatible\n4Ã— throughput"]:::cache
+        REDIS["Redis 7\nsessions · cart\nrate limits · pub/sub"]:::cache
+        DRAG["Dragonfly\nRedis-compatible\n4× throughput"]:::cache
         MEM["Memcached 1.6\nSimple high-throughput\ncaching"]:::cache
     end
 
     subgraph SEARCH["ðŸŸ¢  Search Engines"]
-        ES["Elasticsearch 8\nproduct search\nfull-text Â· facets"]:::search
+        ES["Elasticsearch 8\nproduct search\nfull-text · facets"]:::search
         OS["OpenSearch 2.17\nlog analytics\naudit trails"]:::search
         MEILI["Meilisearch\nTypo-tolerant\nproduct search"]:::search
     end
 
     subgraph OLAP["ðŸŸ£  Analytics (OLAP)"]
         CH["ClickHouse 24\norder analytics\nrevenue reports\nMaterialized views"]:::olap
-        CASS["Cassandra 5\nanalytics events\npage views Â· clicks"]:::olap
+        CASS["Cassandra 5\nanalytics events\npage views · clicks"]:::olap
         TSDB["TimescaleDB 2.15\nservice metrics\ninventory events"]:::olap
     end
 
     subgraph OBJ["ðŸŸ¡  Object Storage"]
-        MINIO["MinIO\nproduct images\nvideos Â· PDFs\nexports"]:::obj
+        MINIO["MinIO\nproduct images\nvideos · PDFs\nexports"]:::obj
     end
 
     subgraph GRAPH["ðŸ”µ  Specialized"]
@@ -468,8 +468,8 @@ graph TB
     end
 
     subgraph ANALYTICS["ðŸ“Š  Analytics Stack"]
-        DBT["dbt\nData transforms\nStaging Â· Commerce\nCatalog models"]:::ml
-        AIRFLOW["Apache Airflow\nDaily ETL Â· Fraud\nRetrain DAGs"]:::ml
+        DBT["dbt\nData transforms\nStaging · Commerce\nCatalog models"]:::ml
+        AIRFLOW["Apache Airflow\nDaily ETL · Fraud\nRetrain DAGs"]:::ml
         SPARK["Apache Spark\nBatch processing\nRFM segmentation"]:::ml
         MLFLOW["MLflow 2.16\nExperiment tracking\nModel registry"]:::ml
     end
@@ -502,7 +502,7 @@ graph TB
     subgraph K8S["â˜¸ï¸  Kubernetes Layer"]
         direction LR
         NS["19 Namespaces\n(one per domain)"]:::k8s
-        RBAC["RBAC\nClusterRoles Â· Bindings\nService Accounts"]:::k8s
+        RBAC["RBAC\nClusterRoles · Bindings\nService Accounts"]:::k8s
         RQ["Resource Quotas\n+ LimitRanges\nper namespace"]:::k8s
         PDB["Pod Disruption\nBudgets\ncritical services"]:::k8s
         KEDA["KEDA\nKafka + Redis\nautoscaling"]:::k8s
@@ -511,8 +511,8 @@ graph TB
     end
 
     subgraph IAC["ðŸ—ï¸  Infrastructure as Code"]
-        TF["Terraform\nEKS Â· GKE Â· AKS\nJenkins VM"]:::iac
-        OTF["OpenTofu\nAWS Â· GCP Â· Azure\nalternative"]:::iac
+        TF["Terraform\nEKS · GKE · AKS\nJenkins VM"]:::iac
+        OTF["OpenTofu\nAWS · GCP · Azure\nalternative"]:::iac
         CP["Crossplane\nK8s-native IaC\nCompositions"]:::iac
         ANS["Ansible\nK8s node roles\nBootstrapping"]:::iac
     end
@@ -520,7 +520,7 @@ graph TB
     subgraph NETWORKING["ðŸŒ  Networking"]
         TRAEFIK["Traefik 3.1\nEdge Router\nService Discovery"]:::net
         ISTIO["Istio\nService Mesh\nmTLS + Telemetry"]:::net
-        CILIUM["Cilium eBPF\nCNI Â· L3/L4/L7\nNetworkPolicy"]:::net
+        CILIUM["Cilium eBPF\nCNI · L3/L4/L7\nNetworkPolicy"]:::net
         CONSUL["Consul 1.19\nService Discovery\nHealth checks K/V"]:::net
         KONG["Kong\nAPI Management"]:::net
         NGINX["NGINX\nReverse proxy"]:::net
@@ -541,7 +541,7 @@ graph TB
     end
 
     subgraph LOAD["ðŸ“Š  Load Testing"]
-        K6["k6\nsmoke Â· spike Â· soak\nbrowse Â· checkout"]:::ml
+        K6["k6\nsmoke · spike · soak\nbrowse · checkout"]:::ml
         LOCUST["Locust\n4 task sets\n3 user classes"]:::ml
         GATLING["Gatling\nCommerce + Search\nsimulations"]:::ml
     end

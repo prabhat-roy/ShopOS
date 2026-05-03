@@ -1,4 +1,4 @@
-﻿# wishlist-service
+# wishlist-service
 
 > User wishlists with multi-list support, public sharing, and price-drop notifications.
 
@@ -66,12 +66,12 @@ gRPC service: `WishlistService` (port 50122)
 ## Dependencies
 
 Upstream (callers)
-- `api-gateway` â€” routes wishlist CRUD operations
+- `api-gateway` — routes wishlist CRUD operations
 
 Downstream (calls / consumes)
-- `pricing-service` â€” source of price-update events (via Kafka)
-- `notification-orchestrator` â€” receives price-drop notification requests (via Kafka)
-- `product-catalog-service` â€” validates product IDs on item add
+- `pricing-service` — source of price-update events (via Kafka)
+- `notification-orchestrator` — receives price-drop notification requests (via Kafka)
+- `product-catalog-service` — validates product IDs on item add
 
 ## Environment Variables
 
@@ -95,4 +95,4 @@ docker-compose up wishlist-service
 
 ## Health Check
 
-`GET /healthz` â†’ `{"status":"ok"}`
+`GET /healthz` → `{"status":"ok"}`

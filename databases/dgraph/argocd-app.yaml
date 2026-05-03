@@ -1,0 +1,36 @@
+# Source: databases/dgraph/dgraph.yaml
+# This Application installs the same Helm chart on any K8s cluster (not just k3s).
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: dgraph
+  namespace: argocd
+  finalizers: [resources-finalizer.argocd.argoproj.io]
+spec:
+  project: shopos-infra
+  source:
+    repoURL: https://charts.dgraph.io
+    chart: dgraph
+    targetRevision: '0.2.5'
+    helm:
+      releaseName: dgraph
+      values: |
+        alpha:
+          replicaCount: 3
+          persistence: { enabled: true, size: 100Gi, storageClass: fast-ssd }
+          configFile:
+            config.yaml: |
+              security: { whitelist: 0.0.0.0/0 }
+              tls: { internal_port: true }
+        zero:
+          replicaCount: 3
+          persistence: { enabled: true, size: 20Gi, storageClass: fast-ssd }
+        ratel: { enabled: true }
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: databases
+  syncPolicy:
+    automated: { prune: false, selfHeal: true }
+    syncOptions: [CreateNamespace=true, ServerSideApply=true]
+    retry: { limit: 5, backoff: { duration: 30s, maxDuration: 5m, factor: 2 } }

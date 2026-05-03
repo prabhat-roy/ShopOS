@@ -1,0 +1,27 @@
+# n8n — open-source workflow automation. Used by ops for low-code internal automations
+# (PagerDuty → Slack handoff, daily PR summaries, etc.).
+apiVersion: helm.cattle.io/v1
+kind: HelmChart
+metadata: { name: n8n, namespace: developer-platform }
+spec:
+  repo: https://8gears.container-registry.com/chartrepo/library
+  chart: n8n
+  version: 1.0.5
+  targetNamespace: developer-platform
+  valuesContent: |-
+    replicaCount: 2
+    main:
+      config: { executions: { mode: queue } }
+    worker: { count: 3 }
+    redis: { enabled: true }
+    db:
+      type: postgresdb
+      postgresdb:
+        host: postgres-primary.databases.svc
+        database: n8n
+        user: n8n
+        passwordSecret: { name: n8n-db, key: password }
+    persistence: { enabled: true, size: 5Gi }
+    ingress:
+      enabled: true
+      hosts: [{ host: n8n.shopos.example.com, paths: [{ path: /, pathType: Prefix }] }]

@@ -1,4 +1,4 @@
-﻿# contract-service
+# contract-service
 
 > Manages B2B contracts, negotiated pricing agreements, and contract validity lifecycles.
 
@@ -67,14 +67,14 @@ graph TD
 ## Dependencies
 
 Upstream (calls this service)
-- `partner-bff` â€” contract management UI
-- `checkout-service` â€” fetches active pricing terms at order time
-- `pricing-service` â€” resolves contracted unit prices
+- `partner-bff` — contract management UI
+- `checkout-service` — fetches active pricing terms at order time
+- `pricing-service` — resolves contracted unit prices
 
 Downstream (this service calls)
-- `organization-service` â€” validates the buyer organization
-- `pricing-service` â€” validates price list references in the contract
-- `approval-workflow-service` â€” submits new/amended contracts for approval
+- `organization-service` — validates the buyer organization
+- `pricing-service` — validates price list references in the contract
+- `approval-workflow-service` — submits new/amended contracts for approval
 
 ## Environment Variables
 
@@ -85,7 +85,7 @@ Downstream (this service calls)
 | `DB_PORT` | `5432` | PostgreSQL port |
 | `DB_NAME` | `contract_db` | Database name |
 | `DB_USER` | `contract_user` | Database username |
-| `DB_PASSWORD` | â€” | Database password (required) |
+| `DB_PASSWORD` | — | Database password (required) |
 | `KAFKA_BOOTSTRAP_SERVERS` | `localhost:9092` | Kafka broker addresses |
 | `ORGANIZATION_SERVICE_ADDR` | `organization-service:50160` | Address of organization-service |
 | `PRICING_SERVICE_ADDR` | `pricing-service:50073` | Address of pricing-service |
@@ -101,6 +101,6 @@ docker-compose up contract-service
 
 ## Health Check
 
-`GET /healthz` â†’ `{"status":"ok"}`
+`GET /healthz` → `{"status":"ok"}`
 
-gRPC health: `grpc.health.v1.Health/Check` â†’ `SERVING`
+gRPC health: `grpc.health.v1.Health/Check` → `SERVING`

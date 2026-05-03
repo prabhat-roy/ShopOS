@@ -3,13 +3,13 @@
 def call() {
     def iacTool = env.IaC_TOOL ?: 'terraform'
     def tfDirMap = (iacTool == 'opentofu') ? [
-        AWS   : 'infra/opentofu/aws/eks',
-        GCP   : 'infra/opentofu/gcp/gke',
-        AZURE : 'infra/opentofu/azure/aks',
+        AWS   : 'infra/opentofu/aws/app-k8s',
+        GCP   : 'infra/opentofu/gcp/app-k8s',
+        AZURE : 'infra/opentofu/azure/app-k8s',
     ] : [
-        AWS   : 'infra/terraform/aws/eks',
-        GCP   : 'infra/terraform/gcp/gke',
-        AZURE : 'infra/terraform/azure/aks',
+        AWS   : 'infra/terraform/aws/app-k8s',
+        GCP   : 'infra/terraform/gcp/app-k8s',
+        AZURE : 'infra/terraform/azure/app-k8s',
     ]
 
     // Re-use previously detected cloud — only detect if not already in infra.env

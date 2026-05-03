@@ -1,0 +1,29 @@
+# Sigstore Policy Controller — admission-time Cosign verification + Rekor transparency log lookup.
+apiVersion: helm.cattle.io/v1
+kind: HelmChart
+metadata: { name: policy-controller, namespace: cosign-system }
+spec:
+  repo: https://sigstore.github.io/helm-charts
+  chart: policy-controller
+  version: 0.10.1
+  targetNamespace: cosign-system
+  valuesContent: |-
+    webhook:
+      replicas: 3
+      configData:
+        no-match-policy: deny
+---
+apiVersion: policy.sigstore.dev/v1beta1
+kind: ClusterImagePolicy
+metadata: { name: shopos-images-must-be-signed }
+spec:
+  images:
+    - glob: "ghcr.io/shopos/**"
+    - glob: "harbor.shopos.example.com/shopos/**"
+  authorities:
+    - keyless:
+        url: https://fulcio.sigstore.dev
+        identities:
+          - { issuer: "https://token.actions.githubusercontent.com",
+              subjectRegExp: "^https://github.com/prabhat-roy/ShopOS/.*" }
+    - rekor: { url: https://rekor.sigstore.dev }

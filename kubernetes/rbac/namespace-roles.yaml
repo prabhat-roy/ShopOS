@@ -1,309 +1,310 @@
-# Namespace-scoped Roles + RoleBindings for per-domain team access
-# Each domain team gets edit access to their own namespace only
-
-{% set domains = [
-  ("platform", "shopos:team-platform"),
-  ("identity", "shopos:team-identity"),
-  ("catalog", "shopos:team-catalog"),
-  ("commerce", "shopos:team-commerce"),
-  ("supply-chain", "shopos:team-supply-chain"),
-  ("financial", "shopos:team-financial"),
-  ("customer-experience", "shopos:team-customer-experience"),
-  ("communications", "shopos:team-communications"),
-  ("content", "shopos:team-content"),
-  ("analytics-ai", "shopos:team-analytics-ai"),
-  ("b2b", "shopos:team-b2b"),
-  ("integrations", "shopos:team-integrations"),
-  ("affiliate", "shopos:team-affiliate"),
-  ("marketplace", "shopos:team-marketplace"),
-  ("gamification", "shopos:team-gamification"),
-  ("developer-platform", "shopos:team-developer-platform"),
-  ("compliance", "shopos:team-compliance"),
-  ("sustainability", "shopos:team-sustainability"),
-  ("shopos-web", "shopos:team-web"),
-] %}
+# Namespace-scoped Role + RoleBinding per domain.
+# Each domain team gets edit access to its own namespace only.
 ---
-# platform team
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata: { name: domain-edit, namespace: platform }
+rules:
+  - { apiGroups: ["", "apps", "batch"], resources: ["*"], verbs: ["get","list","watch","create","update","patch","delete"] }
+  - { apiGroups: ["networking.k8s.io"], resources: ["*"], verbs: ["get","list","watch"] }
+  - { apiGroups: ["argoproj.io"], resources: ["applications","rollouts","workflows"], verbs: ["get","list","watch","update","patch"] }
+---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
-metadata:
-  name: team-edit
-  namespace: platform
-subjects:
-  - kind: Group
-    name: "shopos:team-platform"
-    apiGroup: rbac.authorization.k8s.io
-roleRef:
-  apiGroup: rbac.authorization.k8s.io
-  kind: ClusterRole
-  name: edit
+metadata: { name: team-platform-edit, namespace: platform }
+roleRef: { apiGroup: rbac.authorization.k8s.io, kind: Role, name: domain-edit }
+subjects: [{ kind: Group, name: "shopos:team-platform", apiGroup: rbac.authorization.k8s.io }]
 ---
-# identity team
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata: { name: domain-edit, namespace: identity }
+rules:
+  - { apiGroups: ["", "apps", "batch"], resources: ["*"], verbs: ["get","list","watch","create","update","patch","delete"] }
+  - { apiGroups: ["networking.k8s.io"], resources: ["*"], verbs: ["get","list","watch"] }
+  - { apiGroups: ["argoproj.io"], resources: ["applications","rollouts","workflows"], verbs: ["get","list","watch","update","patch"] }
+---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
-metadata:
-  name: team-edit
-  namespace: identity
-subjects:
-  - kind: Group
-    name: "shopos:team-identity"
-    apiGroup: rbac.authorization.k8s.io
-roleRef:
-  apiGroup: rbac.authorization.k8s.io
-  kind: ClusterRole
-  name: edit
+metadata: { name: team-identity-edit, namespace: identity }
+roleRef: { apiGroup: rbac.authorization.k8s.io, kind: Role, name: domain-edit }
+subjects: [{ kind: Group, name: "shopos:team-identity", apiGroup: rbac.authorization.k8s.io }]
 ---
-# catalog team
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata: { name: domain-edit, namespace: catalog }
+rules:
+  - { apiGroups: ["", "apps", "batch"], resources: ["*"], verbs: ["get","list","watch","create","update","patch","delete"] }
+  - { apiGroups: ["networking.k8s.io"], resources: ["*"], verbs: ["get","list","watch"] }
+  - { apiGroups: ["argoproj.io"], resources: ["applications","rollouts","workflows"], verbs: ["get","list","watch","update","patch"] }
+---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
-metadata:
-  name: team-edit
-  namespace: catalog
-subjects:
-  - kind: Group
-    name: "shopos:team-catalog"
-    apiGroup: rbac.authorization.k8s.io
-roleRef:
-  apiGroup: rbac.authorization.k8s.io
-  kind: ClusterRole
-  name: edit
+metadata: { name: team-catalog-edit, namespace: catalog }
+roleRef: { apiGroup: rbac.authorization.k8s.io, kind: Role, name: domain-edit }
+subjects: [{ kind: Group, name: "shopos:team-catalog", apiGroup: rbac.authorization.k8s.io }]
 ---
-# commerce team
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata: { name: domain-edit, namespace: commerce }
+rules:
+  - { apiGroups: ["", "apps", "batch"], resources: ["*"], verbs: ["get","list","watch","create","update","patch","delete"] }
+  - { apiGroups: ["networking.k8s.io"], resources: ["*"], verbs: ["get","list","watch"] }
+  - { apiGroups: ["argoproj.io"], resources: ["applications","rollouts","workflows"], verbs: ["get","list","watch","update","patch"] }
+---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
-metadata:
-  name: team-edit
-  namespace: commerce
-subjects:
-  - kind: Group
-    name: "shopos:team-commerce"
-    apiGroup: rbac.authorization.k8s.io
-roleRef:
-  apiGroup: rbac.authorization.k8s.io
-  kind: ClusterRole
-  name: edit
+metadata: { name: team-commerce-edit, namespace: commerce }
+roleRef: { apiGroup: rbac.authorization.k8s.io, kind: Role, name: domain-edit }
+subjects: [{ kind: Group, name: "shopos:team-commerce", apiGroup: rbac.authorization.k8s.io }]
 ---
-# supply-chain team
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata: { name: domain-edit, namespace: supply-chain }
+rules:
+  - { apiGroups: ["", "apps", "batch"], resources: ["*"], verbs: ["get","list","watch","create","update","patch","delete"] }
+  - { apiGroups: ["networking.k8s.io"], resources: ["*"], verbs: ["get","list","watch"] }
+  - { apiGroups: ["argoproj.io"], resources: ["applications","rollouts","workflows"], verbs: ["get","list","watch","update","patch"] }
+---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
-metadata:
-  name: team-edit
-  namespace: supply-chain
-subjects:
-  - kind: Group
-    name: "shopos:team-supply-chain"
-    apiGroup: rbac.authorization.k8s.io
-roleRef:
-  apiGroup: rbac.authorization.k8s.io
-  kind: ClusterRole
-  name: edit
+metadata: { name: team-supply-chain-edit, namespace: supply-chain }
+roleRef: { apiGroup: rbac.authorization.k8s.io, kind: Role, name: domain-edit }
+subjects: [{ kind: Group, name: "shopos:team-supply-chain", apiGroup: rbac.authorization.k8s.io }]
 ---
-# financial team
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata: { name: domain-edit, namespace: financial }
+rules:
+  - { apiGroups: ["", "apps", "batch"], resources: ["*"], verbs: ["get","list","watch","create","update","patch","delete"] }
+  - { apiGroups: ["networking.k8s.io"], resources: ["*"], verbs: ["get","list","watch"] }
+  - { apiGroups: ["argoproj.io"], resources: ["applications","rollouts","workflows"], verbs: ["get","list","watch","update","patch"] }
+---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
-metadata:
-  name: team-edit
-  namespace: financial
-subjects:
-  - kind: Group
-    name: "shopos:team-financial"
-    apiGroup: rbac.authorization.k8s.io
-roleRef:
-  apiGroup: rbac.authorization.k8s.io
-  kind: ClusterRole
-  name: edit
+metadata: { name: team-financial-edit, namespace: financial }
+roleRef: { apiGroup: rbac.authorization.k8s.io, kind: Role, name: domain-edit }
+subjects: [{ kind: Group, name: "shopos:team-financial", apiGroup: rbac.authorization.k8s.io }]
 ---
-# customer-experience team
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata: { name: domain-edit, namespace: customer-experience }
+rules:
+  - { apiGroups: ["", "apps", "batch"], resources: ["*"], verbs: ["get","list","watch","create","update","patch","delete"] }
+  - { apiGroups: ["networking.k8s.io"], resources: ["*"], verbs: ["get","list","watch"] }
+  - { apiGroups: ["argoproj.io"], resources: ["applications","rollouts","workflows"], verbs: ["get","list","watch","update","patch"] }
+---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
-metadata:
-  name: team-edit
-  namespace: customer-experience
-subjects:
-  - kind: Group
-    name: "shopos:team-customer-experience"
-    apiGroup: rbac.authorization.k8s.io
-roleRef:
-  apiGroup: rbac.authorization.k8s.io
-  kind: ClusterRole
-  name: edit
+metadata: { name: team-cx-edit, namespace: customer-experience }
+roleRef: { apiGroup: rbac.authorization.k8s.io, kind: Role, name: domain-edit }
+subjects: [{ kind: Group, name: "shopos:team-cx", apiGroup: rbac.authorization.k8s.io }]
 ---
-# communications team
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata: { name: domain-edit, namespace: communications }
+rules:
+  - { apiGroups: ["", "apps", "batch"], resources: ["*"], verbs: ["get","list","watch","create","update","patch","delete"] }
+  - { apiGroups: ["networking.k8s.io"], resources: ["*"], verbs: ["get","list","watch"] }
+  - { apiGroups: ["argoproj.io"], resources: ["applications","rollouts","workflows"], verbs: ["get","list","watch","update","patch"] }
+---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
-metadata:
-  name: team-edit
-  namespace: communications
-subjects:
-  - kind: Group
-    name: "shopos:team-communications"
-    apiGroup: rbac.authorization.k8s.io
-roleRef:
-  apiGroup: rbac.authorization.k8s.io
-  kind: ClusterRole
-  name: edit
+metadata: { name: team-communications-edit, namespace: communications }
+roleRef: { apiGroup: rbac.authorization.k8s.io, kind: Role, name: domain-edit }
+subjects: [{ kind: Group, name: "shopos:team-communications", apiGroup: rbac.authorization.k8s.io }]
 ---
-# content team
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata: { name: domain-edit, namespace: content }
+rules:
+  - { apiGroups: ["", "apps", "batch"], resources: ["*"], verbs: ["get","list","watch","create","update","patch","delete"] }
+  - { apiGroups: ["networking.k8s.io"], resources: ["*"], verbs: ["get","list","watch"] }
+  - { apiGroups: ["argoproj.io"], resources: ["applications","rollouts","workflows"], verbs: ["get","list","watch","update","patch"] }
+---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
-metadata:
-  name: team-edit
-  namespace: content
-subjects:
-  - kind: Group
-    name: "shopos:team-content"
-    apiGroup: rbac.authorization.k8s.io
-roleRef:
-  apiGroup: rbac.authorization.k8s.io
-  kind: ClusterRole
-  name: edit
+metadata: { name: team-content-edit, namespace: content }
+roleRef: { apiGroup: rbac.authorization.k8s.io, kind: Role, name: domain-edit }
+subjects: [{ kind: Group, name: "shopos:team-content", apiGroup: rbac.authorization.k8s.io }]
 ---
-# analytics-ai team
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata: { name: domain-edit, namespace: analytics-ai }
+rules:
+  - { apiGroups: ["", "apps", "batch"], resources: ["*"], verbs: ["get","list","watch","create","update","patch","delete"] }
+  - { apiGroups: ["networking.k8s.io"], resources: ["*"], verbs: ["get","list","watch"] }
+  - { apiGroups: ["argoproj.io"], resources: ["applications","rollouts","workflows"], verbs: ["get","list","watch","update","patch"] }
+---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
-metadata:
-  name: team-edit
-  namespace: analytics-ai
-subjects:
-  - kind: Group
-    name: "shopos:team-analytics-ai"
-    apiGroup: rbac.authorization.k8s.io
-roleRef:
-  apiGroup: rbac.authorization.k8s.io
-  kind: ClusterRole
-  name: edit
+metadata: { name: team-analytics-ai-edit, namespace: analytics-ai }
+roleRef: { apiGroup: rbac.authorization.k8s.io, kind: Role, name: domain-edit }
+subjects: [{ kind: Group, name: "shopos:team-analytics-ai", apiGroup: rbac.authorization.k8s.io }]
 ---
-# b2b team
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata: { name: domain-edit, namespace: b2b }
+rules:
+  - { apiGroups: ["", "apps", "batch"], resources: ["*"], verbs: ["get","list","watch","create","update","patch","delete"] }
+  - { apiGroups: ["networking.k8s.io"], resources: ["*"], verbs: ["get","list","watch"] }
+  - { apiGroups: ["argoproj.io"], resources: ["applications","rollouts","workflows"], verbs: ["get","list","watch","update","patch"] }
+---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
-metadata:
-  name: team-edit
-  namespace: b2b
-subjects:
-  - kind: Group
-    name: "shopos:team-b2b"
-    apiGroup: rbac.authorization.k8s.io
-roleRef:
-  apiGroup: rbac.authorization.k8s.io
-  kind: ClusterRole
-  name: edit
+metadata: { name: team-b2b-edit, namespace: b2b }
+roleRef: { apiGroup: rbac.authorization.k8s.io, kind: Role, name: domain-edit }
+subjects: [{ kind: Group, name: "shopos:team-b2b", apiGroup: rbac.authorization.k8s.io }]
 ---
-# integrations team
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata: { name: domain-edit, namespace: integrations }
+rules:
+  - { apiGroups: ["", "apps", "batch"], resources: ["*"], verbs: ["get","list","watch","create","update","patch","delete"] }
+  - { apiGroups: ["networking.k8s.io"], resources: ["*"], verbs: ["get","list","watch"] }
+  - { apiGroups: ["argoproj.io"], resources: ["applications","rollouts","workflows"], verbs: ["get","list","watch","update","patch"] }
+---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
-metadata:
-  name: team-edit
-  namespace: integrations
-subjects:
-  - kind: Group
-    name: "shopos:team-integrations"
-    apiGroup: rbac.authorization.k8s.io
-roleRef:
-  apiGroup: rbac.authorization.k8s.io
-  kind: ClusterRole
-  name: edit
+metadata: { name: team-integrations-edit, namespace: integrations }
+roleRef: { apiGroup: rbac.authorization.k8s.io, kind: Role, name: domain-edit }
+subjects: [{ kind: Group, name: "shopos:team-integrations", apiGroup: rbac.authorization.k8s.io }]
 ---
-# affiliate team
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata: { name: domain-edit, namespace: affiliate }
+rules:
+  - { apiGroups: ["", "apps", "batch"], resources: ["*"], verbs: ["get","list","watch","create","update","patch","delete"] }
+  - { apiGroups: ["networking.k8s.io"], resources: ["*"], verbs: ["get","list","watch"] }
+  - { apiGroups: ["argoproj.io"], resources: ["applications","rollouts","workflows"], verbs: ["get","list","watch","update","patch"] }
+---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
-metadata:
-  name: team-edit
-  namespace: affiliate
-subjects:
-  - kind: Group
-    name: "shopos:team-affiliate"
-    apiGroup: rbac.authorization.k8s.io
-roleRef:
-  apiGroup: rbac.authorization.k8s.io
-  kind: ClusterRole
-  name: edit
+metadata: { name: team-affiliate-edit, namespace: affiliate }
+roleRef: { apiGroup: rbac.authorization.k8s.io, kind: Role, name: domain-edit }
+subjects: [{ kind: Group, name: "shopos:team-affiliate", apiGroup: rbac.authorization.k8s.io }]
 ---
-# marketplace team
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata: { name: domain-edit, namespace: marketplace }
+rules:
+  - { apiGroups: ["", "apps", "batch"], resources: ["*"], verbs: ["get","list","watch","create","update","patch","delete"] }
+  - { apiGroups: ["networking.k8s.io"], resources: ["*"], verbs: ["get","list","watch"] }
+  - { apiGroups: ["argoproj.io"], resources: ["applications","rollouts","workflows"], verbs: ["get","list","watch","update","patch"] }
+---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
-metadata:
-  name: team-edit
-  namespace: marketplace
-subjects:
-  - kind: Group
-    name: "shopos:team-marketplace"
-    apiGroup: rbac.authorization.k8s.io
-roleRef:
-  apiGroup: rbac.authorization.k8s.io
-  kind: ClusterRole
-  name: edit
+metadata: { name: team-marketplace-edit, namespace: marketplace }
+roleRef: { apiGroup: rbac.authorization.k8s.io, kind: Role, name: domain-edit }
+subjects: [{ kind: Group, name: "shopos:team-marketplace", apiGroup: rbac.authorization.k8s.io }]
 ---
-# gamification team
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata: { name: domain-edit, namespace: gamification }
+rules:
+  - { apiGroups: ["", "apps", "batch"], resources: ["*"], verbs: ["get","list","watch","create","update","patch","delete"] }
+  - { apiGroups: ["networking.k8s.io"], resources: ["*"], verbs: ["get","list","watch"] }
+  - { apiGroups: ["argoproj.io"], resources: ["applications","rollouts","workflows"], verbs: ["get","list","watch","update","patch"] }
+---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
-metadata:
-  name: team-edit
-  namespace: gamification
-subjects:
-  - kind: Group
-    name: "shopos:team-gamification"
-    apiGroup: rbac.authorization.k8s.io
-roleRef:
-  apiGroup: rbac.authorization.k8s.io
-  kind: ClusterRole
-  name: edit
+metadata: { name: team-gamification-edit, namespace: gamification }
+roleRef: { apiGroup: rbac.authorization.k8s.io, kind: Role, name: domain-edit }
+subjects: [{ kind: Group, name: "shopos:team-gamification", apiGroup: rbac.authorization.k8s.io }]
 ---
-# developer-platform team
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata: { name: domain-edit, namespace: developer-platform }
+rules:
+  - { apiGroups: ["", "apps", "batch"], resources: ["*"], verbs: ["get","list","watch","create","update","patch","delete"] }
+  - { apiGroups: ["networking.k8s.io"], resources: ["*"], verbs: ["get","list","watch"] }
+  - { apiGroups: ["argoproj.io"], resources: ["applications","rollouts","workflows"], verbs: ["get","list","watch","update","patch"] }
+---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
-metadata:
-  name: team-edit
-  namespace: developer-platform
-subjects:
-  - kind: Group
-    name: "shopos:team-developer-platform"
-    apiGroup: rbac.authorization.k8s.io
-roleRef:
-  apiGroup: rbac.authorization.k8s.io
-  kind: ClusterRole
-  name: edit
+metadata: { name: team-developer-platform-edit, namespace: developer-platform }
+roleRef: { apiGroup: rbac.authorization.k8s.io, kind: Role, name: domain-edit }
+subjects: [{ kind: Group, name: "shopos:team-developer-platform", apiGroup: rbac.authorization.k8s.io }]
 ---
-# compliance team
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata: { name: domain-edit, namespace: compliance }
+rules:
+  - { apiGroups: ["", "apps", "batch"], resources: ["*"], verbs: ["get","list","watch","create","update","patch","delete"] }
+  - { apiGroups: ["networking.k8s.io"], resources: ["*"], verbs: ["get","list","watch"] }
+  - { apiGroups: ["argoproj.io"], resources: ["applications","rollouts","workflows"], verbs: ["get","list","watch","update","patch"] }
+---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
-metadata:
-  name: team-edit
-  namespace: compliance
-subjects:
-  - kind: Group
-    name: "shopos:team-compliance"
-    apiGroup: rbac.authorization.k8s.io
-roleRef:
-  apiGroup: rbac.authorization.k8s.io
-  kind: ClusterRole
-  name: edit
+metadata: { name: team-compliance-edit, namespace: compliance }
+roleRef: { apiGroup: rbac.authorization.k8s.io, kind: Role, name: domain-edit }
+subjects: [{ kind: Group, name: "shopos:team-compliance", apiGroup: rbac.authorization.k8s.io }]
 ---
-# sustainability team
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata: { name: domain-edit, namespace: sustainability }
+rules:
+  - { apiGroups: ["", "apps", "batch"], resources: ["*"], verbs: ["get","list","watch","create","update","patch","delete"] }
+  - { apiGroups: ["networking.k8s.io"], resources: ["*"], verbs: ["get","list","watch"] }
+  - { apiGroups: ["argoproj.io"], resources: ["applications","rollouts","workflows"], verbs: ["get","list","watch","update","patch"] }
+---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
-metadata:
-  name: team-edit
-  namespace: sustainability
-subjects:
-  - kind: Group
-    name: "shopos:team-sustainability"
-    apiGroup: rbac.authorization.k8s.io
-roleRef:
-  apiGroup: rbac.authorization.k8s.io
-  kind: ClusterRole
-  name: edit
+metadata: { name: team-sustainability-edit, namespace: sustainability }
+roleRef: { apiGroup: rbac.authorization.k8s.io, kind: Role, name: domain-edit }
+subjects: [{ kind: Group, name: "shopos:team-sustainability", apiGroup: rbac.authorization.k8s.io }]
 ---
-# web team
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata: { name: domain-edit, namespace: events-ticketing }
+rules:
+  - { apiGroups: ["", "apps", "batch"], resources: ["*"], verbs: ["get","list","watch","create","update","patch","delete"] }
+  - { apiGroups: ["networking.k8s.io"], resources: ["*"], verbs: ["get","list","watch"] }
+  - { apiGroups: ["argoproj.io"], resources: ["applications","rollouts","workflows"], verbs: ["get","list","watch","update","patch"] }
+---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
-metadata:
-  name: team-edit
-  namespace: shopos-web
-subjects:
-  - kind: Group
-    name: "shopos:team-web"
-    apiGroup: rbac.authorization.k8s.io
-roleRef:
-  apiGroup: rbac.authorization.k8s.io
-  kind: ClusterRole
-  name: edit
+metadata: { name: team-events-ticketing-edit, namespace: events-ticketing }
+roleRef: { apiGroup: rbac.authorization.k8s.io, kind: Role, name: domain-edit }
+subjects: [{ kind: Group, name: "shopos:team-events-ticketing", apiGroup: rbac.authorization.k8s.io }]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata: { name: domain-edit, namespace: auction }
+rules:
+  - { apiGroups: ["", "apps", "batch"], resources: ["*"], verbs: ["get","list","watch","create","update","patch","delete"] }
+  - { apiGroups: ["networking.k8s.io"], resources: ["*"], verbs: ["get","list","watch"] }
+  - { apiGroups: ["argoproj.io"], resources: ["applications","rollouts","workflows"], verbs: ["get","list","watch","update","patch"] }
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata: { name: team-auction-edit, namespace: auction }
+roleRef: { apiGroup: rbac.authorization.k8s.io, kind: Role, name: domain-edit }
+subjects: [{ kind: Group, name: "shopos:team-auction", apiGroup: rbac.authorization.k8s.io }]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata: { name: domain-edit, namespace: rental }
+rules:
+  - { apiGroups: ["", "apps", "batch"], resources: ["*"], verbs: ["get","list","watch","create","update","patch","delete"] }
+  - { apiGroups: ["networking.k8s.io"], resources: ["*"], verbs: ["get","list","watch"] }
+  - { apiGroups: ["argoproj.io"], resources: ["applications","rollouts","workflows"], verbs: ["get","list","watch","update","patch"] }
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata: { name: team-rental-edit, namespace: rental }
+roleRef: { apiGroup: rbac.authorization.k8s.io, kind: Role, name: domain-edit }
+subjects: [{ kind: Group, name: "shopos:team-rental", apiGroup: rbac.authorization.k8s.io }]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata: { name: domain-edit, namespace: shopos-web }
+rules:
+  - { apiGroups: ["", "apps", "batch"], resources: ["*"], verbs: ["get","list","watch","create","update","patch","delete"] }
+  - { apiGroups: ["networking.k8s.io"], resources: ["*"], verbs: ["get","list","watch"] }
+  - { apiGroups: ["argoproj.io"], resources: ["applications","rollouts","workflows"], verbs: ["get","list","watch","update","patch"] }
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata: { name: team-web-edit, namespace: shopos-web }
+roleRef: { apiGroup: rbac.authorization.k8s.io, kind: Role, name: domain-edit }
+subjects: [{ kind: Group, name: "shopos:team-web", apiGroup: rbac.authorization.k8s.io }]

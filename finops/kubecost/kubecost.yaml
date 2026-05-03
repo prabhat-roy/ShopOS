@@ -1,0 +1,24 @@
+# Kubecost — multi-cluster cost allocation + idle resource recs. Complements OpenCost.
+apiVersion: helm.cattle.io/v1
+kind: HelmChart
+metadata: { name: kubecost, namespace: monitoring }
+spec:
+  repo: https://kubecost.github.io/cost-analyzer/
+  chart: cost-analyzer
+  version: 2.4.1
+  targetNamespace: monitoring
+  valuesContent: |-
+    kubecostFrontend: { image: gcr.io/kubecost1/frontend, resources: { requests: { cpu: 100m, memory: 256Mi } } }
+    kubecostModel:    { image: gcr.io/kubecost1/cost-model, resources: { requests: { cpu: 200m, memory: 1Gi } } }
+    persistentVolume: { enabled: true, size: 32Gi, storageClass: fast-ssd }
+    prometheus: { server: { enabled: false } }   # use existing Prometheus
+    global:
+      prometheus:
+        enabled: false
+        fqdn: http://prometheus-server.monitoring.svc:80
+      grafana:
+        enabled: false
+        proxy: false
+        domainName: grafana.monitoring.svc
+    networkCosts: { enabled: true }
+    forecasting: { enabled: true }

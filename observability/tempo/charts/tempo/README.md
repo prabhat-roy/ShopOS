@@ -1,4 +1,4 @@
-﻿# tempo
+# tempo
 
 ![Version: 1.24.4](https://img.shields.io/badge/Version-1.24.4-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: 2.9.0](https://img.shields.io/badge/AppVersion-2.9.0-informational?style=flat-square)
 

@@ -1,4 +1,4 @@
-﻿# marketplace-seller-service
+# marketplace-seller-service
 
 > Manages marketplace seller onboarding, product listing approvals, and commission tracking.
 
@@ -71,14 +71,14 @@ graph TD
 ## Dependencies
 
 Upstream (calls this service)
-- `partner-bff` â€” seller portal UI
-- `admin-portal` â€” admin review and listing approval
+- `partner-bff` — seller portal UI
+- `admin-portal` — admin review and listing approval
 
 Downstream (this service calls)
-- `organization-service` â€” links seller to a B2B organization
-- `product-catalog-service` â€” validates product references in listings
-- `kyc-aml-service` â€” performs identity and compliance checks during onboarding
-- `payout-service` â€” submits commission statements for payout
+- `organization-service` — links seller to a B2B organization
+- `product-catalog-service` — validates product references in listings
+- `kyc-aml-service` — performs identity and compliance checks during onboarding
+- `payout-service` — submits commission statements for payout
 
 ## Environment Variables
 
@@ -89,7 +89,7 @@ Downstream (this service calls)
 | `DB_PORT` | `5432` | PostgreSQL port |
 | `DB_NAME` | `marketplace_seller_db` | Database name |
 | `DB_USER` | `seller_user` | Database username |
-| `DB_PASSWORD` | â€” | Database password (required) |
+| `DB_PASSWORD` | — | Database password (required) |
 | `KAFKA_BOOTSTRAP_SERVERS` | `localhost:9092` | Kafka broker addresses |
 | `ORGANIZATION_SERVICE_ADDR` | `organization-service:50160` | Address of organization-service |
 | `CATALOG_SERVICE_ADDR` | `product-catalog-service:50070` | Address of product-catalog-service |
@@ -106,6 +106,6 @@ docker-compose up marketplace-seller-service
 
 ## Health Check
 
-`GET /healthz` â†’ `{"status":"ok"}`
+`GET /healthz` → `{"status":"ok"}`
 
-gRPC health: `grpc.health.v1.Health/Check` â†’ `SERVING`
+gRPC health: `grpc.health.v1.Health/Check` → `SERVING`

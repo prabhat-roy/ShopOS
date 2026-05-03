@@ -1,4 +1,4 @@
-﻿# return-refund-service
+# return-refund-service
 
 > Processes Return Merchandise Authorisations (RMA), coordinates refund initiation, and triggers restocking of returned goods.
 
@@ -68,14 +68,14 @@ Proto file: `proto/commerce/return_refund.proto`
 ## Dependencies
 
 Upstream (callers)
-- `web-bff` / `mobile-bff` â€” customer return initiation
-- `admin-portal` â€” warehouse and CS agent processing
+- `web-bff` / `mobile-bff` — customer return initiation
+- `admin-portal` — warehouse and CS agent processing
 
 Downstream (called by this service)
-- `order-service` â€” update order status to `return_requested` / `returned`
-- `payment-service` â€” issue refund to original payment method
-- `shipping-service` â€” generate prepaid return labels
-- `inventory-service` (via Kafka `commerce.return.completed`) â€” restock returned items
+- `order-service` — update order status to `return_requested` / `returned`
+- `payment-service` — issue refund to original payment method
+- `shipping-service` — generate prepaid return labels
+- `inventory-service` (via Kafka `commerce.return.completed`) — restock returned items
 
 ## Environment Variables
 
@@ -104,6 +104,6 @@ docker-compose up return-refund-service
 
 ## Health Check
 
-`GET /healthz` â†’ `{"status":"ok"}`
+`GET /healthz` → `{"status":"ok"}`
 
-gRPC health: `grpc.health.v1.Health/Check` â†’ `SERVING`
+gRPC health: `grpc.health.v1.Health/Check` → `SERVING`

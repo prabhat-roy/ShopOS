@@ -1,4 +1,4 @@
-﻿# Chaos Engineering â€” ShopOS
+# Chaos Engineering — ShopOS
 
 Chaos experiments that validate system resilience, test failure modes, and verify recovery
 procedures. ShopOS uses two complementary frameworks: Chaos Mesh (Kubernetes-native) and
@@ -10,13 +10,13 @@ LitmusChaos (experiment marketplace).
 
 ```
 chaos/
-â”œâ”€â”€ chaos-mesh/
-â”‚   â”œâ”€â”€ experiments/            â† 13 PodChaos / NetworkChaos / StressChaos CRDs
-â”‚   â”œâ”€â”€ workflows/              â† 2 ChaosWorkflow orchestrating multiple experiments
-â”‚   â””â”€â”€ schedules/              â† 1 GameDay Schedule (monthly automated game day)
-â””â”€â”€ litmus/
-    â”œâ”€â”€ experiments/            â† 5 ChaosEngine manifests
-    â””â”€â”€ workflows/              â† 2 Argo Workflow-based LitmusChaos runs
+├── chaos-mesh/
+│   ├── experiments/            ← 13 PodChaos / NetworkChaos / StressChaos CRDs
+│   ├── workflows/              ← 2 ChaosWorkflow orchestrating multiple experiments
+│   └── schedules/              ← 1 GameDay Schedule (monthly automated game day)
+└── litmus/
+    ├── experiments/            ← 5 ChaosEngine manifests
+    └── workflows/              ← 2 Argo Workflow-based LitmusChaos runs
 ```
 
 ---
@@ -109,4 +109,4 @@ kubectl port-forward svc/litmusportal-frontend-service 9091:9091 -n litmus
 - [Chaos Mesh Documentation](https://chaos-mesh.org/docs/)
 - [LitmusChaos Documentation](https://litmuschaos.io/docs)
 - [SLO definitions](../observability/slo/)
-- [Runbooks â€” incident response](../docs/runbooks/incident-response.md)
+- [Runbooks — incident response](../docs/runbooks/incident-response.md)

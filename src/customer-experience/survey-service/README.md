@@ -1,4 +1,4 @@
-﻿# survey-service
+# survey-service
 
 > NPS surveys, feedback forms, and structured response collection with analytics.
 
@@ -35,7 +35,7 @@ graph LR
 - Distribute surveys via triggered Kafka events or manual invitations
 - Collect and persist responses with user attribution (optional anonymous mode)
 - Compute NPS score, response rate, and per-question aggregate statistics
-- Support survey versioning â€” keep historical responses linked to the correct version
+- Support survey versioning — keep historical responses linked to the correct version
 - Allow responses to be linked to order IDs or product IDs for contextual analysis
 - Enforce one-response-per-user-per-survey rules
 
@@ -65,12 +65,12 @@ gRPC service: `SurveyService` (port 50129)
 ## Dependencies
 
 Upstream (callers)
-- `api-gateway` â€” exposes survey submission endpoint to customers
-- `admin-portal` â€” survey creation and results dashboard
+- `api-gateway` — exposes survey submission endpoint to customers
+- `admin-portal` — survey creation and results dashboard
 
 Downstream (calls)
-- `notification-orchestrator` / Kafka â€” sends survey invitation emails
-- `order-service` â€” links survey responses to specific orders
+- `notification-orchestrator` / Kafka — sends survey invitation emails
+- `order-service` — links survey responses to specific orders
 
 ## Environment Variables
 
@@ -93,4 +93,4 @@ docker-compose up survey-service
 
 ## Health Check
 
-`GET /healthz` â†’ `{"status":"ok"}`
+`GET /healthz` → `{"status":"ok"}`

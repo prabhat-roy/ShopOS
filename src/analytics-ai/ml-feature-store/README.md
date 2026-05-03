@@ -1,22 +1,22 @@
-﻿# ml-feature-store
+# ml-feature-store
 
 > Centralised ML feature registry with online (low-latency) and offline (batch) feature serving.
 
 ## Overview
 
-The ml-feature-store is the single source of truth for all machine learning features across the ShopOS AI layer. It maintains a registry of named feature definitions and serves pre-computed feature values both online (sub-millisecond, Redis-backed) for real-time inference and offline (batch, Postgres-backed) for model training pipelines. All ML services â€” recommendation, price optimisation, fraud detection, personalisation â€” retrieve features through this service rather than computing them independently.
+The ml-feature-store is the single source of truth for all machine learning features across the ShopOS AI layer. It maintains a registry of named feature definitions and serves pre-computed feature values both online (sub-millisecond, Redis-backed) for real-time inference and offline (batch, Postgres-backed) for model training pipelines. All ML services — recommendation, price optimisation, fraud detection, personalisation — retrieve features through this service rather than computing them independently.
 
 ## Architecture
 
 ```mermaid
 graph LR
     subgraph Offline["Offline Path"]
-        DP["data-pipeline-service\n(Kafka consumer)"] -->|Batch feature writes| PG["PostgreSQL\n(feature_values â€” offline)"]
+        DP["data-pipeline-service\n(Kafka consumer)"] -->|Batch feature writes| PG["PostgreSQL\n(feature_values — offline)"]
         Training["Model Training Jobs"] -->|Bulk feature read| PG
     end
 
     subgraph Online["Online Path"]
-        DP2["data-pipeline-service"] -->|Real-time feature push| Redis["Redis\n(feature cache â€” online)"]
+        DP2["data-pipeline-service"] -->|Real-time feature push| Redis["Redis\n(feature cache — online)"]
         RS["recommendation-service\n:50150"] -->|GetFeatures low-latency| MFS["ml-feature-store\n:50152"]
         POS["price-optimization-service\n:50151"] -->|GetFeatures| MFS
         FD["fraud-detection-service\n:50091"] -->|GetFeatures| MFS
@@ -45,7 +45,7 @@ graph LR
 - Serve offline feature snapshots from PostgreSQL for training dataset construction
 - Accept feature write calls from data-pipeline-service and other producers
 - Support point-in-time correct feature retrieval for reproducible training
-- Enforce feature access scopes â€” services only read features they are registered to consume
+- Enforce feature access scopes — services only read features they are registered to consume
 - Track feature freshness and expose staleness metrics
 - Support feature backfill jobs for new feature definitions
 
@@ -67,7 +67,7 @@ service MLFeatureStore {
 
 | Topic | Role |
 |---|---|
-| `analytics-ai.features.updated` | Produced â€” emitted when a feature group is refreshed |
+| `analytics-ai.features.updated` | Produced — emitted when a feature group is refreshed |
 
 ## Dependencies
 
@@ -82,7 +82,7 @@ Downstream: recommendation-service, price-optimization-service, fraud-detection-
 | `GRPC_PORT` | `50152` | gRPC server port |
 | `REDIS_URL` | `redis://redis:6379` | Redis connection URL for online store |
 | `REDIS_FEATURE_TTL_SECONDS` | `3600` | Default online feature TTL |
-| `POSTGRES_DSN` | â€” | PostgreSQL connection string |
+| `POSTGRES_DSN` | — | PostgreSQL connection string |
 | `KAFKA_BROKERS` | `kafka:9092` | Kafka broker addresses |
 | `ONLINE_READ_TIMEOUT_MS` | `10` | Max latency for online feature reads |
 | `FEATURE_STALENESS_THRESHOLD_MINUTES` | `30` | Alert threshold for stale features |
@@ -95,4 +95,4 @@ docker-compose up ml-feature-store
 
 ## Health Check
 
-`GET /healthz` â†’ `{"status":"ok"}`
+`GET /healthz` → `{"status":"ok"}`

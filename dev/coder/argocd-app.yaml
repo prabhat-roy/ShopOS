@@ -1,0 +1,37 @@
+# Source: dev/coder/coder.yaml
+# This Application installs the same Helm chart on any K8s cluster (not just k3s).
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: coder
+  namespace: argocd
+  finalizers: [resources-finalizer.argocd.argoproj.io]
+spec:
+  project: shopos-infra
+  source:
+    repoURL: https://helm.coder.com/v2
+    chart: coder
+    targetRevision: '2.16.0'
+    helm:
+      releaseName: coder
+      values: |
+        coder:
+          replicaCount: 2
+          env:
+            - { name: CODER_PG_CONNECTION_URL, valueFrom: { secretKeyRef: { name: coder-db, key: url } } }
+            - { name: CODER_OIDC_ISSUER_URL, value: https://keycloak.shopos.example.com/realms/shopos }
+            - { name: CODER_ACCESS_URL, value: https://coder.shopos.example.com }
+          service: { type: ClusterIP }
+          ingress:
+            enabled: true
+            className: istio
+            host: coder.shopos.example.com
+            tls: { enable: true, secretName: coder-tls }
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: coder
+  syncPolicy:
+    automated: { prune: false, selfHeal: true }
+    syncOptions: [CreateNamespace=true, ServerSideApply=true]
+    retry: { limit: 5, backoff: { duration: 30s, maxDuration: 5m, factor: 2 } }

@@ -1,0 +1,20 @@
+{
+  "consumer": { "name": "notification-orchestrator" },
+  "provider": { "name": "template-service" },
+  "interactions": [
+    {
+      "description": "GET /templates/order-confirmation/v3/en returns rendered subject + body",
+      "providerStates": [{ "name": "order-confirmation v3 template exists in en" }],
+      "request": { "method": "GET", "path": "/v1/templates/order-confirmation/v3/en" },
+      "response": {
+        "status": 200,
+        "body": {
+          "subject_template": "Your order {{order_id}} is confirmed",
+          "body_template_html": "<p>Hi {{first_name}}, thanks for your order!</p>",
+          "body_template_text": "Hi {{first_name}}, thanks for your order!",
+          "variables": ["order_id","first_name","total"]
+        }
+      }
+    }
+  ]
+}

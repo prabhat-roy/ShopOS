@@ -1,0 +1,30 @@
+groups:
+  - name: marketplace.alerts
+    interval: 30s
+    rules:
+      - alert: ListingApprovalBacklog
+        expr: marketplace_listings_pending_approval > 1000
+        for: 1h
+        labels: { severity: warning, team: marketplace }
+        annotations: { summary: ">1000 marketplace listings awaiting approval" }
+
+      - alert: SellerPayoutDelayed
+        expr: time() - seller_payout_last_completed_timestamp_seconds > 172800
+        for: 5m
+        labels: { severity: critical, team: marketplace, page: pagerduty }
+        annotations: { summary: "Seller payouts not run in 48h" }
+
+  - name: b2b.alerts
+    interval: 30s
+    rules:
+      - alert: QuoteResponseTimeHigh
+        expr: histogram_quantile(0.95, sum by (le) (rate(quote_generation_seconds_bucket[5m]))) > 5
+        for: 15m
+        labels: { severity: warning, team: b2b }
+        annotations: { summary: "Quote generation p95 > 5s" }
+
+      - alert: ApprovalWorkflowStuck
+        expr: approval_workflow_pending_seconds > 86400
+        for: 1h
+        labels: { severity: warning, team: b2b }
+        annotations: { summary: "B2B approval workflow stuck >24h" }

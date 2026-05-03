@@ -1,4 +1,4 @@
-﻿# expense-management-service
+# expense-management-service
 
 > Handles employee expense submission, manager approval workflows, and reimbursement processing.
 
@@ -69,12 +69,12 @@ service ExpenseManagementService {
 ## Dependencies
 
 Upstream (callers)
-- `admin-portal` (platform domain) â€” internal employee UI
+- `admin-portal` (platform domain) — internal employee UI
 
 Downstream (calls out to)
-- `media-asset-service` (content domain) â€” receipt image storage
-- `accounting-service` â€” GL journal entry on approval
-- `payout-service` â€” reimbursement disbursement
+- `media-asset-service` (content domain) — receipt image storage
+- `accounting-service` — GL journal entry on approval
+- `payout-service` — reimbursement disbursement
 
 ## Environment Variables
 
@@ -85,7 +85,7 @@ Downstream (calls out to)
 | `DB_PORT` | `5432` | PostgreSQL port |
 | `DB_NAME` | `expense_db` | Database name |
 | `DB_USER` | `expense_svc` | Database user |
-| `DB_PASSWORD` | â€” | Database password (required) |
+| `DB_PASSWORD` | — | Database password (required) |
 | `KAFKA_BROKERS` | `localhost:9092` | Comma-separated Kafka broker list |
 | `MEDIA_ASSET_GRPC_ADDR` | `media-asset-service:50140` | Address of media-asset-service |
 | `ACCOUNTING_GRPC_ADDR` | `accounting-service:50111` | Address of accounting-service |
@@ -102,6 +102,6 @@ docker-compose up expense-management-service
 
 ## Health Check
 
-`GET /healthz` â†’ `{"status":"ok"}`
+`GET /healthz` → `{"status":"ok"}`
 
-gRPC health: `grpc.health.v1.Health/Check` â†’ `SERVING`
+gRPC health: `grpc.health.v1.Health/Check` → `SERVING`

@@ -1,4 +1,4 @@
-﻿# âš ï¸ Deprecation Notice
+# âš ï¸ Deprecation Notice
 
 This chart is deprecated and will no longer receive updates or support.
 

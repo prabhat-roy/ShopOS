@@ -12,7 +12,7 @@ service:
 
 persistence:
   enabled: true
-  storageClass: """"
+  storageClass: ""
   size: 10Gi
   accessMode: ReadWriteOnce
   mountPath: /charts

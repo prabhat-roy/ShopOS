@@ -1,0 +1,26 @@
+# Zilla — protocol mediation for Kafka. Exposes Kafka as REST/MQTT/SSE for browsers/IoT.
+apiVersion: helm.cattle.io/v1
+kind: HelmChart
+metadata: { name: zilla, namespace: streaming }
+spec:
+  repo: https://aklivity.github.io/zilla
+  chart: zilla
+  version: 0.9.78
+  targetNamespace: streaming
+  valuesContent: |-
+    replicaCount: 3
+    config:
+      bindings:
+        kafka_proxy:
+          type: kafka
+          kind: client
+          options: { servers: ["kafka-bootstrap.streaming.svc:9092"] }
+        sse_to_kafka:
+          type: sse-kafka
+          kind: proxy
+          routes:
+            - exit: kafka_proxy
+              with: { topic: analytics.page.viewed }
+        mqtt_to_kafka:
+          type: mqtt-kafka
+          kind: proxy

@@ -1,4 +1,4 @@
-﻿# seo-service
+# seo-service
 
 > Meta tags, canonical URLs, structured data (JSON-LD), and sitemap generation.
 
@@ -48,7 +48,7 @@ graph LR
 | Component | Technology |
 |---|---|
 | Language | Node.js 20 (TypeScript) |
-| Database | None (stateless â€” reads from upstream services) |
+| Database | None (stateless — reads from upstream services) |
 | Protocol | gRPC |
 | Port | 50079 |
 | gRPC Framework | @grpc/grpc-js |
@@ -61,7 +61,7 @@ graph LR
 - Build canonical URLs with configurable base domain and slug patterns
 - Prevent duplicate content by generating correct canonical tags for paginated and filtered pages
 - Serve a list of all canonical URLs to the sitemap-service for XML sitemap generation
-- Respect product status â€” archived products get `<meta name="robots" content="noindex">`
+- Respect product status — archived products get `<meta name="robots" content="noindex">`
 
 ## API / Interface
 
@@ -85,20 +85,20 @@ service SEOService {
 
 ## Kafka Topics
 
-Not applicable â€” seo-service is stateless and gRPC-only.
+Not applicable — seo-service is stateless and gRPC-only.
 
 ## Dependencies
 
 Upstream (calls these):
-- `product-catalog-service` â€” product name, description, images
-- `category-service` â€” `GetCategoryPath` for breadcrumb JSON-LD
-- `brand-service` â€” brand name and logo for Organization schema
-- `pricing-service` â€” current price for `Offer` JSON-LD
-- `inventory-service` â€” availability for `Offer.availability` JSON-LD
+- `product-catalog-service` — product name, description, images
+- `category-service` — `GetCategoryPath` for breadcrumb JSON-LD
+- `brand-service` — brand name and logo for Organization schema
+- `pricing-service` — current price for `Offer` JSON-LD
+- `inventory-service` — availability for `Offer.availability` JSON-LD
 
 Downstream (called by these):
-- `web-bff` â€” injects SEO tags into server-side-rendered HTML
-- `sitemap-service` â€” `ListCanonicalUrls` to build XML sitemaps
+- `web-bff` — injects SEO tags into server-side-rendered HTML
+- `sitemap-service` — `ListCanonicalUrls` to build XML sitemaps
 
 ## Environment Variables
 
@@ -121,6 +121,6 @@ docker-compose up seo-service
 
 ## Health Check
 
-`GET /healthz` â€” `{"status":"ok"}`
+`GET /healthz` — `{"status":"ok"}`
 
 gRPC health protocol: `grpc.health.v1.Health/Check` on port `50079`

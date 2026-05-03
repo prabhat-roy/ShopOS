@@ -1,11 +1,11 @@
-﻿# category-service
+# category-service
 
 > Hierarchical category tree management for product classification.
 
 ## Overview
 
 The category-service maintains the taxonomy tree that organizes all products on the
-platform. It supports an unlimited-depth hierarchy (root â†’ department â†’ category â†’
+platform. It supports an unlimited-depth hierarchy (root → department → category →
 sub-category) using a closure-table pattern in PostgreSQL for efficient ancestor and
 descendant queries. Category slugs are used to build SEO-friendly URL paths, and the
 tree structure is cached for fast storefront navigation rendering.
@@ -92,24 +92,24 @@ service CategoryService {
 
 ## Kafka Topics
 
-Not applicable â€” category-service is gRPC-only.
+Not applicable — category-service is gRPC-only.
 
 ## Dependencies
 
 Upstream (calls these):
-- None â€” category-service has no outbound service calls
+- None — category-service has no outbound service calls
 
 Downstream (called by these):
-- `product-catalog-service` â€” validates category assignment on product create/update
-- `search-service` â€” `ListCategories` for facet indexing
-- `seo-service` â€” `GetCategoryPath` for canonical URL generation
-- `api-gateway` â€” category tree for storefront navigation
+- `product-catalog-service` — validates category assignment on product create/update
+- `search-service` — `ListCategories` for facet indexing
+- `seo-service` — `GetCategoryPath` for canonical URL generation
+- `api-gateway` — category tree for storefront navigation
 
 ## Environment Variables
 
 | Variable | Default | Description |
 |---|---|---|
-| `DATABASE_URL` | â€” | PostgreSQL connection string |
+| `DATABASE_URL` | — | PostgreSQL connection string |
 | `GRPC_PORT` | `50071` | gRPC listening port |
 | `MAX_TREE_DEPTH` | `10` | Maximum allowed category hierarchy depth |
 | `SLUG_SEPARATOR` | `-` | Character used between words in slugs |
@@ -122,6 +122,6 @@ docker-compose up category-service
 
 ## Health Check
 
-`GET /healthz` â€” `{"status":"ok"}`
+`GET /healthz` — `{"status":"ok"}`
 
 gRPC health protocol: `grpc.health.v1.Health/Check` on port `50071`

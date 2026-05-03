@@ -1,4 +1,4 @@
-﻿# Rate Limiter Service
+# Rate Limiter Service
 
 > Sliding-window rate limiting per client, IP, and API key across the platform.
 
@@ -47,15 +47,15 @@ graph LR
 
 ## Kafka Topics
 
-N/A â€” the Rate Limiter Service operates synchronously and does not use Kafka.
+N/A — the Rate Limiter Service operates synchronously and does not use Kafka.
 
 ## Dependencies
 
 Upstream (services this calls):
-- `Redis` â€” atomic counter storage for sliding window state
+- `Redis` — atomic counter storage for sliding window state
 
 Downstream (services that call this):
-- `api-gateway` (platform) â€” pre-request rate limit enforcement
+- `api-gateway` (platform) — pre-request rate limit enforcement
 
 ## Environment Variables
 
@@ -80,4 +80,4 @@ skaffold dev --module=rate-limiter-service
 
 ## Health Check
 
-`GET /healthz` â†’ `{"status":"ok"}`
+`GET /healthz` → `{"status":"ok"}`

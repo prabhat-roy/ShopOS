@@ -1,0 +1,19 @@
+# Kubescape — NSA / CISA / MITRE ATT&CK posture scoring.
+apiVersion: helm.cattle.io/v1
+kind: HelmChart
+metadata: { name: kubescape-operator, namespace: kubescape }
+spec:
+  repo: https://kubescape.github.io/helm-charts/
+  chart: kubescape-operator
+  version: 1.21.0
+  targetNamespace: kubescape
+  valuesContent: |-
+    capabilities:
+      configurationScan: enable
+      relevancy: enable
+      vulnerabilityScan: enable
+      networkPolicyService: enable
+      runtimeDetection: enable
+    nodeAgent:
+      config: { maxLearningPeriod: 24h }
+    storage: { storageClassName: fast-ssd, size: 50Gi }

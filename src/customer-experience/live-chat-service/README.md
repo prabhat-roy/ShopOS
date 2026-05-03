@@ -1,4 +1,4 @@
-﻿# live-chat-service
+# live-chat-service
 
 > Real-time customer-to-agent chat over WebSocket with presence tracking stored in Redis.
 
@@ -16,7 +16,7 @@ sequenceDiagram
     participant R as Redis
     participant A as Agent (Admin Portal)
 
-    C->>GW: HTTP Upgrade â†’ WebSocket
+    C->>GW: HTTP Upgrade → WebSocket
     GW->>LC: Proxy WebSocket connection
     LC->>R: Store connection ID + session metadata
     LC->>R: Publish presence (user online)
@@ -80,12 +80,12 @@ gRPC service: `LiveChatService` (port 50126)
 ## Dependencies
 
 Upstream (callers)
-- `api-gateway` â€” proxies WebSocket upgrades from the storefront
+- `api-gateway` — proxies WebSocket upgrades from the storefront
 
 Downstream (calls)
-- `support-ticket-service` â€” creates a ticket from a chat transcript on escalation
-- `auth-service` â€” validates JWT tokens during WebSocket handshake
-- `user-service` â€” resolves user profile for the session context
+- `support-ticket-service` — creates a ticket from a chat transcript on escalation
+- `auth-service` — validates JWT tokens during WebSocket handshake
+- `user-service` — resolves user profile for the session context
 
 ## Environment Variables
 
@@ -111,4 +111,4 @@ docker-compose up live-chat-service
 
 ## Health Check
 
-`GET /healthz` â†’ `{"status":"ok"}`
+`GET /healthz` → `{"status":"ok"}`

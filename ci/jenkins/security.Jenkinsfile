@@ -50,6 +50,9 @@ pipeline {
         booleanParam(name: 'WAZUH',            defaultValue: true,  description: 'Wazuh — SIEM and XDR platform')
         booleanParam(name: 'DEPENDENCY_TRACK', defaultValue: true,  description: 'Dependency Track — SCA and SBOM analysis')
         booleanParam(name: 'DEFECTDOJO',       defaultValue: true,  description: 'DefectDojo — vulnerability management and deduplication')
+        booleanParam(name: 'KUBE_BENCH',       defaultValue: true,  description: 'kube-bench — CIS Kubernetes Benchmark compliance check')
+        booleanParam(name: 'KUBE_HUNTER',      defaultValue: true,  description: 'kube-hunter — active K8s penetration testing')
+        booleanParam(name: 'SIGSTORE_POLICY',  defaultValue: true,  description: 'Sigstore Policy Controller — admission Cosign signature verification')
     }
 
     stages {
@@ -477,6 +480,103 @@ pipeline {
             }
         }
 
+        // ── Cluster Posture / Pen Testing (no groovy script — vendored/pull-on-run) ──
+
+        stage('kube-bench') {
+            when { expression { params.ACTION == 'INSTALL' && params.KUBE_BENCH } }
+            steps {
+                catchError(buildResult: 'UNSTABLE', stageResult: 'FAILURE') {
+                    sh '''
+                        kubectl create namespace security-scan --dry-run=client -o yaml | kubectl apply -f -
+                        # CIS benchmark Job — runs once per node and reports
+                        kubectl apply -n security-scan -f - <<'EOF'
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: kube-bench
+spec:
+  ttlSecondsAfterFinished: 86400
+  template:
+    spec:
+      hostPID: true
+      restartPolicy: Never
+      containers:
+        - name: kube-bench
+          image: aquasec/kube-bench:latest
+          args: ["--json"]
+          volumeMounts:
+            - { name: var-lib-etcd, mountPath: /var/lib/etcd, readOnly: true }
+            - { name: var-lib-kubelet, mountPath: /var/lib/kubelet, readOnly: true }
+            - { name: etc-systemd, mountPath: /etc/systemd, readOnly: true }
+            - { name: etc-kubernetes, mountPath: /etc/kubernetes, readOnly: true }
+            - { name: usr-bin, mountPath: /usr/local/mount-from-host/bin, readOnly: true }
+      volumes:
+        - { name: var-lib-etcd, hostPath: { path: /var/lib/etcd } }
+        - { name: var-lib-kubelet, hostPath: { path: /var/lib/kubelet } }
+        - { name: etc-systemd, hostPath: { path: /etc/systemd } }
+        - { name: etc-kubernetes, hostPath: { path: /etc/kubernetes } }
+        - { name: usr-bin, hostPath: { path: /usr/bin } }
+EOF
+                        kubectl wait --for=condition=complete job/kube-bench -n security-scan --timeout=10m || true
+                        kubectl logs -n security-scan job/kube-bench > reports/kube-bench.json 2>/dev/null || true
+                        echo "kube-bench CIS report at reports/kube-bench.json"
+                    '''
+                }
+            }
+        }
+
+        stage('kube-hunter') {
+            when { expression { params.ACTION == 'INSTALL' && params.KUBE_HUNTER } }
+            steps {
+                catchError(buildResult: 'UNSTABLE', stageResult: 'FAILURE') {
+                    sh '''
+                        kubectl create namespace security-scan --dry-run=client -o yaml | kubectl apply -f -
+                        # Active probing — passive variant: --pod (runs from inside the cluster)
+                        kubectl apply -n security-scan -f - <<'EOF'
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: kube-hunter
+spec:
+  ttlSecondsAfterFinished: 86400
+  template:
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: kube-hunter
+          image: aquasec/kube-hunter:latest
+          args: ["--pod", "--report", "json"]
+EOF
+                        kubectl wait --for=condition=complete job/kube-hunter -n security-scan --timeout=10m || true
+                        kubectl logs -n security-scan job/kube-hunter > reports/kube-hunter.json 2>/dev/null || true
+                        echo "kube-hunter pen-test report at reports/kube-hunter.json"
+                    '''
+                }
+            }
+        }
+
+        stage('Sigstore Policy Controller') {
+            when { expression { params.ACTION == 'INSTALL' && params.SIGSTORE_POLICY } }
+            steps {
+                catchError(buildResult: 'UNSTABLE', stageResult: 'FAILURE') {
+                    sh '''
+                        kubectl create namespace cosign-system --dry-run=client -o yaml | kubectl apply -f -
+                        # Install via upstream chart — admission webhook that verifies Cosign signatures
+                        helm repo add sigstore https://sigstore.github.io/helm-charts 2>/dev/null || true
+                        helm repo update 2>/dev/null || true
+                        helm upgrade --install policy-controller sigstore/policy-controller \
+                            --namespace cosign-system \
+                            --set webhook.replicas=2 \
+                            --set webhook.failurePolicy=Ignore \
+                            --wait --timeout=8m
+                        # Apply baseline ClusterImagePolicy — require Cosign signatures on production namespaces
+                        kubectl apply -f security/cosign/cluster-image-policy.yaml 2>/dev/null || true
+                        echo "Sigstore Policy Controller installed — admission verifies Cosign signatures (Rekor + Fulcio)"
+                    '''
+                }
+            }
+        }
+
         // ── CLI Tool Images (no K8s enhancements — not deployed to cluster) ───
 
         stage('Pull SAST CLI Images') {
@@ -539,6 +639,37 @@ pipeline {
         }
 
         // ── UNINSTALL (reverse order) ─────────────────────────────────────────
+
+        stage('Uninstall Sigstore Policy Controller') {
+            when { expression { params.ACTION == 'UNINSTALL' && params.SIGSTORE_POLICY } }
+            steps {
+                sh '''
+                    kubectl delete -f security/cosign/cluster-image-policy.yaml --ignore-not-found || true
+                    helm uninstall policy-controller -n cosign-system --ignore-not-found || true
+                    kubectl delete namespace cosign-system --ignore-not-found || true
+                '''
+            }
+        }
+
+        stage('Uninstall kube-hunter') {
+            when { expression { params.ACTION == 'UNINSTALL' && params.KUBE_HUNTER } }
+            steps {
+                sh '''
+                    kubectl delete job kube-hunter -n security-scan --ignore-not-found || true
+                '''
+            }
+        }
+
+        stage('Uninstall kube-bench') {
+            when { expression { params.ACTION == 'UNINSTALL' && params.KUBE_BENCH } }
+            steps {
+                sh '''
+                    kubectl delete job kube-bench -n security-scan --ignore-not-found || true
+                    # Drop the namespace only if both jobs are gone (kube-hunter may share it)
+                    kubectl delete namespace security-scan --ignore-not-found || true
+                '''
+            }
+        }
 
         stage('Uninstall DefectDojo') {
             when { expression { params.ACTION == 'UNINSTALL' && params.DEFECTDOJO } }

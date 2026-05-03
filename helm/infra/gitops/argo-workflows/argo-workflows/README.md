@@ -1,4 +1,4 @@
-﻿# Argo Workflows Chart
+# Argo Workflows Chart
 
 This is a community maintained chart. It is used to set up argo and its needed dependencies through one command. This is used in conjunction with [helm](https://github.com/kubernetes/helm).
 
@@ -27,7 +27,7 @@ helm install my-release argo/argo-workflows --set crds.full=false
 
 Full CRDs are too large to include directly in Helm templates (they would exceed the Kubernetes Secret size limit that Helm uses to store releases). Instead, this chart uses a pre-install/pre-upgrade hook Job that downloads and applies CRDs from this chart's GitHub release tag using `kubectl apply --server-side --force-conflicts`.
 
-This means `helm install` works out of the box with full CRDs â€” no manual steps required. The hook Job requires:
+This means `helm install` works out of the box with full CRDs — no manual steps required. The hook Job requires:
 
 - A `kubectl` image (defaults to `registry.k8s.io/kubectl`)
 - ClusterRole permissions to create/update CRDs (created automatically as hook resources)
@@ -37,7 +37,7 @@ You can customize the kubectl image, image pull secrets, and CRD source URL via 
 
 #### Using Argo CD
 
-Argo CD supports Helm hooks natively by converting them to Argo CD PreSync hooks. The CRD install hook Job will run automatically during Argo CD sync â€” no special configuration is required.
+Argo CD supports Helm hooks natively by converting them to Argo CD PreSync hooks. The CRD install hook Job will run automatically during Argo CD sync — no special configuration is required.
 
 #### Installing CRDs Outside the Chart
 
@@ -285,7 +285,7 @@ Fields to note:
 | controller.logging.level | string | `"info"` | Set the logging level (one of: `debug`, `info`, `warn`, `error`) |
 | controller.metricsConfig.enabled | bool | `false` | Enables prometheus metrics server |
 | controller.metricsConfig.headlessService | bool | `false` | Flag to enable headless service |
-| controller.metricsConfig.honorLabels | bool | `false` | When true, honorLabels preserves the metricâ€™s labels when they collide with the targetâ€™s labels. |
+| controller.metricsConfig.honorLabels | bool | `false` | When true, honorLabels preserves the metric’s labels when they collide with the target’s labels. |
 | controller.metricsConfig.ignoreErrors | bool | `false` | Flag that instructs prometheus to ignore metric emission errors. |
 | controller.metricsConfig.interval | string | `"30s"` | Frequency at which prometheus scrapes metrics |
 | controller.metricsConfig.metricRelabelings | list | `[]` | ServiceMonitor metric relabel configs to apply to samples before ingestion |

@@ -30,16 +30,16 @@ pipelines:
                     arguments:
                       - -c
                       - |
-                        cd infra/terraform/aws/eks
+                        cd infra/terraform/aws/app-k8s
                         terraform init \
                           -backend-config="bucket=shopos-tfstate" \
-                          -backend-config="key=infra/terraform/aws/eks/terraform.tfstate" \
+                          -backend-config="key=infra/terraform/aws/app-k8s/terraform.tfstate" \
                           -backend-config="region=$AWS_DEFAULT_REGION" \
                           -reconfigure
                         terraform plan -out=tfplan
               artifacts:
                 - build:
-                    source: infra/terraform/aws/eks/tfplan
+                    source: infra/terraform/aws/app-k8s/tfplan
                     destination: tfplan/
 
       - terraform-apply:
@@ -55,14 +55,14 @@ pipelines:
                     stage: terraform-plan
                     job: plan
                     source: tfplan/
-                    destination: infra/terraform/aws/eks/
+                    destination: infra/terraform/aws/app-k8s/
                 - exec:
                     command: /bin/sh
                     arguments:
                       - -c
                       - |
                         [ "$TF_ACTION" = "APPLY" ] || { echo "Skipped — set TF_ACTION=APPLY to proceed"; exit 0; }
-                        cd infra/terraform/aws/eks
+                        cd infra/terraform/aws/app-k8s
                         terraform apply -auto-approve tfplan/tfplan
                         curl -sf -X POST "$SLACK_WEBHOOK" \
                           -H 'Content-type: application/json' \
@@ -81,7 +81,7 @@ pipelines:
                       - -c
                       - |
                         [ "$TF_ACTION" = "DESTROY" ] || { echo "Skipped — set TF_ACTION=DESTROY"; exit 0; }
-                        cd infra/terraform/aws/eks
+                        cd infra/terraform/aws/app-k8s
                         terraform destroy -auto-approve
 
   shopos-k8s-infra-gcp:
@@ -110,16 +110,16 @@ pipelines:
                       - |
                         echo "$GCP_SA_KEY" > /tmp/gcp-key.json
                         export GOOGLE_APPLICATION_CREDENTIALS=/tmp/gcp-key.json
-                        cd infra/opentofu/gcp/gke
+                        cd infra/opentofu/gcp/app-k8s
                         terraform init \
                           -backend-config="bucket=shopos-tfstate-gcp" \
-                          -backend-config="prefix=infra/opentofu/gcp/gke" \
+                          -backend-config="prefix=infra/opentofu/gcp/app-k8s" \
                           -reconfigure
                         terraform plan -out=tfplan
                         rm -f /tmp/gcp-key.json
               artifacts:
                 - build:
-                    source: infra/opentofu/gcp/gke/tfplan
+                    source: infra/opentofu/gcp/app-k8s/tfplan
                     destination: tfplan/
 
       - terraform-apply:
@@ -135,7 +135,7 @@ pipelines:
                     stage: terraform-plan
                     job: plan
                     source: tfplan/
-                    destination: infra/opentofu/gcp/gke/
+                    destination: infra/opentofu/gcp/app-k8s/
                 - exec:
                     command: /bin/sh
                     arguments:
@@ -144,7 +144,7 @@ pipelines:
                         [ "$TF_ACTION" = "APPLY" ] || { echo "Skipped"; exit 0; }
                         echo "$GCP_SA_KEY" > /tmp/gcp-key.json
                         export GOOGLE_APPLICATION_CREDENTIALS=/tmp/gcp-key.json
-                        cd infra/opentofu/gcp/gke
+                        cd infra/opentofu/gcp/app-k8s
                         terraform apply -auto-approve tfplan/tfplan
                         rm -f /tmp/gcp-key.json
                         curl -sf -X POST "$SLACK_WEBHOOK" \
@@ -175,17 +175,17 @@ pipelines:
                     arguments:
                       - -c
                       - |
-                        cd infra/opentofu/azure/aks
+                        cd infra/opentofu/azure/app-k8s
                         terraform init \
                           -backend-config="resource_group_name=shopos-tfstate-rg" \
                           -backend-config="storage_account_name=shoposterraform" \
                           -backend-config="container_name=tfstate" \
-                          -backend-config="key=infra/opentofu/azure/aks/terraform.tfstate" \
+                          -backend-config="key=infra/opentofu/azure/app-k8s/terraform.tfstate" \
                           -reconfigure
                         terraform plan -out=tfplan
               artifacts:
                 - build:
-                    source: infra/opentofu/azure/aks/tfplan
+                    source: infra/opentofu/azure/app-k8s/tfplan
                     destination: tfplan/
 
       - terraform-apply:
@@ -201,14 +201,14 @@ pipelines:
                     stage: terraform-plan
                     job: plan
                     source: tfplan/
-                    destination: infra/opentofu/azure/aks/
+                    destination: infra/opentofu/azure/app-k8s/
                 - exec:
                     command: /bin/sh
                     arguments:
                       - -c
                       - |
                         [ "$TF_ACTION" = "APPLY" ] || { echo "Skipped"; exit 0; }
-                        cd infra/opentofu/azure/aks
+                        cd infra/opentofu/azure/app-k8s
                         terraform apply -auto-approve tfplan/tfplan
                         curl -sf -X POST "$SLACK_WEBHOOK" \
                           -H 'Content-type: application/json' \

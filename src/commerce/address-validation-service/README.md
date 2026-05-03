@@ -1,4 +1,4 @@
-﻿# address-validation-service
+# address-validation-service
 
 > Validates and normalises postal addresses to ensure deliverability and consistent address data across the platform.
 
@@ -28,7 +28,7 @@ graph TD
 | HTTP Client | net/http with timeout and retry |
 | Protocol | gRPC (port 50095) |
 | Serialization | Protobuf |
-| Cache | In-process LRU (address hash â†’ result, 1-hour TTL) |
+| Cache | In-process LRU (address hash → result, 1-hour TTL) |
 | Health Check | grpc.health.v1 + HTTP /healthz |
 
 ## Responsibilities
@@ -58,10 +58,10 @@ The address-validation-service does not produce or consume Kafka topics.
 ## Dependencies
 
 Upstream (callers)
-- `checkout-service` â€” validates shipping and billing address before order creation
-- `web-bff` / `mobile-bff` â€” validates addresses saved to customer profiles
-- `user-service` â€” validates address on profile save
-- `shipping-service` â€” validates delivery address for carrier eligibility
+- `checkout-service` — validates shipping and billing address before order creation
+- `web-bff` / `mobile-bff` — validates addresses saved to customer profiles
+- `user-service` — validates address on profile save
+- `shipping-service` — validates delivery address for carrier eligibility
 
 Downstream (called by this service)
 - External address validation provider (SmartyStreets, Google, or Loqate)
@@ -92,6 +92,6 @@ docker-compose up address-validation-service
 
 ## Health Check
 
-`GET /healthz` â†’ `{"status":"ok"}`
+`GET /healthz` → `{"status":"ok"}`
 
-gRPC health: `grpc.health.v1.Health/Check` â†’ `SERVING`
+gRPC health: `grpc.health.v1.Health/Check` → `SERVING`

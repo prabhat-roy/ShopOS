@@ -9,12 +9,11 @@ Every chart is vendored in-repo.
 
 ```
 helm/
-├── services/                       ← 263 per-service charts (one per microservice/frontend)
+├── services/                       ← 303 per-service charts (one per microservice/frontend)
 │   ├── api-gateway/
 │   ├── order-service/
 │   ├── cart-service/
 │   ├── payment-service/
-│   └── ... (259 more)
 │
 └── infra/                          ← Infrastructure tool charts (vendored, zero internet needed)
     ├── databases/                  ← 14 charts
@@ -120,6 +119,32 @@ helm/
         └── toxiproxy/
 ```
 
+### Tools deployed via direct YAML (not yet packaged into helm/infra/)
+
+Configs live under their domain folders and are applied with `kubectl apply -f`:
+
+| Tool | Path |
+|---|---|
+| Karpenter (NodePools) | [`../kubernetes/scaling/karpenter/`](../kubernetes/scaling/karpenter/) |
+| VPA + Goldilocks | [`../kubernetes/scaling/vpa/`](../kubernetes/scaling/vpa/) |
+| Longhorn / Rook-Ceph | [`../storage/`](../storage/) |
+| Cilium L7 NetworkPolicies | [`../security/cilium/`](../security/cilium/) |
+| Sigstore Policy Controller | [`../security/sigstore/`](../security/sigstore/) |
+| Trivy Operator | [`../security/trivy-operator/`](../security/trivy-operator/) |
+| Kubescape | [`../security/kubescape/`](../security/kubescape/) |
+| Cert-manager ClusterIssuers | [`../security/cert-manager/`](../security/cert-manager/) |
+| External Secrets Operator | [`../security/external-secrets/`](../security/external-secrets/) |
+| Teleport | [`../security/teleport/`](../security/teleport/) |
+| Varnish + Caddy + Anubis + ngrok-operator + MetalLB + Kube-VIP | [`../networking/`](../networking/) |
+| Spin / SpinKube | [`../networking/edge/spin/`](../networking/edge/spin/) |
+| Redpanda + Zilla | [`../messaging/`](../messaging/) |
+| Quickwit + Parca + Komodor + Healthchecks + Perses | [`../observability/`](../observability/) |
+| Kubecost | [`../finops/kubecost/`](../finops/kubecost/) |
+| Cachet + Grafana Incident + Grafana OnCall | [`../incident/`](../incident/) |
+| Coder + DevSpace + n8n + Windmill | [`../dev/`](../dev/) |
+| Airbyte + Cube + Metabase + LakeFS + Dgraph + YugabyteDB | [`../data/`](../data/), [`../databases/`](../databases/) |
+| Istio PeerAuthentication / AuthZ / DestinationRules / VirtualServices | [`../networking/istio/`](../networking/istio/) |
+
 ---
 
 ## Service Chart Layout
@@ -210,7 +235,7 @@ helm rollback order-service 2 -n order-service
 ### Deploy All Services (via Make)
 
 ```bash
-make deploy-local          # All 263 services to their own namespaces
+make deploy-local          # All 303 services to their own namespaces
 make deploy-svc SVC=order-service
 make deploy-local TAG=v1.5.0
 ```
@@ -262,6 +287,25 @@ helm/infra/observability/*→ namespace: observability
 - Readiness and liveness probes always point to `/healthz`
 - Prometheus `ServiceMonitor` included (enabled via `metrics.enabled: true`)
 - Non-root user enforced via `securityContext.runAsNonRoot: true`
+
+---
+
+## Adding a new service chart
+
+After scaffolding a new Go service with `bash scripts/bash/scaffold-service.sh`, copy a
+sibling chart as a template:
+
+```bash
+cp -r helm/services/api-gateway helm/services/<new-service>
+sed -i 's/api-gateway/<new-service>/g' helm/services/<new-service>/Chart.yaml \
+       helm/services/<new-service>/values.yaml
+# then add an entry to gitops/argocd/applicationsets/all-services.yaml
+# and       gitops/flux/base/helm-releases.yaml
+```
+
+Charts include HPA, securityContext (runAsNonRoot, readOnlyRootFilesystem,
+drop ALL caps), ServiceAccount, helpers, prometheus.io annotations, and probes
+pointing at `/healthz`.
 
 ---
 

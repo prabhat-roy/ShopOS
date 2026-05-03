@@ -1,4 +1,4 @@
-﻿# loyalty-service
+# loyalty-service
 
 > Manages loyalty points earning, redemption, and tiered membership for ShopOS customers.
 
@@ -76,16 +76,16 @@ Published:
 ## Dependencies
 
 Upstream (callers)
-- `checkout-service` â€” point redemption during checkout
-- `web-bff` / `mobile-bff` â€” balance and history display
-- `admin-portal` â€” manual adjustments
+- `checkout-service` — point redemption during checkout
+- `web-bff` / `mobile-bff` — balance and history display
+- `admin-portal` — manual adjustments
 
-Downstream (Kafka â†’ this service)
-- `order-service` via `commerce.order.fulfilled` â€” triggers point earning
+Downstream (Kafka → this service)
+- `order-service` via `commerce.order.fulfilled` — triggers point earning
 
 This service publishes to:
-- `notification-orchestrator` â€” tier change notifications
-- `analytics-service` â€” loyalty engagement metrics
+- `notification-orchestrator` — tier change notifications
+- `analytics-service` — loyalty engagement metrics
 
 ## Environment Variables
 
@@ -115,6 +115,6 @@ docker-compose up loyalty-service
 
 ## Health Check
 
-`GET /healthz` â†’ `{"status":"ok"}`
+`GET /healthz` → `{"status":"ok"}`
 
-gRPC health: `grpc.health.v1.Health/Check` â†’ `SERVING`
+gRPC health: `grpc.health.v1.Health/Check` → `SERVING`

@@ -1,4 +1,4 @@
-﻿# Cache Warming Service
+# Cache Warming Service
 
 > Pre-populates Redis caches proactively from Kafka domain events to reduce cold-start latency.
 
@@ -29,7 +29,7 @@ sequenceDiagram
 | Language | Go |
 | Database | Redis |
 | Protocol | Kafka (consumer) |
-| Port | â€” |
+| Port | — |
 
 ## Responsibilities
 
@@ -53,14 +53,14 @@ sequenceDiagram
 ## Dependencies
 
 Upstream (services this calls):
-- `Redis` â€” cache write destination
-- `product-catalog-service` (catalog) â€” fetches full product payload for cache population
-- `pricing-service` (catalog) â€” fetches pricing payload
-- `inventory-service` (catalog) â€” fetches stock levels
-- `user-service` (identity) â€” fetches user profile for cache population
+- `Redis` — cache write destination
+- `product-catalog-service` (catalog) — fetches full product payload for cache population
+- `pricing-service` (catalog) — fetches pricing payload
+- `inventory-service` (catalog) — fetches stock levels
+- `user-service` (identity) — fetches user profile for cache population
 
 Downstream (services that call this):
-- None â€” this is a pure consumer/writer service
+- None — this is a pure consumer/writer service
 
 ## Environment Variables
 
@@ -89,4 +89,4 @@ skaffold dev --module=cache-warming-service
 
 ## Health Check
 
-`GET /healthz` â†’ `{"status":"ok"}`
+`GET /healthz` → `{"status":"ok"}`

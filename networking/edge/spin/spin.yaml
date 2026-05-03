@@ -1,0 +1,22 @@
+# Fermyon Spin (WasmCloud-compatible) — runs WebAssembly serverless functions inside K8s.
+# Used for storefront edge personalization (geo-IP greeting, A/B variant selection).
+apiVersion: helm.cattle.io/v1
+kind: HelmChart
+metadata: { name: spin-operator, namespace: spin-system }
+spec:
+  repo: https://spinkube.github.io/charts
+  chart: spin-operator
+  version: 0.4.0
+  targetNamespace: spin-system
+  valuesContent: |-
+    runtimeClass: wasmtime-spin-v2
+    controller: { replicas: 2 }
+---
+apiVersion: core.spinoperator.dev/v1alpha1
+kind: SpinApp
+metadata: { name: storefront-edge, namespace: shopos-web }
+spec:
+  image: ghcr.io/shopos/edge/storefront-edge:latest
+  executor: containerd-shim-spin
+  replicas: 5
+  serviceAnnotations: { prometheus.io/scrape: "true" }

@@ -1,14 +1,13 @@
 output "jenkins_url" {
-  value       = "http://${azurerm_public_ip.jenkins.ip_address}:8080"
-  description = "Jenkins UI URL"
+  value       = "http://${module.vm.public_ip}:8080"
+  description = "Jenkins UI URL (default credentials: admin / admin — change on first login)"
 }
 
 output "jenkins_public_ip" {
-  value       = azurerm_public_ip.jenkins.ip_address
-  description = "Jenkins server public IP"
+  value = module.vm.public_ip
 }
 
 output "ssh_command" {
-  value       = "ssh -i <private_key> ${var.admin_username}@${azurerm_public_ip.jenkins.ip_address}"
-  description = "SSH command to connect to Jenkins server"
+  value       = "ssh ${var.admin_username}@${module.vm.public_ip}"
+  description = "Direct SSH from any cmd / shell — uses your default ~/.ssh/id_ed25519 (or id_rsa); no -i flag needed"
 }

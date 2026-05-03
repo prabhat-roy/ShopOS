@@ -1,4 +1,4 @@
-﻿# Dead Letter Service
+# Dead Letter Service
 
 > Captures, stores, and enables reprocessing of failed Kafka messages across the platform.
 
@@ -31,7 +31,7 @@ sequenceDiagram
 | Language | Go |
 | Database | PostgreSQL |
 | Protocol | Kafka |
-| Port | â€” |
+| Port | — |
 
 ## Responsibilities
 
@@ -65,12 +65,12 @@ sequenceDiagram
 ## Dependencies
 
 Upstream (services this calls):
-- `Kafka` â€” source of dead letter messages and replay target
-- `PostgreSQL` â€” persistent storage for dead-lettered message records
+- `Kafka` — source of dead letter messages and replay target
+- `PostgreSQL` — persistent storage for dead-lettered message records
 
 Downstream (services that call this):
-- `admin-portal` (platform) â€” dead letter inspection and replay UI
-- Operations engineers â€” manual replay and triage workflows
+- `admin-portal` (platform) — dead letter inspection and replay UI
+- Operations engineers — manual replay and triage workflows
 
 ## Environment Variables
 
@@ -99,4 +99,4 @@ skaffold dev --module=dead-letter-service
 
 ## Health Check
 
-`GET /healthz` â†’ `{"status":"ok"}`
+`GET /healthz` → `{"status":"ok"}`

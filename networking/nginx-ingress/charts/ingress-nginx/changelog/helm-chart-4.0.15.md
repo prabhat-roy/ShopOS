@@ -1,4 +1,4 @@
-﻿# Changelog
+# Changelog
 
 This file documents all notable changes to [ingress-nginx](https://github.com/kubernetes/ingress-nginx) Helm Chart. The release numbering uses [semantic versioning](http://semver.org).
 
@@ -9,7 +9,7 @@ This file documents all notable changes to [ingress-nginx](https://github.com/ku
 * [8118] https://github.com/kubernetes/ingress-nginx/pull/8118    Remove deprecated libraries, update other libs
 * [8117] https://github.com/kubernetes/ingress-nginx/pull/8117    Fix codegen errors
 * [8115] https://github.com/kubernetes/ingress-nginx/pull/8115    chart/ghaction: set the correct permission to have access to push a release
-* [8098] https://github.com/kubernetes/ingress-nginx/pull/8098    generating SHA for CA only certs in backend_ssl.go + comparison of Pâ€¦
+* [8098] https://github.com/kubernetes/ingress-nginx/pull/8098    generating SHA for CA only certs in backend_ssl.go + comparison of P…
 * [8088] https://github.com/kubernetes/ingress-nginx/pull/8088    Fix Edit this page link to use main branch
 * [8072] https://github.com/kubernetes/ingress-nginx/pull/8072    Expose GeoIP2 Continent code as variable
 * [8061] https://github.com/kubernetes/ingress-nginx/pull/8061    docs(charts): using helm-docs for chart

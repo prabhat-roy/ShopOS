@@ -1,0 +1,34 @@
+# Source: networking/caddy/caddy.yaml
+# This Application installs the same Helm chart on any K8s cluster (not just k3s).
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: caddy
+  namespace: argocd
+  finalizers: [resources-finalizer.argocd.argoproj.io]
+spec:
+  project: shopos-infra
+  source:
+    repoURL: https://caddyserver.github.io/charts
+    chart: caddy-ingress-controller
+    targetRevision: '1.1.0'
+    helm:
+      releaseName: caddy
+      values: |
+        replicaCount: 2
+        ingressController:
+          config:
+            email: platform@shopos.example.com
+            debug: false
+        persistence:
+          enabled: true
+          storageClass: fast-ssd
+          size: 5Gi
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: networking
+  syncPolicy:
+    automated: { prune: false, selfHeal: true }
+    syncOptions: [CreateNamespace=true, ServerSideApply=true]
+    retry: { limit: 5, backoff: { duration: 30s, maxDuration: 5m, factor: 2 } }

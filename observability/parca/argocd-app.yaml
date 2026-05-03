@@ -1,0 +1,60 @@
+# Source: observability/parca/parca.yaml
+# This Application installs the same Helm chart on any K8s cluster (not just k3s).
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: parca
+  namespace: argocd
+  finalizers: [resources-finalizer.argocd.argoproj.io]
+spec:
+  project: shopos-infra
+  source:
+    repoURL: https://parca-dev.github.io/helm-charts
+    chart: parca
+    targetRevision: '0.4.0'
+    helm:
+      releaseName: parca
+      values: |
+        server:
+          image: { tag: v0.22.0 }
+          logLevel: info
+          storage:
+            objectStorage:
+              enabled: true
+              bucket: { name: shopos-parca-profiles, region: us-east-1 }
+        persistence: { enabled: true, size: 100Gi }
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: monitoring
+  syncPolicy:
+    automated: { prune: false, selfHeal: true }
+    syncOptions: [CreateNamespace=true, ServerSideApply=true]
+    retry: { limit: 5, backoff: { duration: 30s, maxDuration: 5m, factor: 2 } }
+
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: parca-agent
+  namespace: argocd
+  finalizers: [resources-finalizer.argocd.argoproj.io]
+spec:
+  project: shopos-infra
+  source:
+    repoURL: https://parca-dev.github.io/helm-charts
+    chart: parca-agent
+    targetRevision: '0.4.0'
+    helm:
+      releaseName: parca-agent
+      values: |
+        image: { tag: v0.36.0 }
+        args: ["--remote-store-address=parca.monitoring.svc:7070","--remote-store-insecure","--node=$(NODE_NAME)"]
+        env: [{ name: NODE_NAME, valueFrom: { fieldRef: { fieldPath: spec.nodeName } } }]
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: monitoring
+  syncPolicy:
+    automated: { prune: false, selfHeal: true }
+    syncOptions: [CreateNamespace=true, ServerSideApply=true]
+    retry: { limit: 5, backoff: { duration: 30s, maxDuration: 5m, factor: 2 } }

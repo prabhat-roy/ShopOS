@@ -1,0 +1,6 @@
+apiVersion: v2
+name: cart-recovery-service
+description: ShopOS cart-recovery-service (commerce)
+type: application
+version: 0.1.0
+appVersion: "1.0.0"

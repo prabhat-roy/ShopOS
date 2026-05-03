@@ -1,4 +1,4 @@
-﻿# product-import-service
+# product-import-service
 
 > Bulk product import from CSV/XML feeds with validation pipeline and error reporting.
 
@@ -100,25 +100,25 @@ service ProductImportService {
 
 ## Kafka Topics
 
-Not applicable â€” product-import-service is gRPC-only.
+Not applicable — product-import-service is gRPC-only.
 
 ## Dependencies
 
 Upstream (calls these):
-- `product-catalog-service` â€” `CreateProduct` / `UpdateProduct` for catalog writes
-- `category-service` â€” `GetCategory` to validate category assignments
-- `brand-service` â€” `GetBrand` to validate brand assignments
-- `media-asset-service` â€” import product image URLs into the asset store
+- `product-catalog-service` — `CreateProduct` / `UpdateProduct` for catalog writes
+- `category-service` — `GetCategory` to validate category assignments
+- `brand-service` — `GetBrand` to validate brand assignments
+- `media-asset-service` — import product image URLs into the asset store
 
 Downstream (called by these):
-- `admin-portal` â€” merchant-initiated bulk import
-- `supplier-portal-service` â€” supplier-initiated catalog feed uploads
+- `admin-portal` — merchant-initiated bulk import
+- `supplier-portal-service` — supplier-initiated catalog feed uploads
 
 ## Environment Variables
 
 | Variable | Default | Description |
 |---|---|---|
-| `DATABASE_URL` | â€” | PostgreSQL connection string |
+| `DATABASE_URL` | — | PostgreSQL connection string |
 | `GRPC_PORT` | `50180` | gRPC listening port |
 | `PRODUCT_CATALOG_SERVICE_ADDR` | `product-catalog-service:50070` | Catalog write target |
 | `CATEGORY_SERVICE_ADDR` | `category-service:50071` | Category validation |
@@ -136,6 +136,6 @@ docker-compose up product-import-service
 
 ## Health Check
 
-`GET /healthz` â€” `{"status":"ok"}`
+`GET /healthz` — `{"status":"ok"}`
 
 gRPC health protocol: `grpc.health.v1.Health/Check` on port `50180`

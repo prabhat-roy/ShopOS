@@ -1,22 +1,46 @@
+# Root ArgoCD Application — bootstraps everything else.
+# Apply once: kubectl apply -f gitops/argocd/app-of-apps.yaml -n argocd
+#
+# Watches gitops/argocd/applicationsets/ recursively, which contains:
+#   - all-services.yaml      (303 service Applications generated from helm/services/)
+#   - infra-tools.yaml       (103 infra-tool Applications generated from helm/infra/*)
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
   name: shopos-app-of-apps
   namespace: argocd
-  finalizers:
-    - resources-finalizer.argocd.argoproj.io
+  finalizers: [resources-finalizer.argocd.argoproj.io]
 spec:
   project: default
   source:
     repoURL: https://github.com/prabhat-roy/ShopOS.git
     targetRevision: HEAD
     path: gitops/argocd/applicationsets
-  destination:
-    server: https://kubernetes.default.svc
-    namespace: argocd
+    directory: { recurse: true }
+  destination: { server: https://kubernetes.default.svc, namespace: argocd }
   syncPolicy:
-    automated:
-      prune: true
-      selfHeal: true
-    syncOptions:
-      - CreateNamespace=true
+    automated: { prune: true, selfHeal: true }
+    syncOptions: [CreateNamespace=true]
+---
+# Watches gitops/argocd/loose-tools/ — Kustomization aggregating direct YAML configs
+# (Karpenter, VPA, Longhorn, Rook-Ceph, Trivy Operator, Kubescape, ESO, cert-manager,
+# Sigstore PC, Cilium L7, Istio mTLS+AuthZ+DR+VS, Velero, Fluent-bit, OTel Collector,
+# Prometheus rules, SLOs, Anubis, Varnish, Caddy, MetalLB, Kube-VIP, Spin, n8n, Windmill,
+# Coder, Airbyte, Cube, Metabase, LakeFS, Dgraph, Yugabyte, Kubecost, Healthchecks,
+# Quickwit, Parca, Komodor, Perses, Grafana Incident, Strimzi KafkaTopics).
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: shopos-loose-tools
+  namespace: argocd
+  finalizers: [resources-finalizer.argocd.argoproj.io]
+spec:
+  project: shopos-infra
+  source:
+    repoURL: https://github.com/prabhat-roy/ShopOS.git
+    targetRevision: HEAD
+    path: gitops/argocd/loose-tools
+  destination: { server: https://kubernetes.default.svc, namespace: argocd }
+  syncPolicy:
+    automated: { prune: false, selfHeal: true }
+    syncOptions: [CreateNamespace=true, ServerSideApply=true]

@@ -1,10 +1,10 @@
-﻿# cms-service
+# cms-service
 
 > Headless CMS for managing pages, banners, landing pages, and rich content blocks.
 
 ## Overview
 
-The cms-service is the ShopOS headless content management system. It stores and serves structured content â€” including marketing pages, promotional banners, landing page layouts, and configurable content blocks â€” in MongoDB. Consumers such as web-bff and mobile-bff retrieve locale-aware content at render time via gRPC, enabling non-engineers to manage storefront copy and layouts without code deployments.
+The cms-service is the ShopOS headless content management system. It stores and serves structured content — including marketing pages, promotional banners, landing page layouts, and configurable content blocks — in MongoDB. Consumers such as web-bff and mobile-bff retrieve locale-aware content at render time via gRPC, enabling non-engineers to manage storefront copy and layouts without code deployments.
 
 ## Architecture
 
@@ -30,7 +30,7 @@ graph LR
 ## Responsibilities
 
 - Store and version rich content documents (pages, banners, blocks, menus, hero sections)
-- Support content scheduling â€” publish/unpublish at defined timestamps
+- Support content scheduling — publish/unpublish at defined timestamps
 - Provide locale-aware content retrieval via integration with i18n-l10n-service
 - Manage media asset references through media-asset-service
 - Support content previews (draft mode) without publishing to live channels
@@ -70,12 +70,12 @@ Downstream: media-asset-service (asset references), i18n-l10n-service (localizat
 | Variable | Default | Description |
 |---|---|---|
 | `GRPC_PORT` | `50143` | gRPC server port |
-| `MONGODB_URI` | â€” | MongoDB connection string |
+| `MONGODB_URI` | — | MongoDB connection string |
 | `MONGODB_DB` | `cms` | MongoDB database name |
 | `MEDIA_ASSET_SERVICE_ADDR` | `media-asset-service:50140` | Media service address |
 | `I18N_SERVICE_ADDR` | `i18n-l10n-service:50146` | Localization service address |
 | `DEFAULT_LOCALE` | `en-US` | Fallback locale |
-| `DRAFT_MODE_SECRET` | â€” | Secret token to enable preview/draft mode |
+| `DRAFT_MODE_SECRET` | — | Secret token to enable preview/draft mode |
 
 ## Running Locally
 
@@ -85,4 +85,4 @@ docker-compose up cms-service
 
 ## Health Check
 
-`GET /healthz` â†’ `{"status":"ok"}`
+`GET /healthz` → `{"status":"ok"}`

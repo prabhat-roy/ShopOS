@@ -1,10 +1,10 @@
-﻿# fulfillment-service
+# fulfillment-service
 
 > Orchestrates the pick, pack, and ship workflow for customer orders, with SLA tracking at each stage.
 
 ## Overview
 
-The fulfillment-service drives the physical execution of a customer order after payment confirmation. It creates fulfillment tasks, assigns them to warehouse workers, tracks SLA compliance at each stage (pick â†’ pack â†’ handoff to carrier), and triggers shipment creation once an order is ready for dispatch. It acts as the coordination hub between the commerce, warehouse, and shipping domains.
+The fulfillment-service drives the physical execution of a customer order after payment confirmation. It creates fulfillment tasks, assigns them to warehouse workers, tracks SLA compliance at each stage (pick → pack → handoff to carrier), and triggers shipment creation once an order is ready for dispatch. It acts as the coordination hub between the commerce, warehouse, and shipping domains.
 
 ## Architecture
 
@@ -69,9 +69,9 @@ Upstream (callers)
 - Order events via Kafka (`commerce.order.placed`)
 
 Downstream (calls out to)
-- `warehouse-service` â€” stock reservation and pick location lookup
-- `label-service` â€” generate shipping label for the packed box
-- `carrier-integration-service` â€” book carrier collection slot
+- `warehouse-service` — stock reservation and pick location lookup
+- `label-service` — generate shipping label for the packed box
+- `carrier-integration-service` — book carrier collection slot
 
 ## Environment Variables
 
@@ -82,7 +82,7 @@ Downstream (calls out to)
 | `DB_PORT` | `5432` | PostgreSQL port |
 | `DB_NAME` | `fulfillment_db` | Database name |
 | `DB_USER` | `fulfillment_svc` | Database user |
-| `DB_PASSWORD` | â€” | Database password (required) |
+| `DB_PASSWORD` | — | Database password (required) |
 | `KAFKA_BROKERS` | `localhost:9092` | Comma-separated Kafka broker list |
 | `WAREHOUSE_GRPC_ADDR` | `warehouse-service:50102` | Address of warehouse-service |
 | `LABEL_GRPC_ADDR` | `label-service:50105` | Address of label-service |
@@ -99,6 +99,6 @@ docker-compose up fulfillment-service
 
 ## Health Check
 
-`GET /healthz` â†’ `{"status":"ok"}`
+`GET /healthz` → `{"status":"ok"}`
 
-gRPC health: `grpc.health.v1.Health/Check` â†’ `SERVING`
+gRPC health: `grpc.health.v1.Health/Check` → `SERVING`

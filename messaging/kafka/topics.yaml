@@ -1,0 +1,315 @@
+# Strimzi KafkaTopic CRDs — generated from events/*.avsc
+# Producers and consumers reference these topics; they MUST exist before service startup.
+---
+apiVersion: kafka.strimzi.io/v1beta2
+kind: KafkaTopic
+metadata:
+  name: identity.user.registered
+  namespace: streaming
+  labels: { strimzi.io/cluster: shopos-kafka, domain: identity }
+spec:
+  partitions: 12
+  replicas: 3
+  config:
+    retention.ms: 604800000        # 7 days
+    cleanup.policy: delete
+    min.insync.replicas: 2
+    compression.type: zstd
+---
+apiVersion: kafka.strimzi.io/v1beta2
+kind: KafkaTopic
+metadata:
+  name: identity.user.deleted
+  namespace: streaming
+  labels: { strimzi.io/cluster: shopos-kafka, domain: identity }
+spec:
+  partitions: 6
+  replicas: 3
+  config:
+    retention.ms: 2592000000       # 30 days (audit-relevant)
+    cleanup.policy: delete
+    min.insync.replicas: 2
+---
+apiVersion: kafka.strimzi.io/v1beta2
+kind: KafkaTopic
+metadata:
+  name: commerce.order.placed
+  namespace: streaming
+  labels: { strimzi.io/cluster: shopos-kafka, domain: commerce }
+spec:
+  partitions: 24
+  replicas: 3
+  config:
+    retention.ms: 1209600000       # 14 days
+    cleanup.policy: delete
+    min.insync.replicas: 2
+    compression.type: zstd
+---
+apiVersion: kafka.strimzi.io/v1beta2
+kind: KafkaTopic
+metadata:
+  name: commerce.order.cancelled
+  namespace: streaming
+  labels: { strimzi.io/cluster: shopos-kafka, domain: commerce }
+spec:
+  partitions: 12
+  replicas: 3
+  config:
+    retention.ms: 1209600000
+    cleanup.policy: delete
+    min.insync.replicas: 2
+---
+apiVersion: kafka.strimzi.io/v1beta2
+kind: KafkaTopic
+metadata:
+  name: commerce.order.fulfilled
+  namespace: streaming
+  labels: { strimzi.io/cluster: shopos-kafka, domain: commerce }
+spec:
+  partitions: 12
+  replicas: 3
+  config:
+    retention.ms: 1209600000
+    cleanup.policy: delete
+    min.insync.replicas: 2
+---
+apiVersion: kafka.strimzi.io/v1beta2
+kind: KafkaTopic
+metadata:
+  name: commerce.payment.processed
+  namespace: streaming
+  labels: { strimzi.io/cluster: shopos-kafka, domain: commerce }
+spec:
+  partitions: 24
+  replicas: 3
+  config:
+    retention.ms: 7776000000       # 90 days (financial)
+    cleanup.policy: delete
+    min.insync.replicas: 2
+---
+apiVersion: kafka.strimzi.io/v1beta2
+kind: KafkaTopic
+metadata:
+  name: commerce.payment.failed
+  namespace: streaming
+  labels: { strimzi.io/cluster: shopos-kafka, domain: commerce }
+spec:
+  partitions: 12
+  replicas: 3
+  config:
+    retention.ms: 7776000000
+    cleanup.policy: delete
+    min.insync.replicas: 2
+---
+apiVersion: kafka.strimzi.io/v1beta2
+kind: KafkaTopic
+metadata:
+  name: commerce.cart.abandoned
+  namespace: streaming
+  labels: { strimzi.io/cluster: shopos-kafka, domain: commerce }
+spec:
+  partitions: 12
+  replicas: 3
+  config:
+    retention.ms: 259200000        # 3 days
+    cleanup.policy: delete
+---
+apiVersion: kafka.strimzi.io/v1beta2
+kind: KafkaTopic
+metadata:
+  name: supplychain.shipment.created
+  namespace: streaming
+  labels: { strimzi.io/cluster: shopos-kafka, domain: supply-chain }
+spec:
+  partitions: 12
+  replicas: 3
+  config:
+    retention.ms: 1209600000
+    cleanup.policy: delete
+---
+apiVersion: kafka.strimzi.io/v1beta2
+kind: KafkaTopic
+metadata:
+  name: supplychain.shipment.updated
+  namespace: streaming
+  labels: { strimzi.io/cluster: shopos-kafka, domain: supply-chain }
+spec:
+  partitions: 24
+  replicas: 3
+  config:
+    retention.ms: 604800000
+    cleanup.policy: delete
+---
+apiVersion: kafka.strimzi.io/v1beta2
+kind: KafkaTopic
+metadata:
+  name: supplychain.inventory.low
+  namespace: streaming
+  labels: { strimzi.io/cluster: shopos-kafka, domain: supply-chain }
+spec:
+  partitions: 6
+  replicas: 3
+  config:
+    retention.ms: 259200000
+    cleanup.policy: delete
+---
+apiVersion: kafka.strimzi.io/v1beta2
+kind: KafkaTopic
+metadata:
+  name: supplychain.inventory.restocked
+  namespace: streaming
+  labels: { strimzi.io/cluster: shopos-kafka, domain: supply-chain }
+spec:
+  partitions: 6
+  replicas: 3
+  config:
+    retention.ms: 259200000
+    cleanup.policy: delete
+---
+apiVersion: kafka.strimzi.io/v1beta2
+kind: KafkaTopic
+metadata:
+  name: notification.email.requested
+  namespace: streaming
+  labels: { strimzi.io/cluster: shopos-kafka, domain: communications }
+spec:
+  partitions: 24
+  replicas: 3
+  config:
+    retention.ms: 86400000         # 1 day
+    cleanup.policy: delete
+---
+apiVersion: kafka.strimzi.io/v1beta2
+kind: KafkaTopic
+metadata:
+  name: notification.sms.requested
+  namespace: streaming
+  labels: { strimzi.io/cluster: shopos-kafka, domain: communications }
+spec:
+  partitions: 12
+  replicas: 3
+  config:
+    retention.ms: 86400000
+    cleanup.policy: delete
+---
+apiVersion: kafka.strimzi.io/v1beta2
+kind: KafkaTopic
+metadata:
+  name: notification.push.requested
+  namespace: streaming
+  labels: { strimzi.io/cluster: shopos-kafka, domain: communications }
+spec:
+  partitions: 24
+  replicas: 3
+  config:
+    retention.ms: 86400000
+    cleanup.policy: delete
+---
+apiVersion: kafka.strimzi.io/v1beta2
+kind: KafkaTopic
+metadata:
+  name: analytics.page.viewed
+  namespace: streaming
+  labels: { strimzi.io/cluster: shopos-kafka, domain: analytics-ai }
+spec:
+  partitions: 48
+  replicas: 3
+  config:
+    retention.ms: 604800000
+    cleanup.policy: delete
+    compression.type: zstd
+---
+apiVersion: kafka.strimzi.io/v1beta2
+kind: KafkaTopic
+metadata:
+  name: analytics.product.clicked
+  namespace: streaming
+  labels: { strimzi.io/cluster: shopos-kafka, domain: analytics-ai }
+spec:
+  partitions: 24
+  replicas: 3
+  config:
+    retention.ms: 604800000
+    cleanup.policy: delete
+    compression.type: zstd
+---
+apiVersion: kafka.strimzi.io/v1beta2
+kind: KafkaTopic
+metadata:
+  name: analytics.search.performed
+  namespace: streaming
+  labels: { strimzi.io/cluster: shopos-kafka, domain: analytics-ai }
+spec:
+  partitions: 24
+  replicas: 3
+  config:
+    retention.ms: 604800000
+    cleanup.policy: delete
+    compression.type: zstd
+---
+apiVersion: kafka.strimzi.io/v1beta2
+kind: KafkaTopic
+metadata:
+  name: security.fraud.detected
+  namespace: streaming
+  labels: { strimzi.io/cluster: shopos-kafka, domain: commerce }
+spec:
+  partitions: 12
+  replicas: 3
+  config:
+    retention.ms: 7776000000       # 90 days (security audit)
+    cleanup.policy: delete
+    min.insync.replicas: 2
+---
+apiVersion: kafka.strimzi.io/v1beta2
+kind: KafkaTopic
+metadata:
+  name: security.login.failed
+  namespace: streaming
+  labels: { strimzi.io/cluster: shopos-kafka, domain: identity }
+spec:
+  partitions: 12
+  replicas: 3
+  config:
+    retention.ms: 7776000000
+    cleanup.policy: delete
+---
+# Dead-letter topics (one per consumer group; pattern below covers the major DLQs)
+apiVersion: kafka.strimzi.io/v1beta2
+kind: KafkaTopic
+metadata:
+  name: dlq.commerce.order
+  namespace: streaming
+  labels: { strimzi.io/cluster: shopos-kafka, domain: commerce, kind: dlq }
+spec:
+  partitions: 6
+  replicas: 3
+  config:
+    retention.ms: 2592000000
+    cleanup.policy: delete
+---
+apiVersion: kafka.strimzi.io/v1beta2
+kind: KafkaTopic
+metadata:
+  name: dlq.notification
+  namespace: streaming
+  labels: { strimzi.io/cluster: shopos-kafka, domain: communications, kind: dlq }
+spec:
+  partitions: 6
+  replicas: 3
+  config:
+    retention.ms: 2592000000
+    cleanup.policy: delete
+---
+apiVersion: kafka.strimzi.io/v1beta2
+kind: KafkaTopic
+metadata:
+  name: dlq.analytics
+  namespace: streaming
+  labels: { strimzi.io/cluster: shopos-kafka, domain: analytics-ai, kind: dlq }
+spec:
+  partitions: 6
+  replicas: 3
+  config:
+    retention.ms: 2592000000
+    cleanup.policy: delete

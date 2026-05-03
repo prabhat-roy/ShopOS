@@ -1,4 +1,4 @@
-﻿# email-service
+# email-service
 
 > Consumes `notification.email.requested` events, renders Handlebars templates, and delivers via SMTP or SendGrid.
 
@@ -48,7 +48,7 @@ sequenceDiagram
 
 ## API / Interface
 
-This service has no gRPC or HTTP API â€” it operates as a Kafka consumer.
+This service has no gRPC or HTTP API — it operates as a Kafka consumer.
 
 SendGrid Webhook (inbound HTTP)
 
@@ -68,11 +68,11 @@ SendGrid Webhook (inbound HTTP)
 ## Dependencies
 
 Upstream (consumes from)
-- `notification-orchestrator` â€” publishes validated email requests
+- `notification-orchestrator` — publishes validated email requests
 
 Downstream (calls)
-- `template-service` â€” fetches and renders email templates via gRPC
-- SendGrid API / SMTP relay â€” external email delivery infrastructure
+- `template-service` — fetches and renders email templates via gRPC
+- SendGrid API / SMTP relay — external email delivery infrastructure
 
 ## Environment Variables
 
@@ -101,4 +101,4 @@ docker-compose up email-service
 
 ## Health Check
 
-`GET /healthz` â†’ `{"status":"ok"}`
+`GET /healthz` → `{"status":"ok"}`

@@ -1,4 +1,4 @@
-﻿# Prometheus Blackbox Exporter
+# Prometheus Blackbox Exporter
 
 Prometheus exporter for blackbox testing
 

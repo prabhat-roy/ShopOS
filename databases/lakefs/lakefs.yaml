@@ -1,0 +1,23 @@
+# LakeFS — git-like data versioning over MinIO/S3; used by analytics + dbt for reproducible runs.
+apiVersion: helm.cattle.io/v1
+kind: HelmChart
+metadata: { name: lakefs, namespace: databases }
+spec:
+  repo: https://charts.lakefs.io
+  chart: lakefs
+  version: 1.4.4
+  targetNamespace: databases
+  valuesContent: |-
+    replicaCount: 3
+    lakefsConfig: |
+      database:
+        type: postgres
+        postgres: { connection_string: "postgres://lakefs:${LAKEFS_DB_PASSWORD}@postgres-primary.databases.svc:5432/lakefs" }
+      blockstore:
+        type: s3
+        s3: { region: us-east-1, endpoint: "http://minio.databases.svc:9000", force_path_style: true }
+      auth:
+        encrypt: { secret_key: ${LAKEFS_AUTH_SECRET} }
+    ingress:
+      enabled: true
+      hostname: lakefs.shopos.example.com

@@ -1,4 +1,4 @@
-﻿# traefik
+# traefik
 
 ![Version: 39.0.8](https://img.shields.io/badge/Version-39.0.8-informational?style=flat-square) ![Type: application](https://img.shields.io/badge/Type-application-informational?style=flat-square) ![AppVersion: v3.6.13](https://img.shields.io/badge/AppVersion-v3.6.13-informational?style=flat-square)
 

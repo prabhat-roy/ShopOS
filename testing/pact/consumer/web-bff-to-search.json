@@ -1,0 +1,20 @@
+{
+  "consumer": { "name": "web-bff" },
+  "provider": { "name": "search-service" },
+  "interactions": [
+    {
+      "description": "GET /search?q=earbuds returns top results with facets",
+      "request": { "method": "GET", "path": "/v1/search",
+                   "query": "q=earbuds&limit=10" },
+      "response": {
+        "status": 200,
+        "body": {
+          "total": 42,
+          "results": [{ "sku": "SKU-1001", "score": 0.94 }],
+          "facets": { "brand": [{ "value": "Sony", "count": 12 }],
+                      "price_range": [{ "value": "100-200", "count": 18 }] }
+        }
+      }
+    }
+  ]
+}

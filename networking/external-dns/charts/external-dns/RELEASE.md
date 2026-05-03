@@ -1,4 +1,4 @@
-﻿### Added
+### Added
 
 - Add option to set `annotationPrefix` ([#5889](https://github.com/kubernetes-sigs/external-dns/pull/5889)) _@lexfrei_
 

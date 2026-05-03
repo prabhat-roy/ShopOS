@@ -1,6 +1,6 @@
-﻿# Database Strategy â€” ShopOS
+# Database Strategy — ShopOS
 
-ShopOS uses database-per-service with technology chosen per access pattern. No two services share a database instance or schema. Cross-service data access always goes through gRPC or Kafka â€” never via direct DB connection.
+ShopOS uses database-per-service with technology chosen per access pattern. No two services share a database instance or schema. Cross-service data access always goes through gRPC or Kafka — never via direct DB connection.
 
 ---
 
@@ -25,10 +25,10 @@ ShopOS uses database-per-service with technology chosen per access pattern. No t
 ## Decision Rules
 
 ### Use PostgreSQL when:
-- Data has relationships requiring JOINs (orders â†’ order_items â†’ products)
+- Data has relationships requiring JOINs (orders → order_items → products)
 - ACID transactions are required (payment processing, inventory reservation, financial ledger)
 - Strong consistency matters more than write throughput
-- Data is regulated (financial, PII) â€” PostgreSQL row-level encryption + Vault Transit available
+- Data is regulated (financial, PII) — PostgreSQL row-level encryption + Vault Transit available
 - Team needs standard SQL tooling and Flyway/golang-migrate migrations
 
 ### Use MongoDB when:
@@ -73,7 +73,7 @@ ShopOS uses database-per-service with technology chosen per access pattern. No t
 
 ### Use Neo4j when:
 - Relationship traversal is the primary query pattern (product recommendations via co-purchase graph)
-- Data is a naturally connected graph (users â†’ purchased â†’ products â†’ belong_to â†’ categories)
+- Data is a naturally connected graph (users → purchased → products → belong_to → categories)
 - Multi-hop queries would require expensive self-JOINs in SQL
 
 ---
@@ -91,7 +91,7 @@ Each service manages its own migrations:
 | Node.js | Knex / Prisma | `migrations/` |
 | C# | EF Core Migrations | `Migrations/` |
 
-Migrations run automatically on service startup. Both Flyway and `golang-migrate` are idempotent â€” re-running an already-applied migration is a no-op. All migration files are checked into the service's source tree and applied in order by version number.
+Migrations run automatically on service startup. Both Flyway and `golang-migrate` are idempotent — re-running an already-applied migration is a no-op. All migration files are checked into the service's source tree and applied in order by version number.
 
 ---
 
@@ -101,11 +101,11 @@ Operational databases are never queried directly by the reporting or analytics l
 
 ```
 Operational DB (PostgreSQL / MongoDB)
-  â””â”€â”€â–º Debezium CDC
-         â””â”€â”€â–º Kafka topic
-                â”œâ”€â”€â–º ClickHouse (OLAP read model â€” orders, revenue, inventory)
-                â”œâ”€â”€â–º OpenSearch (log and audit read model)
-                â””â”€â”€â–º Elasticsearch (product search index)
+  └──â–º Debezium CDC
+         └──â–º Kafka topic
+                ├──â–º ClickHouse (OLAP read model — orders, revenue, inventory)
+                ├──â–º OpenSearch (log and audit read model)
+                └──â–º Elasticsearch (product search index)
 ```
 
 This ensures:
@@ -133,8 +133,8 @@ This ensures:
 | PostgreSQL | Velero + WAL archiving to MinIO/S3 | 1h | 30m |
 | MongoDB | Velero + mongodump to MinIO/S3 | 1h | 30m |
 | Redis | AOF persistence + Velero snapshot | 15m | 5m |
-| Cassandra | nodetool snapshot â†’ MinIO/S3 | 4h | 1h |
-| Elasticsearch | snapshot API â†’ MinIO/S3 | 1h | 30m |
+| Cassandra | nodetool snapshot → MinIO/S3 | 4h | 1h |
+| Elasticsearch | snapshot API → MinIO/S3 | 1h | 30m |
 | ClickHouse | BACKUP TO S3 (native) | 4h | 1h |
 | MinIO | bucket replication to secondary MinIO | 5m | 5m |
 

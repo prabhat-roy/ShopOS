@@ -1,4 +1,4 @@
-﻿# NATS Server
+# NATS Server
 
 ---
 

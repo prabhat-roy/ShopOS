@@ -1,0 +1,22 @@
+# Coder — self-hosted cloud development environments (Terraform-defined templates).
+apiVersion: helm.cattle.io/v1
+kind: HelmChart
+metadata: { name: coder, namespace: coder }
+spec:
+  repo: https://helm.coder.com/v2
+  chart: coder
+  version: 2.16.0
+  targetNamespace: coder
+  valuesContent: |-
+    coder:
+      replicaCount: 2
+      env:
+        - { name: CODER_PG_CONNECTION_URL, valueFrom: { secretKeyRef: { name: coder-db, key: url } } }
+        - { name: CODER_OIDC_ISSUER_URL, value: https://keycloak.shopos.example.com/realms/shopos }
+        - { name: CODER_ACCESS_URL, value: https://coder.shopos.example.com }
+      service: { type: ClusterIP }
+      ingress:
+        enabled: true
+        className: istio
+        host: coder.shopos.example.com
+        tls: { enable: true, secretName: coder-tls }

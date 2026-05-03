@@ -1,4 +1,4 @@
-﻿# data-export-service
+# data-export-service
 
 > Scheduled and on-demand data exports in CSV, JSON, and Parquet formats.
 
@@ -37,7 +37,7 @@ graph LR
 - Track job lifecycle (queued, running, complete, failed) with progress metadata
 - Generate presigned download URLs for completed export files
 - Support scheduled recurring exports (daily, weekly, custom cron) via integration with scheduler-service
-- Enforce data access scopes â€” exporters only receive data they are authorized for
+- Enforce data access scopes — exporters only receive data they are authorized for
 - Clean up expired export files from MinIO after configurable retention period
 
 ## API / Interface
@@ -73,10 +73,10 @@ Downstream: MinIO (export file storage), order-service, analytics-service, produ
 |---|---|---|
 | `GRPC_PORT` | `50147` | gRPC server port |
 | `MINIO_ENDPOINT` | `minio:9000` | MinIO endpoint |
-| `MINIO_ACCESS_KEY` | â€” | MinIO access key |
-| `MINIO_SECRET_KEY` | â€” | MinIO secret key |
+| `MINIO_ACCESS_KEY` | — | MinIO access key |
+| `MINIO_SECRET_KEY` | — | MinIO secret key |
 | `MINIO_EXPORT_BUCKET` | `data-exports` | Bucket for export files |
-| `POSTGRES_DSN` | â€” | PostgreSQL connection string |
+| `POSTGRES_DSN` | — | PostgreSQL connection string |
 | `SCHEDULER_SERVICE_ADDR` | `scheduler-service:50056` | Scheduler service address |
 | `KAFKA_BROKERS` | `kafka:9092` | Kafka broker list |
 | `EXPORT_FILE_TTL_HOURS` | `72` | Hours before export files are purged |
@@ -91,4 +91,4 @@ docker-compose up data-export-service
 
 ## Health Check
 
-`GET /healthz` â†’ `{"status":"ok"}`
+`GET /healthz` → `{"status":"ok"}`

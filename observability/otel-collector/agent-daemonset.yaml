@@ -1,0 +1,133 @@
+# OpenTelemetry Collector — agent mode (DaemonSet) on every node.
+# Receives traces (gRPC/HTTP), metrics (Prometheus + OTLP), and Kubernetes events.
+# Forwards to Tempo (production traces), Jaeger (dev), Mimir (metrics), Loki (events).
+apiVersion: opentelemetry.io/v1beta1
+kind: OpenTelemetryCollector
+metadata: { name: otel-agent, namespace: monitoring }
+spec:
+  mode: daemonset
+  image: otel/opentelemetry-collector-contrib:0.108.0
+  serviceAccount: otel-collector
+  resources:
+    requests: { cpu: 100m, memory: 200Mi }
+    limits:   { cpu: 1000m, memory: 1Gi }
+  env:
+    - { name: K8S_NODE_NAME, valueFrom: { fieldRef: { fieldPath: spec.nodeName } } }
+  ports:
+    - { name: otlp-grpc, port: 4317, protocol: TCP }
+    - { name: otlp-http, port: 4318, protocol: TCP }
+    - { name: zipkin,    port: 9411, protocol: TCP }
+  config:
+    receivers:
+      otlp:
+        protocols:
+          grpc: { endpoint: 0.0.0.0:4317 }
+          http: { endpoint: 0.0.0.0:4318 }
+      zipkin: { endpoint: 0.0.0.0:9411 }
+      jaeger:
+        protocols:
+          grpc: { endpoint: 0.0.0.0:14250 }
+          thrift_http: { endpoint: 0.0.0.0:14268 }
+      hostmetrics:
+        collection_interval: 30s
+        scrapers: { cpu: {}, memory: {}, disk: {}, network: {}, filesystem: {}, load: {}, process: {} }
+      kubeletstats:
+        collection_interval: 30s
+        auth_type: serviceAccount
+        endpoint: ${env:K8S_NODE_NAME}:10250
+        insecure_skip_verify: true
+      k8s_events: { auth_type: serviceAccount }
+      prometheus:
+        config:
+          scrape_configs:
+            - job_name: pod-scrape
+              kubernetes_sd_configs: [{ role: pod }]
+              relabel_configs:
+                - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_scrape]
+                  action: keep
+                  regex: "true"
+                - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_port]
+                  target_label: __address__
+                  regex: (.+)
+
+    processors:
+      memory_limiter: { check_interval: 5s, limit_percentage: 80, spike_limit_percentage: 20 }
+      batch: { timeout: 5s, send_batch_size: 1024 }
+      k8sattributes:
+        auth_type: serviceAccount
+        passthrough: false
+        extract:
+          metadata: [k8s.namespace.name, k8s.pod.name, k8s.pod.uid, k8s.deployment.name, k8s.node.name]
+          labels:
+            - { tag_name: app, key: app, from: pod }
+            - { tag_name: domain, key: domain, from: pod }
+        pod_association:
+          - sources: [{ from: resource_attribute, name: k8s.pod.ip }]
+          - sources: [{ from: connection }]
+      resource:
+        attributes:
+          - { key: cluster, value: shopos-prod, action: upsert }
+          - { key: deployment.environment, value: production, action: upsert }
+      tail_sampling:
+        decision_wait: 10s
+        num_traces: 50000
+        policies:
+          - { name: errors, type: status_code, status_code: { status_codes: [ERROR] } }
+          - { name: slow,   type: latency,     latency: { threshold_ms: 500 } }
+          - { name: payment, type: string_attribute, string_attribute: { key: domain, values: [commerce, financial] } }
+          - { name: probabilistic, type: probabilistic, probabilistic: { sampling_percentage: 5 } }
+
+    exporters:
+      otlphttp/tempo:
+        endpoint: http://tempo-distributor.monitoring.svc:4318
+      otlp/jaeger:
+        endpoint: jaeger-collector.monitoring.svc:4317
+        tls: { insecure: true }
+      prometheusremotewrite/mimir:
+        endpoint: http://mimir-distributor.monitoring.svc:9009/api/v1/push
+        headers: { X-Scope-OrgID: shopos }
+      loki:
+        endpoint: http://loki-gateway.monitoring.svc/loki/api/v1/push
+      debug: { verbosity: basic }
+
+    extensions:
+      health_check: {}
+      pprof: { endpoint: 0.0.0.0:1777 }
+      zpages: { endpoint: 0.0.0.0:55679 }
+
+    service:
+      extensions: [health_check, pprof, zpages]
+      pipelines:
+        traces:
+          receivers: [otlp, zipkin, jaeger]
+          processors: [memory_limiter, k8sattributes, resource, tail_sampling, batch]
+          exporters: [otlphttp/tempo, otlp/jaeger]
+        metrics:
+          receivers: [otlp, hostmetrics, kubeletstats, prometheus]
+          processors: [memory_limiter, k8sattributes, resource, batch]
+          exporters: [prometheusremotewrite/mimir]
+        logs:
+          receivers: [otlp, k8s_events]
+          processors: [memory_limiter, k8sattributes, resource, batch]
+          exporters: [loki]
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata: { name: otel-collector, namespace: monitoring }
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata: { name: otel-collector }
+rules:
+  - apiGroups: [""]
+    resources: [pods, namespaces, nodes, nodes/stats, nodes/proxy, events, services, endpoints]
+    verbs: [get, list, watch]
+  - apiGroups: ["apps"]
+    resources: [deployments, replicasets, statefulsets, daemonsets]
+    verbs: [get, list, watch]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata: { name: otel-collector }
+roleRef: { apiGroup: rbac.authorization.k8s.io, kind: ClusterRole, name: otel-collector }
+subjects: [{ kind: ServiceAccount, name: otel-collector, namespace: monitoring }]

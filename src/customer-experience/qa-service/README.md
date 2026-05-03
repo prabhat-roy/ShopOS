@@ -1,4 +1,4 @@
-﻿# qa-service
+# qa-service
 
 > Product question-and-answer board with upvoting and a structured seller-answer workflow.
 
@@ -63,12 +63,12 @@ gRPC service: `QAService` (port 50121)
 ## Dependencies
 
 Upstream (callers)
-- `api-gateway` â€” routes Q&A read/write requests
-- `supplier-portal-service` â€” sellers submit answers
+- `api-gateway` — routes Q&A read/write requests
+- `supplier-portal-service` — sellers submit answers
 
 Downstream (calls)
-- `notification-orchestrator` / Kafka â€” sends question-pending emails to sellers
-- `product-catalog-service` â€” validates product SKU existence
+- `notification-orchestrator` / Kafka — sends question-pending emails to sellers
+- `product-catalog-service` — validates product SKU existence
 
 ## Environment Variables
 
@@ -90,4 +90,4 @@ docker-compose up qa-service
 
 ## Health Check
 
-`GET /healthz` â†’ `{"status":"ok"}`
+`GET /healthz` → `{"status":"ok"}`

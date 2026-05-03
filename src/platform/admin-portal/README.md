@@ -1,4 +1,4 @@
-﻿# Admin Portal
+# Admin Portal
 
 > Internal administration backend for managing platform operations, configuration, and users.
 
@@ -26,7 +26,7 @@ graph LR
 | Component | Technology |
 |---|---|
 | Language | Java |
-| Database | â€” |
+| Database | — |
 | Protocol | HTTP |
 | Port | 8085 |
 
@@ -59,19 +59,19 @@ graph LR
 
 ## Kafka Topics
 
-N/A â€” the Admin Portal operates synchronously over HTTP and gRPC.
+N/A — the Admin Portal operates synchronously over HTTP and gRPC.
 
 ## Dependencies
 
 Upstream (services this calls):
-- `feature-flag-service` (platform) â€” flag management
-- `scheduler-service` (platform) â€” job management
-- `saga-orchestrator` (platform) â€” saga inspection and retry
-- `health-check-service` (platform) â€” platform health
-- `webhook-service` (platform) â€” webhook subscription management
-- `tenant-service` (platform) â€” tenant management
-- `audit-service` (platform) â€” audit log queries
-- `permission-service` (identity) â€” admin RBAC enforcement
+- `feature-flag-service` (platform) — flag management
+- `scheduler-service` (platform) — job management
+- `saga-orchestrator` (platform) — saga inspection and retry
+- `health-check-service` (platform) — platform health
+- `webhook-service` (platform) — webhook subscription management
+- `tenant-service` (platform) — tenant management
+- `audit-service` (platform) — audit log queries
+- `permission-service` (identity) — admin RBAC enforcement
 
 Downstream (services that call this):
 - Admin UI frontend
@@ -103,4 +103,4 @@ skaffold dev --module=admin-portal
 
 ## Health Check
 
-`GET /healthz` â†’ `{"status":"ok"}`
+`GET /healthz` → `{"status":"ok"}`

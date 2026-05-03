@@ -12,9 +12,10 @@ spec:
     initContainers:
       - name: velero-plugin-for-aws
         image: velero/velero-plugin-for-aws:v1.10.0
-        volumeMounts:
-          - mountPath: /target
-            name: plugins
+        volumeMounts: [{ mountPath: /target, name: plugins }]
+      - name: velero-plugin-for-csi
+        image: velero/velero-plugin-for-csi:v0.7.1
+        volumeMounts: [{ mountPath: /target, name: plugins }]
 
     configuration:
       backupStorageLocation:
@@ -24,12 +25,18 @@ spec:
           prefix: velero
           config:
             region: us-east-1
-            s3ForcePathStyle: "true"
+            s3ForcePathStyle: "false"
+        - name: cross-region
+          provider: aws
+          bucket: shopos-velero-backups-dr
+          prefix: velero
+          config:
+            region: us-west-2
       volumeSnapshotLocation:
         - name: default
           provider: aws
-          config:
-            region: us-east-1
+          config: { region: us-east-1 }
+      features: EnableCSI
 
     credentials:
       useSecret: true
@@ -41,22 +48,86 @@ spec:
 
     serviceAccount:
       server:
-        annotations:
-          eks.amazonaws.com/role-arn: "arn:aws:iam::${AWS_ACCOUNT_ID}:role/shopos-velero"
+        annotations: { eks.amazonaws.com/role-arn: "arn:aws:iam::${AWS_ACCOUNT_ID}:role/shopos-velero" }
+
+    metrics:
+      enabled: true
+      serviceMonitor: { enabled: true }
 
     schedules:
-      daily-full-backup:
+      # ---- Tier-0 — every 6h, 14-day retention, snapshots + filesystem backup ----
+      tier0-business:
+        disabled: false
+        schedule: "0 */6 * * *"
+        useOwnerReferencesInBackup: false
+        template:
+          ttl: 336h
+          includedNamespaces: [commerce, identity, catalog, financial, supply-chain]
+          snapshotMoveData: true
+          defaultVolumesToFsBackup: true
+          storageLocation: default
+          volumeSnapshotLocations: [default]
+
+      # ---- Tier-1 — daily 02:00, 30-day retention ----
+      tier1-business:
         disabled: false
         schedule: "0 2 * * *"
         template:
-          ttl: 720h   # 30 days
+          ttl: 720h
+          includedNamespaces:
+            - customer-experience
+            - communications
+            - content
+            - b2b
+            - marketplace
+            - integrations
+            - affiliate
+            - gamification
+            - developer-platform
+            - compliance
+            - sustainability
+            - events-ticketing
+            - auction
+            - rental
+            - shopos-web
+          defaultVolumesToFsBackup: true
+          storageLocation: default
+          volumeSnapshotLocations: [default]
+
+      # ---- Stateful infra — every 4h, 30-day retention; snapshot only ----
+      stateful-infra:
+        disabled: false
+        schedule: "0 */4 * * *"
+        template:
+          ttl: 720h
+          includedNamespaces: [databases, streaming, infra, temporal-system, flink-system]
+          snapshotMoveData: true
+          storageLocation: default
+          volumeSnapshotLocations: [default]
+
+      # ---- Observability — daily, 7-day retention ----
+      observability:
+        disabled: false
+        schedule: "30 3 * * *"
+        template:
+          ttl: 168h
+          includedNamespaces: [monitoring]
+          defaultVolumesToFsBackup: true
+          storageLocation: default
+
+      # ---- Cross-region replicate weekly to us-west-2 for DR ----
+      weekly-dr-replication:
+        disabled: false
+        schedule: "0 4 * * 0"
+        template:
+          ttl: 2160h    # 90 days
           includedNamespaces:
             - commerce
             - identity
             - catalog
-            - supply-chain
             - financial
-            - analytics-ai
-          storageLocation: default
-          volumeSnapshotLocations:
-            - default
+            - supply-chain
+            - databases
+            - streaming
+          storageLocation: cross-region
+          volumeSnapshotLocations: [default]

@@ -1,4 +1,4 @@
-﻿# gdpr-service
+# gdpr-service
 
 > Data erasure requests, consent tracking, and GDPR compliance orchestration.
 
@@ -103,27 +103,27 @@ service GDPRService {
 ## Dependencies
 
 Upstream (calls these):
-- `user-service` â€” anonymize user PII
-- `order-service` â€” anonymize order personal data
-- `review-rating-service` â€” remove user reviews
-- `support-ticket-service` â€” anonymize ticket personal data
-- `analytics-service` â€” purge user-linked analytics events
+- `user-service` — anonymize user PII
+- `order-service` — anonymize order personal data
+- `review-rating-service` — remove user reviews
+- `support-ticket-service` — anonymize ticket personal data
+- `analytics-service` — purge user-linked analytics events
 
 Downstream (called by these):
-- `api-gateway` â€” consent and erasure endpoints exposed to end-users
-- `admin-portal` â€” manage erasure requests and legal holds
+- `api-gateway` — consent and erasure endpoints exposed to end-users
+- `admin-portal` — manage erasure requests and legal holds
 
 ## Environment Variables
 
 | Variable | Default | Description |
 |---|---|---|
-| `DATABASE_URL` | â€” | PostgreSQL connection string |
+| `DATABASE_URL` | — | PostgreSQL connection string |
 | `GRPC_PORT` | `50065` | gRPC listening port |
 | `ERASURE_DEADLINE_DAYS` | `30` | SLA days to complete erasure |
 | `KAFKA_BROKERS` | `kafka:9092` | Kafka broker list |
 | `USER_SERVICE_ADDR` | `user-service:50061` | User service gRPC address |
 | `ORDER_SERVICE_ADDR` | `order-service:50082` | Order service gRPC address |
-| `DATA_EXPORT_BUCKET` | â€” | MinIO/S3 bucket for export archives |
+| `DATA_EXPORT_BUCKET` | — | MinIO/S3 bucket for export archives |
 
 ## Running Locally
 
@@ -133,6 +133,6 @@ docker-compose up gdpr-service
 
 ## Health Check
 
-`GET /healthz` â€” `{"status":"ok"}`
+`GET /healthz` — `{"status":"ok"}`
 
 gRPC health protocol: `grpc.health.v1.Health/Check` on port `50065`

@@ -1,4 +1,4 @@
-﻿# GraphQL Gateway
+# GraphQL Gateway
 
 > Unified GraphQL API that federates data from all ShopOS microservices into a single schema.
 
@@ -26,7 +26,7 @@ graph LR
 | Component | Technology |
 |---|---|
 | Language | Go |
-| Database | â€” |
+| Database | — |
 | Protocol | HTTP (GraphQL over HTTP) |
 | Port | 8086 |
 
@@ -66,22 +66,22 @@ query ProductPage($id: ID!) {
 
 ## Kafka Topics
 
-N/A â€” the GraphQL Gateway resolves queries synchronously via gRPC and does not interact with Kafka directly.
+N/A — the GraphQL Gateway resolves queries synchronously via gRPC and does not interact with Kafka directly.
 
 ## Dependencies
 
 Upstream (services this calls):
-- `product-catalog-service` (catalog) â€” product queries
-- `pricing-service` (catalog) â€” pricing data
-- `inventory-service` (catalog) â€” stock data
-- `cart-service` (commerce) â€” cart queries and mutations
-- `order-service` (commerce) â€” order queries
-- `user-service` (identity) â€” user profile queries
-- `review-rating-service` (customer-experience) â€” review data
-- `recommendation-service` (analytics-ai) â€” recommendation queries
+- `product-catalog-service` (catalog) — product queries
+- `pricing-service` (catalog) — pricing data
+- `inventory-service` (catalog) — stock data
+- `cart-service` (commerce) — cart queries and mutations
+- `order-service` (commerce) — order queries
+- `user-service` (identity) — user profile queries
+- `review-rating-service` (customer-experience) — review data
+- `recommendation-service` (analytics-ai) — recommendation queries
 
 Downstream (services that call this):
-- `api-gateway` (platform) â€” routes GraphQL traffic here
+- `api-gateway` (platform) — routes GraphQL traffic here
 - Frontend applications and third-party consumers using GraphQL
 
 ## Environment Variables
@@ -112,4 +112,4 @@ skaffold dev --module=graphql-gateway
 
 ## Health Check
 
-`GET /healthz` â†’ `{"status":"ok"}`
+`GET /healthz` → `{"status":"ok"}`

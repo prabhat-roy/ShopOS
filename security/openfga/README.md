@@ -1,14 +1,14 @@
-﻿# OpenFGA Fine-Grained Authorization
+# OpenFGA Fine-Grained Authorization
 
 OpenFGA is a Google Zanzibar-inspired fine-grained authorization (FGA) system that enables relationship-based access control (ReBAC) for ShopOS. It complements the coarse-grained policy enforcement provided by Kyverno and OPA/Gatekeeper with application-level, per-object authorization decisions.
 
 ## Role in ShopOS
 
-- Fine-grained, per-object authorization â€” answers questions like "can user X view order Y?" or "can user X edit product Z in organization W?" with sub-millisecond latency, handling the authorization logic that RBAC roles alone cannot express
-- Google Zanzibar model â€” based on the same relationship-tuple model that powers Google Drive, Docs, and Calendar permissions; scales to billions of relationship tuples
-- Complements OPA/Kyverno â€” OPA/Kyverno enforce infrastructure-level policies (which namespaces can deploy, which images are allowed); OpenFGA enforces application-level data access policies (which user can access which record)
-- Centralized authorization â€” all services delegate permission checks to the `permission-service` (Go, port 50063), which calls OpenFGA's `Check` API; no authorization logic scattered across services
-- Audit trail â€” every `Check` call is logged with the user, relation, object, and decision, feeding into the `audit-service` for compliance and SOC 2 evidence
+- Fine-grained, per-object authorization — answers questions like "can user X view order Y?" or "can user X edit product Z in organization W?" with sub-millisecond latency, handling the authorization logic that RBAC roles alone cannot express
+- Google Zanzibar model — based on the same relationship-tuple model that powers Google Drive, Docs, and Calendar permissions; scales to billions of relationship tuples
+- Complements OPA/Kyverno — OPA/Kyverno enforce infrastructure-level policies (which namespaces can deploy, which images are allowed); OpenFGA enforces application-level data access policies (which user can access which record)
+- Centralized authorization — all services delegate permission checks to the `permission-service` (Go, port 50063), which calls OpenFGA's `Check` API; no authorization logic scattered across services
+- Audit trail — every `Check` call is logged with the user, relation, object, and decision, feeding into the `audit-service` for compliance and SOC 2 evidence
 
 ## Authorization Decision Flow
 
@@ -40,7 +40,7 @@ The model defines the object types and their relations:
 
 | Type | Key Relations | Notes |
 |---|---|---|
-| `user` | â€” | Leaf principal type |
+| `user` | — | Leaf principal type |
 | `organization` | `member`, `admin` | Groups of users; admins have elevated access across all org-owned resources |
 | `product` | `can_view`, `can_edit`, `can_delete` | View is open to all org members; edit requires admin; delete requires admin |
 | `order` | `owner`, `can_view`, `can_cancel` | Owner = the user who placed the order; org admins can also view |
@@ -95,4 +95,4 @@ WriteRelationship: user=user:bob, relation=admin, object=organization:acme
 
 | File | Purpose |
 |---|---|
-| `model.fga` | OpenFGA authorization model â€” defines types, relations, and computed permissions |
+| `model.fga` | OpenFGA authorization model — defines types, relations, and computed permissions |

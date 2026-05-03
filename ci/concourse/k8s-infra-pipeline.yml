@@ -56,12 +56,12 @@ jobs:
             args:
               - -c
               - |
-                TF_DIR="shopos-repo/infra/terraform/aws/eks"
+                TF_DIR="shopos-repo/infra/terraform/aws/app-k8s"
                 cd "$TF_DIR"
                 echo "=== EKS Terraform: $TF_ACTION ==="
                 terraform init \
                   -backend-config="bucket=shopos-tfstate" \
-                  -backend-config="key=infra/terraform/aws/eks/terraform.tfstate" \
+                  -backend-config="key=infra/terraform/aws/app-k8s/terraform.tfstate" \
                   -backend-config="region=$AWS_DEFAULT_REGION" \
                   -reconfigure
                 case "$TF_ACTION" in
@@ -104,12 +104,12 @@ jobs:
               - |
                 echo "$GCP_SA_KEY" > /tmp/gcp-key.json
                 export GOOGLE_APPLICATION_CREDENTIALS=/tmp/gcp-key.json
-                TF_DIR="shopos-repo/infra/opentofu/gcp/gke"
+                TF_DIR="shopos-repo/infra/opentofu/gcp/app-k8s"
                 cd "$TF_DIR"
                 echo "=== GKE Terraform: $TF_ACTION ==="
                 terraform init \
                   -backend-config="bucket=shopos-tfstate-gcp" \
-                  -backend-config="prefix=infra/opentofu/gcp/gke" \
+                  -backend-config="prefix=infra/opentofu/gcp/app-k8s" \
                   -reconfigure
                 case "$TF_ACTION" in
                   PLAN)    terraform plan ;;
@@ -149,14 +149,14 @@ jobs:
             args:
               - -c
               - |
-                TF_DIR="shopos-repo/infra/opentofu/azure/aks"
+                TF_DIR="shopos-repo/infra/opentofu/azure/app-k8s"
                 cd "$TF_DIR"
                 echo "=== AKS Terraform: $TF_ACTION ==="
                 terraform init \
                   -backend-config="resource_group_name=shopos-tfstate-rg" \
                   -backend-config="storage_account_name=shoposterraform" \
                   -backend-config="container_name=tfstate" \
-                  -backend-config="key=infra/opentofu/azure/aks/terraform.tfstate" \
+                  -backend-config="key=infra/opentofu/azure/app-k8s/terraform.tfstate" \
                   -reconfigure
                 case "$TF_ACTION" in
                   PLAN)    terraform plan ;;

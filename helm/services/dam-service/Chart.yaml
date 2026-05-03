@@ -1,0 +1,6 @@
+apiVersion: v2
+name: dam-service
+description: ShopOS dam-service (content)
+type: application
+version: 0.1.0
+appVersion: "1.0.0"

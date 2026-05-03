@@ -1,0 +1,36 @@
+# DevSpace config — `devspace dev <service>` for hot-reload to remote cluster.
+version: v2beta1
+name: shopos
+
+images:
+  app:
+    image: "ghcr.io/shopos/dev/${DEVSPACE_USER}/${DEVSPACE_SERVICE}"
+    dockerfile: "src/${DEVSPACE_DOMAIN}/${DEVSPACE_SERVICE}/Dockerfile"
+
+deployments:
+  app:
+    helm:
+      chart:
+        name: "helm/services/${DEVSPACE_SERVICE}"
+      values:
+        image:
+          repository: "ghcr.io/shopos/dev/${DEVSPACE_USER}/${DEVSPACE_SERVICE}"
+          tag: dev
+        replicas: 1
+
+dev:
+  app:
+    imageSelector: "ghcr.io/shopos/dev/${DEVSPACE_USER}/${DEVSPACE_SERVICE}"
+    devImage: golang:1.23-alpine
+    sync:
+      - path: "./src/${DEVSPACE_DOMAIN}/${DEVSPACE_SERVICE}"
+        uploadExcludePaths:
+          - bin/
+          - .git/
+    terminal:
+      command: ./scripts/restart.sh
+    ports:
+      - port: "8080:8080"
+      - port: "50051:50051"
+    open:
+      - url: http://localhost:8080/healthz

@@ -1,0 +1,20 @@
+# Metabase — self-serve analytics for non-engineers; alternative to Superset.
+apiVersion: helm.cattle.io/v1
+kind: HelmChart
+metadata: { name: metabase, namespace: analytics-ai }
+spec:
+  repo: https://pmint93.github.io/helm-charts
+  chart: metabase
+  version: 2.18.0
+  targetNamespace: analytics-ai
+  valuesContent: |-
+    replicaCount: 2
+    database:
+      type: postgres
+      host: postgres-primary.databases.svc
+      port: 5432
+      dbname: metabase
+      username: metabase
+      existingSecret: metabase-db
+    persistence: { enabled: true, size: 10Gi }
+    ingress: { enabled: true, className: istio, hosts: [metabase.shopos.example.com] }

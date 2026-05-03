@@ -1,0 +1,197 @@
+# Domain-specific allow policies — applied on top of default-deny baseline.
+# Pattern: each domain may always (a) talk intra-namespace, (b) be reached by ingress gateway,
+# (c) reach databases/messaging in infra namespaces. Cross-domain ingress is named explicitly.
+
+# ----- Allow ingress from istio-ingress to BFFs / gateway -----
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata: { name: allow-from-ingress, namespace: platform }
+spec:
+  podSelector: { matchLabels: { tier: edge } }
+  policyTypes: [Ingress]
+  ingress:
+    - from: [{ namespaceSelector: { matchLabels: { kubernetes.io/metadata.name: istio-system } } }]
+
+# ----- Intra-namespace allow + outbound to data tier (templated per domain) -----
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata: { name: allow-intra-and-data, namespace: platform }
+spec:
+  podSelector: {}
+  policyTypes: [Ingress, Egress]
+  ingress:
+    - from: [{ podSelector: {} }]
+  egress:
+    - to: [{ podSelector: {} }]
+    - to: [{ namespaceSelector: { matchLabels: { kubernetes.io/metadata.name: databases } } }]
+    - to: [{ namespaceSelector: { matchLabels: { kubernetes.io/metadata.name: streaming } } }]
+    - to: [{ namespaceSelector: { matchLabels: { kubernetes.io/metadata.name: infra } } }]   # Vault, Consul
+    - to: [{ namespaceSelector: { matchLabels: { kubernetes.io/metadata.name: monitoring } } }]
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata: { name: allow-intra-and-data, namespace: identity }
+spec:
+  podSelector: {}
+  policyTypes: [Ingress, Egress]
+  ingress:
+    - from: [{ podSelector: {} }, { namespaceSelector: { matchLabels: { kubernetes.io/metadata.name: platform } } }]
+  egress:
+    - to: [{ podSelector: {} }]
+    - to: [{ namespaceSelector: { matchLabels: { kubernetes.io/metadata.name: databases } } }]
+    - to: [{ namespaceSelector: { matchLabels: { kubernetes.io/metadata.name: streaming } } }]
+    - to: [{ namespaceSelector: { matchLabels: { kubernetes.io/metadata.name: infra } } }]
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata: { name: allow-intra-and-data, namespace: catalog }
+spec:
+  podSelector: {}
+  policyTypes: [Ingress, Egress]
+  ingress:
+    - from:
+        - podSelector: {}
+        - namespaceSelector: { matchLabels: { kubernetes.io/metadata.name: platform } }
+        - namespaceSelector: { matchLabels: { kubernetes.io/metadata.name: commerce } }
+        - namespaceSelector: { matchLabels: { kubernetes.io/metadata.name: marketplace } }
+  egress:
+    - to: [{ podSelector: {} }]
+    - to: [{ namespaceSelector: { matchLabels: { kubernetes.io/metadata.name: databases } } }]
+    - to: [{ namespaceSelector: { matchLabels: { kubernetes.io/metadata.name: streaming } } }]
+    - to: [{ namespaceSelector: { matchLabels: { kubernetes.io/metadata.name: infra } } }]
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata: { name: allow-intra-and-data, namespace: commerce }
+spec:
+  podSelector: {}
+  policyTypes: [Ingress, Egress]
+  ingress:
+    - from:
+        - podSelector: {}
+        - namespaceSelector: { matchLabels: { kubernetes.io/metadata.name: platform } }
+  egress:
+    - to: [{ podSelector: {} }]
+    - to: [{ namespaceSelector: { matchLabels: { kubernetes.io/metadata.name: catalog } } }]
+    - to: [{ namespaceSelector: { matchLabels: { kubernetes.io/metadata.name: identity } } }]
+    - to: [{ namespaceSelector: { matchLabels: { kubernetes.io/metadata.name: financial } } }]
+    - to: [{ namespaceSelector: { matchLabels: { kubernetes.io/metadata.name: supply-chain } } }]
+    - to: [{ namespaceSelector: { matchLabels: { kubernetes.io/metadata.name: communications } } }]
+    - to: [{ namespaceSelector: { matchLabels: { kubernetes.io/metadata.name: databases } } }]
+    - to: [{ namespaceSelector: { matchLabels: { kubernetes.io/metadata.name: streaming } } }]
+    - to: [{ namespaceSelector: { matchLabels: { kubernetes.io/metadata.name: infra } } }]
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata: { name: allow-intra-and-data, namespace: supply-chain }
+spec:
+  podSelector: {}
+  policyTypes: [Ingress, Egress]
+  ingress:
+    - from:
+        - podSelector: {}
+        - namespaceSelector: { matchLabels: { kubernetes.io/metadata.name: commerce } }
+        - namespaceSelector: { matchLabels: { kubernetes.io/metadata.name: platform } }
+  egress:
+    - to: [{ podSelector: {} }]
+    - to: [{ namespaceSelector: { matchLabels: { kubernetes.io/metadata.name: catalog } } }]
+    - to: [{ namespaceSelector: { matchLabels: { kubernetes.io/metadata.name: databases } } }]
+    - to: [{ namespaceSelector: { matchLabels: { kubernetes.io/metadata.name: streaming } } }]
+    - to: [{ namespaceSelector: { matchLabels: { kubernetes.io/metadata.name: infra } } }]
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata: { name: allow-intra-and-data, namespace: financial }
+spec:
+  podSelector: {}
+  policyTypes: [Ingress, Egress]
+  ingress:
+    - from:
+        - podSelector: {}
+        - namespaceSelector: { matchLabels: { kubernetes.io/metadata.name: commerce } }
+  egress:
+    - to: [{ podSelector: {} }]
+    - to: [{ namespaceSelector: { matchLabels: { kubernetes.io/metadata.name: databases } } }]
+    - to: [{ namespaceSelector: { matchLabels: { kubernetes.io/metadata.name: streaming } } }]
+    - to: [{ namespaceSelector: { matchLabels: { kubernetes.io/metadata.name: infra } } }]
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata: { name: allow-intra-and-data, namespace: communications }
+spec:
+  podSelector: {}
+  policyTypes: [Ingress, Egress]
+  ingress:
+    - from: [{ podSelector: {} }, { namespaceSelector: { matchLabels: { kubernetes.io/metadata.name: platform } } }]
+  egress:
+    - to: [{ podSelector: {} }]
+    - to: [{ namespaceSelector: { matchLabels: { kubernetes.io/metadata.name: streaming } } }]
+    - to: [{ namespaceSelector: { matchLabels: { kubernetes.io/metadata.name: databases } } }]
+    - to: [{ namespaceSelector: { matchLabels: { kubernetes.io/metadata.name: infra } } }]
+# (Same template applied below for remaining domains for brevity.)
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata: { name: allow-intra-and-data, namespace: customer-experience }
+spec:
+  podSelector: {}
+  policyTypes: [Ingress, Egress]
+  ingress: [{ from: [{ podSelector: {} }, { namespaceSelector: { matchLabels: { kubernetes.io/metadata.name: platform } } }] }]
+  egress:
+    - to: [{ podSelector: {} }]
+    - to: [{ namespaceSelector: { matchLabels: { kubernetes.io/metadata.name: databases } } }]
+    - to: [{ namespaceSelector: { matchLabels: { kubernetes.io/metadata.name: streaming } } }]
+    - to: [{ namespaceSelector: { matchLabels: { kubernetes.io/metadata.name: infra } } }]
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata: { name: allow-intra-and-data, namespace: content }
+spec:
+  podSelector: {}
+  policyTypes: [Ingress, Egress]
+  ingress: [{ from: [{ podSelector: {} }, { namespaceSelector: { matchLabels: { kubernetes.io/metadata.name: platform } } }] }]
+  egress:
+    - to: [{ podSelector: {} }]
+    - to: [{ namespaceSelector: { matchLabels: { kubernetes.io/metadata.name: databases } } }]
+    - to: [{ namespaceSelector: { matchLabels: { kubernetes.io/metadata.name: infra } } }]
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata: { name: allow-intra-and-data, namespace: b2b }
+spec:
+  podSelector: {}
+  policyTypes: [Ingress, Egress]
+  ingress: [{ from: [{ podSelector: {} }, { namespaceSelector: { matchLabels: { kubernetes.io/metadata.name: platform } } }] }]
+  egress:
+    - to: [{ podSelector: {} }]
+    - to: [{ namespaceSelector: { matchLabels: { kubernetes.io/metadata.name: databases } } }]
+    - to: [{ namespaceSelector: { matchLabels: { kubernetes.io/metadata.name: streaming } } }]
+    - to: [{ namespaceSelector: { matchLabels: { kubernetes.io/metadata.name: infra } } }]
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata: { name: allow-intra-and-data, namespace: marketplace }
+spec:
+  podSelector: {}
+  policyTypes: [Ingress, Egress]
+  ingress: [{ from: [{ podSelector: {} }, { namespaceSelector: { matchLabels: { kubernetes.io/metadata.name: platform } } }] }]
+  egress:
+    - to: [{ podSelector: {} }]
+    - to: [{ namespaceSelector: { matchLabels: { kubernetes.io/metadata.name: catalog } } }]
+    - to: [{ namespaceSelector: { matchLabels: { kubernetes.io/metadata.name: financial } } }]
+    - to: [{ namespaceSelector: { matchLabels: { kubernetes.io/metadata.name: databases } } }]
+    - to: [{ namespaceSelector: { matchLabels: { kubernetes.io/metadata.name: streaming } } }]
+    - to: [{ namespaceSelector: { matchLabels: { kubernetes.io/metadata.name: infra } } }]
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata: { name: allow-intra-and-data, namespace: shopos-web }
+spec:
+  podSelector: {}
+  policyTypes: [Ingress, Egress]
+  ingress:
+    - from: [{ namespaceSelector: { matchLabels: { kubernetes.io/metadata.name: istio-system } } }]
+  egress:
+    - to: [{ namespaceSelector: { matchLabels: { kubernetes.io/metadata.name: platform } } }]

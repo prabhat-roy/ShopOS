@@ -1,0 +1,18 @@
+{
+  "consumer": { "name": "affiliate-service" },
+  "provider": { "name": "commission-payout-service" },
+  "interactions": [
+    {
+      "description": "POST /commissions creates a commission record for an affiliate sale",
+      "request": {
+        "method": "POST", "path": "/v1/commissions",
+        "body": { "affiliate_id": "aff-101", "order_id": "ord-9999",
+                  "gross_cents": 12999, "rate_pct": 8 }
+      },
+      "response": {
+        "status": 201,
+        "body": { "id": "com-7001", "commission_cents": 1040, "status": "pending" }
+      }
+    }
+  ]
+}

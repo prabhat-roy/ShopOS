@@ -1,4 +1,4 @@
-﻿# Falco Talon
+# Falco Talon
 
 ![release](https://flat.badgen.net/github/release/falcosecurity/falco-talon/latest?color=green) ![last commit](https://flat.badgen.net/github/last-commit/falcosecurity/falco-talon) ![licence](https://flat.badgen.net/badge/license/Apache2.0/blue) ![docker pulls](https://flat.badgen.net/docker/pulls/issif/falco-talon?icon=docker)
 
@@ -156,7 +156,7 @@ helm delete falco-talon -n falco
 | serviceMonitor.interval | string | `"30s"` | interval specifies the time interval at which Prometheus should scrape metrics from the service. |
 | serviceMonitor.path | string | `"/metrics"` | path at which the metrics are exposed |
 | serviceMonitor.port | string | `"http"` | portname at which the metrics are exposed |
-| serviceMonitor.relabelings | list | `[]` | relabelings configures the relabeling rules to apply the targetâ€™s metadata labels. |
+| serviceMonitor.relabelings | list | `[]` | relabelings configures the relabeling rules to apply the target’s metadata labels. |
 | serviceMonitor.scheme | string | `"http"` | scheme specifies network protocol used by the metrics endpoint. In this case HTTP. |
 | serviceMonitor.scrapeTimeout | string | `"10s"` | scrapeTimeout determines the maximum time Prometheus should wait for a target to respond to a scrape request. If the target does not respond within the specified timeout, Prometheus considers the scrape as failed for that target. |
 | serviceMonitor.targetLabels | list | `[]` | targetLabels defines the labels which are transferred from the associated Kubernetes service object onto the ingested metrics. |

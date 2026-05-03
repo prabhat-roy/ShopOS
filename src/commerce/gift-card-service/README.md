@@ -1,4 +1,4 @@
-﻿# gift-card-service
+# gift-card-service
 
 > Issues, validates, and tracks redemptions of digital gift cards with balance management.
 
@@ -69,15 +69,15 @@ Proto file: `proto/commerce/gift_card.proto`
 ## Dependencies
 
 Upstream (callers)
-- `checkout-service` â€” apply gift card as a payment method
-- `order-service` â€” issue gift cards purchased as products
-- `web-bff` â€” balance checks and customer-facing issuance
-- `admin-portal` â€” bulk issuance and voiding
+- `checkout-service` — apply gift card as a payment method
+- `order-service` — issue gift cards purchased as products
+- `web-bff` — balance checks and customer-facing issuance
+- `admin-portal` — bulk issuance and voiding
 
 Downstream (Kafka consumers of gift card events)
-- `notification-orchestrator` â€” delivers gift card code to recipient via email
-- `analytics-service` â€” gift card usage analytics
-- `reconciliation-service` â€” financial liability tracking
+- `notification-orchestrator` — delivers gift card code to recipient via email
+- `analytics-service` — gift card usage analytics
+- `reconciliation-service` — financial liability tracking
 
 ## Environment Variables
 
@@ -104,6 +104,6 @@ docker-compose up gift-card-service
 
 ## Health Check
 
-`GET /healthz` â†’ `{"status":"ok"}`
+`GET /healthz` → `{"status":"ok"}`
 
-gRPC health: `grpc.health.v1.Health/Check` â†’ `SERVING`
+gRPC health: `grpc.health.v1.Health/Check` → `SERVING`

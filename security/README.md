@@ -1,223 +1,136 @@
-﻿# Security Configuration â€” ShopOS
+# Security — ShopOS
 
-ShopOS implements a defence-in-depth security posture with controls at every layer: secret
-management, identity, network, runtime, policy enforcement, and static analysis. All tooling
-is open source and is applied as configuration-as-code under this directory.
+Defence-in-depth — every layer (secrets, identity, network, runtime, policy, supply chain,
+SAST/DAST, posture) has at least one open-source control. All tooling is configuration-as-code.
 
-> Phase note: The full security stack is provisioned in Phase 3. The configurations
-> here are ready to apply once the base platform (Phase 1) and CI/CD (Phase 2) are stable.
+> Production-ready as of 2026-05-02. See [`../docs/runbooks/incident-response.md`](../docs/runbooks/incident-response.md)
+> for triage; CLAUDE.md for the full Tool Responsibility Matrix.
 
 ---
 
-## Directory Structure
+## Layout
 
 ```
 security/
-â”œâ”€â”€ vault/                  â† Secret management (HashiCorp Vault)
-â”œâ”€â”€ keycloak/               â† Identity provider / SSO (Keycloak)
-â”œâ”€â”€ kyverno/                â† Kubernetes policy engine
-â”œâ”€â”€ falco/                  â† Runtime threat detection
-â”œâ”€â”€ semgrep/                â† SAST rule sets
-â”œâ”€â”€ trivy/                  â† Container and dependency scanning
-â”œâ”€â”€ sonarqube/              â† Code quality and security gate
-â”œâ”€â”€ opa/                    â† Open Policy Agent (API-level authz)
-â””â”€â”€ network-policies/       â† Kubernetes NetworkPolicy manifests
+├── vault/                  HA Raft Vault — Raft + KMS unseal + K8s/OIDC/JWT/AppRole auth +
+│                           KV-per-domain + dynamic Postgres + AWS IAM + PKI int+root +
+│                           Transit + TOTP + SSH-CA. Bootstrap scripts in vault/bootstrap/.
+├── keycloak/               Customer + employee SSO realms
+├── dex/                    OIDC federation broker (Azure AD / Okta / Google → K8s)
+├── authentik/              Internal-tooling SSO (Grafana, ArgoCD, Harbor)
+├── openfga/                Relationship-based authz (Zanzibar model)
+├── cedar/                  AWS Cedar policies for resource-scoped authz
+├── opa/                    OPA admission rego (data residency, cross-namespace)
+├── kyverno/                9 baseline policies (privileged, runAsNonRoot, registries,
+│                           Cosign verify, requests/limits, labels, no :latest, RO root, drop ALL caps)
+├── kubewarden/             Wasm policy engine (custom domain rules)
+├── falco/                  11 enterprise rules (shell, escape, miner, payment exfil, …)
+├── tetragon/               eBPF policy enforcement (kill on violation)
+├── tracee/                 eBPF event collection (forensics)
+├── spire/                  SPIFFE workload identity (X.509 SVIDs)
+├── cert-manager/           ClusterIssuers — Let's Encrypt prod+staging + Vault PKI
+├── coraza-waf/             OWASP WAF (ModSecurity rules)
+├── trivy/                  Container + IaC scanning (CI)
+├── trivy-operator/         Continuous in-cluster vulnerability + misconfig + secret scan
+├── grype/                  Secondary CVE scanner
+├── checkov/                IaC scanning (Terraform + Helm + Dockerfile)
+├── kics/                   Extended IaC scanning (K8s + Ansible)
+├── terrascan/              Policy-as-code IaC scanning
+├── semgrep/                SAST custom rules per language
+├── sonarqube/              Code quality + security hotspots
+├── kube-bench/             CIS Benchmark
+├── kube-hunter/            K8s pen testing
+├── kubescape/              NSA / CISA / MITRE ATT&CK posture
+├── cosign/                 Sigstore image signing (keyless via OIDC)
+├── rekor/                  Sigstore transparency log
+├── fulcio/                 Sigstore CA
+├── sigstore/               Policy Controller — admission-time Cosign verification
+├── syft/                   SBOM generation (CycloneDX)
+├── nuclei/                 CVE template scanning (DAST)
+├── zap/                    OWASP ZAP DAST
+├── teleport/               Zero-trust SSH + K8s exec + DB proxy
+├── pomerium/               Identity-aware proxy for internal tools
+├── external-secrets/       External Secrets Operator (Vault → K8s Secrets)
+├── sealed-secrets/         GitOps-safe secrets (encrypted at rest)
+├── cilium/                 L7 NetworkPolicies (HTTP-aware payment + auth filters)
+├── network-policies/       (Symlink target) — actual policies in kubernetes/network-policies/
+├── wazuh/                  SIEM + HIDS
+├── suricata/               Network IDS/IPS
+├── zeek/                   Traffic analysis (TLS fingerprinting)
+├── openvas/                External attack-surface scanning
+├── defectdojo/             Vulnerability finding aggregation
+├── dependency-track/       SBOM ingestion + CVE correlation
+├── gitguardian/            ggshield pre-commit hook (200+ secret providers)
+└── wiz-cli/                Consolidated scan (Trivy + Grype + Syft + Checkov + Gitleaks)
 ```
 
 ---
 
-## Security Layers
+## Defence-in-depth layers
 
-```mermaid
-flowchart TB
-    subgraph Dev["Developer Workstation / CI"]
-        SG[Semgrep SAST]
-        TR[Trivy\nImage + SCA Scan]
-        SQ[SonarQube\nQuality Gate]
-    end
-
-    subgraph Registry["Container Registry (Harbor)"]
-        CS[Cosign Signature\nVerification]
-    end
-
-    subgraph Admission["K8s Admission Control"]
-        KY[Kyverno\nPolicy Engine]
-        OPA[OPA / Gatekeeper\nAPI Authz]
-    end
-
-    subgraph Runtime["Runtime (In-Cluster)"]
-        FA[Falco\nRuntime Detection]
-        NP[NetworkPolicies\nEast-West Segmentation]
-        VT[Vault\nDynamic Secrets]
-        KC[Keycloak\nSSO / OIDC / JWT]
-    end
-
-    subgraph Mesh["Service Mesh (Istio â€” Phase 3)"]
-        MTLS[mTLS between services]
-        AZ[AuthorizationPolicies]
-    end
-
-    DEV([Developer]) --> SG & SQ
-    SG & SQ --> TR --> CS --> KY
-    KY -->|Allowed| OPA -->|Allowed| Runtime
-    KY -->|Denied| BLOCK1([Blocked])
-    OPA -->|Denied| BLOCK2([Denied])
-    VT --> Runtime
-    KC --> Runtime
-    Runtime --> Mesh
-    FA -->|Alert| SIEM([SIEM / Alertmanager])
+```
+1. Pre-commit          gitleaks, ggshield, hadolint, golangci-lint
+2. CI (build)          Trivy fs, Grype, Syft (SBOM), Checkov, KICS, Terrascan, tfsec,
+                       Semgrep, SonarQube, CodeQL (GH), Cosign sign, Rekor record
+3. Registry            Harbor + Clair + Anchore policy
+4. Admission           Kyverno (9 baseline), OPA (residency, cross-ns), Sigstore Policy
+                       Controller (Cosign verify), Kubewarden (custom)
+5. Network             Cilium L7, default-deny NetworkPolicies (all 22 namespaces),
+                       Istio STRICT mTLS PeerAuth + AuthZ deny-all + named allows
+6. Runtime             Falco (11 rules) + Tetragon (enforce) + Tracee (forensics) +
+                       Trivy Operator (continuous), Kubescape posture
+7. Identity            Keycloak (customer/employee), Dex (federation), Authentik (internal),
+                       OpenFGA + Cedar (resource authz), SPIFFE/SPIRE (workload),
+                       Pomerium + Teleport (zero-trust)
+8. Secrets             Vault HA + dynamic creds + PKI + Transit + ESO + Sealed Secrets + SOPS
+9. Observability       Wazuh SIEM, Suricata IDS, Zeek traffic, OpenVAS, OpenSearch security idx
+10. Compliance         DefectDojo (find aggregation), Dependency-Track (SBOM CVE),
+                       OpenSSF Scorecard, kube-bench (CIS), Kubescape (NSA)
 ```
 
 ---
 
-## Tool Reference
-
-### HashiCorp Vault â€” `vault/`
-
-Vault provides dynamic secrets, PKI certificate issuance, and encrypted key-value storage.
-
-- Auth methods: Kubernetes ServiceAccount JWT, OIDC (via Keycloak)
-- Secret engines: `kv-v2` for static config, `database` for dynamic Postgres credentials,
-  `pki` for internal TLS certificates
-- Agent injection: Vault Agent Injector annotates pods to mount secrets as files or env vars
-- Lease TTL: database credentials rotate every 1 hour
+## Vault bootstrap
 
 ```bash
-# Bootstrap Vault (after Helm install)
-vault operator init -key-shares=5 -key-threshold=3
-vault operator unseal   # repeat 3 times with different unseal keys
-kubectl apply -f security/vault/vault-auth-role.yaml
-kubectl apply -f security/vault/vault-policies/
+# After Helm install:
+kubectl exec -n infra vault-0 -- vault operator init -key-shares=5 -key-threshold=3
+# (records 5 unseal keys + root token; store securely or use KMS auto-unseal)
+
+# Then run the three bootstrap steps with VAULT_ADDR + VAULT_TOKEN set:
+bash security/vault/bootstrap/01-auth-methods.sh    # K8s + OIDC + JWT + AppRole
+bash security/vault/bootstrap/02-secret-engines.sh  # KV-per-domain + database + AWS + PKI + Transit + TOTP + SSH-CA
+bash security/vault/bootstrap/03-policies-roles.sh  # bind policies to K8s ServiceAccounts
 ```
 
-### Keycloak â€” `keycloak/`
+See [`vault/bootstrap/`](vault/bootstrap/) for the scripts.
 
-Keycloak is the central identity and access management system for ShopOS.
+---
 
-- Realms: `shopos-internal` (employees, admins), `shopos-external` (customers, partners)
-- Clients: `api-gateway`, `admin-portal`, `partner-bff`, `backstage`
-- Flows: OIDC Authorization Code (web), Client Credentials (service-to-service)
-- MFA: TOTP enforced for all admin roles via `mfa-service`
+## Apply admission + runtime policies
 
 ```bash
-# Port-forward Keycloak admin console
-kubectl port-forward svc/keycloak 8080:8080 -n shopos-identity
-# http://localhost:8080/admin
+kubectl apply -f security/kyverno/policies/baseline-policies.yaml
+kubectl apply -f security/sigstore/policy-controller.yaml
+kubectl apply -f security/opa/policies/admission/
+kubectl apply -f security/falco/rules/enterprise-rules.yaml
+kubectl apply -f security/cilium/network-policies.yaml
+kubectl apply -f networking/istio/security/peer-authentication.yaml
+kubectl apply -f networking/istio/security/authorization-policies.yaml
+kubectl apply -f kubernetes/network-policies/
 ```
 
-### Kyverno â€” `kyverno/`
+---
 
-Kyverno enforces Kubernetes policy as admission webhooks â€” no Rego required.
-
-Key policies applied:
-
-| Policy | Action | Description |
-|---|---|---|
-| `require-non-root` | Enforce | All containers must run as non-root |
-| `disallow-latest-tag` | Enforce | Image tags must be pinned (no `:latest`) |
-| `require-resource-limits` | Enforce | CPU and memory limits mandatory |
-| `restrict-host-path` | Enforce | `hostPath` volumes disallowed |
-| `require-signed-images` | Enforce | Cosign signature must be present |
-| `restrict-privilege-escalation` | Enforce | `allowPrivilegeEscalation: false` required |
+## Run a consolidated scan
 
 ```bash
-kubectl apply -f security/kyverno/policies/
-kubectl get policyreport -A   # view compliance report
+bash security/wiz-cli/scan.sh .   # Trivy + Grype + Syft + Checkov + Gitleaks
 ```
-
-### Falco â€” `falco/`
-
-Falco monitors kernel system calls at runtime and alerts on suspicious behaviour.
-
-Notable rules applied:
-
-- Shell spawned inside a container
-- Unexpected outbound network connection from a database pod
-- Write to `/etc` or `/bin` inside a running container
-- Unexpected process execution in `shopos-financial` namespace
-
-Alerts are routed to Alertmanager â†’ Slack `#shopos-security`.
-
-```bash
-kubectl logs -n falco -l app=falco -f   # stream Falco alerts
-```
-
-### Semgrep â€” `semgrep/`
-
-Semgrep runs SAST analysis in CI for all language rulesets.
-
-| Language | Ruleset |
-|---|---|
-| Go | `p/golang` + custom ShopOS rules |
-| Java / Kotlin | `p/java` + `p/owasp-top-ten` |
-| Python | `p/python` + `p/bandit` |
-| Node.js | `p/nodejs` + `p/javascript` |
-| Rust | `p/rust` |
-| C# | `p/csharp` |
-
-```bash
-# Run locally against a service
-semgrep --config security/semgrep/rules/ src/commerce/order-service/
-```
-
-### Trivy â€” `trivy/`
-
-Trivy scans container images, filesystems, and Git repositories for CVEs and misconfigurations.
-
-- Image scan: every Docker image in CI before push to Harbor
-- SCA: `go.mod`, `pom.xml`, `package.json`, `requirements.txt`, `Cargo.toml`
-- K8s: periodic cluster scan via `trivy operator`
-- Severity threshold: builds fail on `CRITICAL` or `HIGH` unfixed CVEs
-
-```bash
-# Scan an image
-trivy image enterprise-platform/order-service:latest
-
-# Scan a filesystem
-trivy fs src/commerce/order-service/
-
-# Kubernetes cluster scan
-trivy k8s --report=summary cluster
-```
-
-### SonarQube â€” `sonarqube/`
-
-SonarQube provides code quality gates, duplication detection, and security hotspot analysis.
-
-- Quality Gate: must pass before merge to `main`
-- Coverage threshold: â‰¥ 80 % line coverage
-- Security hotspots: reviewed and resolved before release
-
-```bash
-# Port-forward SonarQube
-kubectl port-forward svc/sonarqube 9000:9000 -n shopos-infra
-# http://localhost:9000
-```
-
-### OPA / Gatekeeper â€” `opa/`
-
-Open Policy Agent enforces fine-grained API-level authorisation policies for the gRPC/HTTP
-gateway layer. Rego policies define which `sub` (subject) may call which gRPC method.
-
-### Network Policies â€” `network-policies/`
-
-Kubernetes `NetworkPolicy` manifests enforce east-west traffic segmentation:
-
-- Pods may only receive ingress from their own namespace or explicitly allowed namespaces
-- All cross-domain calls must go via the API Gateway or explicit service-to-service allow rules
-- The `shopos-infra` namespace (databases, Kafka, Vault) only accepts traffic from service pods â€”
-  never from `ingress-nginx` or external sources directly
 
 ---
 
 ## References
 
-- [HashiCorp Vault](https://developer.hashicorp.com/vault)
-- [Keycloak Documentation](https://www.keycloak.org/documentation)
-- [Kyverno](https://kyverno.io/docs/)
-- [Falco](https://falco.org/docs/)
-- [Semgrep](https://semgrep.dev/docs/)
-- [Trivy](https://aquasecurity.github.io/trivy/)
-- [SonarQube](https://docs.sonarqube.org/)
-- [OPA/Gatekeeper](https://open-policy-agent.github.io/gatekeeper/)
-- [ShopOS CI Pipelines](../ci/README.md)
+- [Tool Responsibility Matrix in CLAUDE.md](../CLAUDE.md#security--each-tool-has-a-distinct-security-domain)
+- [Incident response runbook](../docs/runbooks/incident-response.md)

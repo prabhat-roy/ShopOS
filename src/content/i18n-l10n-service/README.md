@@ -1,4 +1,4 @@
-﻿# i18n-l10n-service
+# i18n-l10n-service
 
 > Translation key management, locale configuration, and pluralization rules for the ShopOS platform.
 
@@ -71,7 +71,7 @@ Downstream: web-bff, mobile-bff, cms-service, product-catalog-service (all consu
 | Variable | Default | Description |
 |---|---|---|
 | `GRPC_PORT` | `50146` | gRPC server port |
-| `POSTGRES_DSN` | â€” | PostgreSQL connection string |
+| `POSTGRES_DSN` | — | PostgreSQL connection string |
 | `DEFAULT_LOCALE` | `en-US` | Platform default/fallback locale |
 | `FALLBACK_CHAIN_ENABLED` | `true` | Enable locale fallback chaining |
 | `KAFKA_BROKERS` | `kafka:9092` | Kafka broker list |
@@ -85,4 +85,4 @@ docker-compose up i18n-l10n-service
 
 ## Health Check
 
-`GET /healthz` â†’ `{"status":"ok"}`
+`GET /healthz` → `{"status":"ok"}`

@@ -1,0 +1,19 @@
+# Healthchecks.io (self-hosted) — cron monitoring; pings missed → alerts to Grafana OnCall.
+apiVersion: helm.cattle.io/v1
+kind: HelmChart
+metadata: { name: healthchecks, namespace: monitoring }
+spec:
+  repo: https://healthchecks.github.io/helm
+  chart: healthchecks
+  version: 0.7.0
+  targetNamespace: monitoring
+  valuesContent: |-
+    replicaCount: 2
+    settings:
+      siteName: shopos-cron
+      defaultFromEmail: cron-monitor@shopos.example.com
+      databaseUrl: postgres://healthchecks:${HEALTHCHECKS_DB_PASSWORD}@postgres-primary.databases.svc:5432/healthchecks
+    persistence: { enabled: true, size: 5Gi }
+    ingress:
+      enabled: true
+      hosts: [{ host: healthchecks.shopos.example.com, paths: [/] }]

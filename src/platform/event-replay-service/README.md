@@ -1,4 +1,4 @@
-﻿# Event Replay Service
+# Event Replay Service
 
 > Replays events from the event store to rebuild projections, re-process logic, or recover from failures.
 
@@ -62,13 +62,13 @@ sequenceDiagram
 ## Dependencies
 
 Upstream (services this calls):
-- `event-store-service` (platform) â€” source of events to replay
-- `PostgreSQL` â€” replay job state and progress persistence
-- `Kafka` â€” target for re-published replay events
+- `event-store-service` (platform) — source of events to replay
+- `PostgreSQL` — replay job state and progress persistence
+- `Kafka` — target for re-published replay events
 
 Downstream (services that call this):
-- `admin-portal` (platform) â€” replay job management
-- Operations engineers â€” projection rebuild and failure recovery workflows
+- `admin-portal` (platform) — replay job management
+- Operations engineers — projection rebuild and failure recovery workflows
 
 ## Environment Variables
 
@@ -97,4 +97,4 @@ skaffold dev --module=event-replay-service
 
 ## Health Check
 
-`GET /healthz` â†’ `{"status":"ok"}`
+`GET /healthz` → `{"status":"ok"}`

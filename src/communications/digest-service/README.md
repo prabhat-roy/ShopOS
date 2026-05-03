@@ -1,4 +1,4 @@
-﻿# digest-service
+# digest-service
 
 > Batches low-priority notifications into configurable daily or weekly digest emails.
 
@@ -60,14 +60,14 @@ gRPC service: (digest preferences management)
 ## Dependencies
 
 Upstream (consumes from)
-- `wishlist-service` â€” price-drop digest items
-- `qa-service` â€” new-answer digest items
-- `inventory-service` â€” back-in-stock digest items
+- `wishlist-service` — price-drop digest items
+- `qa-service` — new-answer digest items
+- `inventory-service` — back-in-stock digest items
 - Any domain service publishing `digest.item.queued`
 
 Downstream (calls)
-- `notification-orchestrator` / Kafka â€” publishes compiled digest email requests
-- `template-service` â€” fetches digest email template via gRPC (called indirectly through email-service)
+- `notification-orchestrator` / Kafka — publishes compiled digest email requests
+- `template-service` — fetches digest email template via gRPC (called indirectly through email-service)
 
 ## Environment Variables
 
@@ -91,4 +91,4 @@ docker-compose up digest-service
 
 ## Health Check
 
-`GET /healthz` â†’ `{"status":"ok"}`
+`GET /healthz` → `{"status":"ok"}`

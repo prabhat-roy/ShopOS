@@ -21,7 +21,7 @@ jobs:
       - run:
           name: Terraform init and plan (EKS)
           environment:
-            TF_DIR: infra/terraform/aws/eks
+            TF_DIR: infra/terraform/aws/app-k8s
           command: |
             cd $TF_DIR
             terraform init -input=false \
@@ -40,7 +40,7 @@ jobs:
       - run:
           name: Terraform apply (EKS)
           environment:
-            TF_DIR: infra/terraform/aws/eks
+            TF_DIR: infra/terraform/aws/app-k8s
           command: |
             cd $TF_DIR
             terraform init -input=false
@@ -63,7 +63,7 @@ jobs:
       - run:
           name: Terraform init and plan (GKE)
           environment:
-            TF_DIR: infra/opentofu/gcp/gke
+            TF_DIR: infra/opentofu/gcp/app-k8s
           command: |
             cd $TF_DIR
             terraform init -input=false \
@@ -81,7 +81,7 @@ jobs:
       - run:
           name: Terraform init and plan (AKS)
           environment:
-            TF_DIR: infra/opentofu/azure/aks
+            TF_DIR: infra/opentofu/azure/app-k8s
           command: |
             cd $TF_DIR
             terraform init -input=false \

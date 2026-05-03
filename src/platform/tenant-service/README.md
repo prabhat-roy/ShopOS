@@ -1,6 +1,6 @@
-﻿# Tenant Service
+# Tenant Service
 
-> Multi-tenancy management â€” provisions, configures, and isolates platform tenants.
+> Multi-tenancy management — provisions, configures, and isolates platform tenants.
 
 ## Overview
 
@@ -30,7 +30,7 @@ graph LR
 - Store and serve tenant records including ID, name, status, domain, and tier
 - Resolve tenant context from a hostname, subdomain, or `X-Tenant-ID` header
 - Manage per-tenant configuration overrides (feature flags, quotas, branding)
-- Enforce tenant isolation guarantees â€” no cross-tenant data leakage
+- Enforce tenant isolation guarantees — no cross-tenant data leakage
 - Support tenant suspension and reactivation with immediate effect
 - Emit tenant lifecycle events for downstream services to react to
 - Provide tenant lookup caching to minimise per-request latency impact
@@ -60,13 +60,13 @@ graph LR
 ## Dependencies
 
 Upstream (services this calls):
-- `PostgreSQL` â€” tenant record and configuration storage
-- `feature-flag-service` (platform) â€” per-tenant feature flag overrides
+- `PostgreSQL` — tenant record and configuration storage
+- `feature-flag-service` (platform) — per-tenant feature flag overrides
 
 Downstream (services that call this):
-- `api-gateway` (platform) â€” tenant resolution on every request
-- `admin-portal` (platform) â€” tenant lifecycle management
-- All multi-tenant-aware services â€” fetch tenant context to scope data queries
+- `api-gateway` (platform) — tenant resolution on every request
+- `admin-portal` (platform) — tenant lifecycle management
+- All multi-tenant-aware services — fetch tenant context to scope data queries
 
 ## Environment Variables
 
@@ -94,4 +94,4 @@ skaffold dev --module=tenant-service
 
 ## Health Check
 
-`GET /healthz` â†’ `{"status":"ok"}`
+`GET /healthz` → `{"status":"ok"}`

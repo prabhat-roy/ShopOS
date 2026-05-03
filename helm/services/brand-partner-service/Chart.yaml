@@ -1,0 +1,6 @@
+apiVersion: v2
+name: brand-partner-service
+description: ShopOS brand-partner-service (affiliate)
+type: application
+version: 0.1.0
+appVersion: "1.0.0"

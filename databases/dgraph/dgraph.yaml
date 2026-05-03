@@ -1,0 +1,22 @@
+# Dgraph — distributed graph DB. Alternative/complement to Neo4j for product recommendation
+# graphs that need horizontal scale. Reused by recommendation-service.
+apiVersion: helm.cattle.io/v1
+kind: HelmChart
+metadata: { name: dgraph, namespace: databases }
+spec:
+  repo: https://charts.dgraph.io
+  chart: dgraph
+  version: 0.2.5
+  targetNamespace: databases
+  valuesContent: |-
+    alpha:
+      replicaCount: 3
+      persistence: { enabled: true, size: 100Gi, storageClass: fast-ssd }
+      configFile:
+        config.yaml: |
+          security: { whitelist: 0.0.0.0/0 }
+          tls: { internal_port: true }
+    zero:
+      replicaCount: 3
+      persistence: { enabled: true, size: 20Gi, storageClass: fast-ssd }
+    ratel: { enabled: true }

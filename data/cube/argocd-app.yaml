@@ -1,0 +1,33 @@
+# Source: data/cube/cube.yaml
+# This Application installs the same Helm chart on any K8s cluster (not just k3s).
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: cube
+  namespace: argocd
+  finalizers: [resources-finalizer.argocd.argoproj.io]
+spec:
+  project: shopos-infra
+  source:
+    repoURL: https://cube-js.github.io/cube-helm-charts
+    chart: cubejs
+    targetRevision: '0.16.0'
+    helm:
+      releaseName: cube
+      values: |
+        api:
+          replicas: 3
+          env:
+            - { name: CUBEJS_DB_TYPE, value: clickhouse }
+            - { name: CUBEJS_DB_HOST, value: clickhouse.databases.svc }
+            - { name: CUBEJS_DB_NAME, value: shopos_analytics }
+        refresh: { replicas: 2 }
+        redis: { enabled: true }
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: analytics-ai
+  syncPolicy:
+    automated: { prune: false, selfHeal: true }
+    syncOptions: [CreateNamespace=true, ServerSideApply=true]
+    retry: { limit: 5, backoff: { duration: 30s, maxDuration: 5m, factor: 2 } }

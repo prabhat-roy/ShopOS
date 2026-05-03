@@ -1,0 +1,39 @@
+# Source: finops/kubecost/kubecost.yaml
+# This Application installs the same Helm chart on any K8s cluster (not just k3s).
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: kubecost
+  namespace: argocd
+  finalizers: [resources-finalizer.argocd.argoproj.io]
+spec:
+  project: shopos-infra
+  source:
+    repoURL: https://kubecost.github.io/cost-analyzer/
+    chart: cost-analyzer
+    targetRevision: '2.4.1'
+    helm:
+      releaseName: kubecost
+      values: |
+        kubecostFrontend: { image: gcr.io/kubecost1/frontend, resources: { requests: { cpu: 100m, memory: 256Mi } } }
+        kubecostModel:    { image: gcr.io/kubecost1/cost-model, resources: { requests: { cpu: 200m, memory: 1Gi } } }
+        persistentVolume: { enabled: true, size: 32Gi, storageClass: fast-ssd }
+        prometheus: { server: { enabled: false } }   # use existing Prometheus
+        global:
+          prometheus:
+            enabled: false
+            fqdn: http://prometheus-server.monitoring.svc:80
+          grafana:
+            enabled: false
+            proxy: false
+            domainName: grafana.monitoring.svc
+        networkCosts: { enabled: true }
+        forecasting: { enabled: true }
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: monitoring
+  syncPolicy:
+    automated: { prune: false, selfHeal: true }
+    syncOptions: [CreateNamespace=true, ServerSideApply=true]
+    retry: { limit: 5, backoff: { duration: 30s, maxDuration: 5m, factor: 2 } }

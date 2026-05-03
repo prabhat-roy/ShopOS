@@ -1,0 +1,6 @@
+apiVersion: v2
+name: quest-service
+description: ShopOS quest-service (gamification)
+type: application
+version: 0.1.0
+appVersion: "1.0.0"

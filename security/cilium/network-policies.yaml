@@ -1,0 +1,33 @@
+# Cilium L7 network policies — HTTP-aware filtering for sensitive APIs (payment, auth).
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata: { name: payment-only-checkout, namespace: commerce }
+spec:
+  endpointSelector: { matchLabels: { app: payment-service } }
+  ingress:
+    - fromEndpoints:
+        - matchLabels: { app: checkout-service, k8s:io.kubernetes.pod.namespace: commerce }
+        - matchLabels: { app: order-service, k8s:io.kubernetes.pod.namespace: commerce }
+      toPorts:
+        - ports: [{ port: "50083", protocol: TCP }]
+          rules:
+            http:
+              - { method: POST, path: "/Payment/Charge" }
+              - { method: POST, path: "/Payment/Refund" }
+              - { method: GET,  path: "/Payment/.+" }
+              - { method: POST, path: "/grpc.health.v1.Health/Check" }
+---
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata: { name: auth-rate-limit, namespace: identity }
+spec:
+  endpointSelector: { matchLabels: { app: auth-service } }
+  ingress:
+    - fromEndpoints: [{ matchLabels: { tier: edge, k8s:io.kubernetes.pod.namespace: platform } }]
+      toPorts:
+        - ports: [{ port: "50060", protocol: TCP }]
+          rules:
+            http:
+              - { method: POST, path: "/v1/login" }
+              - { method: POST, path: "/v1/refresh" }
+              - { method: POST, path: "/v1/logout" }

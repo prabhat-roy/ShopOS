@@ -1,4 +1,4 @@
-﻿# sitemap-service
+# sitemap-service
 
 > Dynamic sitemap.xml generation derived from the live product and category catalog.
 
@@ -90,4 +90,4 @@ docker-compose up sitemap-service
 
 ## Health Check
 
-`GET /healthz` â†’ `{"status":"ok"}`
+`GET /healthz` → `{"status":"ok"}`

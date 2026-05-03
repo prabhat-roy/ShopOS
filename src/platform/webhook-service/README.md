@@ -1,4 +1,4 @@
-﻿# Webhook Service
+# Webhook Service
 
 > Manages and delivers outbound webhook notifications to registered partner endpoints.
 
@@ -68,12 +68,12 @@ sequenceDiagram
 ## Dependencies
 
 Upstream (services this calls):
-- `PostgreSQL` â€” subscription registry and delivery log storage
-- Kafka â€” source of domain events to fan out
+- `PostgreSQL` — subscription registry and delivery log storage
+- Kafka — source of domain events to fan out
 
 Downstream (services that call this):
-- External partner systems â€” receive webhook POST callbacks
-- `admin-portal` (platform) â€” subscription and delivery management
+- External partner systems — receive webhook POST callbacks
+- `admin-portal` (platform) — subscription and delivery management
 
 ## Environment Variables
 
@@ -103,4 +103,4 @@ skaffold dev --module=webhook-service
 
 ## Health Check
 
-`GET /healthz` â†’ `{"status":"ok"}`
+`GET /healthz` → `{"status":"ok"}`

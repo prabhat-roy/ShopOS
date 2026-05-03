@@ -1,4 +1,4 @@
-﻿# label-service
+# label-service
 
 > Generates shipping labels in PDF and ZPL formats and produces scannable barcodes for logistics operations.
 
@@ -51,17 +51,17 @@ service LabelService {
 
 ## Kafka Topics
 
-No Kafka topics â€” this is a synchronous request/response service.
+No Kafka topics — this is a synchronous request/response service.
 
 ## Dependencies
 
 Upstream (callers)
-- `fulfillment-service` â€” outbound shipping labels
-- `returns-logistics-service` â€” return/prepaid labels
+- `fulfillment-service` — outbound shipping labels
+- `returns-logistics-service` — return/prepaid labels
 
 Downstream (calls out to)
-- `media-asset-service` (content domain) â€” optional label archival to MinIO
-- `carrier-integration-service` â€” carrier account validation for label compliance
+- `media-asset-service` (content domain) — optional label archival to MinIO
+- `carrier-integration-service` — carrier account validation for label compliance
 
 ## Environment Variables
 
@@ -82,6 +82,6 @@ docker-compose up label-service
 
 ## Health Check
 
-`GET /healthz` â†’ `{"status":"ok"}`
+`GET /healthz` → `{"status":"ok"}`
 
-gRPC health: `grpc.health.v1.Health/Check` â†’ `SERVING`
+gRPC health: `grpc.health.v1.Health/Check` → `SERVING`

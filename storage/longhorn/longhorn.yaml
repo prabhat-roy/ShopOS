@@ -1,0 +1,27 @@
+# Longhorn — distributed block storage providing dynamic RWO PVs from local node disks.
+# Used for stateful workloads that don't need cloud-provider EBS.
+apiVersion: helm.cattle.io/v1
+kind: HelmChart
+metadata: { name: longhorn, namespace: longhorn-system }
+spec:
+  repo: https://charts.longhorn.io
+  chart: longhorn
+  version: 1.7.1
+  targetNamespace: longhorn-system
+  valuesContent: |-
+    persistence:
+      defaultClass: false
+      defaultClassReplicaCount: 3
+      reclaimPolicy: Retain
+    defaultSettings:
+      backupTarget: s3://shopos-longhorn-backups@us-east-1/
+      backupTargetCredentialSecret: longhorn-s3-credentials
+      defaultDataPath: /var/lib/longhorn
+      replicaSoftAntiAffinity: false
+      storageOverProvisioningPercentage: 100
+      taintToleration: "node-role.kubernetes.io/storage=true:NoSchedule"
+      systemManagedComponentsNodeSelector: "node-role.kubernetes.io/storage:true"
+    csi:
+      kubeletRootDir: /var/lib/kubelet
+    metrics:
+      serviceMonitor: { enabled: true }

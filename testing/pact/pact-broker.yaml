@@ -1,0 +1,22 @@
+# Pact Broker config (deployed in shopos-developer namespace).
+# CI publishes consumer pacts on PR; provider verification runs in nightly Jenkins.
+pact_broker:
+  url: https://pact.shopos.example.com
+  publish:
+    on_pull_request: true
+    pact_directory: testing/pact/consumer
+  verify:
+    nightly_provider_jobs:
+      - product-catalog-service
+      - promotions-service
+      - inventory-service
+      - template-service
+      - search-service
+      - wallet-service
+      - commission-payout-service
+      - payment-service
+      - cart-service
+    fail_pipeline_on_unverified: true
+  webi_can_i_deploy:
+    enforce: true
+    block_release_on_failure: true

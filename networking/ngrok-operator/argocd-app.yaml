@@ -1,0 +1,28 @@
+# Source: networking/ngrok-operator/ngrok-operator.yaml
+# This Application installs the same Helm chart on any K8s cluster (not just k3s).
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: ngrok-operator
+  namespace: argocd
+  finalizers: [resources-finalizer.argocd.argoproj.io]
+spec:
+  project: shopos-infra
+  source:
+    repoURL: https://charts.ngrok.com
+    chart: ngrok-operator
+    targetRevision: '0.16.0'
+    helm:
+      releaseName: ngrok-operator
+      values: |
+        credentials: { secret: { name: ngrok-credentials } }
+        region: us
+        metaData: { environment: pr-preview }
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: networking
+  syncPolicy:
+    automated: { prune: false, selfHeal: true }
+    syncOptions: [CreateNamespace=true, ServerSideApply=true]
+    retry: { limit: 5, backoff: { duration: 30s, maxDuration: 5m, factor: 2 } }

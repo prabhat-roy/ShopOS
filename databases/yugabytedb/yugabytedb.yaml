@@ -1,0 +1,21 @@
+# YugabyteDB — distributed Postgres-compatible SQL DB; geo-distributed alternative to CockroachDB.
+apiVersion: helm.cattle.io/v1
+kind: HelmChart
+metadata: { name: yugabyte, namespace: databases }
+spec:
+  repo: https://charts.yugabyte.com
+  chart: yugabyte
+  version: 2024.1.4
+  targetNamespace: databases
+  valuesContent: |-
+    replicas:
+      master: 3
+      tserver: 6
+    storage:
+      master: { count: 1, size: 50Gi, storageClass: fast-ssd }
+      tserver: { count: 2, size: 200Gi, storageClass: fast-ssd }
+    resource:
+      master:  { requests: { cpu: 1, memory: 2Gi }, limits: { cpu: 2, memory: 4Gi } }
+      tserver: { requests: { cpu: 2, memory: 4Gi }, limits: { cpu: 4, memory: 8Gi } }
+    enableLoadBalancer: false
+    tls: { enabled: true }

@@ -1,0 +1,41 @@
+# Source: dev/n8n/n8n.yaml
+# This Application installs the same Helm chart on any K8s cluster (not just k3s).
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: n8n
+  namespace: argocd
+  finalizers: [resources-finalizer.argocd.argoproj.io]
+spec:
+  project: shopos-infra
+  source:
+    repoURL: https://8gears.container-registry.com/chartrepo/library
+    chart: n8n
+    targetRevision: '1.0.5'
+    helm:
+      releaseName: n8n
+      values: |
+        replicaCount: 2
+        main:
+          config: { executions: { mode: queue } }
+        worker: { count: 3 }
+        redis: { enabled: true }
+        db:
+          type: postgresdb
+          postgresdb:
+            host: postgres-primary.databases.svc
+            database: n8n
+            user: n8n
+            passwordSecret: { name: n8n-db, key: password }
+        persistence: { enabled: true, size: 5Gi }
+        ingress:
+          enabled: true
+          hosts: [{ host: n8n.shopos.example.com, paths: [{ path: /, pathType: Prefix }] }]
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: developer-platform
+  syncPolicy:
+    automated: { prune: false, selfHeal: true }
+    syncOptions: [CreateNamespace=true, ServerSideApply=true]
+    retry: { limit: 5, backoff: { duration: 30s, maxDuration: 5m, factor: 2 } }

@@ -1,153 +1,146 @@
-﻿# Databases â€” ShopOS
+# Databases — ShopOS
 
-Specialist database schemas for OLAP, vector search, graph analytics, high-throughput
-time-series, and log analytics. These complement the primary transactional databases
-(PostgreSQL, MongoDB, Redis) that are configured per-service via Docker Compose and Helm.
+Schema definitions and Helm-deployed managed instances for every database used by ShopOS.
+Primary OLTP storage (Postgres, MongoDB, Redis) is per-service via Helm + Vault dynamic
+credentials; this directory holds the cross-service analytical, vector, graph, and search stores.
 
 ---
 
-## Directory Structure
+## Layout
 
 ```
 databases/
-â”œâ”€â”€ clickhouse/         â† OLAP schema â€” orders, events, revenue_daily MV
-â”œâ”€â”€ weaviate/           â† Vector schema â€” Product, UserQuery classes
-â”œâ”€â”€ neo4j/              â† Graph schema â€” product recommendation graph
-â”œâ”€â”€ scylladb/           â† High-throughput time-series keyspace
-â””â”€â”€ opensearch/         â† Index templates + ILM policies
+├── postgres/             Flyway migrations — V001-V011 covering 11 domain schemas
+│                          (identity, commerce, financial, catalog, supply_chain, b2b,
+│                           marketplace, platform, cx, compliance, sustainability, events,
+│                           auction, rental, gamification)
+├── mongodb/              Document validators + indexes (product catalog, reviews, CMS)
+├── redis/                Key patterns + TTL reference per domain
+├── clickhouse/           OLAP — orders, events, revenue_daily MV, product_clicks
+├── weaviate/             Vector — Product, UserQuery classes (RAG, semantic search)
+├── neo4j/                Graph — product recommendation graph
+├── dgraph/               Distributed graph DB (Neo4j alternative for horizontal scale)
+├── scylladb/             High-throughput Cassandra-compatible time-series
+├── opensearch/           Log/audit/security index templates + ILM policies
+├── timescaledb/          Time-series Postgres extension — service metrics, inventory, page views
+├── memcached/            High-throughput simple cache
+├── lakefs/               Git-like data versioning over MinIO (analytics + dbt reproducibility)
+└── yugabytedb/           Distributed Postgres-compatible SQL (geo-distributed alternative to CockroachDB)
 ```
+
+---
+
+## Postgres Flyway migrations
+
+| File | Schema(s) | Notes |
+|---|---|---|
+| [V001__identity_schema.sql](postgres/V001__identity_schema.sql) | `identity` | users, sessions, MFA, API keys |
+| [V002__commerce_schema.sql](postgres/V002__commerce_schema.sql) | `commerce` | orders, payments, cart, fraud |
+| [V003__financial_schema.sql](postgres/V003__financial_schema.sql) | `financial` | invoices, accounting, payouts |
+| [V004__catalog_schema.sql](postgres/V004__catalog_schema.sql) | `catalog` | category (ltree), brand, price, inventory, bundle, variant, label |
+| [V005__supply_chain_schema.sql](postgres/V005__supply_chain_schema.sql) | `supply_chain` | vendor, warehouse, PO, fulfillment, customs, route_plan |
+| [V006__b2b_schema.sql](postgres/V006__b2b_schema.sql) | `b2b` | organization, contract, quote, RFP, approval, credit |
+| [V007__marketplace_schema.sql](postgres/V007__marketplace_schema.sql) | `marketplace` | seller, listing, commission, dispute, payout |
+| [V008__platform_schema.sql](postgres/V008__platform_schema.sql) | `platform` | saga, event_store, webhook, scheduler, feature_flag, tenant |
+| [V009__customer_experience_schema.sql](postgres/V009__customer_experience_schema.sql) | `cx` | wishlist, support_ticket, survey, gift_registry, feedback |
+| [V010__compliance_sustainability_schema.sql](postgres/V010__compliance_sustainability_schema.sql) | `compliance`, `sustainability` | retention, consent_audit, privacy_request, carbon, eco_score |
+| [V011__events_auction_rental_gamification_schema.sql](postgres/V011__events_auction_rental_gamification_schema.sql) | `events_ticketing`, `auction`, `rental`, `gamification` | venue, ticket, auction, bid, lease, badge, challenge |
+
+Apply via Flyway in CI before any service deploy:
+
+```bash
+docker run --rm -v $PWD/databases/postgres:/flyway/sql flyway/flyway:10 \
+  -url=jdbc:postgresql://postgres-primary.databases.svc:5432/postgres \
+  -user=$FLYWAY_USER -password=$FLYWAY_PASSWORD migrate
+```
+
+Dynamic credentials per service domain are issued by Vault — see
+[`../security/vault/bootstrap/02-secret-engines.sh`](../security/vault/bootstrap/02-secret-engines.sh).
 
 ---
 
 ## ClickHouse
 
-Role: OLAP analytics â€” order aggregations, revenue reporting, funnel analysis.
+OLAP analytics — order aggregations, revenue reporting, funnel analysis. Replicated MergeTree
+tables with materialized views for daily revenue.
 
-Key objects:
-
-| Object | Type | Description |
-|---|---|---|
-| `orders` | Table | ReplicatedMergeTree â€” raw order rows |
-| `order_events` | Table | ReplicatedMergeTree â€” state-change events |
-| `revenue_daily` | Materialized View | Aggregates daily revenue from `orders` |
-| `funnel_events` | Table | User funnel step tracking |
-
-Connect:
 ```bash
-clickhouse-client --host clickhouse.analytics-ai.svc --port 9000 --user shopos
+clickhouse-client --host clickhouse.databases.svc --port 9000 --user shopos
 ```
 
----
+## Weaviate / Dgraph
 
-## Weaviate
-
-Role: Vector database for semantic product search and RAG (retrieval-augmented generation).
-
-Classes:
-
-| Class | Vectorizer | Description |
+| Tool | Use | Why two? |
 |---|---|---|
-| `Product` | `text2vec-openai` | Product name, description, category embeddings |
-| `UserQuery` | `text2vec-openai` | Historical user search queries for personalisation |
-
-REST client:
-```python
-import weaviate
-client = weaviate.Client("http://weaviate.analytics-ai.svc:8080")
-results = client.query.get("Product", ["name", "description"]) \
-    .with_near_text({"concepts": ["wireless headphones"]}) \
-    .with_limit(10).do()
-```
-
----
-
-## Neo4j
-
-Role: Graph database powering the product recommendation engine.
-
-Graph model:
-
-```
-(User)-[:VIEWED]->(Product)
-(User)-[:PURCHASED]->(Product)
-(Product)-[:BELONGS_TO]->(Category)
-(Product)-[:FREQUENTLY_BOUGHT_WITH]->(Product)
-```
-
-Cypher â€” "users who bought X also bought":
-```cypher
-MATCH (p:Product {id: $productId})<-[:PURCHASED]-(u:User)-[:PURCHASED]->(rec:Product)
-WHERE rec.id <> $productId
-RETURN rec, count(u) AS coOccurrence
-ORDER BY coOccurrence DESC LIMIT 10
-```
-
----
+| Weaviate | Vector search (RAG, semantic product search) | Strong at vector ops + multi-modal |
+| Dgraph | Distributed graph at scale | Horizontal scaling beyond Neo4j single-instance |
+| Neo4j | Recommendation graph (canonical) | Best Cypher tooling for product team |
 
 ## ScyllaDB
 
-Role: High-throughput Cassandra-compatible time-series store for analytics events,
-session data, and IoT-style telemetry from the supply chain.
-
-Keyspace: `shopos_analytics`
-
-Key tables:
-
-| Table | Partition Key | Clustering Key | Description |
-|---|---|---|---|
-| `page_views` | `(user_id, date)` | `timestamp` | Page view events |
-| `product_clicks` | `(product_id, date)` | `timestamp` | Product click events |
-| `shipment_telemetry` | `(shipment_id)` | `recorded_at` | Cold-chain sensor readings |
-
-Replication: `NetworkTopologyStrategy`, RF=3.
-
-Connect:
-```bash
-cqlsh scylladb.messaging.svc 9042 -u shopos
-```
-
----
+High-throughput Cassandra-compatible store for time-series events, session data, IoT
+telemetry. Keyspace `shopos_analytics`, RF=3, NetworkTopologyStrategy.
 
 ## OpenSearch
 
-Role: Log analytics, audit trail, and security event search. Alternative to the ELK stack.
+Log + audit + security event search. Index templates with ILM policies (logs 30d, audit
+365d, security 90d). Used by SIEM (Wazuh) and engineer log debugging.
 
-Index templates:
+## TimescaleDB
 
-| Template | Applies to | Shards | Replicas | Retention |
-|---|---|---|---|---|
-| `logs-*` | Application logs | 3 | 1 | 30 days |
-| `audit-*` | Audit events | 2 | 1 | 365 days |
-| `security-*` | Falco / security events | 2 | 1 | 90 days |
+Time-series Postgres extension for service metrics, inventory events, page views. Hypertables
+auto-partition by time.
 
-ILM policies:
+## LakeFS
 
-| Policy | Hot phase | Warm phase | Delete |
-|---|---|---|---|
-| `logs-policy` | 7 days | 23 days | 30 days |
-| `audit-policy` | 30 days | 335 days | 365 days |
+Git-like data versioning over MinIO (S3-compatible). Used by dbt + analytics team for
+reproducible data runs (branch the data lake, run experiment, merge or discard).
+
+## YugabyteDB
+
+Distributed Postgres-compatible SQL. Used when geo-distributed ACID is required and
+CockroachDB licensing is undesired.
 
 ---
 
-## Applying Schemas
+## Applying schemas (full bootstrap)
 
 ```bash
+# Postgres
+docker run --rm -v $PWD/databases/postgres:/flyway/sql flyway/flyway:10 migrate
+
+# MongoDB
+mongosh "$MONGO_URI" databases/mongodb/product-catalog-schema.js
+
 # ClickHouse
-clickhouse-client --host <host> < databases/clickhouse/schema.sql
+clickhouse-client --host clickhouse.databases.svc < databases/clickhouse/schema.sql
 
-# Weaviate (via REST)
-curl -X POST http://weaviate:8080/v1/schema \
-  -H 'Content-Type: application/json' \
-  -d @databases/weaviate/schema.json
+# Weaviate
+curl -X POST http://weaviate.databases.svc:8080/v1/schema \
+  -H 'Content-Type: application/json' -d @databases/weaviate/schema.json
 
-# Neo4j (via Cypher shell)
-cypher-shell -u neo4j -p <pass> < databases/neo4j/schema.cypher
+# Neo4j
+cypher-shell -u neo4j -p $NEO4J_PASSWORD < databases/neo4j/schema.cypher
+
+# Dgraph
+curl http://dgraph.databases.svc:8080/admin/schema --data-binary @databases/dgraph/schema.gql
 
 # ScyllaDB
-cqlsh <host> -f databases/scylladb/schema.cql
+cqlsh scylladb.databases.svc -f databases/scylladb/schema.cql
 
-# OpenSearch index templates
-curl -X PUT http://opensearch:9200/_index_template/logs \
-  -H 'Content-Type: application/json' \
-  -d @databases/opensearch/logs-template.json
+# OpenSearch
+curl -X PUT http://opensearch.databases.svc:9200/_index_template/logs \
+  -H 'Content-Type: application/json' -d @databases/opensearch/logs-template.json
+
+# TimescaleDB
+psql -h timescaledb.databases.svc -U shopos -f databases/timescaledb/schema.sql
 ```
+
+---
+
+## Related
+
+- HA Postgres (Patroni 3-node + PgBouncer): [`../infra/patroni/`](../infra/patroni/), [`../infra/pgbouncer/`](../infra/pgbouncer/)
+- High-throughput Redis alternative: [`../infra/dragonfly/`](../infra/dragonfly/)
+- Object storage: MinIO + SeaweedFS (in [`../helm/infra/`](../helm/infra/))
+- Backup runbook (Postgres failover): [`../docs/runbooks/postgres-failover.md`](../docs/runbooks/postgres-failover.md)

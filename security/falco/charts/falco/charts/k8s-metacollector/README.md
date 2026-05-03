@@ -1,4 +1,4 @@
-﻿# k8s-metacollector
+# k8s-metacollector
 
 [k8s-metacollector](https://github.com/falcosecurity/k8s-metacollector) is a self-contained module that can be deployed within a Kubernetes cluster to perform the task of gathering metadata from various Kubernetes resources and subsequently transmitting this collected metadata to designated subscribers.
 
@@ -143,7 +143,7 @@ The following table lists the main configurable parameters of the k8s-metacollec
 | serviceMonitor.interval | string | `"15s"` | interval specifies the time interval at which Prometheus should scrape metrics from the service. |
 | serviceMonitor.labels | object | `{}` | labels set of labels to be applied to the ServiceMonitor resource. If your Prometheus deployment is configured to use serviceMonitorSelector, then add the right label here in order for the ServiceMonitor to be selected for target discovery. |
 | serviceMonitor.path | string | `"/metrics"` | path at which the metrics are expose by the k8s-metacollector. |
-| serviceMonitor.relabelings | list | `[]` | relabelings configures the relabeling rules to apply the targetâ€™s metadata labels. |
+| serviceMonitor.relabelings | list | `[]` | relabelings configures the relabeling rules to apply the target’s metadata labels. |
 | serviceMonitor.scheme | string | `"http"` | scheme specifies network protocol used by the metrics endpoint. In this case HTTP. |
 | serviceMonitor.scrapeTimeout | string | `"10s"` | scrapeTimeout determines the maximum time Prometheus should wait for a target to respond to a scrape request. If the target does not respond within the specified timeout, Prometheus considers the scrape as failed for that target. |
 | serviceMonitor.targetLabels | list | `[]` | targetLabels defines the labels which are transferred from the associated Kubernetes service object onto the ingested metrics. |

@@ -1,0 +1,32 @@
+# Source: incident/grafana-incident/grafana-incident.yaml
+# This Application installs the same Helm chart on any K8s cluster (not just k3s).
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: grafana-incident
+  namespace: argocd
+  finalizers: [resources-finalizer.argocd.argoproj.io]
+spec:
+  project: shopos-infra
+  source:
+    repoURL: https://grafana.github.io/helm-charts
+    chart: grafana-incident
+    targetRevision: '1.0.4'
+    helm:
+      releaseName: grafana-incident
+      values: |
+        replicas: 2
+        config:
+          slack:
+            signingSecret: ${SLACK_SIGNING_SECRET}
+            botToken:      ${SLACK_BOT_TOKEN}
+          grafanaURL: https://grafana.shopos.example.com
+          onCallURL:  https://oncall.shopos.example.com
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: monitoring
+  syncPolicy:
+    automated: { prune: false, selfHeal: true }
+    syncOptions: [CreateNamespace=true, ServerSideApply=true]
+    retry: { limit: 5, backoff: { duration: 30s, maxDuration: 5m, factor: 2 } }

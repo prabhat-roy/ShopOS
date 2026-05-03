@@ -1,0 +1,20 @@
+{
+  "consumer": { "name": "cart-service" },
+  "provider": { "name": "product-catalog-service" },
+  "interactions": [
+    {
+      "description": "GET /products/{sku} returns enriched product data for cart line",
+      "providerStates": [{ "name": "product SKU-1001 exists" }],
+      "request": { "method": "GET", "path": "/v1/products/SKU-1001",
+                   "headers": { "Accept": "application/json", "x-tenant-id": "shopos" } },
+      "response": {
+        "status": 200,
+        "headers": { "Content-Type": "application/json" },
+        "body": { "sku": "SKU-1001", "name": "Wireless Earbuds Pro",
+                  "price_cents": 12999, "currency": "USD", "in_stock": true,
+                  "weight_g": 50, "image_url": "https://cdn.shopos/.../img.jpg" }
+      }
+    }
+  ],
+  "metadata": { "pactSpecification": { "version": "3.0.0" } }
+}

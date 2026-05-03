@@ -1,4 +1,4 @@
-﻿# NATS JetStream â€” ShopOS Real-Time Messaging
+# NATS JetStream — ShopOS Real-Time Messaging
 
 ## Role in ShopOS
 
@@ -71,7 +71,7 @@ graph TD
 
 ## Usage Patterns
 
-### Publish a Chat Message (Go â€” live-chat-service)
+### Publish a Chat Message (Go — live-chat-service)
 
 ```go
 import "github.com/nats-io/nats.go"
@@ -86,7 +86,7 @@ data, _ := json.Marshal(msg)
 _, err := js.Publish("chat.room.room-42.msg", data)
 ```
 
-### Subscribe to In-App Notifications (Go â€” in-app-notification-service)
+### Subscribe to In-App Notifications (Go — in-app-notification-service)
 
 ```go
 js.Subscribe("notify.inapp.>",
@@ -102,7 +102,7 @@ js.Subscribe("notify.inapp.>",
 )
 ```
 
-### Publish Real-Time Event (Python â€” event-tracking-service)
+### Publish Real-Time Event (Python — event-tracking-service)
 
 ```python
 import nats, asyncio, json
@@ -118,10 +118,10 @@ async def main():
 asyncio.run(main())
 ```
 
-### Request-Reply (Node.js â€” currency-service)
+### Request-Reply (Node.js — currency-service)
 
 ```js
-// NATS core (non-JetStream) request-reply â€” ultra-low latency
+// NATS core (non-JetStream) request-reply — ultra-low latency
 const response = await nc.request('rpc.currency.convert',
     JSON.stringify({ amount: 100, from: 'USD', to: 'EUR' }),
     { timeout: 2000 }
@@ -131,12 +131,12 @@ console.log(JSON.parse(response.data));
 
 ---
 
-## NATS vs Kafka vs RabbitMQ â€” Comparison
+## NATS vs Kafka vs RabbitMQ — Comparison
 
 | Attribute | NATS JetStream | Apache Kafka | RabbitMQ |
 |---|---|---|---|
 | Primary use | Real-time pub/sub, presence, chat | Event sourcing, CDC, analytics | Task queues, RPC, fan-out |
-| Latency | < 1 ms (memory) | 2â€“10 ms | 1â€“5 ms |
+| Latency | < 1 ms (memory) | 2–10 ms | 1–5 ms |
 | Throughput | Very high (millions/sec) | Extremely high | High (millions/day) |
 | Message model | At-most / at-least / exactly-once | At-least / exactly-once | At-least / at-most |
 | Replay | Yes (JetStream, bounded) | Yes (unlimited log) | Limited (dead-letter) |
@@ -154,7 +154,7 @@ console.log(JSON.parse(response.data));
 # Start NATS JetStream
 docker-compose up nats
 
-# NATS CLI â€” apply stream definitions
+# NATS CLI — apply stream definitions
 nats stream add --config messaging/nats/streams.json
 
 # Monitor via built-in HTTP

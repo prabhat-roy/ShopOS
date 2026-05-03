@@ -1,4 +1,4 @@
-﻿# cert-manager
+# cert-manager
 
 cert-manager creates TLS certificates for workloads in your Kubernetes or OpenShift cluster and renews the certificates before they expire.
 
@@ -132,7 +132,7 @@ Set all pods to run in a user namespace without host access. Experimental: may b
   
 Requirements:  
   - Kubernetes â‰¥ 1.33, or  
-  - Kubernetes 1.27â€“1.32 with UserNamespacesSupport feature gate enabled.  
+  - Kubernetes 1.27–1.32 with UserNamespacesSupport feature gate enabled.  
   
 Set to false to run pods in a user namespace without host access.  
   

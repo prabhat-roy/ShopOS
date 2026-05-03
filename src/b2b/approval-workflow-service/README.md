@@ -1,4 +1,4 @@
-﻿# approval-workflow-service
+# approval-workflow-service
 
 > Orchestrates multi-step approval chains for purchase orders, quotes, expense reports, and contracts.
 
@@ -69,13 +69,13 @@ graph TD
 ## Dependencies
 
 Upstream (calls this service)
-- `quote-rfq-service` â€” routes high-value quotes for approval
-- `contract-service` â€” routes new/amended contracts for approval
-- `purchase-order-service` â€” routes POs above threshold for approval
+- `quote-rfq-service` — routes high-value quotes for approval
+- `contract-service` — routes new/amended contracts for approval
+- `purchase-order-service` — routes POs above threshold for approval
 
 Downstream (this service calls)
-- `organization-service` â€” resolves org membership and approval chain members
-- `user-service` â€” validates approver user identity
+- `organization-service` — resolves org membership and approval chain members
+- `user-service` — validates approver user identity
 
 ## Environment Variables
 
@@ -86,7 +86,7 @@ Downstream (this service calls)
 | `DB_PORT` | `5432` | PostgreSQL port |
 | `DB_NAME` | `approval_db` | Database name |
 | `DB_USER` | `approval_user` | Database username |
-| `DB_PASSWORD` | â€” | Database password (required) |
+| `DB_PASSWORD` | — | Database password (required) |
 | `KAFKA_BOOTSTRAP_SERVERS` | `localhost:9092` | Kafka broker addresses |
 | `ORGANIZATION_SERVICE_ADDR` | `organization-service:50160` | Address of organization-service |
 | `USER_SERVICE_ADDR` | `user-service:50061` | Address of user-service |
@@ -101,6 +101,6 @@ docker-compose up approval-workflow-service
 
 ## Health Check
 
-`GET /healthz` â†’ `{"status":"ok"}`
+`GET /healthz` → `{"status":"ok"}`
 
-gRPC health: `grpc.health.v1.Health/Check` â†’ `SERVING`
+gRPC health: `grpc.health.v1.Health/Check` → `SERVING`

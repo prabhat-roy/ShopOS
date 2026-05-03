@@ -1,80 +1,86 @@
-﻿# Networking â€” ShopOS
+# Networking — ShopOS
 
-Helm charts and configurations for edge routing, service mesh, CNI, and service discovery.
+Edge routing, service mesh, CNI, service discovery, edge functions, and anti-bot protection.
 
-## Directory Structure
+## Layout
 
 ```
 networking/
-â”œâ”€â”€ traefik/            â† Traefik 3.1 â€” edge router, TLS termination, automatic service discovery
-â”œâ”€â”€ istio/              â† Istio service mesh â€” mTLS, traffic management, observability
-â”œâ”€â”€ cilium/             â† Cilium eBPF CNI â€” network policies, identity-aware filtering
-â”œâ”€â”€ consul/             â† Consul 1.19 â€” service discovery, health checking, K/V config
-â”œâ”€â”€ linkerd/            â† Linkerd â€” lightweight service mesh alternative
-â”œâ”€â”€ calico/             â† Calico CNI â€” network policies (alternative to Cilium)
-â”œâ”€â”€ kong/               â† Kong API Gateway (alternative to Traefik for API-level routing)
-â”œâ”€â”€ nginx-ingress/      â† NGINX Ingress Controller
-â”œâ”€â”€ haproxy-ingress/    â† HAProxy Ingress Controller
-â”œâ”€â”€ contour/            â† Contour Ingress (Envoy-based)
-â”œâ”€â”€ external-dns/       â† ExternalDNS â€” syncs K8s services to DNS providers
-â”œâ”€â”€ flannel/            â† Flannel CNI (simple overlay network)
-â”œâ”€â”€ antrea/             â† Antrea CNI (OVS-based, VMware)
-â””â”€â”€ weave-net/          â† Weave Net CNI
+├── traefik/             Traefik 3.1 — primary edge router (TLS, routing, automatic cert renewal)
+├── caddy/               Caddy — alternative ingress for non-prod / preview environments
+├── istio/               Istio service mesh
+│   ├── security/        STRICT mTLS PeerAuthentication + AuthorizationPolicies (deny-all + named allows)
+│   └── traffic/         DestinationRules (outlier detection, conn pools), VirtualServices (canary, retries)
+├── cilium/              Cilium eBPF CNI — L3/L4 + Hubble; L7 NetworkPolicies in security/cilium/
+├── consul/              Service discovery, health checking, K/V config
+├── linkerd/             Lightweight service mesh alternative
+├── calico/              CNI alternative (NetworkPolicy)
+├── kong/                API Gateway alternative to Traefik
+├── nginx-ingress/       NGINX Ingress Controller
+├── haproxy-ingress/     HAProxy Ingress Controller
+├── contour/             Contour Ingress (Envoy-based)
+├── external-dns/        Syncs K8s services to DNS providers (Route53/Cloudflare)
+├── flannel/             Flannel CNI (simple overlay)
+├── antrea/              Antrea CNI (OVS-based)
+├── weave-net/           Weave Net CNI
+├── cdn/                 Varnish HTTP cache + cdn-purge.sh helper (Cloudflare/Fastly)
+├── anubis/              Anubis — proof-of-work anti-bot / anti-AI scraper for storefront
+├── ngrok-operator/      ngrok Kubernetes Operator — public ingress for PR-preview environments
+├── metallb/             MetalLB — bare-metal LoadBalancer for on-prem
+├── kube-vip/            Kube-VIP — HA control-plane VIP for bare-metal
+└── edge/
+    └── spin/            Fermyon Spin / SpinKube — Wasm serverless edge functions
+                         (storefront geo-IP greeting, A/B variant selection)
 ```
 
-## Deployed Stack
+## Traffic flow
 
-| Component | Version | Role |
+```
+Internet (HTTPS, TLS)
+  │
+  ▼
+Cloudflare/Fastly CDN  (purged via networking/cdn/cdn-purge.sh)
+  │
+  ▼
+Anubis (PoW anti-bot)  ──► Varnish (HTTP cache)
+  │
+  ▼
+Istio Gateway (TLS termination, cert-manager-issued cert)
+  │
+  ▼
+api-gateway / web-bff / mobile-bff / partner-bff (JWT validation, rate limit)
+  │ gRPC over mTLS (Istio STRICT PeerAuthentication)
+  ▼
+Domain services
+  │
+  ▼
+Postgres / Redis / Kafka  (Cilium L7 NetworkPolicies on payment + auth ingress)
+```
+
+## Istio configuration (production-ready)
+
+- **PeerAuthentication**: mesh-wide `STRICT` mTLS in [`istio/security/peer-authentication.yaml`](istio/security/peer-authentication.yaml) — every pod-to-pod call is mTLS
+- **AuthorizationPolicies**: deny-all in [`istio/security/authorization-policies.yaml`](istio/security/authorization-policies.yaml) + named allows (BFF→cart, checkout→payment, order→fulfillment)
+- **DestinationRules**: outlier detection + connection pools for tier-0 services in [`istio/traffic/destination-rules.yaml`](istio/traffic/destination-rules.yaml)
+- **VirtualServices**: canary traffic-shifting + retries + edge gateway routing in [`istio/traffic/virtual-services.yaml`](istio/traffic/virtual-services.yaml)
+- **Kiali**: topology UI in [`../observability/kiali/`](../observability/kiali/)
+
+## Network policies
+
+| Layer | Tool | Path |
 |---|---|---|
-| Traefik | 3.1 | Edge router â€” TLS termination, routing rules, automatic cert renewal |
-| Istio | latest | Service mesh â€” mTLS between all pods, traffic policies, circuit breaking |
-| Cilium | latest | eBPF CNI â€” fine-grained network policies, L7 filtering |
-| Consul | 1.19 | Service discovery and health checking across cluster |
+| L3/L4 default-deny per namespace | Kubernetes NetworkPolicy | [`../kubernetes/network-policies/`](../kubernetes/network-policies/) |
+| L7 HTTP-aware filtering | Cilium CiliumNetworkPolicy | [`../security/cilium/`](../security/cilium/) |
+| Mesh-level authz | Istio AuthorizationPolicy | [`istio/security/`](istio/security/) |
 
-## Traffic Flow
+## Edge compute
 
-```
-Internet
-  â”‚ HTTPS (TLS)
-  â–¼
-Traefik (edge)          â† cert-manager issues/renews TLS certs
-  â”‚ HTTP (inside cluster)
-  â–¼
-API Gateway             â† JWT validation, rate limiting
-  â”‚ gRPC (mTLS via Istio)
-  â–¼
-BFFs â†’ Domain Services  â† Istio enforces mTLS on all pod-to-pod comms
-```
-
-## Traefik Configuration
-
-- IngressRoute resources define routing rules per service
-- Automatic TLS via ACME (Let's Encrypt) or internal CA
-- Middlewares: rate limiting, headers, circuit breaking
-- Dashboard available at `:8080/dashboard/`
-
-## Istio Configuration
-
-- Installed via Istio Operator in `istio-system` namespace
-- All namespaces labelled `istio-injection: enabled`
-- mTLS mode: `STRICT` â€” plaintext pod-to-pod traffic is rejected
-- VirtualService and DestinationRule resources per service for canary traffic splitting
-
-## Consul Configuration
-
-- Service registry: all services register on startup with health check endpoint
-- K/V store: feature flags and runtime config (alongside `config-service`)
-- DNS interface: services resolve each other via `<service>.service.consul`
-
-## Network Policies
-
-Raw Kubernetes NetworkPolicy manifests are in `kubernetes/network-policies/`.
-Cilium NetworkPolicy (CiliumNetworkPolicy CRDs) for L7-aware rules are in `networking/cilium/`.
-
-Each service namespace only accepts ingress from its authorised callers â€” see [Domain Map](../docs/architecture/domain-map.md).
+[`edge/spin/`](edge/spin/) deploys Fermyon Spin via the SpinKube operator, running compiled Wasm
+modules as `SpinApp` CRDs. Used for low-latency storefront personalization that doesn't justify a
+full microservice (geo-IP greeting, A/B variant selection, header rewriting).
 
 ## References
 
-- [Security Model](../docs/architecture/security-model.md)
-- [System Overview](../docs/architecture/system-overview.md)
-- [Kubernetes Network Policies](../kubernetes/network-policies/)
+- [Security model](../docs/architecture/security-model.md)
+- [System overview](../docs/architecture/system-overview.md)
+- [Domain map](../docs/architecture/domain-map.md)

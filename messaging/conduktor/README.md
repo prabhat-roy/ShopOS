@@ -1,11 +1,11 @@
-﻿# Conduktor Gateway
+# Conduktor Gateway
 
 ## What is Conduktor Gateway?
 
 Conduktor Gateway is a Kafka proxy that sits transparently between all Kafka
 producers/consumers and the broker cluster. Producers and consumers connect to the
 gateway on port `9099` instead of directly to Kafka on `9092`. All traffic is
-forwarded to the real brokers â€” the gateway intercepts the Kafka wire protocol in-flight.
+forwarded to the real brokers — the gateway intercepts the Kafka wire protocol in-flight.
 
 No client code changes are required. The gateway is completely transparent to
 producers and consumers: they use the standard Kafka client library, just pointed
@@ -16,22 +16,22 @@ at a different bootstrap address.
 ## Architecture
 
 ```
-â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”        â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”        â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
-â”‚  Kafka Producers â”‚        â”‚                         â”‚        â”‚              â”‚
-â”‚  (224 services)  â”‚â”€â”€9099â”€â–ºâ”‚  Conduktor Gateway      â”‚â”€â”€9092â”€â–ºâ”‚  Kafka       â”‚
-â”‚                  â”‚        â”‚                         â”‚        â”‚  Brokers     â”‚
-â”‚  Kafka Consumers â”‚â—„â”€9099â”€â”€â”‚  Interceptor Chain      â”‚â—„â”€9092â”€â”€â”‚  (3-node)    â”‚
-â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜        â”‚  1. Schema Validation   â”‚        â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜
-                            â”‚  2. Rate Limiting       â”‚
-                            â”‚  3. PII Data Masking    â”‚
-                            â”‚  4. Audit Logging       â”‚
-                            â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜
-                                        â”‚
+─Œ───────────────────        ─Œ──────────────────────────        ─Œ───────────────
+│  Kafka Producers │        │                         │        │              │
+│  (224 services)  │──9099─â–º│  Conduktor Gateway      │──9092─â–º│  Kafka       │
+│                  │        │                         │        │  Brokers     │
+│  Kafka Consumers │â—„─9099──│  Interceptor Chain      │â—„─9092──│  (3-node)    │
+└───────────────────˜        │  1. Schema Validation   │        └───────────────˜
+                            │  2. Rate Limiting       │
+                            │  3. PII Data Masking    │
+                            │  4. Audit Logging       │
+                            └──────────────────────────˜
+                                        │
                                         â–¼
-                            â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
-                            â”‚  gateway-audit  topic   â”‚
-                            â”‚  (Kafka internal)       â”‚
-                            â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜
+                            ─Œ──────────────────────────
+                            │  gateway-audit  topic   │
+                            │  (Kafka internal)       │
+                            └──────────────────────────˜
 ```
 
 ---
@@ -45,7 +45,7 @@ Confluent Schema Registry (`http://schema-registry:8081`).
 
 - Records that do not conform to the registered schema are rejected immediately.
 - Producers receive a `POLICY_VIOLATION` error.
-- Invalid records never reach the broker â€” no poison pills in the topic.
+- Invalid records never reach the broker — no poison pills in the topic.
 
 ### 2. Rate Limiting (priority 2)
 
@@ -54,7 +54,7 @@ Each producer `client-id` is allowed at most 100 messages/second.
 - Excess produce requests are rejected with `POLICY_VIOLATION`.
 - The limit is enforced per gateway instance; if the gateway is scaled horizontally,
   the state is synchronised via the `gateway-rate-limit-state` compacted topic.
-- Tune `messagesPerSecond` per use-case â€” bulk importers should use a dedicated client-id
+- Tune `messagesPerSecond` per use-case — bulk importers should use a dedicated client-id
   that can be allowlisted.
 
 ### 3. PII Data Masking (priority 3)
@@ -154,4 +154,4 @@ Import the Conduktor Gateway Grafana dashboard from `observability/grafana/dashb
 Virtual clusters provide topic prefix isolation between domains. A producer in the
 `commerce` virtual cluster publishes to `my-topic` and it is transparently mapped to
 `commerce.my-topic` on the real broker. Consumers in the same virtual cluster only
-see their own prefix â€” providing strong multi-tenancy without separate Kafka clusters.
+see their own prefix — providing strong multi-tenancy without separate Kafka clusters.

@@ -1,0 +1,47 @@
+# Source: networking/cdn/varnish.yaml
+# This Application installs the same Helm chart on any K8s cluster (not just k3s).
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: varnish
+  namespace: argocd
+  finalizers: [resources-finalizer.argocd.argoproj.io]
+spec:
+  project: shopos-infra
+  source:
+    repoURL: https://charts.bitnami.com/bitnami
+    chart: varnish
+    targetRevision: '0.10.0'
+    helm:
+      releaseName: varnish
+      values: |
+        replicaCount: 3
+        backendService: web-bff.platform.svc.cluster.local
+        backendPort: 8081
+        extraEnvVars:
+          - { name: VARNISH_BACKEND_HOST, value: "web-bff.platform.svc.cluster.local" }
+          - { name: VARNISH_BACKEND_PORT, value: "8081" }
+        storageSize: 1Gi
+        metrics:
+          enabled: true
+          serviceMonitor: { enabled: true }
+        vcl: |
+          vcl 4.1;
+          backend default { .host = "web-bff.platform.svc.cluster.local"; .port = "8081"; }
+          sub vcl_recv {
+            if (req.url ~ "^/api/cart") { return (pass); }
+            if (req.http.Authorization) { return (pass); }
+            if (req.url ~ "^/(products|categories|search)") { return (hash); }
+          }
+          sub vcl_backend_response {
+            if (bereq.url ~ "^/(products|categories)") { set beresp.ttl = 60s; }
+            if (bereq.url ~ "^/search")                { set beresp.ttl = 30s; }
+          }
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: networking
+  syncPolicy:
+    automated: { prune: false, selfHeal: true }
+    syncOptions: [CreateNamespace=true, ServerSideApply=true]
+    retry: { limit: 5, backoff: { duration: 30s, maxDuration: 5m, factor: 2 } }

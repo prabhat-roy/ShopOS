@@ -1,4 +1,4 @@
-﻿# pim-integration-service
+# pim-integration-service
 
 > Bi-directional product data sync with PIM systems (Akeneo/Pimcore-compatible API). Maps external product attributes to ShopOS catalog schema.
 
@@ -15,13 +15,13 @@ sequenceDiagram
     participant CAT as product-catalog-service
     participant K as Kafka
 
-    Note over PIM,K: Inbound: PIM â†’ ShopOS
+    Note over PIM,K: Inbound: PIM → ShopOS
     PIM->>INT: Product delta (scheduled poll / webhook)
     INT->>INT: Map attributes to ShopOS schema
     INT->>CAT: gRPC: UpsertProduct
     CAT-->>INT: Product ID
 
-    Note over PIM,K: Outbound: ShopOS â†’ PIM
+    Note over PIM,K: Outbound: ShopOS → PIM
     K->>INT: catalog.product.enriched (Kafka)
     INT->>INT: Map to PIM attribute model
     INT->>PIM: PATCH /products/{sku}
@@ -69,8 +69,8 @@ service PimIntegrationService {
 ## Dependencies
 
 Upstream (callers)
-- `product-catalog-service` â€” receives upserted product data from this adapter
-- PIM webhook endpoint â€” triggers on-demand sync
+- `product-catalog-service` — receives upserted product data from this adapter
+- PIM webhook endpoint — triggers on-demand sync
 
 Downstream (calls out to)
 - External PIM API (Akeneo / Pimcore REST)
@@ -80,8 +80,8 @@ Downstream (calls out to)
 | Variable | Default | Description |
 |---|---|---|
 | `GRPC_PORT` | `50195` | Port the gRPC server listens on |
-| `PIM_API_URL` | â€” | Base URL of the PIM REST API (required) |
-| `PIM_API_KEY` | â€” | API key for PIM authentication (required) |
+| `PIM_API_URL` | — | Base URL of the PIM REST API (required) |
+| `PIM_API_KEY` | — | API key for PIM authentication (required) |
 | `SYNC_INTERVAL_SECONDS` | `300` | Polling interval for product delta sync |
 | `SYNC_BATCH_SIZE` | `500` | Products per sync batch |
 | `KAFKA_BROKERS` | `localhost:9092` | Comma-separated Kafka broker list |
@@ -95,6 +95,6 @@ docker-compose up pim-integration-service
 
 ## Health Check
 
-`GET /healthz` â†’ `{"status":"ok"}`
+`GET /healthz` → `{"status":"ok"}`
 
-gRPC health: `grpc.health.v1.Health/Check` â†’ `SERVING`
+gRPC health: `grpc.health.v1.Health/Check` → `SERVING`

@@ -1,4 +1,4 @@
-﻿# ExternalDNS Helm Chart Changelog
+# ExternalDNS Helm Chart Changelog
 
 All notable changes to this project will be documented in this file.
 

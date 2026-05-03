@@ -1,0 +1,124 @@
+# One ArgoCD Application per chart under helm/infra/<category>/<tool>/.
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata: { name: shopos-infra-tools, namespace: argocd }
+spec:
+  generators:
+    - list:
+        elements:
+          - { tool: apache-atlas, category: data, namespace: analytics-ai }
+          - { tool: apisix, category: data, namespace: analytics-ai }
+          - { tool: apisix-dashboard, category: data, namespace: analytics-ai }
+          - { tool: great-expectations, category: data, namespace: analytics-ai }
+          - { tool: hasura, category: data, namespace: analytics-ai }
+          - { tool: marquez, category: data, namespace: analytics-ai }
+          - { tool: marquez-web, category: data, namespace: analytics-ai }
+          - { tool: superset, category: data, namespace: analytics-ai }
+          - { tool: tyk-gateway, category: data, namespace: analytics-ai }
+          - { tool: clickhouse, category: databases, namespace: databases }
+          - { tool: cockroachdb, category: databases, namespace: databases }
+          - { tool: eventstore, category: databases, namespace: databases }
+          - { tool: manticore-search, category: databases, namespace: databases }
+          - { tool: memcached, category: databases, namespace: databases }
+          - { tool: neo4j, category: databases, namespace: databases }
+          - { tool: seaweedfs, category: databases, namespace: databases }
+          - { tool: surrealdb, category: databases, namespace: databases }
+          - { tool: temporal, category: databases, namespace: databases }
+          - { tool: timescaledb, category: databases, namespace: databases }
+          - { tool: typesense, category: databases, namespace: databases }
+          - { tool: valkey, category: databases, namespace: databases }
+          - { tool: weaviate, category: databases, namespace: databases }
+          - { tool: yugabytedb, category: databases, namespace: databases }
+          - { tool: bytebase, category: db-tools, namespace: developer-platform }
+          - { tool: mongo-express, category: db-tools, namespace: developer-platform }
+          - { tool: pgadmin, category: db-tools, namespace: developer-platform }
+          - { tool: redis-commander, category: db-tools, namespace: developer-platform }
+          - { tool: argo-events, category: gitops, namespace: argocd }
+          - { tool: argo-rollouts, category: gitops, namespace: argocd }
+          - { tool: argo-workflows, category: gitops, namespace: argocd }
+          - { tool: argocd, category: gitops, namespace: argocd }
+          - { tool: argocd-image-updater, category: gitops, namespace: argocd }
+          - { tool: crossplane, category: gitops, namespace: argocd }
+          - { tool: external-secrets, category: gitops, namespace: argocd }
+          - { tool: flagger, category: gitops, namespace: argocd }
+          - { tool: fluxcd, category: gitops, namespace: argocd }
+          - { tool: gimlet, category: gitops, namespace: argocd }
+          - { tool: sealed-secrets, category: gitops, namespace: argocd }
+          - { tool: vcluster, category: gitops, namespace: argocd }
+          - { tool: weave-gitops, category: gitops, namespace: argocd }
+          - { tool: conduktor-gateway, category: messaging, namespace: streaming }
+          - { tool: grafana-mimir, category: observability, namespace: monitoring }
+          - { tool: kiali, category: observability, namespace: monitoring }
+          - { tool: netdata, category: observability, namespace: monitoring }
+          - { tool: perses, category: observability, namespace: monitoring }
+          - { tool: signoz, category: observability, namespace: monitoring }
+          - { tool: victoria-logs, category: observability, namespace: monitoring }
+          - { tool: apache-camel, category: platform, namespace: infra }
+          - { tool: atlantis, category: platform, namespace: infra }
+          - { tool: botkube, category: platform, namespace: infra }
+          - { tool: boundary, category: platform, namespace: infra }
+          - { tool: cachet, category: platform, namespace: infra }
+          - { tool: dagster, category: platform, namespace: infra }
+          - { tool: driftctl, category: platform, namespace: infra }
+          - { tool: grafana-oncall, category: platform, namespace: infra }
+          - { tool: k8sgpt, category: platform, namespace: infra }
+          - { tool: nomad, category: platform, namespace: infra }
+          - { tool: opencost, category: platform, namespace: infra }
+          - { tool: prefect, category: platform, namespace: infra }
+          - { tool: unleash, category: platform, namespace: infra }
+          - { tool: waypoint, category: platform, namespace: infra }
+          - { tool: alexandrie, category: registry, namespace: registry }
+          - { tool: aptly, category: registry, namespace: registry }
+          - { tool: athens, category: registry, namespace: registry }
+          - { tool: baget, category: registry, namespace: registry }
+          - { tool: chartmuseum, category: registry, namespace: registry }
+          - { tool: cnpmjs, category: registry, namespace: registry }
+          - { tool: conan-server, category: registry, namespace: registry }
+          - { tool: devpi, category: registry, namespace: registry }
+          - { tool: distribution, category: registry, namespace: registry }
+          - { tool: dragonfly, category: registry, namespace: registry }
+          - { tool: forgejo, category: registry, namespace: registry }
+          - { tool: geminabox, category: registry, namespace: registry }
+          - { tool: gitbucket, category: registry, namespace: registry }
+          - { tool: gitea, category: registry, namespace: registry }
+          - { tool: gitlab, category: registry, namespace: registry }
+          - { tool: gogs, category: registry, namespace: registry }
+          - { tool: goproxy, category: registry, namespace: registry }
+          - { tool: harbor, category: registry, namespace: registry }
+          - { tool: kellnr, category: registry, namespace: registry }
+          - { tool: kraken, category: registry, namespace: registry }
+          - { tool: nexus, category: registry, namespace: registry }
+          - { tool: onedev, category: registry, namespace: registry }
+          - { tool: pulp, category: registry, namespace: registry }
+          - { tool: pypiserver, category: registry, namespace: registry }
+          - { tool: quay, category: registry, namespace: registry }
+          - { tool: quetz, category: registry, namespace: registry }
+          - { tool: reposilite, category: registry, namespace: registry }
+          - { tool: sonarqube, category: registry, namespace: registry }
+          - { tool: terrareg, category: registry, namespace: registry }
+          - { tool: verdaccio, category: registry, namespace: registry }
+          - { tool: zot, category: registry, namespace: registry }
+          - { tool: defectdojo, category: security, namespace: infra }
+          - { tool: dependency-track, category: security, namespace: infra }
+          - { tool: external-secrets, category: security, namespace: infra }
+          - { tool: pomerium, category: security, namespace: infra }
+          - { tool: sealed-secrets, category: security, namespace: infra }
+          - { tool: teleport, category: security, namespace: infra }
+          - { tool: wazuh, category: security, namespace: infra }
+          - { tool: k6-operator, category: testing, namespace: developer-platform }
+          - { tool: pact-broker, category: testing, namespace: developer-platform }
+          - { tool: toxiproxy, category: testing, namespace: developer-platform }
+          - { tool: wiremock, category: testing, namespace: developer-platform }
+  template:
+    metadata: { name: 'infra-{{tool}}', namespace: argocd, labels: { kind: infra-tool, category: '{{category}}' } }
+    spec:
+      project: shopos-infra
+      source:
+        repoURL: https://github.com/prabhat-roy/ShopOS.git
+        targetRevision: HEAD
+        path: 'helm/infra/{{category}}/{{tool}}'
+      destination: { server: https://kubernetes.default.svc, namespace: '{{namespace}}' }
+      syncPolicy:
+        automated: { prune: false, selfHeal: true }   # prune disabled — infra is precious
+        syncOptions: [CreateNamespace=true, ServerSideApply=true]
+        retry: { limit: 5, backoff: { duration: 30s, maxDuration: 5m, factor: 2 } }

@@ -1,0 +1,33 @@
+# Varnish HTTP cache — sits in front of storefront/admin/seller portals.
+# Caches anonymous product detail and category pages for 60s; bypasses logged-in users.
+apiVersion: helm.cattle.io/v1
+kind: HelmChart
+metadata: { name: varnish, namespace: networking }
+spec:
+  repo: https://charts.bitnami.com/bitnami
+  chart: varnish
+  version: 0.10.0
+  targetNamespace: networking
+  valuesContent: |-
+    replicaCount: 3
+    backendService: web-bff.platform.svc.cluster.local
+    backendPort: 8081
+    extraEnvVars:
+      - { name: VARNISH_BACKEND_HOST, value: "web-bff.platform.svc.cluster.local" }
+      - { name: VARNISH_BACKEND_PORT, value: "8081" }
+    storageSize: 1Gi
+    metrics:
+      enabled: true
+      serviceMonitor: { enabled: true }
+    vcl: |
+      vcl 4.1;
+      backend default { .host = "web-bff.platform.svc.cluster.local"; .port = "8081"; }
+      sub vcl_recv {
+        if (req.url ~ "^/api/cart") { return (pass); }
+        if (req.http.Authorization) { return (pass); }
+        if (req.url ~ "^/(products|categories|search)") { return (hash); }
+      }
+      sub vcl_backend_response {
+        if (bereq.url ~ "^/(products|categories)") { set beresp.ttl = 60s; }
+        if (bereq.url ~ "^/search")                { set beresp.ttl = 30s; }
+      }

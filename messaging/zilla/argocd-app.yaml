@@ -1,0 +1,41 @@
+# Source: messaging/zilla/zilla.yaml
+# This Application installs the same Helm chart on any K8s cluster (not just k3s).
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: zilla
+  namespace: argocd
+  finalizers: [resources-finalizer.argocd.argoproj.io]
+spec:
+  project: shopos-infra
+  source:
+    repoURL: https://aklivity.github.io/zilla
+    chart: zilla
+    targetRevision: '0.9.78'
+    helm:
+      releaseName: zilla
+      values: |
+        replicaCount: 3
+        config:
+          bindings:
+            kafka_proxy:
+              type: kafka
+              kind: client
+              options: { servers: ["kafka-bootstrap.streaming.svc:9092"] }
+            sse_to_kafka:
+              type: sse-kafka
+              kind: proxy
+              routes:
+                - exit: kafka_proxy
+                  with: { topic: analytics.page.viewed }
+            mqtt_to_kafka:
+              type: mqtt-kafka
+              kind: proxy
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: streaming
+  syncPolicy:
+    automated: { prune: false, selfHeal: true }
+    syncOptions: [CreateNamespace=true, ServerSideApply=true]
+    retry: { limit: 5, backoff: { duration: 30s, maxDuration: 5m, factor: 2 } }

@@ -1,206 +1,141 @@
-﻿# Observability Stack â€” ShopOS
+# Observability Stack — ShopOS
 
-ShopOS implements the three pillars of observability â€” metrics, traces, and logs â€”
-plus formal SLO tracking, using a fully open-source toolchain. All 130 services emit
-telemetry through the OpenTelemetry SDK, which feeds a unified collector before data is routed
-to specialised backends and visualised in Grafana.
+ShopOS implements the three pillars — metrics, traces, and logs — plus formal SLO tracking,
+continuous profiling, error tracking, RUM, and uptime monitoring, all on a fully open-source
+toolchain. All 303 services emit telemetry through the OpenTelemetry SDK; the OTel agent
+DaemonSet collects and routes to the right backend per signal.
 
 ---
 
-## Directory Structure
+## Layout
 
 ```
 observability/
-â”œâ”€â”€ otel/
-â”‚   â”œâ”€â”€ collector-config.yaml          â† OTel Collector pipeline definition
-â”‚   â””â”€â”€ instrumentation/               â† Per-language SDK bootstrap configs
-â”œâ”€â”€ prometheus/
-â”‚   â”œâ”€â”€ prometheus.yaml                â† Scrape configs and global settings
-â”‚   â””â”€â”€ rules/                         â† Recording rules and alert rules
-â”œâ”€â”€ alertmanager/
-â”‚   â”œâ”€â”€ alertmanager.yaml              â† Routing tree and receivers
-â”‚   â””â”€â”€ templates/                     â† Notification message templates
-â”œâ”€â”€ grafana/
-â”‚   â”œâ”€â”€ dashboards/                    â† Provisioned dashboard JSON files
-â”‚   â””â”€â”€ datasources/                   â† Datasource provisioning configs
-â”œâ”€â”€ loki/
-â”‚   â”œâ”€â”€ loki-config.yaml               â† Loki storage and ingestion config
-â”‚   â””â”€â”€ promtail-config.yaml           â† Log scraping agent config
-â”œâ”€â”€ jaeger/
-â”‚   â””â”€â”€ jaeger-config.yaml             â† Jaeger all-in-one / distributed config
-â””â”€â”€ slo/
-    â”œâ”€â”€ pyrra/                         â† Pyrra SLO manifests
-    â””â”€â”€ sloth/                         â† Sloth SLO spec files
+├── otel-collector/          OTel agent (DaemonSet) + gateway (Deployment) with tail-sampling
+├── prometheus/              Scrape config + per-domain alert rules
+│   └── rules/               identity, catalog, financial, supply-chain, cx, comms, marketplace+b2b, infra, platform, commerce
+├── alertmanager/            Routing tree (PagerDuty / Slack)
+├── grafana/                 Provisioned dashboards + datasources
+├── loki/                    Log aggregation (Loki)
+├── tempo/                   Distributed tracing (Tempo)
+├── jaeger/                  Distributed tracing (Jaeger — dev/staging)
+├── zipkin/                  Lightweight tracing (legacy compat)
+├── thanos/                  Long-term Prometheus storage (S3-backed)
+├── victoria-metrics/        High-cardinality metrics
+├── mimir/                   Multi-tenant Prometheus
+├── victoria-logs/           High-volume log overflow (cheaper than Loki)
+├── fluent-bit/              Log collection DaemonSet → Loki + VictoriaLogs split
+├── fluentd/                 Heavier-weight log aggregator
+├── opensearch/              Log search (security audit)
+├── opensearch-dashboards/   Security dashboards
+├── elasticsearch/           Log search (engineer debug)
+├── kibana/                  Engineer log dashboards
+├── logstash/                External log transformation
+├── pyroscope/               Continuous CPU/memory profiling
+├── parca/                   eBPF profiling (complement to Pyroscope)
+├── pixie/                   eBPF auto-instrumentation (zero-code traces)
+├── sentry/                  Error tracking (frontend)
+├── glitchtip/               Error tracking (backend, Sentry-compatible)
+├── openreplay/              Session replay for storefront
+├── plausible/               Privacy-friendly web analytics
+├── rum/                     OTel RUM config (Web Vitals + frontend errors)
+├── uptime-kuma/             External uptime monitoring (feeds Cachet)
+├── slo/                     Pyrra SLO definitions for tier-0 services
+├── pyrra/                   Pyrra SLO controller
+├── sloth/                   Sloth SLO rule generator
+├── netdata/                 Per-second per-container metrics
+├── kiali/                   Istio service mesh observability
+├── perses/                  GitOps-native dashboards-as-code
+├── signoz/                  Full-stack obs for analytics-ai team
+├── komodor/                 K8s troubleshooting timelines per resource
+├── healthchecks/            Self-hosted cron monitoring (alerts on miss)
+├── quickwit/                S3-backed log search (cold logs)
+└── opencost/                Per-namespace cost attribution
 ```
+
+FinOps lives separately under [`finops/kubecost/`](../finops/kubecost/).
 
 ---
 
-## Observability Pipeline
+## Telemetry Pipeline
 
-```mermaid
-graph LR
-    subgraph Services["130 Microservices (all domains)"]
-        S1[Go Services]
-        S2[Java / Kotlin]
-        S3[Python Services]
-        S4[Node.js Services]
-        S5[Rust / C# / Scala]
-    end
-
-    subgraph OTel["OpenTelemetry Layer"]
-        SDK[OTel SDK per service]
-        COL[OTel Collector\notel/collector-config.yaml]
-    end
-
-    subgraph Backends["Observability Backends"]
-        PROM[Prometheus\nMetrics]
-        JAE[Jaeger\nTraces]
-        LOKI[Loki\nLogs]
-    end
-
-    subgraph Alerting["Alerting"]
-        AM[Alertmanager]
-        PD[PagerDuty / Slack]
-    end
-
-    subgraph SLO["SLO Tracking"]
-        PYRRA[Pyrra]
-        SLOTH[Sloth]
-    end
-
-    GF[Grafana\nDashboards + Explore]
-
-    S1 & S2 & S3 & S4 & S5 --> SDK
-    SDK --> COL
-    COL -->|OTLP metrics| PROM
-    COL -->|OTLP traces| JAE
-    COL -->|OTLP logs| LOKI
-    PROM --> AM --> PD
-    PROM --> PYRRA & SLOTH
-    PROM & JAE & LOKI & PYRRA --> GF
 ```
+Services (OTel SDK + Prometheus exporter + JSON stdout logs)
+   │
+   ▼
+OTel Collector agent (DaemonSet)         Fluent-bit (DaemonSet)
+   │                                          │
+   ├── traces  ──► Tempo (prod)               ├── high-volume logs ──► VictoriaLogs
+   │              Jaeger (dev/staging)        └── tier-0 logs       ──► Loki
+   │
+   ├── metrics ──► Mimir (multi-tenant)
+   │              Prometheus (short-term)
+   │              Thanos (long-term S3)
+   │              VictoriaMetrics (high-cardinality)
+   │
+   └── logs    ──► Loki (queryable in Grafana)
+
+K8s events / kubelet stats ──► OTel hostmetrics + kubeletstats receivers
+```
+
+Tail-sampling decides which traces to keep:
+- Always: errors, latency > 500ms, payment + financial domains
+- Otherwise: 5% probabilistic sample
 
 ---
 
-## The Three Pillars
+## Per-domain alerting
 
-### Metrics â€” Prometheus
+Each domain has its own Prometheus rules file in [`prometheus/rules/`](prometheus/rules/):
+identity, catalog, financial, supply-chain, customer-experience, communications,
+marketplace+b2b, infra, platform, commerce.
 
-Prometheus scrapes `/metrics` (Prometheus exposition format) from every ShopOS service.
-
-- Scrape interval: 15 s
-- Retention: 15 days in-cluster; long-term via Thanos (Phase 4 extension)
-- Key metric families exported by every service:
-  - `http_requests_total` / `grpc_server_handled_total`
-  - `http_request_duration_seconds` (histogram)
-  - `go_goroutines`, `process_cpu_seconds_total` (runtime)
-  - Domain-specific counters (e.g., `orders_created_total`, `payments_processed_total`)
-
-```bash
-# Port-forward Prometheus UI
-kubectl port-forward svc/prometheus 9090:9090 -n shopos-infra
-
-# Query example â€” order service error rate
-rate(grpc_server_handled_total{grpc_service="commerce.OrderService",grpc_code!="OK"}[5m])
-  / rate(grpc_server_handled_total{grpc_service="commerce.OrderService"}[5m])
-```
-
-### Traces â€” Jaeger
-
-All inter-service calls are instrumented with OpenTelemetry spans. The OTel Collector exports
-traces to Jaeger via OTLP/gRPC.
-
-- Sampling: 100 % in dev/staging; head-based 10 % + tail-based error sampling in prod
-- Propagation format: W3C TraceContext + Baggage
-- Retention: 7 days
-
-```bash
-# Port-forward Jaeger UI
-kubectl port-forward svc/jaeger-query 16686:16686 -n shopos-infra
-# Open http://localhost:16686
-```
-
-### Logs â€” Grafana Loki
-
-Promtail agents run as DaemonSets and scrape pod stdout/stderr logs, attaching Kubernetes
-metadata labels (`namespace`, `pod`, `container`).
-
-- Log format: structured JSON from all services
-- Labels: `{namespace, service, level, trace_id}`
-- Correlation: `trace_id` field in every log line enables logâ†”trace linking in Grafana
-
-```bash
-# Query logs for payment-service errors (LogQL)
-{namespace="shopos-commerce", service="payment-service"} |= "level=error"
-```
-
-### SLOs â€” Pyrra & Sloth
-
-SLO manifests are defined in `slo/pyrra/` and `slo/sloth/`. Each service that carries a user-
-facing SLA has a corresponding SLO document defining:
-
-- Objective: e.g., 99.9 % availability over a 30-day window
-- Error budget: multi-burn-rate alerts at 1 h and 6 h windows
-- Dashboards: Pyrra auto-generates Grafana dashboards per SLO
-
----
-
-## Alertmanager
-
-Alerts are defined as Prometheus alerting rules in `prometheus/rules/`. Alertmanager routes
-them based on severity and domain:
-
-| Severity | Channel | Response Time |
+| Severity | Channel | Response |
 |---|---|---|
-| `critical` | PagerDuty (on-call) | Immediate |
-| `warning` | Slack `#shopos-alerts` | 30 min |
-| `info` | Slack `#shopos-ops` | Next business day |
+| `critical` (label `page: pagerduty`) | PagerDuty primary on-call | Immediate |
+| `warning` | Slack `#alerts-<team>` | 30 min |
+| `info` | Slack `#ops` | Next business day |
 
 ---
 
-## Grafana Dashboards
+## SLOs
 
-| Dashboard | Description |
-|---|---|
-| `Platform Overview` | API Gateway RPS, error rates, latency percentiles |
-| `Commerce â€” Order Flow` | Order funnel, payment success rate, cart abandonment |
-| `Infrastructure â€” K8s` | Node CPU/memory, pod restart counts, PVC usage |
-| `SLO Overview` | Error budget burn rates for all SLO-tracked services |
-| `Chaos Engineering` | Real-time metrics during chaos experiments |
+Pyrra SLO definitions in [`slo/slo-definitions.yaml`](slo/slo-definitions.yaml) cover all
+tier-0 services (api-gateway, checkout, payment, search, auth, order placement, storefront).
+Pyrra emits multi-burn-rate Prometheus rules consumed by Alertmanager.
+
+---
+
+## Quick start
 
 ```bash
-# Port-forward Grafana
-kubectl port-forward svc/grafana 3000:3000 -n shopos-infra
-# Open http://localhost:3000  (default: admin / admin â€” change on first login)
+# Deploy stack via Helm umbrella + apply per-domain rules
+helm upgrade --install shopos-observability helm/charts/observability -n monitoring --create-namespace
+
+# Apply OTel agent + gateway
+kubectl apply -f observability/otel-collector/
+
+# Apply Fluent-bit DaemonSet
+kubectl apply -f observability/fluent-bit/daemonset.yaml
+
+# Apply per-domain Prometheus rules
+kubectl apply -f observability/prometheus/rules/
+
+# Apply Pyrra SLOs
+kubectl apply -f observability/slo/
+
+# Port-forward UIs
+kubectl port-forward svc/grafana 3000:3000 -n monitoring         # http://localhost:3000
+kubectl port-forward svc/prometheus 9090:9090 -n monitoring
+kubectl port-forward svc/jaeger-query 16686:16686 -n monitoring
+kubectl port-forward svc/loki-gateway 3100:3100 -n monitoring
 ```
 
 ---
 
-## Quick Start
+## Related
 
-```bash
-# Deploy full observability stack via Helm umbrella chart
-helm upgrade --install shopos-observability helm/charts/observability \
-  --namespace shopos-infra \
-  --create-namespace \
-  -f helm/charts/observability/values-prod.yaml
-
-# Verify all pods are running
-kubectl get pods -n shopos-infra
-
-# Apply SLO manifests
-kubectl apply -f observability/slo/pyrra/
-kubectl apply -f observability/slo/sloth/
-```
-
----
-
-## References
-
-- [OpenTelemetry Documentation](https://opentelemetry.io/docs/)
-- [Prometheus Operator](https://prometheus-operator.dev/)
-- [Grafana Loki](https://grafana.com/docs/loki/)
-- [Jaeger Tracing](https://www.jaegertracing.io/docs/)
-- [Pyrra SLO](https://github.com/pyrra-dev/pyrra)
-- [Sloth SLO](https://sloth.dev/)
-- [ShopOS Chaos Engineering](../chaos/README.md)
+- Incident response (war room, Cachet status page): [`../incident/`](../incident/)
+- FinOps (Kubecost): [`../finops/`](../finops/)
+- Right-sizing recommendations: [`../kubernetes/scaling/vpa/`](../kubernetes/scaling/vpa/)
+- Runbooks: [`../docs/runbooks/`](../docs/runbooks/)

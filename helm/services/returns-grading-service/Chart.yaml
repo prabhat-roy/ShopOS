@@ -1,0 +1,6 @@
+apiVersion: v2
+name: returns-grading-service
+description: ShopOS returns-grading-service (supply-chain)
+type: application
+version: 0.1.0
+appVersion: "1.0.0"

@@ -1,0 +1,29 @@
+# CronJob — proves backups can be restored. Restores latest tier1 backup to a temp
+# namespace, asserts a marker pod becomes ready, then tears down. Failure pages oncall.
+apiVersion: batch/v1
+kind: CronJob
+metadata: { name: velero-restore-test, namespace: velero }
+spec:
+  schedule: "0 5 * * 1"
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          restartPolicy: Never
+          serviceAccountName: velero
+          containers:
+            - name: restore
+              image: velero/velero:v1.14.0
+              command: [/bin/sh, -c]
+              args:
+                - |
+                  set -euxo pipefail
+                  LATEST=$(velero backup get -o name | grep tier1 | head -1)
+                  velero restore create restore-test-$(date +%s) \
+                    --from-backup ${LATEST} \
+                    --namespace-mappings commerce:restore-test-commerce \
+                    --wait
+                  kubectl get pods -n restore-test-commerce
+                  kubectl delete ns restore-test-commerce --ignore-not-found

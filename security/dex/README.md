@@ -1,14 +1,14 @@
-﻿# Dex OIDC Identity Broker
+# Dex OIDC Identity Broker
 
 Dex is an OpenID Connect (OIDC) identity provider that acts as a federation layer between ShopOS services and upstream identity sources (GitHub, corporate LDAP, Keycloak). It normalizes heterogeneous identity backends into a single OIDC token interface consumed by downstream applications and Kubernetes.
 
 ## Role in ShopOS
 
-- OIDC identity broker â€” translates logins from GitHub OAuth, corporate LDAP, and Keycloak SAML into standard OIDC `id_token` JWTs, so downstream services only need to trust one issuer (`http://dex:5556/dex`)
-- Kubernetes OIDC provider â€” the K8s API server is configured with `--oidc-issuer-url=http://dex:5556/dex`, enabling `kubectl` logins via `kubelogin` without static service account tokens
-- Backstage authentication â€” the Backstage developer portal uses Dex as its OIDC provider, enabling SSO for engineers accessing the internal developer portal
-- Admin portal SSO â€” the admin-portal static client (`shopos-admin-portal`) receives short-lived access tokens from Dex after LDAP/GitHub authentication
-- Token refresh â€” Dex issues refresh tokens, enabling long-lived sessions without re-authentication while maintaining short-lived access token lifetimes
+- OIDC identity broker — translates logins from GitHub OAuth, corporate LDAP, and Keycloak SAML into standard OIDC `id_token` JWTs, so downstream services only need to trust one issuer (`http://dex:5556/dex`)
+- Kubernetes OIDC provider — the K8s API server is configured with `--oidc-issuer-url=http://dex:5556/dex`, enabling `kubectl` logins via `kubelogin` without static service account tokens
+- Backstage authentication — the Backstage developer portal uses Dex as its OIDC provider, enabling SSO for engineers accessing the internal developer portal
+- Admin portal SSO — the admin-portal static client (`shopos-admin-portal`) receives short-lived access tokens from Dex after LDAP/GitHub authentication
+- Token refresh — Dex issues refresh tokens, enabling long-lived sessions without re-authentication while maintaining short-lived access token lifetimes
 
 ## OIDC Login Flow
 
@@ -21,7 +21,7 @@ sequenceDiagram
     participant AuthSvc as auth-service\n(ShopOS, :50060)
 
     User->>App: Access protected resource
-    App->>Dex: Redirect â†’ /dex/auth?client_id=shopos-admin-portal
+    App->>Dex: Redirect → /dex/auth?client_id=shopos-admin-portal
     Dex->>User: Show connector chooser (GitHub / LDAP)
     User->>Dex: Select connector
     Dex->>Upstream: Initiate OAuth2 / LDAP bind
@@ -78,6 +78,6 @@ The ShopOS `auth-service` (Rust, port 50060) acts as the token validation layer 
 
 | File | Purpose |
 |---|---|
-| `config.yaml` | Dex server configuration â€” storage, connectors, static clients, OAuth2 settings |
+| `config.yaml` | Dex server configuration — storage, connectors, static clients, OAuth2 settings |
 
 > Security note: `clientSecret` values in `config.yaml` are placeholders. In production, inject via environment variables or HashiCorp Vault using the External Secrets Operator.

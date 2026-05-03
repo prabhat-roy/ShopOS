@@ -1,0 +1,175 @@
+# Production-grade Kyverno baseline. All policies validate at admission;
+# `enforce` action blocks creation, `audit` only records violations.
+
+# 1. Disallow privileged + privilege escalation
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata: { name: disallow-privileged }
+spec:
+  validationFailureAction: enforce
+  background: true
+  rules:
+    - name: disallow-privileged
+      match: { any: [{ resources: { kinds: [Pod] } }] }
+      validate:
+        message: "Privileged containers are not allowed"
+        pattern:
+          spec:
+            =(initContainers): [{ =(securityContext): { =(privileged): "false" } }]
+            containers:        [{ =(securityContext): { =(privileged): "false" } }]
+    - name: disallow-priv-escalation
+      match: { any: [{ resources: { kinds: [Pod] } }] }
+      validate:
+        message: "allowPrivilegeEscalation must be false"
+        pattern:
+          spec:
+            containers: [{ securityContext: { allowPrivilegeEscalation: "false" } }]
+
+# 2. Run as non-root
+---
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata: { name: require-run-as-nonroot }
+spec:
+  validationFailureAction: enforce
+  background: true
+  rules:
+    - name: must-run-as-nonroot
+      match: { any: [{ resources: { kinds: [Pod] } }] }
+      validate:
+        message: "runAsNonRoot must be true"
+        pattern:
+          spec:
+            =(securityContext): { runAsNonRoot: true }
+            containers: [{ =(securityContext): { runAsNonRoot: true } }]
+
+# 3. Image registry allowlist
+---
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata: { name: trusted-registries }
+spec:
+  validationFailureAction: enforce
+  background: true
+  rules:
+    - name: only-trusted-registries
+      match: { any: [{ resources: { kinds: [Pod] } }] }
+      exclude: { any: [{ resources: { namespaces: [kube-system, istio-system, cert-manager] } }] }
+      validate:
+        message: "Image must come from a trusted registry"
+        pattern:
+          spec:
+            containers: [{ image: "ghcr.io/shopos/* | harbor.shopos.example.com/shopos/* | docker.io/shopos/*" }]
+
+# 4. Image signature verification (Cosign)
+---
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata: { name: verify-image-signatures }
+spec:
+  validationFailureAction: enforce
+  background: false
+  webhookTimeoutSeconds: 30
+  failurePolicy: Fail
+  rules:
+    - name: verify-cosign
+      match: { any: [{ resources: { kinds: [Pod] } }] }
+      verifyImages:
+        - imageReferences: ["ghcr.io/shopos/*", "harbor.shopos.example.com/shopos/*"]
+          attestors:
+            - entries:
+                - keyless:
+                    issuer: "https://token.actions.githubusercontent.com"
+                    subject: "https://github.com/prabhat-roy/ShopOS/.github/workflows/*"
+                    rekor: { url: https://rekor.sigstore.dev }
+
+# 5. Require resource requests + limits
+---
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata: { name: require-requests-limits }
+spec:
+  validationFailureAction: enforce
+  background: true
+  rules:
+    - name: requests-limits-set
+      match: { any: [{ resources: { kinds: [Pod] } }] }
+      validate:
+        message: "CPU/memory requests and limits required"
+        pattern:
+          spec:
+            containers:
+              - resources:
+                  requests: { memory: "?*", cpu: "?*" }
+                  limits:   { memory: "?*", cpu: "?*" }
+
+# 6. Required labels
+---
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata: { name: require-labels }
+spec:
+  validationFailureAction: enforce
+  background: true
+  rules:
+    - name: app-team-domain
+      match: { any: [{ resources: { kinds: [Deployment, StatefulSet] } }] }
+      validate:
+        message: "Labels app, team, domain are required"
+        pattern:
+          metadata:
+            labels:
+              app: "?*"
+              team: "?*"
+              domain: "?*"
+
+# 7. Disallow latest tag
+---
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata: { name: disallow-latest-tag }
+spec:
+  validationFailureAction: enforce
+  background: true
+  rules:
+    - name: latest-tag-forbidden
+      match: { any: [{ resources: { kinds: [Pod] } }] }
+      validate:
+        message: "Pinned image tag required (no :latest, no implicit tag)"
+        pattern:
+          spec:
+            containers: [{ image: "!*:latest" }]
+
+# 8. Read-only root FS
+---
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata: { name: read-only-root-fs }
+spec:
+  validationFailureAction: audit
+  background: true
+  rules:
+    - name: ro-root-fs
+      match: { any: [{ resources: { kinds: [Pod] } }] }
+      validate:
+        message: "readOnlyRootFilesystem should be true"
+        pattern:
+          spec:
+            containers: [{ securityContext: { readOnlyRootFilesystem: true } }]
+
+# 9. Drop ALL capabilities
+---
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata: { name: drop-all-capabilities }
+spec:
+  validationFailureAction: enforce
+  background: true
+  rules:
+    - name: drop-all
+      match: { any: [{ resources: { kinds: [Pod] } }] }
+      validate:
+        message: "Containers must drop ALL capabilities"
+        pattern:
+          spec:
+            containers: [{ securityContext: { capabilities: { drop: [ALL] } } }]

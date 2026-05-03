@@ -1,4 +1,4 @@
-﻿# Flagger
+# Flagger
 
 [Flagger](https://github.com/fluxcd/flagger) is a progressive delivery tool that automates the release process
 for applications running on Kubernetes. It reduces the risk of introducing a new software version in production

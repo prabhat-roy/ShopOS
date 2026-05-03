@@ -1,0 +1,21 @@
+groups:
+  - name: communications.alerts
+    interval: 30s
+    rules:
+      - alert: NotificationDeliveryFailureRate
+        expr: sum(rate(notification_delivery_failed_total[5m])) by (channel) / sum(rate(notification_delivery_attempted_total[5m])) by (channel) > 0.05
+        for: 10m
+        labels: { severity: warning, team: communications }
+        annotations: { summary: "{{ $labels.channel }} delivery failure >5%" }
+
+      - alert: EmailQueueBacklog
+        expr: kafka_consumer_lag{consumergroup="email-service",topic="notification.email.requested"} > 10000
+        for: 10m
+        labels: { severity: warning, team: communications }
+        annotations: { summary: "Email queue backlog >10k" }
+
+      - alert: SMSProviderDown
+        expr: up{job="sms-provider"} == 0
+        for: 3m
+        labels: { severity: critical, team: communications, page: pagerduty }
+        annotations: { summary: "SMS provider unreachable" }

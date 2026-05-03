@@ -2,7 +2,7 @@ name: Cluster Bootstrap — Cloud-native
 
 # GitHub Actions role: full cluster bootstrap using cloud-provider GitHub Actions
 # for kubeconfig retrieval (aws-actions/amazon-eks-update-kubeconfig,
-# google-github-actions/get-gke-credentials, azure/aks-set-context).
+# google-github-actions/get-gke-credentials, azure/app-k8s-set-context).
 # Chains workflows via workflow_call with cloud-specific auth at each phase.
 
 on:
@@ -99,7 +99,7 @@ jobs:
 
       - name: Get AKS kubeconfig
         if: inputs.cloud_provider == 'azure'
-        uses: azure/aks-set-context@v4
+        uses: azure/app-k8s-set-context@v4
         with:
           resource-group: shopos-rg-${{ inputs.environment }}
           cluster-name: shopos-${{ inputs.environment }}

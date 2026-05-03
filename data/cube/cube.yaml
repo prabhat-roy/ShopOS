@@ -1,0 +1,18 @@
+# Cube — semantic layer + BI API on top of ClickHouse/Postgres. Used by storefront BFF for facets/charts.
+apiVersion: helm.cattle.io/v1
+kind: HelmChart
+metadata: { name: cube, namespace: analytics-ai }
+spec:
+  repo: https://cube-js.github.io/cube-helm-charts
+  chart: cubejs
+  version: 0.16.0
+  targetNamespace: analytics-ai
+  valuesContent: |-
+    api:
+      replicas: 3
+      env:
+        - { name: CUBEJS_DB_TYPE, value: clickhouse }
+        - { name: CUBEJS_DB_HOST, value: clickhouse.databases.svc }
+        - { name: CUBEJS_DB_NAME, value: shopos_analytics }
+    refresh: { replicas: 2 }
+    redis: { enabled: true }

@@ -1,4 +1,4 @@
-﻿# supplier-portal-service
+# supplier-portal-service
 
 > Supplier-facing HTTP API that gives vendors visibility into their purchase orders and enables invoice submission.
 
@@ -57,19 +57,19 @@ REST endpoints (HTTP):
 
 ## Kafka Topics
 
-No Kafka topics â€” this is a synchronous REST API service.
+No Kafka topics — this is a synchronous REST API service.
 
 ## Dependencies
 
 Upstream (callers)
 - Supplier web portal (external UI)
-- `auth-service` (identity domain) â€” JWT validation
+- `auth-service` (identity domain) — JWT validation
 
 Downstream (calls out to)
-- `vendor-service` â€” vendor profile reads
-- `purchase-order-service` â€” PO list and detail
-- `invoice-service` (financial domain) â€” invoice submission
-- `payout-service` (financial domain) â€” payout status
+- `vendor-service` — vendor profile reads
+- `purchase-order-service` — PO list and detail
+- `invoice-service` (financial domain) — invoice submission
+- `payout-service` (financial domain) — payout status
 
 ## Environment Variables
 
@@ -80,7 +80,7 @@ Downstream (calls out to)
 | `DB_PORT` | `5432` | PostgreSQL port |
 | `DB_NAME` | `supplier_portal_db` | Database name |
 | `DB_USER` | `supplier_portal_svc` | Database user |
-| `DB_PASSWORD` | â€” | Database password (required) |
+| `DB_PASSWORD` | — | Database password (required) |
 | `AUTH_GRPC_ADDR` | `auth-service:50060` | Address of auth-service for JWT validation |
 | `VENDOR_GRPC_ADDR` | `vendor-service:50100` | Address of vendor-service |
 | `PO_GRPC_ADDR` | `purchase-order-service:50101` | Address of purchase-order-service |
@@ -97,4 +97,4 @@ docker-compose up supplier-portal-service
 
 ## Health Check
 
-`GET /healthz` â†’ `{"status":"ok"}`
+`GET /healthz` → `{"status":"ok"}`

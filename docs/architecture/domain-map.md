@@ -1,4 +1,4 @@
-﻿# Domain Map â€” ShopOS
+# Domain Map — ShopOS
 
 ShopOS organises 230 services (224 microservices + 6 frontend apps) into 19 bounded contexts. Each domain owns its data, publishes events via Kafka (Avro), and exposes capabilities via gRPC. All domains run on Kubernetes, connected by Istio mTLS, and observed by OpenTelemetry.
 
@@ -7,34 +7,34 @@ ShopOS organises 230 services (224 microservices + 6 frontend apps) into 19 boun
 ## Bounded Context Overview
 
 ```
-â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
-â”‚                        ShopOS â€” 19 Domains Â· 230 Services                                     â”‚
-â”‚                                                                                               â”‚
-â”‚  â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”   â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”   â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”   â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”                  â”‚
-â”‚  â”‚   PLATFORM   â”‚   â”‚   IDENTITY   â”‚   â”‚   CATALOG    â”‚   â”‚  COMMERCE    â”‚                  â”‚
-â”‚  â”‚  27 services â”‚   â”‚  11 services â”‚   â”‚ 15 services  â”‚   â”‚ 28 services  â”‚                  â”‚
-â”‚  â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜   â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜   â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜   â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜                  â”‚
-â”‚                                                                                               â”‚
-â”‚  â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”   â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”   â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”   â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”                  â”‚
-â”‚  â”‚ SUPPLY CHAIN â”‚   â”‚  FINANCIAL   â”‚   â”‚  CUSTOMER    â”‚   â”‚    COMMS     â”‚                  â”‚
-â”‚  â”‚ 17 services  â”‚   â”‚ 15 services  â”‚   â”‚  EXPERIENCE  â”‚   â”‚ 12 services  â”‚                  â”‚
-â”‚  â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜   â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜   â”‚ 17 services  â”‚   â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜                  â”‚
-â”‚                                        â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜                                      â”‚
-â”‚  â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”   â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”   â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”   â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”                  â”‚
-â”‚  â”‚   CONTENT    â”‚   â”‚ ANALYTICS/AI â”‚   â”‚     B2B      â”‚   â”‚ INTEGRATIONS â”‚                  â”‚
-â”‚  â”‚  9 services  â”‚   â”‚ 13 services  â”‚   â”‚ 10 services  â”‚   â”‚ 14 services  â”‚                  â”‚
-â”‚  â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜   â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜   â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜   â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜                  â”‚
-â”‚                                                                                               â”‚
-â”‚  â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”   â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”   â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”   â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”   â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â” â”‚
-â”‚  â”‚  AFFILIATE   â”‚   â”‚ MARKETPLACE  â”‚   â”‚ GAMIFICATION â”‚   â”‚  DEV PLATFORMâ”‚   â”‚ COMPLIANCE â”‚ â”‚
-â”‚  â”‚  6 services  â”‚   â”‚  8 services  â”‚   â”‚  6 services  â”‚   â”‚  6 services  â”‚   â”‚ 5 services â”‚ â”‚
-â”‚  â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜   â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜   â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜   â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜   â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜ â”‚
-â”‚                                                                                               â”‚
-â”‚  â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”   â”Œâ”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â” â”‚
-â”‚  â”‚SUSTAINABILITYâ”‚   â”‚                   WEB FRONTENDS (6 apps)                              â”‚ â”‚
-â”‚  â”‚  5 services  â”‚   â”‚  Next.js Â· React+Vite Â· Vue.js 3 Â· Angular 18 Â· React Native        â”‚ â”‚
-â”‚  â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜   â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜ â”‚
-â””â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜
+─Œ───────────────────────────────────────────────────────────────────────────────────────────────
+│                        ShopOS — 19 Domains · 230 Services                                     │
+│                                                                                               │
+│  ─Œ───────────────   ─Œ───────────────   ─Œ───────────────   ─Œ───────────────                  │
+│  │   PLATFORM   │   │   IDENTITY   │   │   CATALOG    │   │  COMMERCE    │                  │
+│  │  27 services │   │  11 services │   │ 15 services  │   │ 28 services  │                  │
+│  └───────────────˜   └───────────────˜   └───────────────˜   └───────────────˜                  │
+│                                                                                               │
+│  ─Œ───────────────   ─Œ───────────────   ─Œ───────────────   ─Œ───────────────                  │
+│  │ SUPPLY CHAIN │   │  FINANCIAL   │   │  CUSTOMER    │   │    COMMS     │                  │
+│  │ 17 services  │   │ 15 services  │   │  EXPERIENCE  │   │ 12 services  │                  │
+│  └───────────────˜   └───────────────˜   │ 17 services  │   └───────────────˜                  │
+│                                        └───────────────˜                                      │
+│  ─Œ───────────────   ─Œ───────────────   ─Œ───────────────   ─Œ───────────────                  │
+│  │   CONTENT    │   │ ANALYTICS/AI │   │     B2B      │   │ INTEGRATIONS │                  │
+│  │  9 services  │   │ 13 services  │   │ 10 services  │   │ 14 services  │                  │
+│  └───────────────˜   └───────────────˜   └───────────────˜   └───────────────˜                  │
+│                                                                                               │
+│  ─Œ───────────────   ─Œ───────────────   ─Œ───────────────   ─Œ───────────────   ─Œ───────────── │
+│  │  AFFILIATE   │   │ MARKETPLACE  │   │ GAMIFICATION │   │  DEV PLATFORM│   │ COMPLIANCE │ │
+│  │  6 services  │   │  8 services  │   │  6 services  │   │  6 services  │   │ 5 services │ │
+│  └───────────────˜   └───────────────˜   └───────────────˜   └───────────────˜   └─────────────˜ │
+│                                                                                               │
+│  ─Œ───────────────   ─Œ─────────────────────────────────────────────────────────────────────── │
+│  │SUSTAINABILITY│   │                   WEB FRONTENDS (6 apps)                              │ │
+│  │  5 services  │   │  Next.js · React+Vite · Vue.js 3 · Angular 18 · React Native        │ │
+│  └───────────────˜   └───────────────────────────────────────────────────────────────────────˜ │
+└───────────────────────────────────────────────────────────────────────────────────────────────˜
 ```
 
 ---
@@ -45,7 +45,7 @@ ShopOS organises 230 services (224 microservices + 6 frontend apps) into 19 boun
 Owns: Cross-cutting infrastructure capabilities  
 Services: api-gateway, web-bff, mobile-bff, partner-bff, graphql-gateway, config-service, feature-flag-service, rate-limiter-service, health-check-service, saga-orchestrator, event-store-service, cache-warming-service, webhook-service, scheduler-service, worker-job-queue, audit-service, load-generator, admin-portal, dead-letter-service, geolocation-service, event-replay-service, tenant-service, notification-preferences-service, circuit-breaker-service, idempotency-service, correlation-id-service, data-masking-service  
 Databases: Postgres (audit, saga, event-store, scheduler, webhook), Redis (rate-limiter, worker queue), etcd (config)  
-Workflow engine: Temporal â€” orchestrates complex sagas (order, refund, subscription) and coordinates long-running flows that span multiple domains  
+Workflow engine: Temporal — orchestrates complex sagas (order, refund, subscription) and coordinates long-running flows that span multiple domains  
 Publishes: `platform.audit.recorded`, `platform.config.changed`
 
 ### 2. Identity Domain
@@ -75,7 +75,7 @@ Publishes: `supplychain.shipment.created`, `supplychain.shipment.updated`, `supp
 ### 6. Financial Domain
 Owns: Invoices, payouts, accounting ledger, reconciliation, compliance  
 Services: invoice-service, accounting-service, payout-service, reconciliation-service, tax-reporting-service, expense-management-service, credit-service, kyc-aml-service, budget-service, chargeback-service, revenue-recognition-service, escrow-service, forex-service, audit-trail-service, dunning-service  
-Databases: Postgres (all â€” ACID required for financial data)  
+Databases: Postgres (all — ACID required for financial data)  
 Publishes: `financial.invoice.created`, `financial.payout.initiated`, `financial.journal.entry.created`
 
 ### 7. Customer Experience Domain
@@ -100,8 +100,8 @@ Publishes: `content.asset.uploaded`, `content.page.published`
 Owns: Event tracking, ML models, recommendations, reporting, attribution  
 Services: analytics-service, reporting-service, recommendation-service, sentiment-analysis-service, price-optimization-service, ml-feature-store, personalization-service, data-pipeline-service, ad-service, event-tracking-service, attribution-service, clv-service, search-analytics-service  
 Databases: Cassandra (events), Postgres (features, CLV), MongoDB (personalisation), ClickHouse (OLAP reporting), Weaviate (vectors), Neo4j (product graph), TimescaleDB (metrics)  
-Stream processing: Apache Flink â€” `order-analytics` job (revenue aggregations to ClickHouse) + `fraud-detection` job (velocity checks across order and login streams)  
-ML platform: MLflow â€” experiment tracking and model registry for recommendation and price-optimization models  
+Stream processing: Apache Flink — `order-analytics` job (revenue aggregations to ClickHouse) + `fraud-detection` job (velocity checks across order and login streams)  
+ML platform: MLflow — experiment tracking and model registry for recommendation and price-optimization models  
 Consumes: All domain events for analytics aggregation
 
 ### 11. B2B Domain
@@ -113,8 +113,8 @@ Publishes: `b2b.quote.approved`, `b2b.contract.signed`
 ### 12. Integrations Domain
 Owns: External system connectors (ERP, CRM, marketplaces, logistics providers)  
 Services: erp-integration-service, marketplace-connector-service, social-commerce-service, crm-integration-service, payment-gateway-integration, logistics-provider-integration, tax-provider-integration, pim-integration-service, cdp-integration-service, accounting-integration-service, webhook-ingestion-service, etl-service, data-sync-service, ipaas-connector-service  
-Databases: Stateless â€” transforms and forwards; no persistent store  
-Pattern: Anti-Corruption Layer â€” translates external models to internal domain events
+Databases: Stateless — transforms and forwards; no persistent store  
+Pattern: Anti-Corruption Layer — translates external models to internal domain events
 
 ### 13. Affiliate Domain
 Owns: Affiliate programs, referrals, influencer tracking, commissions  
@@ -154,41 +154,41 @@ Publishes: `sustainability.carbon.tracked`, `sustainability.offset.purchased`
 
 ### 19. Web Domain (Frontend Apps)
 Owns: Customer-facing and operator-facing web/mobile interfaces  
-Apps: storefront (Next.js 14 Â· :3000), admin-dashboard (React+Vite Â· :3001), seller-portal (Vue.js 3 Â· :3002), partner-portal (Angular 18 Â· :3003), mobile-app (React Native / Expo), developer-portal-ui (React+Vite Â· :3004)  
+Apps: storefront (Next.js 14 · :3000), admin-dashboard (React+Vite · :3001), seller-portal (Vue.js 3 · :3002), partner-portal (Angular 18 · :3003), mobile-app (React Native / Expo), developer-portal-ui (React+Vite · :3004)  
 Consumes: All services via BFF layer (Web BFF, Mobile BFF, Partner BFF)
 
 ---
 
 ## Inter-Domain Dependency Matrix
 
-Arrows show event consumption (`â†’`) or gRPC calls (`â‡’`).
+Arrows show event consumption (`→`) or gRPC calls (`â‡’`).
 
 | Producer Domain | Consumer Domain | Channel | Event / Call |
 |---|---|---|---|
-| Identity | Commerce | Kafka | `identity.user.registered` â†’ loyalty provisioning |
-| Identity | Communications | Kafka | `identity.user.registered` â†’ welcome email |
-| Identity | Analytics/AI | Kafka | `identity.user.registered` â†’ user tracking |
-| Commerce | Supply Chain | Kafka | `commerce.order.placed` â†’ fulfillment |
-| Commerce | Financial | Kafka | `commerce.payment.processed` â†’ accounting |
-| Commerce | Communications | Kafka | `commerce.order.placed` â†’ order confirmation |
+| Identity | Commerce | Kafka | `identity.user.registered` → loyalty provisioning |
+| Identity | Communications | Kafka | `identity.user.registered` → welcome email |
+| Identity | Analytics/AI | Kafka | `identity.user.registered` → user tracking |
+| Commerce | Supply Chain | Kafka | `commerce.order.placed` → fulfillment |
+| Commerce | Financial | Kafka | `commerce.payment.processed` → accounting |
+| Commerce | Communications | Kafka | `commerce.order.placed` → order confirmation |
 | Commerce | Loyalty | gRPC | checkout â‡’ loyalty (apply points) |
 | Commerce | Promotions | gRPC | checkout â‡’ promotions (apply discounts) |
-| Commerce | Analytics/AI | Kafka | `commerce.order.placed` â†’ conversion tracking |
-| Supply Chain | Communications | Kafka | `supplychain.shipment.updated` â†’ tracking notification |
-| Supply Chain | Analytics/AI | Kafka | shipment events â†’ delivery analytics |
-| Financial | Communications | Kafka | `financial.invoice.created` â†’ email receipt |
-| Catalog | Search | CDC | MongoDB product changes â†’ Elasticsearch index |
-| Catalog | Analytics/AI | CDC | catalog changes â†’ reporting sync |
+| Commerce | Analytics/AI | Kafka | `commerce.order.placed` → conversion tracking |
+| Supply Chain | Communications | Kafka | `supplychain.shipment.updated` → tracking notification |
+| Supply Chain | Analytics/AI | Kafka | shipment events → delivery analytics |
+| Financial | Communications | Kafka | `financial.invoice.created` → email receipt |
+| Catalog | Search | CDC | MongoDB product changes → Elasticsearch index |
+| Catalog | Analytics/AI | CDC | catalog changes → reporting sync |
 | Affiliate | Commerce | Kafka | referral applied at checkout |
-| Affiliate | Financial | Kafka | `affiliate.commission.earned` â†’ payout |
+| Affiliate | Financial | Kafka | `affiliate.commission.earned` → payout |
 
 ---
 
 ## Context Map Legend
 
-- Partnership: Identity â†” Commerce (shared kernel: user ID)
-- Customer/Supplier: Commerce â†’ Supply Chain (Commerce places orders; Supply Chain fulfils)
-- Conformist: Integrations â†’ External Systems (Integration adapts to external APIs)
+- Partnership: Identity ←” Commerce (shared kernel: user ID)
+- Customer/Supplier: Commerce → Supply Chain (Commerce places orders; Supply Chain fulfils)
+- Conformist: Integrations → External Systems (Integration adapts to external APIs)
 - Anti-Corruption Layer: Integrations translates external models to internal domain events
 - Open Host Service: Catalog exposes product data to all consumers via gRPC
 - Published Language: Avro schemas in `events/` are the shared language across all domains
@@ -205,7 +205,7 @@ The following capabilities are not owned by any single domain but support all 13
 |---|---|---|
 | Service mesh + mTLS | Istio + Linkerd | `networking/istio/`, `networking/linkerd/` |
 | eBPF CNI + network policy | Cilium + Calico | `networking/cilium/`, `networking/calico/` |
-| Observability instrumentation | OpenTelemetry | All services â€” auto-injected by Istio |
+| Observability instrumentation | OpenTelemetry | All services — auto-injected by Istio |
 | Metrics + alerting | Prometheus + Alertmanager + Grafana | `observability/` |
 | Distributed tracing | Jaeger + Tempo | `observability/jaeger/`, `observability/tempo/` |
 | Log aggregation | Loki + Fluentd + ELK + OpenSearch | `observability/` |

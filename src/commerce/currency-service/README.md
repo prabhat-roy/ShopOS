@@ -1,4 +1,4 @@
-﻿# currency-service
+# currency-service
 
 > Provides real-time currency exchange rates and multi-currency conversion for the ShopOS platform.
 
@@ -56,10 +56,10 @@ The currency-service does not produce or consume Kafka topics.
 ## Dependencies
 
 Upstream (callers)
-- `pricing-service` â€” converts catalog prices to display currencies
-- `checkout-service` â€” converts cart totals for multi-currency checkout
-- `web-bff` / `mobile-bff` â€” storefront currency display
-- `invoice-service` â€” invoice currency conversion
+- `pricing-service` — converts catalog prices to display currencies
+- `checkout-service` — converts cart totals for multi-currency checkout
+- `web-bff` / `mobile-bff` — storefront currency display
+- `invoice-service` — invoice currency conversion
 
 Downstream (called by this service)
 - External exchange rate API (Open Exchange Rates, ECB, or Fixer.io)
@@ -87,6 +87,6 @@ docker-compose up currency-service
 
 ## Health Check
 
-`GET /healthz` â†’ `{"status":"ok"}`
+`GET /healthz` → `{"status":"ok"}`
 
-gRPC health: `grpc.health.v1.Health/Check` â†’ `SERVING`
+gRPC health: `grpc.health.v1.Health/Check` → `SERVING`

@@ -1,0 +1,77 @@
+# Source: workflow/temporal/temporal-server.yaml
+# This Application installs the same Helm chart on any K8s cluster (not just k3s).
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: temporal
+  namespace: argocd
+  finalizers: [resources-finalizer.argocd.argoproj.io]
+spec:
+  project: shopos-infra
+  source:
+    repoURL: https://go.temporal.io/helm-charts
+    chart: temporal
+    targetRevision: '0.54.0'
+    helm:
+      releaseName: temporal
+      values: |
+        server:
+          replicaCount: 1
+          config:
+            persistence:
+              defaultStore: postgres-default
+              visibilityStore: postgres-visibility
+              numHistoryShards: 512
+              datastores:
+                postgres-default:
+                  sql:
+                    pluginName: postgres12
+                    databaseName: temporal
+                    connectAddr: "postgres:5432"
+                    connectProtocol: tcp
+                    user: temporal
+                    password: "${TEMPORAL_DB_PASSWORD}"
+                    maxConns: 20
+                    maxIdleConns: 20
+                    maxConnLifetime: 1h
+                postgres-visibility:
+                  sql:
+                    pluginName: postgres12
+                    databaseName: temporal_visibility
+                    connectAddr: "postgres:5432"
+                    connectProtocol: tcp
+                    user: temporal
+                    password: "${TEMPORAL_DB_PASSWORD}"
+                    maxConns: 10
+                    maxIdleConns: 10
+                    maxConnLifetime: 1h
+        
+        web:
+          enabled: true
+          replicaCount: 1
+          service:
+            type: ClusterIP
+            port: 8080
+        
+        admintools:
+          enabled: true
+        
+        elasticsearch:
+          enabled: false
+        
+        cassandra:
+          enabled: false
+        
+        mysql:
+          enabled: false
+        
+        postgresql:
+          enabled: false
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: temporal-system
+  syncPolicy:
+    automated: { prune: false, selfHeal: true }
+    syncOptions: [CreateNamespace=true, ServerSideApply=true]
+    retry: { limit: 5, backoff: { duration: 30s, maxDuration: 5m, factor: 2 } }

@@ -1,10 +1,10 @@
-﻿# warehouse-service
+# warehouse-service
 
 > Manages warehouse locations, bin/slot assignments, and all inbound and outbound stock movements.
 
 ## Overview
 
-The warehouse-service is the physical inventory layer of ShopOS, tracking exactly where each SKU is stored within a warehouse facility. It models a hierarchy of warehouse â†’ zone â†’ aisle â†’ bin and records every stock movement as an immutable ledger entry. Fulfillment and inventory services query this service to determine pick locations and available stock at a bin level.
+The warehouse-service is the physical inventory layer of ShopOS, tracking exactly where each SKU is stored within a warehouse facility. It models a hierarchy of warehouse → zone → aisle → bin and records every stock movement as an immutable ledger entry. Fulfillment and inventory services query this service to determine pick locations and available stock at a bin level.
 
 ## Architecture
 
@@ -66,8 +66,8 @@ service WarehouseService {
 ## Dependencies
 
 Upstream (callers)
-- `fulfillment-service` â€” stock reservation and release
-- `inventory-service` (catalog domain) â€” aggregate stock level queries
+- `fulfillment-service` — stock reservation and release
+- `inventory-service` (catalog domain) — aggregate stock level queries
 
 Downstream (calls out to)
 - None (leaf service for physical stock data)
@@ -81,7 +81,7 @@ Downstream (calls out to)
 | `DB_PORT` | `5432` | PostgreSQL port |
 | `DB_NAME` | `warehouse_db` | Database name |
 | `DB_USER` | `warehouse_svc` | Database user |
-| `DB_PASSWORD` | â€” | Database password (required) |
+| `DB_PASSWORD` | — | Database password (required) |
 | `KAFKA_BROKERS` | `localhost:9092` | Comma-separated Kafka broker list |
 | `LOW_STOCK_THRESHOLD_DEFAULT` | `10` | Default units below which low-stock event fires |
 | `LOG_LEVEL` | `info` | Logging level |
@@ -94,6 +94,6 @@ docker-compose up warehouse-service
 
 ## Health Check
 
-`GET /healthz` â†’ `{"status":"ok"}`
+`GET /healthz` → `{"status":"ok"}`
 
-gRPC health: `grpc.health.v1.Health/Check` â†’ `SERVING`
+gRPC health: `grpc.health.v1.Health/Check` → `SERVING`

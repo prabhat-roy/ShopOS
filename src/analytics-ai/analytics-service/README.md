@@ -1,10 +1,10 @@
-﻿# analytics-service
+# analytics-service
 
 > Consumes analytics domain events from Kafka, stores time-series data in Cassandra, and exposes aggregate query APIs.
 
 ## Overview
 
-The analytics-service is the primary event consumer and aggregation layer for behavioural analytics in ShopOS. It ingests high-volume analytics events from Kafka topics â€” page views, product clicks, search queries â€” persists raw and pre-aggregated data into Cassandra's wide-column time-series model, and exposes aggregate read APIs for dashboards, reporting tools, and downstream AI services. It is designed for append-heavy, read-optimised workloads at scale.
+The analytics-service is the primary event consumer and aggregation layer for behavioural analytics in ShopOS. It ingests high-volume analytics events from Kafka topics — page views, product clicks, search queries — persists raw and pre-aggregated data into Cassandra's wide-column time-series model, and exposes aggregate read APIs for dashboards, reporting tools, and downstream AI services. It is designed for append-heavy, read-optimised workloads at scale.
 
 ## Architecture
 
@@ -52,10 +52,10 @@ This service is primarily Kafka-driven. Aggregate queries are served via an inte
 
 | Topic | Role |
 |---|---|
-| `analytics.page.viewed` | Consumed â€” page view events |
-| `analytics.product.clicked` | Consumed â€” product click events |
-| `analytics.search.performed` | Consumed â€” search query events |
-| `analytics.aggregated.hourly` | Produced â€” hourly rollup metrics for downstream |
+| `analytics.page.viewed` | Consumed — page view events |
+| `analytics.product.clicked` | Consumed — product click events |
+| `analytics.search.performed` | Consumed — search query events |
+| `analytics.aggregated.hourly` | Produced — hourly rollup metrics for downstream |
 
 ## Dependencies
 
@@ -84,4 +84,4 @@ docker-compose up analytics-service
 
 ## Health Check
 
-`GET /healthz` â†’ `{"status":"ok"}`
+`GET /healthz` → `{"status":"ok"}`

@@ -1,0 +1,45 @@
+# Source: security/trivy-operator/trivy-operator.yaml
+# This Application installs the same Helm chart on any K8s cluster (not just k3s).
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: trivy-operator
+  namespace: argocd
+  finalizers: [resources-finalizer.argocd.argoproj.io]
+spec:
+  project: shopos-infra
+  source:
+    repoURL: https://aquasecurity.github.io/helm-charts/
+    chart: trivy-operator
+    targetRevision: '0.24.1'
+    helm:
+      releaseName: trivy-operator
+      values: |
+        operator:
+          vulnerabilityScannerEnabled: true
+          configAuditScannerEnabled: true
+          rbacAssessmentScannerEnabled: true
+          infraAssessmentScannerEnabled: true
+          exposedSecretScannerEnabled: true
+          clusterComplianceEnabled: true
+          builtInTrivyServer: true
+          metricsFindingsEnabled: true
+          scanJobsConcurrentLimit: 10
+        serviceMonitor: { enabled: true }
+        nodeCollector: { enabled: true }
+        compliance:
+          cron: "0 */6 * * *"
+          reportType: all
+          specs:
+            - cis-1.23
+            - nsa-1.0
+            - pss-baseline
+            - pss-restricted
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: trivy-system
+  syncPolicy:
+    automated: { prune: false, selfHeal: true }
+    syncOptions: [CreateNamespace=true, ServerSideApply=true]
+    retry: { limit: 5, backoff: { duration: 30s, maxDuration: 5m, factor: 2 } }

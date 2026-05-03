@@ -1,10 +1,10 @@
-﻿# Saga Orchestrator
+# Saga Orchestrator
 
 > Manages distributed multi-step transactions across microservices using the Saga pattern.
 
 ## Overview
 
-The Saga Orchestrator coordinates long-running distributed transactions that span multiple microservices â€” such as order placement, which must atomically involve checkout, payment, inventory reservation, and fulfillment. It persists saga state to Postgres for durability and drives each step by issuing gRPC commands to participant services, listening for outcome events on Kafka, and triggering compensating transactions on failure. This ensures eventual consistency without distributed locks or two-phase commit.
+The Saga Orchestrator coordinates long-running distributed transactions that span multiple microservices — such as order placement, which must atomically involve checkout, payment, inventory reservation, and fulfillment. It persists saga state to Postgres for durability and drives each step by issuing gRPC commands to participant services, listening for outcome events on Kafka, and triggering compensating transactions on failure. This ensures eventual consistency without distributed locks or two-phase commit.
 
 ## Architecture
 
@@ -69,14 +69,14 @@ flowchart TD
 ## Dependencies
 
 Upstream (services this calls):
-- `checkout-service` (commerce) â€” cart reservation step
-- `payment-service` (commerce) â€” charge step
-- `inventory-service` (catalog) â€” stock deduction step
-- `fulfillment-service` (supply-chain) â€” shipment creation step
-- `event-store-service` (platform) â€” optional event appending for sourcing
+- `checkout-service` (commerce) — cart reservation step
+- `payment-service` (commerce) — charge step
+- `inventory-service` (catalog) — stock deduction step
+- `fulfillment-service` (supply-chain) — shipment creation step
+- `event-store-service` (platform) — optional event appending for sourcing
 
 Downstream (services that call this):
-- `admin-portal` (platform) â€” saga inspection and manual retry
+- `admin-portal` (platform) — saga inspection and manual retry
 
 ## Environment Variables
 
@@ -104,4 +104,4 @@ skaffold dev --module=saga-orchestrator
 
 ## Health Check
 
-`GET /healthz` â†’ `{"status":"ok"}`
+`GET /healthz` → `{"status":"ok"}`

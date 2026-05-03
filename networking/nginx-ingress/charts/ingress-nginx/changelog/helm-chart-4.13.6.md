@@ -1,4 +1,4 @@
-﻿# Changelog
+# Changelog
 
 This file documents all notable changes to [ingress-nginx](https://github.com/kubernetes/ingress-nginx) Helm Chart. The release numbering uses [semantic versioning](http://semver.org).
 

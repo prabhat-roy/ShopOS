@@ -1,4 +1,4 @@
-﻿# Argo Rollouts Chart
+# Argo Rollouts Chart
 
 A Helm chart for Argo Rollouts, progressive delivery for Kubernetes.
 

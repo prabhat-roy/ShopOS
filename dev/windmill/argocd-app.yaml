@@ -1,0 +1,32 @@
+# Source: dev/windmill/windmill.yaml
+# This Application installs the same Helm chart on any K8s cluster (not just k3s).
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: windmill
+  namespace: argocd
+  finalizers: [resources-finalizer.argocd.argoproj.io]
+spec:
+  project: shopos-infra
+  source:
+    repoURL: https://windmill-labs.github.io/windmill-helm-charts/
+    chart: windmill
+    targetRevision: '2.0.213'
+    helm:
+      releaseName: windmill
+      values: |
+        windmill:
+          databaseUrlSecretName: windmill-db
+          baseUrl: https://windmill.shopos.example.com
+        workers: [{ name: default, replicas: 4, tag: default }, { name: native, replicas: 2, tag: native }]
+        postgresql: { enabled: false }
+        minio: { enabled: false }
+        ingress: { enabled: true, className: istio, hosts: ["windmill.shopos.example.com"] }
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: developer-platform
+  syncPolicy:
+    automated: { prune: false, selfHeal: true }
+    syncOptions: [CreateNamespace=true, ServerSideApply=true]
+    retry: { limit: 5, backoff: { duration: 30s, maxDuration: 5m, factor: 2 } }

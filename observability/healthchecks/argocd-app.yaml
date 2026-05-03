@@ -1,0 +1,34 @@
+# Source: observability/healthchecks/healthchecks.yaml
+# This Application installs the same Helm chart on any K8s cluster (not just k3s).
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: healthchecks
+  namespace: argocd
+  finalizers: [resources-finalizer.argocd.argoproj.io]
+spec:
+  project: shopos-infra
+  source:
+    repoURL: https://healthchecks.github.io/helm
+    chart: healthchecks
+    targetRevision: '0.7.0'
+    helm:
+      releaseName: healthchecks
+      values: |
+        replicaCount: 2
+        settings:
+          siteName: shopos-cron
+          defaultFromEmail: cron-monitor@shopos.example.com
+          databaseUrl: postgres://healthchecks:${HEALTHCHECKS_DB_PASSWORD}@postgres-primary.databases.svc:5432/healthchecks
+        persistence: { enabled: true, size: 5Gi }
+        ingress:
+          enabled: true
+          hosts: [{ host: healthchecks.shopos.example.com, paths: [/] }]
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: monitoring
+  syncPolicy:
+    automated: { prune: false, selfHeal: true }
+    syncOptions: [CreateNamespace=true, ServerSideApply=true]
+    retry: { limit: 5, backoff: { duration: 30s, maxDuration: 5m, factor: 2 } }

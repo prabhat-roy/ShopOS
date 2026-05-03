@@ -1,0 +1,26 @@
+# Airbyte — ELT for ingesting from 300+ sources (Stripe, Salesforce, Postgres replicas) into ClickHouse.
+apiVersion: helm.cattle.io/v1
+kind: HelmChart
+metadata: { name: airbyte, namespace: analytics-ai }
+spec:
+  repo: https://airbytehq.github.io/helm-charts
+  chart: airbyte
+  version: 1.1.0
+  targetNamespace: analytics-ai
+  valuesContent: |-
+    global:
+      database:
+        type: external
+        host: postgres-primary.databases.svc
+        database: airbyte
+        secretName: airbyte-db
+      storage:
+        type: minio
+        bucket: { activityPayload: airbyte-activity, log: airbyte-logs, state: airbyte-state, workloadOutput: airbyte-output }
+        minio:
+          endpoint: http://minio.databases.svc:9000
+          credentialsSecret: airbyte-minio
+    server:    { replicaCount: 2 }
+    worker:    { replicaCount: 4 }
+    webapp:    { replicaCount: 2 }
+    temporal:  { enabled: true, replicaCount: 1 }

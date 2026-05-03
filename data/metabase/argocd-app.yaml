@@ -1,0 +1,35 @@
+# Source: data/metabase/metabase.yaml
+# This Application installs the same Helm chart on any K8s cluster (not just k3s).
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: metabase
+  namespace: argocd
+  finalizers: [resources-finalizer.argocd.argoproj.io]
+spec:
+  project: shopos-infra
+  source:
+    repoURL: https://pmint93.github.io/helm-charts
+    chart: metabase
+    targetRevision: '2.18.0'
+    helm:
+      releaseName: metabase
+      values: |
+        replicaCount: 2
+        database:
+          type: postgres
+          host: postgres-primary.databases.svc
+          port: 5432
+          dbname: metabase
+          username: metabase
+          existingSecret: metabase-db
+        persistence: { enabled: true, size: 10Gi }
+        ingress: { enabled: true, className: istio, hosts: [metabase.shopos.example.com] }
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: analytics-ai
+  syncPolicy:
+    automated: { prune: false, selfHeal: true }
+    syncOptions: [CreateNamespace=true, ServerSideApply=true]
+    retry: { limit: 5, backoff: { duration: 30s, maxDuration: 5m, factor: 2 } }

@@ -1,4 +1,4 @@
-﻿# template-service
+# template-service
 
 > Notification template CRUD with Handlebars and Jinja2 rendering for email, SMS, and push channels.
 
@@ -33,12 +33,12 @@ graph LR
 
 - Store versioned template definitions with channel type: `EMAIL`, `SMS`, `PUSH`
 - Support template variables with a defined schema for validation
-- Maintain template lifecycle: `DRAFT` â†’ `PUBLISHED` â†’ `ARCHIVED`
+- Maintain template lifecycle: `DRAFT` → `PUBLISHED` → `ARCHIVED`
 - Render a template by ID against a provided data payload at request time
-- Version templates â€” delivery services always reference a specific version
+- Version templates — delivery services always reference a specific version
 - Support multi-locale templates (i18n) keyed by `locale` field
 - Provide template preview endpoint for admin UI
-- Enforce variable substitution â€” warn on missing required variables
+- Enforce variable substitution — warn on missing required variables
 
 ## API / Interface
 
@@ -62,13 +62,13 @@ This service does not produce or consume Kafka topics.
 ## Dependencies
 
 Upstream (callers)
-- `email-service` â€” renders email templates at delivery time
-- `sms-service` â€” renders SMS body templates
-- `push-notification-service` â€” renders push title/body templates
-- `admin-portal` â€” manages template definitions
+- `email-service` — renders email templates at delivery time
+- `sms-service` — renders SMS body templates
+- `push-notification-service` — renders push title/body templates
+- `admin-portal` — manages template definitions
 
 Downstream (calls)
-- None â€” this service is a leaf in the call graph
+- None — this service is a leaf in the call graph
 
 ## Environment Variables
 
@@ -89,4 +89,4 @@ docker-compose up template-service
 
 ## Health Check
 
-`GET /healthz` â†’ `{"status":"ok"}`
+`GET /healthz` → `{"status":"ok"}`

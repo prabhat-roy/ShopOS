@@ -1,6 +1,6 @@
-﻿# referral-service
+# referral-service
 
-> Customer referral programme â€” generates unique referral codes, tracks referral conversions, and triggers reward payouts when a referred customer completes their first order.
+> Customer referral programme — generates unique referral codes, tracks referral conversions, and triggers reward payouts when a referred customer completes their first order.
 
 ## Overview
 
@@ -64,9 +64,9 @@ service ReferralService {
 ## Dependencies
 
 Upstream (callers)
-- `user-service` â€” requests referral code generation on customer signup
-- `order-service` â€” signals first order placement for conversion tracking
-- `commission-payout-service` â€” queries reward value for payout batch
+- `user-service` — requests referral code generation on customer signup
+- `order-service` — signals first order placement for conversion tracking
+- `commission-payout-service` — queries reward value for payout batch
 
 Downstream (calls out to)
 - None (authoritative source for referral data)
@@ -76,9 +76,9 @@ Downstream (calls out to)
 | Variable | Default | Description |
 |---|---|---|
 | `GRPC_PORT` | `50201` | Port the gRPC server listens on |
-| `DATABASE_URL` | â€” | PostgreSQL connection string (required) |
+| `DATABASE_URL` | — | PostgreSQL connection string (required) |
 | `REFERRAL_CODE_LENGTH` | `8` | Length of generated referral codes |
-| `REFERRAL_LINK_BASE_URL` | â€” | Base URL for shareable referral links |
+| `REFERRAL_LINK_BASE_URL` | — | Base URL for shareable referral links |
 | `REFERRAL_EXPIRY_DAYS` | `90` | Days before a referral code expires |
 | `REFERRER_REWARD_CREDIT` | `10.00` | Store credit awarded to referrer on conversion |
 | `REFEREE_DISCOUNT_PERCENT` | `15.0` | Welcome discount granted to referred customer |
@@ -93,6 +93,6 @@ docker-compose up referral-service
 
 ## Health Check
 
-`GET /healthz` â†’ `{"status":"ok"}`
+`GET /healthz` → `{"status":"ok"}`
 
-gRPC health: `grpc.health.v1.Health/Check` â†’ `SERVING`
+gRPC health: `grpc.health.v1.Health/Check` → `SERVING`

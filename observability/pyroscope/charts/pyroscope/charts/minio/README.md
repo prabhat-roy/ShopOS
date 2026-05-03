@@ -1,4 +1,4 @@
-﻿# MinIO Helm Chart
+# MinIO Helm Chart
 
 [![Slack](https://slack.min.io/slack?type=svg)](https://slack.min.io) [![license](https://img.shields.io/badge/license-AGPL%20V3-blue)](https://github.com/minio/minio/blob/master/LICENSE)
 

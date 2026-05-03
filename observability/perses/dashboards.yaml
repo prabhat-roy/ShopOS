@@ -1,0 +1,18 @@
+# Perses — GitOps-native dashboards-as-code (Grafana alternative).
+apiVersion: helm.cattle.io/v1
+kind: HelmChart
+metadata: { name: perses, namespace: monitoring }
+spec:
+  repo: https://perses.github.io/helm-charts
+  chart: perses
+  version: 0.6.0
+  targetNamespace: monitoring
+  valuesContent: |-
+    persistence: { enabled: true, size: 10Gi }
+    config:
+      database:
+        postgres:
+          db_url: postgresql://perses:${PERSES_DB_PASSWORD}@postgres-primary.databases.svc:5432/perses
+      datasources:
+        - { name: prometheus, type: prometheus, http: { url: http://prometheus-server.monitoring.svc:80 } }
+        - { name: tempo,      type: tempo,      http: { url: http://tempo.monitoring.svc:3100 } }

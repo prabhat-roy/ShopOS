@@ -1,14 +1,14 @@
-﻿# Kafka Monitor
+# Kafka Monitor
 
 ## What is Kafka Monitor?
 
-LinkedIn Kafka Monitor is an open-source tool that measures the end-to-end produce â†’ consume
+LinkedIn Kafka Monitor is an open-source tool that measures the end-to-end produce → consume
 latency and availability of a Kafka cluster by running a continuous synthetic workload.
 
 It creates a dedicated monitoring topic (`kafka-monitor-topic`), produces messages to it at a
 configurable rate, consumes those messages from the other end, and records the round-trip latency
 along with availability metrics. This gives real signal about whether Kafka is healthy from the
-perspective of a real producer-consumer pair â€” not just broker-level JMX stats.
+perspective of a real producer-consumer pair — not just broker-level JMX stats.
 
 ---
 
@@ -72,7 +72,7 @@ showing end-to-end latency trends, availability %, and alert thresholds.
 ## Alert Rules
 
 ```yaml
-# PrometheusRule excerpt â€” add to observability/prometheus/rules/kafka-monitor.yaml
+# PrometheusRule excerpt — add to observability/prometheus/rules/kafka-monitor.yaml
 - alert: KafkaMonitorLowAvailability
   expr: kafka_monitor_consume_availability < 0.99
   for: 5m
@@ -96,9 +96,9 @@ showing end-to-end latency trends, availability %, and alert thresholds.
 
 ## Configuration Notes
 
-- `topic.replication.factor: 3` â€” matches the ShopOS Kafka cluster's 3-broker setup.
-- `produce.record.delay.ms: 100` â€” 10 messages/second; lightweight enough for production.
-- `consume.latency.sla.ms: 1000` â€” messages not consumed within 1 second are counted as SLA
+- `topic.replication.factor: 3` — matches the ShopOS Kafka cluster's 3-broker setup.
+- `produce.record.delay.ms: 100` — 10 messages/second; lightweight enough for production.
+- `consume.latency.sla.ms: 1000` — messages not consumed within 1 second are counted as SLA
   violations in the `consume-availability` metric.
 - The monitoring topic is auto-created if it doesn't exist (`topic.creation.enabled: true`).
 

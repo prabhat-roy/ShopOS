@@ -1,4 +1,4 @@
-﻿# kyverno
+# kyverno
 
 Kubernetes Native Policy Management
 
@@ -111,7 +111,7 @@ spec:
 
 Notes on using Azure Kubernetes Service (AKS):
 
-AKS contains a component known as [Admission Enforcer](https://learn.microsoft.com/en-us/azure/aks/faq#can-admission-controller-webhooks-impact-kube-system-and-internal-aks-namespaces) which will attempt to modify Kyverno's webhooks if not excluded explicitly during Helm installation. If Admissions Enforcer is not disabled, this can lead to several symptoms such as high observed CPU usage and potentially cluster instability. Please see the Kyverno documentation [here](https://kyverno.io/docs/installation/platform-notes/#notes-for-aks-users) for more information and how to set this annotation on webhooks.
+AKS contains a component known as [Admission Enforcer](https://learn.microsoft.com/en-us/azure/app-k8s/faq#can-admission-controller-webhooks-impact-kube-system-and-internal-aks-namespaces) which will attempt to modify Kyverno's webhooks if not excluded explicitly during Helm installation. If Admissions Enforcer is not disabled, this can lead to several symptoms such as high observed CPU usage and potentially cluster instability. Please see the Kyverno documentation [here](https://kyverno.io/docs/installation/platform-notes/#notes-for-aks-users) for more information and how to set this annotation on webhooks.
 
 ## Migrating from v2 to v3
 

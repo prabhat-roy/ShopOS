@@ -1,0 +1,41 @@
+# Source: data/airbyte/airbyte.yaml
+# This Application installs the same Helm chart on any K8s cluster (not just k3s).
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: airbyte
+  namespace: argocd
+  finalizers: [resources-finalizer.argocd.argoproj.io]
+spec:
+  project: shopos-infra
+  source:
+    repoURL: https://airbytehq.github.io/helm-charts
+    chart: airbyte
+    targetRevision: '1.1.0'
+    helm:
+      releaseName: airbyte
+      values: |
+        global:
+          database:
+            type: external
+            host: postgres-primary.databases.svc
+            database: airbyte
+            secretName: airbyte-db
+          storage:
+            type: minio
+            bucket: { activityPayload: airbyte-activity, log: airbyte-logs, state: airbyte-state, workloadOutput: airbyte-output }
+            minio:
+              endpoint: http://minio.databases.svc:9000
+              credentialsSecret: airbyte-minio
+        server:    { replicaCount: 2 }
+        worker:    { replicaCount: 4 }
+        webapp:    { replicaCount: 2 }
+        temporal:  { enabled: true, replicaCount: 1 }
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: analytics-ai
+  syncPolicy:
+    automated: { prune: false, selfHeal: true }
+    syncOptions: [CreateNamespace=true, ServerSideApply=true]
+    retry: { limit: 5, backoff: { duration: 30s, maxDuration: 5m, factor: 2 } }

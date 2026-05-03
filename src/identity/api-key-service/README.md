@@ -1,4 +1,4 @@
-﻿# api-key-service
+# api-key-service
 
 > API key creation, rotation, scope management, and validation for machine-to-machine access.
 
@@ -7,7 +7,7 @@
 The api-key-service enables machine-to-machine (M2M) access to ShopOS APIs. It issues
 opaque API keys with configurable scopes, expiry, and rate-limit tiers, making them
 suitable for partner integrations, webhook consumers, and CI/CD pipelines. Keys are stored
-as bcrypt hashes â€” the plaintext is shown only once at creation time. The api-gateway calls
+as bcrypt hashes — the plaintext is shown only once at creation time. The api-gateway calls
 this service to validate incoming `Authorization: ApiKey <key>` headers.
 
 ## Architecture
@@ -56,7 +56,7 @@ graph LR
 - Store only the bcrypt hash of the key; return plaintext exactly once
 - Associate keys with an owner (user or organization), scopes, and expiry
 - Validate incoming API keys: hash comparison, expiry check, scope match
-- Support key rotation â€” generate new key, deprecate old key with grace period
+- Support key rotation — generate new key, deprecate old key with grace period
 - Revoke keys immediately on security incidents
 - Track key last-used timestamp for audit purposes
 - Enforce per-key rate-limit tier metadata (enforced by rate-limiter-service)
@@ -85,23 +85,23 @@ service ApiKeyService {
 
 ## Kafka Topics
 
-Not applicable â€” api-key-service is gRPC-only.
+Not applicable — api-key-service is gRPC-only.
 
 ## Dependencies
 
 Upstream (calls these):
-- None â€” api-key-service has no outbound service calls
+- None — api-key-service has no outbound service calls
 
 Downstream (called by these):
-- `api-gateway` â€” `ValidateApiKey` for every request using ApiKey auth
-- `admin-portal` â€” key management UI for operators and partners
-- `rate-limiter-service` â€” reads key tier to apply correct rate limits
+- `api-gateway` — `ValidateApiKey` for every request using ApiKey auth
+- `admin-portal` — key management UI for operators and partners
+- `rate-limiter-service` — reads key tier to apply correct rate limits
 
 ## Environment Variables
 
 | Variable | Default | Description |
 |---|---|---|
-| `DATABASE_URL` | â€” | PostgreSQL connection string |
+| `DATABASE_URL` | — | PostgreSQL connection string |
 | `GRPC_PORT` | `50066` | gRPC listening port |
 | `KEY_PREFIX_LIVE` | `sk_live_` | Prefix for production API keys |
 | `KEY_PREFIX_TEST` | `sk_test_` | Prefix for sandbox API keys |
@@ -118,6 +118,6 @@ docker-compose up api-key-service
 
 ## Health Check
 
-`GET /healthz` â€” `{"status":"ok"}`
+`GET /healthz` — `{"status":"ok"}`
 
 gRPC health protocol: `grpc.health.v1.Health/Check` on port `50066`

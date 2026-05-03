@@ -1,10 +1,10 @@
-﻿# video-service
+# video-service
 
 > Video upload, transcoding job submission, and streaming URL generation backed by MinIO.
 
 ## Overview
 
-The video-service handles the full lifecycle of video assets on the ShopOS platform â€” from raw upload ingestion through transcoding job orchestration to adaptive streaming URL delivery. Raw uploads are stored in MinIO, transcoding jobs are dispatched asynchronously, and the service tracks job status so callers can poll for completion and retrieve playback-ready streaming URLs.
+The video-service handles the full lifecycle of video assets on the ShopOS platform — from raw upload ingestion through transcoding job orchestration to adaptive streaming URL delivery. Raw uploads are stored in MinIO, transcoding jobs are dispatched asynchronously, and the service tracks job status so callers can poll for completion and retrieve playback-ready streaming URLs.
 
 ## Architecture
 
@@ -72,11 +72,11 @@ Downstream: scheduler-service (transcoding job dispatch), MinIO (raw and transco
 |---|---|---|
 | `GRPC_PORT` | `50144` | gRPC server port |
 | `MINIO_ENDPOINT` | `minio:9000` | MinIO endpoint |
-| `MINIO_ACCESS_KEY` | â€” | MinIO access key |
-| `MINIO_SECRET_KEY` | â€” | MinIO secret key |
+| `MINIO_ACCESS_KEY` | — | MinIO access key |
+| `MINIO_SECRET_KEY` | — | MinIO secret key |
 | `MINIO_RAW_BUCKET` | `videos-raw` | Bucket for raw uploads |
 | `MINIO_TRANSCODED_BUCKET` | `videos-transcoded` | Bucket for processed segments |
-| `POSTGRES_DSN` | â€” | PostgreSQL connection string |
+| `POSTGRES_DSN` | — | PostgreSQL connection string |
 | `SCHEDULER_SERVICE_ADDR` | `scheduler-service:50056` | Scheduler service address |
 | `STREAMING_URL_TTL` | `86400` | Streaming URL expiry in seconds |
 | `MAX_VIDEO_SIZE_GB` | `5` | Maximum upload size in GB |
@@ -89,4 +89,4 @@ docker-compose up video-service
 
 ## Health Check
 
-`GET /healthz` â†’ `{"status":"ok"}`
+`GET /healthz` → `{"status":"ok"}`

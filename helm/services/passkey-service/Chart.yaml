@@ -1,0 +1,6 @@
+apiVersion: v2
+name: passkey-service
+description: ShopOS passkey-service (identity)
+type: application
+version: 0.1.0
+appVersion: "1.0.0"

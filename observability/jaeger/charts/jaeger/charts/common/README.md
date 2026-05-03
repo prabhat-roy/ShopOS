@@ -1,4 +1,4 @@
-﻿<!--- app-name: Common -->
+<!--- app-name: Common -->
 
 # Common library for Bitnami packages
 
@@ -38,7 +38,7 @@ Those are hardened, minimal CVE images built and maintained by Bitnami. Bitnami 
 - Vulnerability Triage & Prioritization with VEX Statements, KEV and EPSS Scores
 - Compliance focus with FIPS, STIG, and air-gap options, including secure bill of materials (SBOM)
 - Software supply chain provenance attestation through in-toto
-- First class support for the internetâ€™s favorite Helm charts
+- First class support for the internet’s favorite Helm charts
 
 Each image comes with valuable security metadata. You can view the metadata in [our public catalog here](https://app-catalog.vmware.com/bitnami/apps). Note: Some data is only available with [commercial subscriptions to BSI](https://bitnami.com/).
 

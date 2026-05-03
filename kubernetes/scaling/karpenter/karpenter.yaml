@@ -1,0 +1,50 @@
+# Karpenter — node autoscaler that provisions right-sized EC2 instances on-demand.
+apiVersion: helm.cattle.io/v1
+kind: HelmChart
+metadata: { name: karpenter, namespace: karpenter }
+spec:
+  repo: oci://public.ecr.aws/karpenter
+  chart: karpenter
+  version: 1.0.4
+  targetNamespace: karpenter
+  valuesContent: |-
+    replicas: 2
+    settings:
+      clusterName: shopos-prod
+      interruptionQueue: shopos-karpenter
+    serviceAccount:
+      annotations: { eks.amazonaws.com/role-arn: "arn:aws:iam::${AWS_ACCOUNT_ID}:role/karpenter-controller" }
+    controller:
+      resources:
+        requests: { cpu: 1, memory: 1Gi }
+        limits: { cpu: 1, memory: 1Gi }
+---
+apiVersion: karpenter.sh/v1
+kind: NodePool
+metadata: { name: general }
+spec:
+  template:
+    spec:
+      requirements:
+        - { key: kubernetes.io/arch,           operator: In, values: [amd64, arm64] }
+        - { key: kubernetes.io/os,             operator: In, values: [linux] }
+        - { key: karpenter.sh/capacity-type,   operator: In, values: [spot, on-demand] }
+        - { key: node.kubernetes.io/instance-type, operator: In,
+            values: [c7g.large, c7g.xlarge, c7g.2xlarge, m7g.large, m7g.xlarge, m7g.2xlarge] }
+      nodeClassRef: { group: karpenter.k8s.aws, kind: EC2NodeClass, name: default }
+  disruption:
+    consolidationPolicy: WhenEmptyOrUnderutilized
+    consolidateAfter: 30s
+  limits: { cpu: "1000", memory: 4000Gi }
+---
+apiVersion: karpenter.sh/v1
+kind: NodePool
+metadata: { name: spot-batch }
+spec:
+  template:
+    spec:
+      taints: [{ key: workload, value: batch, effect: NoSchedule }]
+      requirements:
+        - { key: karpenter.sh/capacity-type, operator: In, values: [spot] }
+        - { key: kubernetes.io/arch, operator: In, values: [amd64] }
+  disruption: { consolidationPolicy: WhenEmpty, consolidateAfter: 30s }

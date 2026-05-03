@@ -1,4 +1,4 @@
-﻿# permission-service
+# permission-service
 
 > RBAC permissions, role assignment, and policy evaluation for all platform services.
 
@@ -91,24 +91,24 @@ service PermissionService {
 
 ## Kafka Topics
 
-Not applicable â€” permission-service is gRPC-only.
+Not applicable — permission-service is gRPC-only.
 
 ## Dependencies
 
 Upstream (calls these):
-- None â€” permission-service has no outbound service calls
+- None — permission-service has no outbound service calls
 
 Downstream (called by these):
-- `api-gateway` â€” authorization middleware calls `CheckPermission` on every protected route
+- `api-gateway` — authorization middleware calls `CheckPermission` on every protected route
 - Any domain service that enforces fine-grained resource-level access control
 
 ## Environment Variables
 
 | Variable | Default | Description |
 |---|---|---|
-| `DATABASE_URL` | â€” | PostgreSQL connection string |
+| `DATABASE_URL` | — | PostgreSQL connection string |
 | `REDIS_ADDR` | `redis:6379` | Redis address for permission result cache |
-| `REDIS_PASSWORD` | â€” | Redis AUTH password |
+| `REDIS_PASSWORD` | — | Redis AUTH password |
 | `CACHE_TTL_SECONDS` | `60` | Permission decision cache lifetime |
 | `GRPC_PORT` | `50063` | gRPC listening port |
 
@@ -120,6 +120,6 @@ docker-compose up permission-service
 
 ## Health Check
 
-`GET /healthz` â€” `{"status":"ok"}`
+`GET /healthz` — `{"status":"ok"}`
 
 gRPC health protocol: `grpc.health.v1.Health/Check` on port `50063`

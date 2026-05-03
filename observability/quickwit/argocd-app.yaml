@@ -1,0 +1,35 @@
+# Source: observability/quickwit/quickwit.yaml
+# This Application installs the same Helm chart on any K8s cluster (not just k3s).
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: quickwit
+  namespace: argocd
+  finalizers: [resources-finalizer.argocd.argoproj.io]
+spec:
+  project: shopos-infra
+  source:
+    repoURL: https://helm.quickwit.io
+    chart: quickwit
+    targetRevision: '0.7.16'
+    helm:
+      releaseName: quickwit
+      values: |
+        replicaCount: 3
+        config:
+          version: 0.7
+          cluster_id: shopos-quickwit
+          node_id: ${POD_NAME}
+          default_index_root_uri: s3://shopos-quickwit-indexes
+          metastore_uri: postgres://quickwit:${QUICKWIT_PG_PASSWORD}@postgres-primary.databases.svc:5432/quickwit
+          indexer: { split_store_max_num_bytes: "200GB" }
+        persistence: { enabled: true, size: 50Gi, storageClass: fast-ssd }
+        serviceMonitor: { enabled: true }
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: monitoring
+  syncPolicy:
+    automated: { prune: false, selfHeal: true }
+    syncOptions: [CreateNamespace=true, ServerSideApply=true]
+    retry: { limit: 5, backoff: { duration: 30s, maxDuration: 5m, factor: 2 } }

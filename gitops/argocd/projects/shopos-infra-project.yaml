@@ -1,0 +1,29 @@
+# ArgoCD AppProject for all infrastructure tools (helm/infra/* + loose YAMLs).
+# Restricts what these apps can deploy and where.
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata: { name: shopos-infra, namespace: argocd, finalizers: [resources-finalizer.argocd.argoproj.io] }
+spec:
+  description: Infrastructure tools — observability, security, networking, storage, data platform, dev tools
+  sourceRepos:
+    - https://github.com/prabhat-roy/ShopOS.git
+  destinations:
+    - { server: https://kubernetes.default.svc, namespace: '*' }   # infra spans namespaces
+  clusterResourceWhitelist:
+    - { group: '*', kind: '*' }
+  namespaceResourceWhitelist:
+    - { group: '*', kind: '*' }
+  orphanedResources: { warn: true }
+  roles:
+    - name: infra-admin
+      description: Full admin on infra apps
+      policies:
+        - p, proj:shopos-infra:infra-admin, applications, *, shopos-infra/*, allow
+      groups:
+        - shopos:platform-team
+    - name: infra-readonly
+      description: Read-only across infra apps (engineers + sre + security)
+      policies:
+        - p, proj:shopos-infra:infra-readonly, applications, get, shopos-infra/*, allow
+      groups:
+        - shopos:engineers

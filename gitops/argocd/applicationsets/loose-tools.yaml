@@ -1,0 +1,113 @@
+# Wires every loose-tool YAML in the repo into ArgoCD as a portable Application.
+# Two ApplicationSets: helm-based tools (via discovered argocd-app.yaml) and
+# manifest-only directories (NetworkPolicies, Istio CRs, KafkaTopics, etc.).
+---
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata: { name: shopos-helm-tools, namespace: argocd }
+spec:
+  generators:
+    - list:
+        elements:
+          - { path: data/airbyte, name: 'airbyte' }
+          - { path: data/cube, name: 'cube' }
+          - { path: data/metabase, name: 'metabase' }
+          - { path: databases/dgraph, name: 'dgraph' }
+          - { path: databases/lakefs, name: 'lakefs' }
+          - { path: databases/yugabytedb, name: 'yugabytedb' }
+          - { path: dev/coder, name: 'coder' }
+          - { path: dev/n8n, name: 'n8n' }
+          - { path: dev/windmill, name: 'windmill' }
+          - { path: finops/kubecost, name: 'kubecost' }
+          - { path: incident/grafana-incident, name: 'grafana-incident' }
+          - { path: infra/crossplane, name: 'crossplane' }
+          - { path: kubernetes/keda, name: 'keda' }
+          - { path: kubernetes/scaling/karpenter, name: 'karpenter' }
+          - { path: kubernetes/scaling/vpa, name: 'vpa' }
+          - { path: kubernetes/velero, name: 'velero' }
+          - { path: messaging/redpanda, name: 'redpanda' }
+          - { path: messaging/zilla, name: 'zilla' }
+          - { path: networking/caddy, name: 'caddy' }
+          - { path: networking/cdn, name: 'cdn' }
+          - { path: networking/edge/spin, name: 'spin' }
+          - { path: networking/kube-vip, name: 'kube-vip' }
+          - { path: networking/metallb, name: 'metallb' }
+          - { path: networking/ngrok-operator, name: 'ngrok-operator' }
+          - { path: observability/goldilocks, name: 'goldilocks' }
+          - { path: observability/healthchecks, name: 'healthchecks' }
+          - { path: observability/komodor, name: 'komodor' }
+          - { path: observability/opencost, name: 'opencost' }
+          - { path: observability/parca, name: 'parca' }
+          - { path: observability/perses, name: 'perses' }
+          - { path: observability/quickwit, name: 'quickwit' }
+          - { path: observability/robusta, name: 'robusta' }
+          - { path: security/external-secrets, name: 'external-secrets' }
+          - { path: security/kubescape, name: 'kubescape' }
+          - { path: security/sigstore, name: 'sigstore' }
+          - { path: security/trivy-operator, name: 'trivy-operator' }
+          - { path: storage/longhorn, name: 'longhorn' }
+          - { path: storage/rook-ceph, name: 'rook-ceph' }
+          - { path: streaming/flink, name: 'flink' }
+          - { path: workflow/temporal, name: 'temporal' }
+  template:
+    metadata:
+      name: 'tool-{{name}}'
+      namespace: argocd
+      labels: { kind: loose-helm-tool }
+    spec:
+      project: shopos-infra
+      source:
+        repoURL: https://github.com/prabhat-roy/ShopOS.git
+        targetRevision: HEAD
+        path: '{{path}}'
+        directory: { recurse: false, include: 'argocd-app.yaml' }
+      destination: { server: https://kubernetes.default.svc, namespace: argocd }
+      syncPolicy:
+        automated: { prune: false, selfHeal: true }
+        syncOptions: [CreateNamespace=true, ServerSideApply=true]
+        retry: { limit: 5, backoff: { duration: 30s, maxDuration: 5m, factor: 2 } }
+
+---
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata: { name: shopos-manifest-tools, namespace: argocd }
+spec:
+  generators:
+    - list:
+        elements:
+          - { path: kubernetes/namespaces, namespace: default, name: 'k8s-namespaces', wave: '-10' }
+          - { path: kubernetes/rbac, namespace: default, name: 'k8s-rbac', wave: '-9' }
+          - { path: kubernetes/resource-quotas, namespace: default, name: 'k8s-resource-quotas', wave: '-9' }
+          - { path: kubernetes/network-policies, namespace: default, name: 'k8s-network-policies', wave: '-8' }
+          - { path: security/kyverno/policies, namespace: kyverno, name: 'kyverno-policies', wave: '-5' }
+          - { path: security/opa/policies, namespace: opa-system, name: 'opa-policies', wave: '-5' }
+          - { path: networking/istio/security, namespace: istio-system, name: 'istio-security', wave: '-2' }
+          - { path: networking/istio/traffic, namespace: istio-system, name: 'istio-traffic', wave: '-1' }
+          - { path: security/cilium, namespace: kube-system, name: 'cilium-l7-policies', wave: '-2' }
+          - { path: kubernetes/pod-disruption-budgets, namespace: default, name: 'k8s-pdbs', wave: '0' }
+          - { path: messaging/kafka, namespace: streaming, name: 'kafka-topics', wave: '1' }
+          - { path: observability/fluent-bit, namespace: monitoring, name: 'fluent-bit', wave: '1' }
+          - { path: observability/otel-collector, namespace: monitoring, name: 'otel-collectors', wave: '1' }
+          - { path: observability/prometheus/rules, namespace: monitoring, name: 'prometheus-rules', wave: '1' }
+          - { path: observability/slo, namespace: monitoring, name: 'pyrra-slos', wave: '2' }
+          - { path: security/cert-manager, namespace: cert-manager, name: 'cert-manager-issuers', wave: '2' }
+          - { path: networking/anubis, namespace: networking, name: 'anubis', wave: '3' }
+          - { path: kubernetes/velero, namespace: velero, name: 'velero', wave: '5' }
+  template:
+    metadata:
+      name: 'manifest-{{name}}'
+      namespace: argocd
+      annotations: { argocd.argoproj.io/sync-wave: '{{wave}}' }
+      labels: { kind: loose-manifest-tool }
+    spec:
+      project: shopos-infra
+      source:
+        repoURL: https://github.com/prabhat-roy/ShopOS.git
+        targetRevision: HEAD
+        path: '{{path}}'
+        directory: { recurse: true }
+      destination: { server: https://kubernetes.default.svc, namespace: '{{namespace}}' }
+      syncPolicy:
+        automated: { prune: false, selfHeal: true }
+        syncOptions: [CreateNamespace=true, ServerSideApply=true]
+        retry: { limit: 5, backoff: { duration: 30s, maxDuration: 5m, factor: 2 } }

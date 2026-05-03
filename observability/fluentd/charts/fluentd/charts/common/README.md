@@ -1,4 +1,4 @@
-﻿# Bitnami Common Library Chart
+# Bitnami Common Library Chart
 
 A [Helm Library Chart](https://helm.sh/docs/topics/library_charts/#helm) for grouping common logic between Bitnami charts.
 

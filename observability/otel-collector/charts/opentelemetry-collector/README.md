@@ -1,4 +1,4 @@
-﻿# OpenTelemetry Collector Helm Chart
+# OpenTelemetry Collector Helm Chart
 
 The helm chart installs [OpenTelemetry Collector](https://github.com/open-telemetry/opentelemetry-collector)
 in kubernetes cluster.

@@ -1,0 +1,36 @@
+{
+  "consumer": { "name": "seller-payout-service" },
+  "provider": { "name": "wallet-service" },
+  "interactions": [
+    {
+      "description": "POST /wallet/debit deducts seller payout amount",
+      "providerStates": [{ "name": "wallet for seller-42 has balance >= 50000 cents" }],
+      "request": {
+        "method": "POST", "path": "/v1/wallet/seller-42/debit",
+        "headers": { "Content-Type": "application/json" },
+        "body": { "amount_cents": 50000, "currency": "USD",
+                  "reference": "payout-2026-05-01", "idempotency_key": "p-12345" }
+      },
+      "response": {
+        "status": 200,
+        "body": { "wallet_id": "seller-42", "balance_cents": 12345,
+                  "transaction_id": "tx-99887" }
+      }
+    },
+    {
+      "description": "POST /wallet/debit is idempotent on repeat with same key",
+      "providerStates": [{ "name": "previous debit p-12345 already settled" }],
+      "request": {
+        "method": "POST", "path": "/v1/wallet/seller-42/debit",
+        "headers": { "Content-Type": "application/json" },
+        "body": { "amount_cents": 50000, "currency": "USD",
+                  "reference": "payout-2026-05-01", "idempotency_key": "p-12345" }
+      },
+      "response": {
+        "status": 200,
+        "body": { "wallet_id": "seller-42", "transaction_id": "tx-99887",
+                  "duplicate": true }
+      }
+    }
+  ]
+}

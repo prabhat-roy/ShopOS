@@ -1,4 +1,4 @@
-﻿# ab-testing-service
+# ab-testing-service
 
 > Manages A/B and multivariate experiment assignment, feature flags for experiments, and conversion event tracking.
 
@@ -41,7 +41,7 @@ graph TD
 - Track assignment events for downstream statistical analysis
 - Consume analytics events to record conversion signals against active experiments
 - Provide experiment results with assignment counts and conversion rates for admin dashboards
-- Support experiment lifecycle: draft â†’ active â†’ paused â†’ concluded
+- Support experiment lifecycle: draft → active → paused → concluded
 - Enforce mutual exclusivity rules between conflicting experiments
 
 ## API / Interface
@@ -79,11 +79,11 @@ Published:
 ## Dependencies
 
 Upstream (callers)
-- `web-bff` / `mobile-bff` â€” variant resolution per request
-- `admin-portal` â€” experiment management
+- `web-bff` / `mobile-bff` — variant resolution per request
+- `admin-portal` — experiment management
 
-Downstream (Kafka â†’ this service)
-- `analytics-service` / `event-tracking-service` â€” conversion signal events
+Downstream (Kafka → this service)
+- `analytics-service` / `event-tracking-service` — conversion signal events
 
 ## Environment Variables
 
@@ -109,6 +109,6 @@ docker-compose up ab-testing-service
 
 ## Health Check
 
-`GET /healthz` â†’ `{"status":"ok"}`
+`GET /healthz` → `{"status":"ok"}`
 
-gRPC health: `grpc.health.v1.Health/Check` â†’ `SERVING`
+gRPC health: `grpc.health.v1.Health/Check` → `SERVING`

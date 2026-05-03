@@ -1,4 +1,4 @@
-﻿# Change Log
+# Change Log
 
 This file documents all notable changes to Falco Helm Chart. The release
 numbering uses [semantic versioning](http://semver.org).

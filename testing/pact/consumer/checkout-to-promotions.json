@@ -1,0 +1,21 @@
+{
+  "consumer": { "name": "checkout-service" },
+  "provider": { "name": "promotions-service" },
+  "interactions": [
+    {
+      "description": "POST /promotions/evaluate applies coupon SAVE10 if cart > $50",
+      "providerStates": [{ "name": "coupon SAVE10 is active and minimum is $50" }],
+      "request": {
+        "method": "POST", "path": "/v1/promotions/evaluate",
+        "headers": { "Content-Type": "application/json" },
+        "body": { "coupon_code": "SAVE10", "subtotal_cents": 8999, "currency": "USD" }
+      },
+      "response": {
+        "status": 200, "headers": { "Content-Type": "application/json" },
+        "body": { "applied": true, "discount_cents": 900, "coupon_code": "SAVE10",
+                  "reason": "10% off coupon" }
+      }
+    }
+  ],
+  "metadata": { "pactSpecification": { "version": "3.0.0" } }
+}

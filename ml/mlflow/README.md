@@ -1,24 +1,24 @@
-﻿# MLflow â€” ML Experiment Tracking & Model Registry
+# MLflow — ML Experiment Tracking & Model Registry
 
 ## Role in ShopOS
 
 MLflow is the ML lifecycle management platform for ShopOS. It provides experiment tracking,
 model versioning, artifact storage, and model serving integration for all machine learning workloads
-in the `analytics-ai` domain. Every model training run â€” whether for fraud detection, price
-optimization, or recommendations â€” logs its parameters, metrics, and artifacts to MLflow, enabling
+in the `analytics-ai` domain. Every model training run — whether for fraud detection, price
+optimization, or recommendations — logs its parameters, metrics, and artifacts to MLflow, enabling
 reproducibility, A/B comparisons, and controlled model promotion.
 
 Integrated services:
-- `fraud-detection-service` (Python :50091) â€” gradient boosting classifier
-- `recommendation-service` (Python :50150) â€” collaborative filtering model
-- `price-optimization-service` (Python :50151) â€” regression / RL model
-- `personalization-service` (Python :50153) â€” ranking model
-- `sentiment-analysis-service` (Python) â€” NLP classifier
-- `ml-feature-store` (Python :50152) â€” feature engineering pipelines
+- `fraud-detection-service` (Python :50091) — gradient boosting classifier
+- `recommendation-service` (Python :50150) — collaborative filtering model
+- `price-optimization-service` (Python :50151) — regression / RL model
+- `personalization-service` (Python :50153) — ranking model
+- `sentiment-analysis-service` (Python) — NLP classifier
+- `ml-feature-store` (Python :50152) — feature engineering pipelines
 
 ---
 
-## ML Workflow: Train â†’ Track â†’ Register â†’ Serve
+## ML Workflow: Train → Track → Register → Serve
 
 ```mermaid
 flowchart TD
@@ -61,7 +61,7 @@ flowchart TD
 ## Artifact Storage: MinIO Backend
 
 MLflow artifacts (serialized models, confusion matrices, feature importance plots, training data
-samples) are stored in MinIO â€” the open-source S3-compatible object store already deployed in
+samples) are stored in MinIO — the open-source S3-compatible object store already deployed in
 ShopOS for media assets. The `MLFLOW_S3_ENDPOINT_URL` environment variable redirects the AWS SDK
 to the MinIO endpoint instead of AWS S3.
 
@@ -92,7 +92,7 @@ MLflow's built-in model registry uses four stages:
 | Stage | Description | Who Promotes |
 |---|---|---|
 | `None` | Freshly registered, not yet evaluated | Automated (CI) |
-| `Staging` | Under evaluation â€” integration tests running | ML Engineer |
+| `Staging` | Under evaluation — integration tests running | ML Engineer |
 | `Production` | Actively serving live traffic | Lead / Argo Rollout |
 | `Archived` | Replaced by newer version | Automated cleanup job |
 

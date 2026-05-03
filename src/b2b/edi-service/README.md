@@ -1,4 +1,4 @@
-﻿# edi-service
+# edi-service
 
 > Translates EDI 850/810/856 documents to and from internal domain events, and manages trading partner configurations.
 
@@ -71,11 +71,11 @@ graph TD
 ## Dependencies
 
 Upstream (calls this service)
-- External trading partners â€” inbound EDI via AS2/SFTP
+- External trading partners — inbound EDI via AS2/SFTP
 
 Downstream (this service calls)
-- `organization-service` â€” maps ISA sender ID to internal org
-- `vendor-service` â€” maps trading partner to internal vendor record
+- `organization-service` — maps ISA sender ID to internal org
+- `vendor-service` — maps trading partner to internal vendor record
 
 ## Environment Variables
 
@@ -84,10 +84,10 @@ Downstream (this service calls)
 | `SERVER_PORT` | `50165` | gRPC server port |
 | `SFTP_HOST` | `localhost` | SFTP server host |
 | `SFTP_PORT` | `22` | SFTP server port |
-| `SFTP_USER` | â€” | SFTP username (required) |
-| `SFTP_PASSWORD` | â€” | SFTP password (required) |
+| `SFTP_USER` | — | SFTP username (required) |
+| `SFTP_PASSWORD` | — | SFTP password (required) |
 | `AS2_LISTEN_PORT` | `4080` | AS2 receiver port |
-| `AS2_SIGNING_KEY_PATH` | â€” | Path to AS2 signing private key |
+| `AS2_SIGNING_KEY_PATH` | — | Path to AS2 signing private key |
 | `KAFKA_BOOTSTRAP_SERVERS` | `localhost:9092` | Kafka broker addresses |
 | `ORGANIZATION_SERVICE_ADDR` | `organization-service:50160` | Address of organization-service |
 | `VENDOR_SERVICE_ADDR` | `vendor-service:50100` | Address of vendor-service |
@@ -102,6 +102,6 @@ docker-compose up edi-service
 
 ## Health Check
 
-`GET /healthz` â†’ `{"status":"ok"}`
+`GET /healthz` → `{"status":"ok"}`
 
-gRPC health: `grpc.health.v1.Health/Check` â†’ `SERVING`
+gRPC health: `grpc.health.v1.Health/Check` → `SERVING`

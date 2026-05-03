@@ -1,4 +1,4 @@
-﻿# OpenSearch Dashboards Helm Chart
+# OpenSearch Dashboards Helm Chart
 
  This Helm chart installs [OpenSearch Dashboards](https://github.com/opensearch-project/OpenSearch-Dashboards) with configurable TLS, RBAC and much more configurations. This chart caters to a number of different use cases and setups.
 

@@ -1,0 +1,19 @@
+# Caddy — alternative ingress for non-prod/edge previews. Auto-issues TLS via Let's Encrypt.
+apiVersion: helm.cattle.io/v1
+kind: HelmChart
+metadata: { name: caddy, namespace: networking }
+spec:
+  repo: https://caddyserver.github.io/charts
+  chart: caddy-ingress-controller
+  version: 1.1.0
+  targetNamespace: networking
+  valuesContent: |-
+    replicaCount: 2
+    ingressController:
+      config:
+        email: platform@shopos.example.com
+        debug: false
+    persistence:
+      enabled: true
+      storageClass: fast-ssd
+      size: 5Gi

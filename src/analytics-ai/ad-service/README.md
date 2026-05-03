@@ -1,4 +1,4 @@
-﻿# ad-service
+# ad-service
 
 > Ad placement, audience targeting, and impression/click tracking for onsite advertising.
 
@@ -60,8 +60,8 @@ service AdService {
 
 | Topic | Role |
 |---|---|
-| `analytics-ai.ad.impression` | Produced â€” ad impression event with campaign, slot, user context |
-| `analytics-ai.ad.clicked` | Produced â€” ad click event for billing and CTR tracking |
+| `analytics-ai.ad.impression` | Produced — ad impression event with campaign, slot, user context |
+| `analytics-ai.ad.clicked` | Produced — ad click event for billing and CTR tracking |
 
 ## Dependencies
 
@@ -74,9 +74,9 @@ Downstream: personalization-service (user segment context), ml-feature-store (ta
 | Variable | Default | Description |
 |---|---|---|
 | `GRPC_PORT` | `50154` | gRPC server port |
-| `SPRING_DATASOURCE_URL` | â€” | PostgreSQL JDBC URL |
-| `SPRING_DATASOURCE_USERNAME` | â€” | PostgreSQL username |
-| `SPRING_DATASOURCE_PASSWORD` | â€” | PostgreSQL password |
+| `SPRING_DATASOURCE_URL` | — | PostgreSQL JDBC URL |
+| `SPRING_DATASOURCE_USERNAME` | — | PostgreSQL username |
+| `SPRING_DATASOURCE_PASSWORD` | — | PostgreSQL password |
 | `KAFKA_BROKERS` | `kafka:9092` | Kafka broker addresses |
 | `PERSONALIZATION_SERVICE_ADDR` | `personalization-service:50153` | Personalization service address |
 | `ML_FEATURE_STORE_ADDR` | `ml-feature-store:50152` | Feature store address |
@@ -92,4 +92,4 @@ docker-compose up ad-service
 
 ## Health Check
 
-`GET /healthz` â†’ `{"status":"ok"}`
+`GET /healthz` → `{"status":"ok"}`

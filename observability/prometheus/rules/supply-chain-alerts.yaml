@@ -1,0 +1,21 @@
+groups:
+  - name: supplychain.alerts
+    interval: 30s
+    rules:
+      - alert: FulfillmentLagHigh
+        expr: histogram_quantile(0.95, sum by (le) (rate(fulfillment_pick_to_pack_seconds_bucket[10m]))) > 7200
+        for: 15m
+        labels: { severity: warning, team: supply-chain }
+        annotations: { summary: "Pick-to-pack p95 > 2h" }
+
+      - alert: TrackingProviderDown
+        expr: up{job="carrier-integration"} == 0
+        for: 5m
+        labels: { severity: critical, team: supply-chain, page: pagerduty }
+        annotations: { summary: "Carrier integration down" }
+
+      - alert: WarehouseStockoutRisk
+        expr: sum(inventory_available_units) by (warehouse_id, sku) < on (sku) (rate(commerce_order_lines_total[7d]) * 86400 * 3)
+        for: 1h
+        labels: { severity: warning, team: supply-chain }
+        annotations: { summary: "Less than 3 days of demand cover for SKU" }

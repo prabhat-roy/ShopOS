@@ -101,9 +101,9 @@ run_scan "terraform-azure-aks"     "terraform" "infra/terraform/aks"
 run_scan "terraform-jenkins"       "terraform" "infra/terraform/jenkins"
 
 # ── OpenTofu scans ────────────────────────────────────────────────────────────
-run_scan "opentofu-aws"            "terraform" "infra/opentofu/aws/eks"
-run_scan "opentofu-gcp"            "terraform" "infra/opentofu/gcp/gke"
-run_scan "opentofu-azure"          "terraform" "infra/opentofu/azure/aks"
+run_scan "opentofu-aws"            "terraform" "infra/opentofu/aws/app-k8s"
+run_scan "opentofu-gcp"            "terraform" "infra/opentofu/gcp/app-k8s"
+run_scan "opentofu-azure"          "terraform" "infra/opentofu/azure/app-k8s"
 
 # ── Helm chart scans ──────────────────────────────────────────────────────────
 run_scan "helm-service-charts"     "helm"      "helm/charts"

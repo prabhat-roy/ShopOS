@@ -1,4 +1,4 @@
-﻿# subscription-billing-service
+# subscription-billing-service
 
 > Manages recurring subscription billing cycles, dunning workflows, and subscription lifecycle state.
 
@@ -74,13 +74,13 @@ Proto file: `proto/commerce/subscription_billing.proto`
 ## Dependencies
 
 Upstream (callers)
-- `checkout-service` â€” creates subscriptions for subscription-product purchases
-- `web-bff` / `mobile-bff` â€” customer self-service subscription management
+- `checkout-service` — creates subscriptions for subscription-product purchases
+- `web-bff` / `mobile-bff` — customer self-service subscription management
 
 Downstream (called by this service)
-- `payment-service` â€” recurring charge execution
-- `scheduler-service` â€” schedule next billing date job
-- `notification-orchestrator` (via Kafka) â€” billing cycle communications
+- `payment-service` — recurring charge execution
+- `scheduler-service` — schedule next billing date job
+- `notification-orchestrator` (via Kafka) — billing cycle communications
 
 ## Environment Variables
 
@@ -108,6 +108,6 @@ docker-compose up subscription-billing-service
 
 ## Health Check
 
-`GET /healthz` â†’ `{"status":"ok"}`
+`GET /healthz` → `{"status":"ok"}`
 
-gRPC health: `grpc.health.v1.Health/Check` â†’ `SERVING`
+gRPC health: `grpc.health.v1.Health/Check` → `SERVING`

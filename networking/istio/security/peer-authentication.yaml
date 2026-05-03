@@ -1,0 +1,116 @@
+# Mesh-wide STRICT mTLS — every pod-to-pod call must be mTLS.
+apiVersion: security.istio.io/v1
+kind: PeerAuthentication
+metadata: { name: default, namespace: istio-system }
+spec: { mtls: { mode: STRICT } }
+---
+# Per-namespace overrides (PERMISSIVE during onboarding, then flip to STRICT)
+apiVersion: security.istio.io/v1
+kind: PeerAuthentication
+metadata: { name: default, namespace: platform }
+spec: { mtls: { mode: STRICT } }
+---
+apiVersion: security.istio.io/v1
+kind: PeerAuthentication
+metadata: { name: default, namespace: identity }
+spec: { mtls: { mode: STRICT } }
+---
+apiVersion: security.istio.io/v1
+kind: PeerAuthentication
+metadata: { name: default, namespace: catalog }
+spec: { mtls: { mode: STRICT } }
+---
+apiVersion: security.istio.io/v1
+kind: PeerAuthentication
+metadata: { name: default, namespace: commerce }
+spec: { mtls: { mode: STRICT } }
+---
+apiVersion: security.istio.io/v1
+kind: PeerAuthentication
+metadata: { name: default, namespace: financial }
+spec: { mtls: { mode: STRICT } }
+---
+apiVersion: security.istio.io/v1
+kind: PeerAuthentication
+metadata: { name: default, namespace: supply-chain }
+spec: { mtls: { mode: STRICT } }
+---
+apiVersion: security.istio.io/v1
+kind: PeerAuthentication
+metadata: { name: default, namespace: customer-experience }
+spec: { mtls: { mode: STRICT } }
+---
+apiVersion: security.istio.io/v1
+kind: PeerAuthentication
+metadata: { name: default, namespace: communications }
+spec: { mtls: { mode: STRICT } }
+---
+apiVersion: security.istio.io/v1
+kind: PeerAuthentication
+metadata: { name: default, namespace: content }
+spec: { mtls: { mode: STRICT } }
+---
+apiVersion: security.istio.io/v1
+kind: PeerAuthentication
+metadata: { name: default, namespace: analytics-ai }
+spec: { mtls: { mode: STRICT } }
+---
+apiVersion: security.istio.io/v1
+kind: PeerAuthentication
+metadata: { name: default, namespace: b2b }
+spec: { mtls: { mode: STRICT } }
+---
+apiVersion: security.istio.io/v1
+kind: PeerAuthentication
+metadata: { name: default, namespace: integrations }
+spec: { mtls: { mode: STRICT } }
+---
+apiVersion: security.istio.io/v1
+kind: PeerAuthentication
+metadata: { name: default, namespace: affiliate }
+spec: { mtls: { mode: STRICT } }
+---
+apiVersion: security.istio.io/v1
+kind: PeerAuthentication
+metadata: { name: default, namespace: marketplace }
+spec: { mtls: { mode: STRICT } }
+---
+apiVersion: security.istio.io/v1
+kind: PeerAuthentication
+metadata: { name: default, namespace: gamification }
+spec: { mtls: { mode: STRICT } }
+---
+apiVersion: security.istio.io/v1
+kind: PeerAuthentication
+metadata: { name: default, namespace: developer-platform }
+spec: { mtls: { mode: STRICT } }
+---
+apiVersion: security.istio.io/v1
+kind: PeerAuthentication
+metadata: { name: default, namespace: compliance }
+spec: { mtls: { mode: STRICT } }
+---
+apiVersion: security.istio.io/v1
+kind: PeerAuthentication
+metadata: { name: default, namespace: sustainability }
+spec: { mtls: { mode: STRICT } }
+---
+apiVersion: security.istio.io/v1
+kind: PeerAuthentication
+metadata: { name: default, namespace: events-ticketing }
+spec: { mtls: { mode: STRICT } }
+---
+apiVersion: security.istio.io/v1
+kind: PeerAuthentication
+metadata: { name: default, namespace: auction }
+spec: { mtls: { mode: STRICT } }
+---
+apiVersion: security.istio.io/v1
+kind: PeerAuthentication
+metadata: { name: default, namespace: rental }
+spec: { mtls: { mode: STRICT } }
+---
+apiVersion: security.istio.io/v1
+kind: PeerAuthentication
+metadata: { name: default, namespace: shopos-web }
+spec: { mtls: { mode: STRICT } }

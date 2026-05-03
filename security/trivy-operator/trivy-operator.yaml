@@ -1,0 +1,30 @@
+# Trivy Operator — continuous in-cluster vulnerability + misconfig + secret scanning of running workloads.
+apiVersion: helm.cattle.io/v1
+kind: HelmChart
+metadata: { name: trivy-operator, namespace: trivy-system }
+spec:
+  repo: https://aquasecurity.github.io/helm-charts/
+  chart: trivy-operator
+  version: 0.24.1
+  targetNamespace: trivy-system
+  valuesContent: |-
+    operator:
+      vulnerabilityScannerEnabled: true
+      configAuditScannerEnabled: true
+      rbacAssessmentScannerEnabled: true
+      infraAssessmentScannerEnabled: true
+      exposedSecretScannerEnabled: true
+      clusterComplianceEnabled: true
+      builtInTrivyServer: true
+      metricsFindingsEnabled: true
+      scanJobsConcurrentLimit: 10
+    serviceMonitor: { enabled: true }
+    nodeCollector: { enabled: true }
+    compliance:
+      cron: "0 */6 * * *"
+      reportType: all
+      specs:
+        - cis-1.23
+        - nsa-1.0
+        - pss-baseline
+        - pss-restricted

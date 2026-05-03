@@ -1,0 +1,15 @@
+# Kube-VIP — provides a virtual IP for the K8s control plane in HA bare-metal clusters.
+apiVersion: helm.cattle.io/v1
+kind: HelmChart
+metadata: { name: kube-vip, namespace: kube-system }
+spec:
+  repo: https://kube-vip.github.io/helm-charts
+  chart: kube-vip-cloud-provider
+  version: 0.0.10
+  targetNamespace: kube-system
+  valuesContent: |-
+    image: { repository: ghcr.io/kube-vip/kube-vip-cloud-provider, tag: v0.0.10 }
+    config:
+      address: 10.10.10.50
+      interface: eth0
+      enableServicesElection: true

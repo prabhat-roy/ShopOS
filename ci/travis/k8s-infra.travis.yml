@@ -17,28 +17,28 @@ matrix:
   fast_finish: true
   include:
     # Terraform versions — AWS EKS
-    - env: TF_TOOL=terraform TF_VERSION=1.8.5 TF_DIR=infra/terraform/aws/eks CLOUD=aws
-      name: "Terraform 1.8 validate / aws/eks"
-    - env: TF_TOOL=terraform TF_VERSION=1.9.8 TF_DIR=infra/terraform/aws/eks CLOUD=aws
-      name: "Terraform 1.9 validate / aws/eks"
+    - env: TF_TOOL=terraform TF_VERSION=1.8.5 TF_DIR=infra/terraform/aws/app-k8s CLOUD=aws
+      name: "Terraform 1.8 validate / aws/app-k8s"
+    - env: TF_TOOL=terraform TF_VERSION=1.9.8 TF_DIR=infra/terraform/aws/app-k8s CLOUD=aws
+      name: "Terraform 1.9 validate / aws/app-k8s"
 
     # Terraform versions — GCP GKE
-    - env: TF_TOOL=terraform TF_VERSION=1.8.5 TF_DIR=infra/terraform/gcp/gke CLOUD=gcp
-      name: "Terraform 1.8 validate / gcp/gke"
-    - env: TF_TOOL=terraform TF_VERSION=1.9.8 TF_DIR=infra/terraform/gcp/gke CLOUD=gcp
-      name: "Terraform 1.9 validate / gcp/gke"
+    - env: TF_TOOL=terraform TF_VERSION=1.8.5 TF_DIR=infra/terraform/gcp/app-k8s CLOUD=gcp
+      name: "Terraform 1.8 validate / gcp/app-k8s"
+    - env: TF_TOOL=terraform TF_VERSION=1.9.8 TF_DIR=infra/terraform/gcp/app-k8s CLOUD=gcp
+      name: "Terraform 1.9 validate / gcp/app-k8s"
 
     # Terraform versions — Azure AKS
-    - env: TF_TOOL=terraform TF_VERSION=1.8.5 TF_DIR=infra/terraform/azure/aks CLOUD=azure
-      name: "Terraform 1.8 validate / azure/aks"
-    - env: TF_TOOL=terraform TF_VERSION=1.9.8 TF_DIR=infra/terraform/azure/aks CLOUD=azure
-      name: "Terraform 1.9 validate / azure/aks"
+    - env: TF_TOOL=terraform TF_VERSION=1.8.5 TF_DIR=infra/terraform/azure/app-k8s CLOUD=azure
+      name: "Terraform 1.8 validate / azure/app-k8s"
+    - env: TF_TOOL=terraform TF_VERSION=1.9.8 TF_DIR=infra/terraform/azure/app-k8s CLOUD=azure
+      name: "Terraform 1.9 validate / azure/app-k8s"
 
     # OpenTofu (OSS Terraform fork) — AWS
-    - env: TF_TOOL=opentofu TF_VERSION=1.8.3 TF_DIR=infra/opentofu/aws/eks CLOUD=aws
-      name: "OpenTofu 1.8 validate / opentofu/aws/eks"
-    - env: TF_TOOL=opentofu TF_VERSION=1.9.0 TF_DIR=infra/opentofu/gcp/gke CLOUD=gcp
-      name: "OpenTofu 1.9 validate / opentofu/gcp/gke"
+    - env: TF_TOOL=opentofu TF_VERSION=1.8.3 TF_DIR=infra/opentofu/aws/app-k8s CLOUD=aws
+      name: "OpenTofu 1.8 validate / opentofu/aws/app-k8s"
+    - env: TF_TOOL=opentofu TF_VERSION=1.9.0 TF_DIR=infra/opentofu/gcp/app-k8s CLOUD=gcp
+      name: "OpenTofu 1.9 validate / opentofu/gcp/app-k8s"
 
     # Kubernetes manifest validation — multiple kubectl versions
     - env: TF_TOOL=kubectl KUBECTL_VERSION=1.29 MANIFEST_DIR=kubernetes

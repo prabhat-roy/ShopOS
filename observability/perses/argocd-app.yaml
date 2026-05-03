@@ -1,0 +1,33 @@
+# Source: observability/perses/dashboards.yaml
+# This Application installs the same Helm chart on any K8s cluster (not just k3s).
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: perses
+  namespace: argocd
+  finalizers: [resources-finalizer.argocd.argoproj.io]
+spec:
+  project: shopos-infra
+  source:
+    repoURL: https://perses.github.io/helm-charts
+    chart: perses
+    targetRevision: '0.6.0'
+    helm:
+      releaseName: perses
+      values: |
+        persistence: { enabled: true, size: 10Gi }
+        config:
+          database:
+            postgres:
+              db_url: postgresql://perses:${PERSES_DB_PASSWORD}@postgres-primary.databases.svc:5432/perses
+          datasources:
+            - { name: prometheus, type: prometheus, http: { url: http://prometheus-server.monitoring.svc:80 } }
+            - { name: tempo,      type: tempo,      http: { url: http://tempo.monitoring.svc:3100 } }
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: monitoring
+  syncPolicy:
+    automated: { prune: false, selfHeal: true }
+    syncOptions: [CreateNamespace=true, ServerSideApply=true]
+    retry: { limit: 5, backoff: { duration: 30s, maxDuration: 5m, factor: 2 } }

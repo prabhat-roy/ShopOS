@@ -1,4 +1,4 @@
-﻿# API Gateway
+# API Gateway
 
 > Single entry point for all external traffic into the ShopOS platform.
 
@@ -25,7 +25,7 @@ graph LR
 | Component | Technology |
 |---|---|
 | Language | Go |
-| Database | â€” |
+| Database | — |
 | Protocol | HTTP / gRPC |
 | Port | 8080 |
 
@@ -52,18 +52,18 @@ graph LR
 
 ## Kafka Topics
 
-N/A â€” the API Gateway does not produce or consume Kafka events directly.
+N/A — the API Gateway does not produce or consume Kafka events directly.
 
 ## Dependencies
 
 Upstream (services this calls):
-- `auth-service` (identity) â€” token validation
-- `rate-limiter-service` (platform) â€” rate limit enforcement
-- `tenant-service` (platform) â€” tenant resolution from hostname or header
-- `web-bff` (platform) â€” web client routing target
-- `mobile-bff` (platform) â€” mobile client routing target
-- `partner-bff` (platform) â€” partner client routing target
-- `graphql-gateway` (platform) â€” GraphQL routing target
+- `auth-service` (identity) — token validation
+- `rate-limiter-service` (platform) — rate limit enforcement
+- `tenant-service` (platform) — tenant resolution from hostname or header
+- `web-bff` (platform) — web client routing target
+- `mobile-bff` (platform) — mobile client routing target
+- `partner-bff` (platform) — partner client routing target
+- `graphql-gateway` (platform) — GraphQL routing target
 
 Downstream (services that call this):
 - All external clients (browsers, mobile apps, partner systems)
@@ -96,4 +96,4 @@ skaffold dev --module=api-gateway
 
 ## Health Check
 
-`GET /healthz` â†’ `{"status":"ok"}`
+`GET /healthz` → `{"status":"ok"}`

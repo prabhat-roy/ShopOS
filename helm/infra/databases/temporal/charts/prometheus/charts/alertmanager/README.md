@@ -1,4 +1,4 @@
-﻿# Alertmanager
+# Alertmanager
 
 As per [prometheus.io documentation](https://prometheus.io/docs/alerting/latest/alertmanager/):
 > The Alertmanager handles alerts sent by client applications such as the

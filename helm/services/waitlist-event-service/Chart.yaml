@@ -1,0 +1,6 @@
+apiVersion: v2
+name: waitlist-event-service
+description: ShopOS waitlist-event-service (events-ticketing)
+type: application
+version: 0.1.0
+appVersion: "1.0.0"

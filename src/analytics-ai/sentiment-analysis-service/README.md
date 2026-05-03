@@ -1,10 +1,10 @@
-﻿# sentiment-analysis-service
+# sentiment-analysis-service
 
 > NLP-powered sentiment scoring on customer reviews and feedback events consumed from Kafka.
 
 ## Overview
 
-The sentiment-analysis-service processes customer-generated text â€” product reviews, support ticket messages, and survey responses â€” to produce sentiment scores and emotional category labels. It consumes relevant events from Kafka, runs inference using a pre-trained transformer model, persists results to PostgreSQL, and emits scored events so downstream services (review-rating-service, analytics-service) can react to sentiment signals without embedding NLP logic themselves.
+The sentiment-analysis-service processes customer-generated text — product reviews, support ticket messages, and survey responses — to produce sentiment scores and emotional category labels. It consumes relevant events from Kafka, runs inference using a pre-trained transformer model, persists results to PostgreSQL, and emits scored events so downstream services (review-rating-service, analytics-service) can react to sentiment signals without embedding NLP logic themselves.
 
 ## Architecture
 
@@ -54,10 +54,10 @@ service SentimentAnalysisService {
 
 | Topic | Role |
 |---|---|
-| `customer-experience.review.submitted` | Consumed â€” new product review text |
-| `customer-experience.feedback.submitted` | Consumed â€” customer feedback text |
-| `customer-experience.ticket.created` | Consumed â€” new support ticket description |
-| `analytics-ai.sentiment.scored` | Produced â€” sentiment score result for each processed item |
+| `customer-experience.review.submitted` | Consumed — new product review text |
+| `customer-experience.feedback.submitted` | Consumed — customer feedback text |
+| `customer-experience.ticket.created` | Consumed — new support ticket description |
+| `analytics-ai.sentiment.scored` | Produced — sentiment score result for each processed item |
 
 ## Dependencies
 
@@ -72,7 +72,7 @@ Downstream: analytics-service, reporting-service, admin dashboards (sentiment tr
 | `GRPC_PORT` | `8156` | gRPC server port (internal) |
 | `KAFKA_BROKERS` | `kafka:9092` | Kafka broker addresses |
 | `KAFKA_GROUP_ID` | `sentiment-analysis-service` | Kafka consumer group |
-| `POSTGRES_DSN` | â€” | PostgreSQL connection string |
+| `POSTGRES_DSN` | — | PostgreSQL connection string |
 | `MODEL_NAME` | `cardiffnlp/twitter-roberta-base-sentiment` | HuggingFace model identifier |
 | `MODEL_CACHE_DIR` | `/models` | Local model cache directory |
 | `BATCH_SIZE` | `32` | Inference batch size |
@@ -86,4 +86,4 @@ docker-compose up sentiment-analysis-service
 
 ## Health Check
 
-`GET /healthz` â†’ `{"status":"ok"}`
+`GET /healthz` → `{"status":"ok"}`

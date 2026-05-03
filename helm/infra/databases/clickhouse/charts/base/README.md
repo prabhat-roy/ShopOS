@@ -1,4 +1,4 @@
-﻿# [`base`](https://charts.pascaliske.dev)
+# [`base`](https://charts.pascaliske.dev)
 
 > A Helm chart for Kubernetes
 
@@ -29,4 +29,4 @@ The following values can be used to adjust the helm chart.
 
 ## License
 
-[MIT](../LICENSE.md) â€“ Â© 2026 [Pascal Iske](https://pascaliske.dev)
+[MIT](../LICENSE.md) – Â© 2026 [Pascal Iske](https://pascaliske.dev)

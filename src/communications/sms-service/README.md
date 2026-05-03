@@ -1,4 +1,4 @@
-﻿# sms-service
+# sms-service
 
 > Consumes `notification.sms.requested` events and delivers SMS messages via Twilio or AWS SNS.
 
@@ -36,7 +36,7 @@ graph LR
 - Optionally fetch and render an SMS template from `template-service`
 - Send SMS via Twilio or AWS SNS (configurable provider)
 - Receive and process delivery receipts and failures via inbound webhooks
-- Respect opt-out/unsubscribe states â€” skip delivery for opted-out numbers
+- Respect opt-out/unsubscribe states — skip delivery for opted-out numbers
 - Publish delivery result events back to Kafka
 - Enforce per-number rate limits to prevent spam
 
@@ -62,11 +62,11 @@ Webhook endpoint (inbound HTTP)
 ## Dependencies
 
 Upstream (consumes from)
-- `notification-orchestrator` â€” publishes validated SMS requests
+- `notification-orchestrator` — publishes validated SMS requests
 
 Downstream (calls)
-- `template-service` â€” optional template fetch/render for SMS body
-- Twilio API / AWS SNS â€” external SMS delivery provider
+- `template-service` — optional template fetch/render for SMS body
+- Twilio API / AWS SNS — external SMS delivery provider
 
 ## Environment Variables
 
@@ -94,4 +94,4 @@ docker-compose up sms-service
 
 ## Health Check
 
-`GET /healthz` â†’ `{"status":"ok"}`
+`GET /healthz` → `{"status":"ok"}`

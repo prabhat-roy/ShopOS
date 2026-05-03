@@ -1,4 +1,4 @@
-﻿# price-list-service
+# price-list-service
 
 > Customer-specific and channel-specific price lists for B2B and multi-channel commerce.
 
@@ -91,25 +91,25 @@ service PriceListService {
 
 ## Kafka Topics
 
-Not applicable â€” price-list-service is gRPC-only.
+Not applicable — price-list-service is gRPC-only.
 
 ## Dependencies
 
 Upstream (calls these):
-- None â€” price-list-service has no outbound service calls
+- None — price-list-service has no outbound service calls
 
 Downstream (called by these):
-- `pricing-service` â€” `GetActivePriceList` / `GetPriceForSku` during price resolution
-- `admin-portal` â€” price list management UI
-- `b2b-credit-limit-service` â€” assigns customer-specific price lists to B2B accounts
+- `pricing-service` — `GetActivePriceList` / `GetPriceForSku` during price resolution
+- `admin-portal` — price list management UI
+- `b2b-credit-limit-service` — assigns customer-specific price lists to B2B accounts
 
 ## Environment Variables
 
 | Variable | Default | Description |
 |---|---|---|
-| `SPRING_DATASOURCE_URL` | â€” | PostgreSQL JDBC URL |
-| `SPRING_DATASOURCE_USERNAME` | â€” | DB username |
-| `SPRING_DATASOURCE_PASSWORD` | â€” | DB password |
+| `SPRING_DATASOURCE_URL` | — | PostgreSQL JDBC URL |
+| `SPRING_DATASOURCE_USERNAME` | — | DB username |
+| `SPRING_DATASOURCE_PASSWORD` | — | DB password |
 | `GRPC_PORT` | `50181` | gRPC server port |
 | `MAX_ITEMS_PER_LIST` | `100000` | Maximum SKU entries per price list |
 
@@ -121,6 +121,6 @@ docker-compose up price-list-service
 
 ## Health Check
 
-`GET /healthz` â€” `{"status":"ok"}`
+`GET /healthz` — `{"status":"ok"}`
 
 gRPC health protocol: `grpc.health.v1.Health/Check` on port `50181`

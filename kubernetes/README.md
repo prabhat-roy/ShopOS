@@ -1,121 +1,95 @@
-﻿# Kubernetes Manifests â€” ShopOS
+# Kubernetes — ShopOS
 
-Raw Kubernetes manifests that sit beneath Helm: namespace declarations, RBAC, network policies,
-resource quotas, pod disruption budgets, KEDA autoscalers, and Velero backup schedules.
-These are applied once during cluster bootstrap and updated as the platform evolves.
+Raw Kubernetes manifests, namespace ops, autoscaling, backup, and per-service deployment
+manifests. Helm and ArgoCD/Flux sit above these.
 
 ---
 
-## Directory Structure
+## Layout
 
 ```
 kubernetes/
-â”œâ”€â”€ namespaces/                 â† 19 Namespace declarations
-â”œâ”€â”€ rbac/                       â† ServiceAccounts, Roles, ClusterRoles, Bindings
-â”œâ”€â”€ network-policies/           â† Default-deny + per-namespace allow rules
-â”œâ”€â”€ resource-quotas/            â† ResourceQuota + LimitRange per namespace
-â”œâ”€â”€ pod-disruption-budgets/     â† PDBs for all stateful and critical services
-â”œâ”€â”€ keda/                       â† KEDA ScaledObjects (Kafka + Redis triggers)
-â””â”€â”€ velero/                     â† Velero Schedule (daily backup to MinIO)
+├── namespaces/                Namespace declarations (22 business + infra/monitoring/streaming/databases/...)
+├── rbac/                      ServiceAccounts, Roles, ClusterRoles, RoleBindings
+├── network-policies/          Default-deny + per-domain allow rules for all 22 namespaces
+├── resource-quotas/           ResourceQuota + LimitRange per namespace
+├── pod-disruption-budgets/    Explicit PDBs for tier-0/1 + Kyverno auto-PDB policy
+├── keda/                      KEDA operator + Kafka/Redis ScaledObjects
+├── scaling/
+│   ├── karpenter/             Karpenter NodePools (general + spot-batch)
+│   └── vpa/                   VPA + Goldilocks UI (recommendation-only)
+├── velero/                    Velero install + backup schedules + restore-test CronJob
+├── botkube/                   K8s event alerts to Slack
+├── k8sgpt/                    AI-powered K8s diagnostics
+├── opencost/                  Per-namespace cost attribution
+└── manifests/                 Per-service raw K8s manifests (one subdir per domain)
+                               — used as the source for Score generation and bare-K8s deploys
 ```
 
 ---
 
-## Namespaces
+## Namespaces (22 + infra)
 
-| Namespace | Purpose |
+| Business namespaces | Infra namespaces |
 |---|---|
-| `platform` | API gateway, BFFs, platform services |
-| `identity` | Auth, user, session, MFA services |
-| `catalog` | Product catalog, search, pricing |
-| `commerce` | Cart, checkout, order, payment |
-| `supply-chain` | Vendor, warehouse, fulfillment |
-| `financial` | Invoice, payout, accounting |
-| `customer-experience` | Reviews, wishlist, support |
-| `communications` | Notifications, email, SMS |
-| `content` | Media, CMS, i18n |
-| `analytics-ai` | ML, analytics, recommendations |
-| `b2b` | Organisation, contracts, quotes |
-| `integrations` | ERP, marketplace, CRM connectors |
-| `affiliate` | Affiliate, referral, influencer |
-| `messaging` | Kafka, RabbitMQ, NATS, ZooKeeper |
-| `observability` | Prometheus, Grafana, Loki, Jaeger, OTel |
-| `security` | Vault, Keycloak, Falco, Kyverno |
-| `registry` | Harbor, MinIO, Nexus |
-| `argocd` | ArgoCD, Argo Rollouts, Argo Workflows |
-| `keda` | KEDA operator |
+| `platform`, `identity`, `catalog`, `commerce`, `supply-chain`, `financial`, `customer-experience`, `communications`, `content`, `analytics-ai`, `b2b`, `integrations`, `affiliate`, `marketplace`, `gamification`, `developer-platform`, `compliance`, `sustainability`, `events-ticketing`, `auction`, `rental`, `shopos-web` | `infra`, `monitoring`, `streaming`, `databases`, `temporal-system`, `flink-system`, `velero`, `keda`, `karpenter`, `longhorn-system`, `rook-ceph`, `trivy-system`, `kubescape`, `cosign-system`, `external-secrets`, `cert-manager`, `kyverno`, `argocd`, `istio-system`, `metallb-system`, `cilium`, `coder`, `teleport`, `spin-system`, `goldilocks` |
 
 ---
 
-## RBAC
+## Apply order (cluster bootstrap)
 
-Each service has its own `ServiceAccount`. Roles follow least-privilege:
-
-- Platform services (api-gateway, saga-orchestrator): read access to ConfigMaps and Secrets in their own namespace
-- ArgoCD: cluster-scoped read + write to managed namespaces
-- Velero: cluster-scoped backup/restore permissions
-- KEDA: read ScaledObjects, write HPA resources
-- Falco / Tetragon: node-level read access for runtime monitoring
-
-Apply all RBAC:
 ```bash
+# 1. Namespaces + RBAC + quotas + policies (no workload yet)
+kubectl apply -f kubernetes/namespaces/
 kubectl apply -f kubernetes/rbac/
-```
-
----
-
-## Network Policies
-
-The default posture is deny-all ingress + deny-all egress per namespace, with explicit
-allow rules for known traffic flows:
-
-| Policy | Scope | Allows |
-|---|---|---|
-| `default-deny` | All namespaces | Nothing (baseline) |
-| `allow-intra-namespace` | Each namespace | Pods within the same namespace |
-| `allow-prometheus-scrape` | All namespaces | `observability` namespace â†’ `:metrics` |
-| `allow-istio-sidecar` | All namespaces | Istiod control-plane traffic |
-| `allow-ingress` | `platform` | Traefik â†’ api-gateway port 8080 |
-| `allow-kafka-egress` | All namespaces | Pods â†’ `messaging` namespace port 9092 |
-| `allow-postgres-egress` | Per namespace | Pods â†’ their designated PG cluster |
-
-Apply:
-```bash
+kubectl apply -f kubernetes/resource-quotas/
 kubectl apply -f kubernetes/network-policies/
+
+# 2. Admission policies (Kyverno + OPA + Sigstore Policy)
+kubectl apply -f security/kyverno/policies/baseline-policies.yaml
+kubectl apply -f security/sigstore/policy-controller.yaml
+
+# 3. Mesh + identity (Istio + cert-manager + Vault + ESO)
+kubectl apply -f networking/istio/
+kubectl apply -f security/cert-manager/cluster-issuers.yaml
+helm upgrade --install vault security/vault/charts/vault -n infra
+bash security/vault/bootstrap/01-auth-methods.sh
+bash security/vault/bootstrap/02-secret-engines.sh
+bash security/vault/bootstrap/03-policies-roles.sh
+kubectl apply -f security/external-secrets/external-secrets.yaml
+
+# 4. Autoscaling + storage + backup
+kubectl apply -f kubernetes/keda/
+kubectl apply -f kubernetes/scaling/karpenter/karpenter.yaml
+kubectl apply -f kubernetes/scaling/vpa/vpa.yaml
+kubectl apply -f storage/longhorn/longhorn.yaml
+kubectl apply -f kubernetes/velero/velero-install.yaml
+kubectl apply -f kubernetes/velero/restore-tests.yaml
+
+# 5. PDBs (after workloads exist)
+kubectl apply -f kubernetes/pod-disruption-budgets/
+
+# 6. ArgoCD bootstraps everything else from gitops/
+helm upgrade --install argocd helm/infra/gitops/argocd/argo-cd -n argocd --create-namespace
+kubectl apply -f gitops/argocd/app-of-apps.yaml
 ```
 
 ---
 
-## Resource Quotas
+## Resource quotas + LimitRange
 
-Every namespace has a `ResourceQuota` and `LimitRange` to prevent runaway resource consumption.
-
-Example quotas (production values):
-
-| Namespace | CPU Request | Memory Request | CPU Limit | Memory Limit | Pods |
-|---|---|---|---|---|---|
-| `platform` | 20 | 40Gi | 40 | 80Gi | 100 |
-| `commerce` | 30 | 60Gi | 60 | 120Gi | 150 |
-| `analytics-ai` | 40 | 80Gi | 80 | 160Gi | 80 |
-| `messaging` | 20 | 40Gi | 40 | 80Gi | 50 |
-| `observability` | 15 | 30Gi | 30 | 60Gi | 60 |
-
-Default `LimitRange` per container: request `100m` / `128Mi`, limit `2` / `4Gi`.
+Every namespace has a `ResourceQuota` (CPU/memory request/limit + pod count) and a default
+`LimitRange` (per-container request 100m/128Mi, limit 2/4Gi). Workloads without explicit
+requests/limits are blocked by Kyverno (`require-requests-limits` policy).
 
 ---
 
 ## Pod Disruption Budgets
 
-Critical services have PDBs to guarantee availability during rolling updates and node drains.
-
-| Service | Min Available |
-|---|---|
-| api-gateway | 2 |
-| order-service | 2 |
-| payment-service | 2 |
-| kafka (each broker) | 2 |
-| PostgreSQL (primary) | 1 |
-| ArgoCD server | 1 |
+Tier-0 services have `minAvailable: 2` PDBs in [`pod-disruption-budgets/pdbs.yaml`](pod-disruption-budgets/pdbs.yaml).
+Any Deployment with `replicas >= 2` that lacks an explicit PDB gets a permissive
+`maxUnavailable: 25%` PDB auto-created via Kyverno
+([`pod-disruption-budgets/default-pdb-policy.yaml`](pod-disruption-budgets/default-pdb-policy.yaml)).
 
 ---
 
@@ -123,50 +97,48 @@ Critical services have PDBs to guarantee availability during rolling updates and
 
 | ScaledObject | Trigger | Min | Max |
 |---|---|---|---|
-| `order-service` | Kafka `commerce.order.placed` lag | 2 | 20 |
-| `notification-orchestrator` | Kafka `notification.*` lag | 1 | 15 |
-| `fraud-detection-service` | Kafka `security.fraud.detected` lag | 2 | 10 |
+| `order-service` | Kafka lag on `commerce.order.placed` | 2 | 20 |
+| `notification-orchestrator` | Kafka lag on `notification.*` | 1 | 15 |
+| `fraud-detection-service` | Kafka lag on `security.fraud.detected` | 2 | 10 |
 | `cache-warming-service` | Redis list length | 1 | 5 |
-| `email-service` | Kafka `notification.email.requested` lag | 1 | 10 |
+| `email-service` | Kafka lag on `notification.email.requested` | 1 | 10 |
 
 ---
 
-## Velero Backup
+## Karpenter + VPA + Goldilocks
 
-A daily schedule backs up all namespaces to MinIO (`s3://velero-backups`):
-
-```yaml
-schedule: "0 2 * * *"   # 02:00 UTC daily
-ttl: 720h               # retain for 30 days
-storageLocation: minio
-```
-
-Manual backup:
-```bash
-velero backup create manual-$(date +%Y%m%d) --include-namespaces=commerce,platform,identity
-```
-
-Restore from latest:
-```bash
-velero restore create --from-backup $(velero backup get -o json | jq -r '.items[0].metadata.name')
-```
+- **Karpenter** ([`scaling/karpenter/`](scaling/karpenter/)) — provisions right-sized EC2 nodes on demand.
+  NodePools: `general` (Graviton AMD64+ARM64 spot+on-demand) and `spot-batch` (taint=workload=batch).
+- **VPA** ([`scaling/vpa/`](scaling/vpa/)) — recommendation-only mode (does NOT auto-evict pods).
+- **Goldilocks** UI surfaces VPA recommendations for review.
 
 ---
 
-## Applying Everything
+## Velero backups
 
-```bash
-# Apply in order (dependencies first)
-kubectl apply -f kubernetes/namespaces/
-kubectl apply -f kubernetes/rbac/
-kubectl apply -f kubernetes/network-policies/
-kubectl apply -f kubernetes/resource-quotas/
-kubectl apply -f kubernetes/pod-disruption-budgets/
-kubectl apply -f kubernetes/keda/
-kubectl apply -f kubernetes/velero/
-```
+| Schedule | Cadence | Namespaces | Retention |
+|---|---|---|---|
+| `tier0-business` | every 6h | commerce, identity, catalog, financial, supply-chain | 14 days |
+| `tier1-business` | daily 02:00 | 15 secondary domains + shopos-web | 30 days |
+| `stateful-infra` | every 4h | databases, streaming, infra, temporal-system, flink-system | 30 days |
+| `observability` | daily 03:30 | monitoring | 7 days |
+| `weekly-dr-replication` | weekly Sun 04:00 | tier-0 + databases + streaming | 90 days, cross-region S3 |
 
-Or use the Makefile shortcut:
-```bash
-make k8s-bootstrap
-```
+A weekly `CronJob` ([`velero/restore-tests.yaml`](velero/restore-tests.yaml)) restores the
+latest tier-1 backup to a temp namespace and asserts pods become ready — failure pages oncall.
+
+---
+
+## Per-service raw manifests
+
+[`manifests/<domain>/<service>/`](manifests/) contains `deployment.yaml`, `service.yaml`,
+`hpa.yaml`, `configmap.yaml`, `serviceaccount.yaml` for every service. These are the source
+for [`dev/score/`](../dev/score/) workload specs and for bare-K8s installs that don't use Helm.
+
+---
+
+## Related
+
+- Helm charts: [`../helm/`](../helm/)
+- GitOps: [`../gitops/`](../gitops/)
+- Backup runbook: [`../docs/runbooks/`](../docs/runbooks/)

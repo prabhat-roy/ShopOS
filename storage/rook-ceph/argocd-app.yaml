@@ -1,0 +1,30 @@
+# Source: storage/rook-ceph/rook-ceph.yaml
+# This Application installs the same Helm chart on any K8s cluster (not just k3s).
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: rook-ceph
+  namespace: argocd
+  finalizers: [resources-finalizer.argocd.argoproj.io]
+spec:
+  project: shopos-infra
+  source:
+    repoURL: https://charts.rook.io/release
+    chart: rook-ceph
+    targetRevision: 'v1.15.2'
+    helm:
+      releaseName: rook-ceph
+      values: |
+        monitoring: { enabled: true }
+        csi:
+          enableRbdSnapshotter: true
+          enableCephfsSnapshotter: true
+          provisionerReplicas: 2
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: rook-ceph
+  syncPolicy:
+    automated: { prune: false, selfHeal: true }
+    syncOptions: [CreateNamespace=true, ServerSideApply=true]
+    retry: { limit: 5, backoff: { duration: 30s, maxDuration: 5m, factor: 2 } }

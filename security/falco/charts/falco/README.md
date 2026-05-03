@@ -1,4 +1,4 @@
-﻿# Falco
+# Falco
 
 [Falco](https://falco.org) is a Cloud Native Runtime Security tool designed to detect anomalous activity in your applications. You can use Falco to monitor runtime security of your Kubernetes applications and internal components.
 

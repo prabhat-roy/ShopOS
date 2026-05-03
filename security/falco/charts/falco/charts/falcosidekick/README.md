@@ -1,4 +1,4 @@
-﻿# Falcosidekick
+# Falcosidekick
 
 ![falcosidekick](https://github.com/falcosecurity/falcosidekick/raw/master/imgs/falcosidekick_color.png)
 

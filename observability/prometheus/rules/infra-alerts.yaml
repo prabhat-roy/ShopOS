@@ -1,0 +1,81 @@
+groups:
+  - name: infra.alerts
+    interval: 30s
+    rules:
+      # ---- Postgres / Patroni ----
+      - alert: PostgresPrimaryDown
+        expr: pg_up{instance=~".*postgres-primary.*"} == 0
+        for: 1m
+        labels: { severity: critical, team: platform, page: pagerduty }
+        annotations: { summary: "Postgres primary unavailable" }
+
+      - alert: PostgresReplicationLag
+        expr: pg_replication_lag_seconds > 60
+        for: 5m
+        labels: { severity: warning, team: platform }
+        annotations: { summary: "Postgres replication lag > 60s" }
+
+      - alert: PostgresConnectionsExhausted
+        expr: sum(pg_stat_activity_count) by (instance) / pg_settings_max_connections > 0.85
+        for: 5m
+        labels: { severity: warning, team: platform }
+        annotations: { summary: "Postgres connections >85% — investigate PgBouncer" }
+
+      # ---- Kafka ----
+      - alert: KafkaUnderReplicatedPartitions
+        expr: kafka_server_replicamanager_underreplicatedpartitions > 0
+        for: 5m
+        labels: { severity: critical, team: platform, page: pagerduty }
+        annotations: { summary: "Kafka under-replicated partitions" }
+
+      - alert: KafkaConsumerLagHigh
+        expr: kafka_consumer_lag > 100000
+        for: 10m
+        labels: { severity: warning, team: platform }
+        annotations: { summary: "{{ $labels.consumergroup }}/{{ $labels.topic }} lag >100k" }
+
+      # ---- Redis / Dragonfly ----
+      - alert: RedisDown
+        expr: redis_up == 0
+        for: 1m
+        labels: { severity: critical, team: platform, page: pagerduty }
+        annotations: { summary: "Redis instance down" }
+
+      - alert: RedisMemoryPressure
+        expr: redis_memory_used_bytes / redis_memory_max_bytes > 0.9
+        for: 10m
+        labels: { severity: warning, team: platform }
+        annotations: { summary: "Redis memory >90%" }
+
+      # ---- Vault ----
+      - alert: VaultSealed
+        expr: vault_core_unsealed == 0
+        for: 2m
+        labels: { severity: critical, team: platform, page: pagerduty }
+        annotations: { summary: "Vault is sealed — secrets cannot be retrieved" }
+
+      # ---- Istio ----
+      - alert: IstioRequestErrorRate
+        expr: sum(rate(istio_requests_total{response_code=~"5.."}[5m])) / sum(rate(istio_requests_total[5m])) > 0.02
+        for: 5m
+        labels: { severity: warning, team: platform }
+        annotations: { summary: "Mesh-wide 5xx rate >2%" }
+
+      # ---- Cluster ----
+      - alert: NodeMemoryPressure
+        expr: node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes < 0.10
+        for: 5m
+        labels: { severity: warning, team: platform }
+        annotations: { summary: "Node {{ $labels.node }} <10% available memory" }
+
+      - alert: PVCAlmostFull
+        expr: kubelet_volume_stats_available_bytes / kubelet_volume_stats_capacity_bytes < 0.10
+        for: 10m
+        labels: { severity: warning, team: platform }
+        annotations: { summary: "PVC {{ $labels.persistentvolumeclaim }} <10% free" }
+
+      - alert: KubernetesNodeNotReady
+        expr: kube_node_status_condition{condition="Ready",status="true"} == 0
+        for: 5m
+        labels: { severity: critical, team: platform, page: pagerduty }
+        annotations: { summary: "Node {{ $labels.node }} not ready" }

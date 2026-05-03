@@ -1,4 +1,4 @@
-﻿# ML â€” ShopOS
+# ML — ShopOS
 
 Machine learning platform tooling and configurations.
 
@@ -6,8 +6,8 @@ Machine learning platform tooling and configurations.
 
 ```
 ml/
-â”œâ”€â”€ mlflow/             â† MLflow experiment tracking, model registry, artifact store
-â””â”€â”€ charts/             â† Helm charts for ML platform components
+├── mlflow/             ← MLflow experiment tracking, model registry, artifact store
+└── charts/             ← Helm charts for ML platform components
 ```
 
 ## Deployed Stack
@@ -15,8 +15,8 @@ ml/
 | Component | Version | Role |
 |---|---|---|
 | MLflow | 2.16 | ML experiment tracking, model versioning, artifact registry |
-| Weaviate | 1.26 | Vector database â€” semantic search, recommendation embeddings |
-| Neo4j | 5.23 | Graph database â€” product recommendation graph traversal |
+| Weaviate | 1.26 | Vector database — semantic search, recommendation embeddings |
+| Neo4j | 5.23 | Graph database — product recommendation graph traversal |
 
 > Weaviate and Neo4j configs are in `databases/weaviate/` and `databases/neo4j/` respectively.
 
@@ -29,7 +29,7 @@ ml/
 | `price-optimization-service` | ML-driven dynamic pricing suggestions |
 | `ml-feature-store` | Centralised feature store; features shared across models |
 | `personalization-service` | User-specific product ranking and homepage personalisation |
-| `data-pipeline-service` | ETL from Cassandra â†’ feature store â†’ model training data |
+| `data-pipeline-service` | ETL from Cassandra → feature store → model training data |
 | `clv-service` | Customer Lifetime Value prediction |
 | `attribution-service` | Multi-touch marketing attribution modelling |
 | `search-analytics-service` | Search relevance tuning and query analytics |
@@ -68,4 +68,4 @@ Models are served via the `recommendation-service` and `personalization-service`
 ## References
 
 - [Analytics/AI Domain Services](../docs/architecture/domain-map.md#10-analytics--ai-domain)
-- [Database Strategy â€” Weaviate / Neo4j](../docs/architecture/database-strategy.md)
+- [Database Strategy — Weaviate / Neo4j](../docs/architecture/database-strategy.md)

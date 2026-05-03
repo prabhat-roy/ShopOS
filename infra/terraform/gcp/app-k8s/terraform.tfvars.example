@@ -1,0 +1,9 @@
+project_id         = "your-gcp-project-id"
+region             = "us-central1"
+name               = "shopos-app-k8s"
+environment        = "dev"
+kubernetes_version = null
+subnet_cidr        = "10.1.0.0/20"
+pods_cidr          = "10.2.0.0/16"
+services_cidr      = "10.3.0.0/20"
+master_cidr        = "172.16.0.0/28"

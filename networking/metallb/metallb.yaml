@@ -1,0 +1,23 @@
+# MetalLB — bare-metal LoadBalancer (used for on-prem demo cluster, not cloud).
+apiVersion: helm.cattle.io/v1
+kind: HelmChart
+metadata: { name: metallb, namespace: metallb-system }
+spec:
+  repo: https://metallb.github.io/metallb
+  chart: metallb
+  version: 0.14.8
+  targetNamespace: metallb-system
+  valuesContent: |-
+    speaker: { enabled: true, frr: { enabled: true } }
+    controller: { enabled: true }
+---
+apiVersion: metallb.io/v1beta1
+kind: IPAddressPool
+metadata: { name: shopos-pool, namespace: metallb-system }
+spec:
+  addresses: ["10.10.20.10-10.10.20.250"]
+---
+apiVersion: metallb.io/v1beta1
+kind: L2Advertisement
+metadata: { name: shopos-l2, namespace: metallb-system }
+spec: { ipAddressPools: [shopos-pool] }

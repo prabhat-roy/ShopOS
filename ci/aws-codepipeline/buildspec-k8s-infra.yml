@@ -34,7 +34,7 @@ phases:
     commands:
       - echo "Configuring AWS region ${TF_VAR_region}"
       - aws configure set region ${TF_VAR_region}
-      - cd infra/terraform/aws/eks
+      - cd infra/terraform/aws/app-k8s
       - terraform init
           -backend-config="bucket=${TF_STATE_BUCKET}"
           -backend-config="key=${TF_VAR_environment}/eks/terraform.tfstate"
@@ -43,7 +43,7 @@ phases:
 
   build:
     commands:
-      - cd infra/terraform/aws/eks
+      - cd infra/terraform/aws/app-k8s
       - terraform plan
           -var="region=${TF_VAR_region}"
           -var="environment=${TF_VAR_environment}"
@@ -67,7 +67,7 @@ phases:
     commands:
       - |
         if [ "${ACTION}" = "APPLY" ]; then
-          CLUSTER_NAME=$(cd infra/terraform/aws/eks && terraform output -raw cluster_name)
+          CLUSTER_NAME=$(cd infra/terraform/aws/app-k8s && terraform output -raw cluster_name)
           aws ssm put-parameter --name /shopos/eks/cluster_name \
             --value "${CLUSTER_NAME}" --type String --overwrite || true
           aws ssm put-parameter --name /shopos/eks/kubeconfig \

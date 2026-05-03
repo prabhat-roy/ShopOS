@@ -1,0 +1,35 @@
+# Source: kubernetes/scaling/karpenter/karpenter.yaml
+# This Application installs the same Helm chart on any K8s cluster (not just k3s).
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: karpenter
+  namespace: argocd
+  finalizers: [resources-finalizer.argocd.argoproj.io]
+spec:
+  project: shopos-infra
+  source:
+    repoURL: oci://public.ecr.aws/karpenter
+    chart: karpenter
+    targetRevision: '1.0.4'
+    helm:
+      releaseName: karpenter
+      values: |
+        replicas: 2
+        settings:
+          clusterName: shopos-prod
+          interruptionQueue: shopos-karpenter
+        serviceAccount:
+          annotations: { eks.amazonaws.com/role-arn: "arn:aws:iam::${AWS_ACCOUNT_ID}:role/karpenter-controller" }
+        controller:
+          resources:
+            requests: { cpu: 1, memory: 1Gi }
+            limits: { cpu: 1, memory: 1Gi }
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: karpenter
+  syncPolicy:
+    automated: { prune: false, selfHeal: true }
+    syncOptions: [CreateNamespace=true, ServerSideApply=true]
+    retry: { limit: 5, backoff: { duration: 30s, maxDuration: 5m, factor: 2 } }

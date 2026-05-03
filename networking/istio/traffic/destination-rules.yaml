@@ -1,0 +1,78 @@
+# DestinationRules — outlier detection + connection pool limits for tier-0 services.
+apiVersion: networking.istio.io/v1
+kind: DestinationRule
+metadata: { name: cart-service, namespace: commerce }
+spec:
+  host: cart-service.commerce.svc.cluster.local
+  trafficPolicy:
+    connectionPool:
+      tcp: { maxConnections: 200 }
+      http: { http1MaxPendingRequests: 100, http2MaxRequests: 1000, maxRequestsPerConnection: 100 }
+    outlierDetection:
+      consecutive5xxErrors: 5
+      interval: 30s
+      baseEjectionTime: 60s
+      maxEjectionPercent: 50
+---
+apiVersion: networking.istio.io/v1
+kind: DestinationRule
+metadata: { name: checkout-service, namespace: commerce }
+spec:
+  host: checkout-service.commerce.svc.cluster.local
+  trafficPolicy:
+    connectionPool: { tcp: { maxConnections: 200 }, http: { http1MaxPendingRequests: 100 } }
+    outlierDetection: { consecutive5xxErrors: 3, interval: 15s, baseEjectionTime: 30s }
+---
+apiVersion: networking.istio.io/v1
+kind: DestinationRule
+metadata: { name: order-service, namespace: commerce }
+spec:
+  host: order-service.commerce.svc.cluster.local
+  trafficPolicy:
+    connectionPool: { tcp: { maxConnections: 300 }, http: { http2MaxRequests: 2000 } }
+    outlierDetection: { consecutive5xxErrors: 5, interval: 30s, baseEjectionTime: 60s }
+---
+apiVersion: networking.istio.io/v1
+kind: DestinationRule
+metadata: { name: payment-service, namespace: commerce }
+spec:
+  host: payment-service.commerce.svc.cluster.local
+  trafficPolicy:
+    connectionPool: { tcp: { maxConnections: 100 }, http: { http1MaxPendingRequests: 50 } }
+    outlierDetection: { consecutive5xxErrors: 3, interval: 10s, baseEjectionTime: 60s }
+---
+apiVersion: networking.istio.io/v1
+kind: DestinationRule
+metadata: { name: auth-service, namespace: identity }
+spec:
+  host: auth-service.identity.svc.cluster.local
+  trafficPolicy:
+    connectionPool: { tcp: { maxConnections: 500 }, http: { http2MaxRequests: 5000 } }
+    outlierDetection: { consecutive5xxErrors: 5, interval: 15s, baseEjectionTime: 30s }
+---
+apiVersion: networking.istio.io/v1
+kind: DestinationRule
+metadata: { name: product-catalog-service, namespace: catalog }
+spec:
+  host: product-catalog-service.catalog.svc.cluster.local
+  trafficPolicy:
+    connectionPool: { tcp: { maxConnections: 1000 }, http: { http2MaxRequests: 10000 } }
+    outlierDetection: { consecutive5xxErrors: 10, interval: 30s, baseEjectionTime: 30s }
+---
+apiVersion: networking.istio.io/v1
+kind: DestinationRule
+metadata: { name: search-service, namespace: catalog }
+spec:
+  host: search-service.catalog.svc.cluster.local
+  trafficPolicy:
+    connectionPool: { tcp: { maxConnections: 500 } }
+    outlierDetection: { consecutive5xxErrors: 5, interval: 30s }
+---
+apiVersion: networking.istio.io/v1
+kind: DestinationRule
+metadata: { name: api-gateway, namespace: platform }
+spec:
+  host: api-gateway.platform.svc.cluster.local
+  trafficPolicy:
+    connectionPool: { tcp: { maxConnections: 2000 }, http: { http2MaxRequests: 20000 } }
+    outlierDetection: { consecutive5xxErrors: 10, interval: 30s }

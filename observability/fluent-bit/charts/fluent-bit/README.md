@@ -1,4 +1,4 @@
-﻿# Fluent Bit Loki chart
+# Fluent Bit Loki chart
 
 DEPRECATED. Please use the official Fluent-Bit chart at https://github.com/fluent/helm-charts.
 

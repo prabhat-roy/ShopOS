@@ -1,6 +1,54 @@
-﻿# ShopOS â€” Enterprise Commerce Platform
+# ShopOS — Enterprise Commerce Platform
 
-An enterprise-grade, cloud-native commerce platform â€” 263 services, 22 domains, 19 languages, full open source stack.
+An enterprise-grade, cloud-native commerce platform — 303 services, 22 domains, 19 languages, full open source stack.
+
+---
+
+## Quick links
+
+- [Getting started](GETTING_STARTED.md) — from clone to local stack in ~10 min
+- [Architecture overview](docs/architecture/system-overview.md)
+- [Service catalog (Backstage)](backstage/catalog-info.yaml) — 348 entries
+- [Runbooks](docs/runbooks/) — deployment, incident, rollback, postgres-failover, kafka-consumer-lag
+- [CLAUDE.md](CLAUDE.md) — authoritative source-of-truth (read this if you're an AI agent)
+
+## Repository layout
+
+```
+src/                 # 296 backend services + src/web/ 7 frontends
+proto/               # gRPC contracts (58 files, 14 domains)
+events/              # 20 Avro Kafka event schemas
+helm/services/       # 303 per-service Helm charts
+gitops/              # ArgoCD ApplicationSet + Flux HelmReleases (303 each)
+ci/                  # 15 CI platforms x 15 pipelines
+infra/               # Terraform, OpenTofu, Crossplane, Ansible, Patroni, PgBouncer, Atlantis, Nomad
+kubernetes/          # raw K8s manifests, RBAC, NetworkPolicies, PDBs, Velero, KEDA, Karpenter, VPA
+networking/          # Traefik, Istio, Cilium, Consul, Caddy, Anubis, MetalLB, Kube-VIP, edge/spin
+security/            # Vault, Keycloak, Falco, OPA, Kyverno, Cosign, Teleport, Trivy, Kubescape, ESO, ...
+observability/       # Prometheus, Grafana, Loki, Tempo, OTel, Mimir, Quickwit, Parca, Komodor, ...
+messaging/           # Kafka, RabbitMQ, NATS, Redpanda, Zilla, Conduktor Gateway
+databases/           # Postgres Flyway migrations + ClickHouse/Weaviate/Neo4j/.../LakeFS, Dgraph, YugabyteDB
+storage/             # Longhorn, Rook-Ceph (PV providers)
+data/                # Airflow, dbt, Spark, Airbyte, Cube, Metabase, OpenLineage, Great Expectations
+ml/                  # MLflow, Feast (Phase 5)
+streaming/           # Debezium CDC + Apache Flink
+workflow/            # Temporal
+api-management/      # Apache APISIX, Hasura, Tyk
+api-testing/         # Hurl, Spectral
+testing/             # Pact (9 contracts), Playwright, Karate, Testcontainers, Artillery
+load-testing/        # k6, Locust, Gatling
+chaos/               # Chaos Mesh, LitmusChaos
+backstage/           # Developer portal (348 entries)
+dev/                 # Coder, DevSpace, n8n, Windmill, Score, Backstage Scaffolder
+feature-flags/       # Unleash
+finops/              # Kubecost
+incident/            # Cachet, Grafana Incident, Grafana OnCall
+build/               # Earthly, Ko, Kaniko
+registry/            # Harbor, Nexus, Gitea, Zot, ChartMuseum
+openapi/             # OpenAPI 3.1 specs
+docs/                # ADRs, runbooks, architecture
+scripts/             # Service scaffolder (bash) + Jenkins helpers (groovy)
+```
 
 ---
 
@@ -8,29 +56,29 @@ An enterprise-grade, cloud-native commerce platform â€” 263 services, 22 do
 
 | # | Domain | Services |
 |---|---|---|
-| 1 | Platform | 27 |
-| 2 | Identity | 11 |
-| 3 | Catalog | 15 |
-| 4 | Commerce | 28 |
-| 5 | Supply Chain | 17 |
-| 6 | Financial | 15 |
-| 7 | Customer Experience | 17 |
-| 8 | Communications | 12 |
-| 9 | Content | 9 |
+| 1 | Platform | 40 |
+| 2 | Identity | 14 |
+| 3 | Catalog | 19 |
+| 4 | Commerce | 32 |
+| 5 | Supply Chain | 20 |
+| 6 | Financial | 20 |
+| 7 | Customer Experience | 20 |
+| 8 | Communications | 14 |
+| 9 | Content | 13 |
 | 10 | Analytics & AI | 13 |
-| 11 | B2B | 10 |
-| 12 | Integrations | 14 |
-| 13 | Affiliate | 6 |
-| 14 | Marketplace | 8 |
-| 15 | Gamification | 6 |
-| 16 | Developer Platform | 6 |
-| 17 | Compliance | 5 |
-| 18 | Sustainability | 5 |
+| 11 | B2B | 11 |
+| 12 | Integrations | 18 |
+| 13 | Affiliate | 7 |
+| 14 | Marketplace | 10 |
+| 15 | Gamification | 7 |
+| 16 | Developer Platform | 8 |
+| 17 | Compliance | 7 |
+| 18 | Sustainability | 6 |
 | 19 | Web | 7 |
-| 20 | Events & Ticketing | 6 |
-| 21 | Auction | 4 |
-| 22 | Rental | 4 |
-| | Total | 263 |
+| 20 | Events & Ticketing | 7 |
+| 21 | Auction | 5 |
+| 22 | Rental | 5 |
+| | Total | 303 |
 
 ---
 
@@ -48,28 +96,28 @@ An enterprise-grade, cloud-native commerce platform â€” 263 services, 22 do
 | C# | .NET 9 | Commerce (cart, return-refund) |
 | Rust | 1.80 | Identity (auth), Commerce (shipping) |
 | Scala | 3.x | Analytics & AI (reporting) |
-| Elixir | 1.17 (OTP 27) | Platform (presence, realtime, pubsub), Events & Ticketing, Auction â€” real-time concurrent services |
-| Haskell | GHC 9.6 | Financial (rules engine) â€” type-safe pure functional calculations |
+| Elixir | 1.17 (OTP 27) | Platform (presence, realtime, pubsub), Events & Ticketing, Auction — real-time concurrent services |
+| Haskell | GHC 9.6 | Financial (rules engine) — type-safe pure functional calculations |
 | PHP | 8.3 (Laravel 11) | Integrations (Magento/WooCommerce adapters) |
 | Ruby | 3.3 (Sinatra 4) | Content (CMS adapter) |
-| Dart | 3.4 (Flutter) | Web (mobile-flutter-service) â€” native iOS + Android |
+| Dart | 3.4 (Flutter) | Web (mobile-flutter-service) — native iOS + Android |
 | Swift | 5.10 (Vapor 4) | Platform (iOS push gateway) |
-| Clojure | 1.12 | Platform (event transform) â€” immutable stream transformation |
-| Crystal | 1.13 | Content (webhook service) â€” Ruby-like, C performance |
-| Zig | 0.13 | Platform (rate-limiter-core) â€” zero-overhead systems-level |
-| Gleam | 1.4 | Platform (event pipeline) â€” type-safe on BEAM/OTP |
+| Clojure | 1.12 | Platform (event transform) — immutable stream transformation |
+| Crystal | 1.13 | Content (webhook service) — Ruby-like, C performance |
+| Zig | 0.13 | Platform (rate-limiter-core) — zero-overhead systems-level |
+| Gleam | 1.4 | Platform (event pipeline) — type-safe on BEAM/OTP |
 
 ### Databases
 
 | Database | Version | Role |
 |---|---|---|
-| PostgreSQL | 16 | Primary transactional store â€” 100+ services |
-| MongoDB | 8.0 | Document store â€” catalog, CMS, reviews, tracking |
+| PostgreSQL | 16 | Primary transactional store — 100+ services |
+| MongoDB | 8.0 | Document store — catalog, CMS, reviews, tracking |
 | Redis | 7 | Cache, sessions, pub/sub, ephemeral data |
 | Cassandra | 5.0 | Time-series analytics events |
-| TimescaleDB | 2.15 | Time-series metrics â€” service metrics, inventory events, page views |
-| CockroachDB | 24.2 | Distributed PostgreSQL â€” geo-distributed ACID transactions |
-| SurrealDB | 2.1 | Multi-model â€” SQL + document + graph + time-series in one |
+| TimescaleDB | 2.15 | Time-series metrics — service metrics, inventory events, page views |
+| CockroachDB | 24.2 | Distributed PostgreSQL — geo-distributed ACID transactions |
+| SurrealDB | 2.1 | Multi-model — SQL + document + graph + time-series in one |
 | EventStoreDB | 24.10 | Purpose-built event store for event sourcing |
 | Valkey | 8.0 | Redis-compatible cache (Linux Foundation open fork) |
 | Typesense | 27.0 | Typo-tolerant instant search engine |
@@ -77,10 +125,10 @@ An enterprise-grade, cloud-native commerce platform â€” 263 services, 22 do
 | SeaweedFS | 3.78 | Distributed object + file storage, S3-compatible |
 | Elasticsearch | 8.15.3 | Full-text search, faceted filtering |
 | OpenSearch | 2.17 | Log analytics, audit trail, security events |
-| ClickHouse | 24.8 | OLAP â€” orders, events, revenue aggregation |
-| Weaviate | 1.26 | Vector database â€” semantic search, AI recommendations |
-| Neo4j | 5.23 | Graph database â€” product recommendations |
-| MinIO | latest | Object storage â€” images, videos, PDFs, exports |
+| ClickHouse | 24.8 | OLAP — orders, events, revenue aggregation |
+| Weaviate | 1.26 | Vector database — semantic search, AI recommendations |
+| Neo4j | 5.23 | Graph database — product recommendations |
+| MinIO | latest | Object storage — images, videos, PDFs, exports |
 | etcd | 3.5 | Distributed configuration |
 | Memcached | 1.6 | High-throughput simple caching |
 
@@ -88,14 +136,16 @@ An enterprise-grade, cloud-native commerce platform â€” 263 services, 22 do
 
 | Tool | Version | Role |
 |---|---|---|
-| Apache Kafka (Confluent) | 7.7.1 | Primary event streaming â€” domain events |
+| Apache Kafka (Confluent) | 7.7.1 | Primary event streaming — domain events; 20 Avro topics + 3 DLQs as Strimzi `KafkaTopic` CRDs |
 | Apache ZooKeeper | 7.7.1 | Kafka coordination |
 | Schema Registry (Confluent) | 7.7.1 | Avro schema enforcement |
 | RabbitMQ | 3.13 | Task queues, delayed messages, RPC |
-| NATS JetStream | 2.10 | Low-latency pub/sub â€” chat, real-time notifications |
-| Conduktor Gateway | 3.3.0 | Kafka policy proxy â€” schema enforcement, PII masking, rate limiting |
-| Debezium | 2.7 | Change Data Capture from Postgres + MongoDB â†’ Kafka |
-| Apache Flink | 1.20 | Real-time stream processing â€” order analytics, fraud detection |
+| NATS JetStream | 2.10 | Low-latency pub/sub — chat, real-time notifications |
+| Redpanda | 5.9 | Kafka-API-compatible low-latency alternative for analytics |
+| Zilla | 0.9 | Kafka → REST/SSE/MQTT proxy for browsers and IoT |
+| Conduktor Gateway | 3.3.0 | Kafka policy proxy — schema enforcement, PII masking, rate limiting |
+| Debezium | 2.7 | Change Data Capture from Postgres + MongoDB → Kafka |
+| Apache Flink | 1.20 | Real-time stream processing — order analytics, fraud detection |
 | ksqlDB | latest | Streaming SQL on Kafka |
 | Strimzi | latest | Kafka on Kubernetes operator |
 | AKHQ | latest | Kafka UI |
@@ -106,13 +156,13 @@ An enterprise-grade, cloud-native commerce platform â€” 263 services, 22 do
 | Tool | Role |
 |---|---|
 | gRPC | Synchronous inter-service communication (primary) |
-| Protocol Buffers (protobuf) | Service contracts â€” 58 `.proto` files across 14 domains |
+| Protocol Buffers (protobuf) | Service contracts — 58 `.proto` files across 14 domains |
 | Buf CLI | Protobuf linting, breaking-change detection, multi-language codegen |
 | REST/HTTP | External-facing APIs (BFFs, webhooks, health endpoints) |
 | GraphQL | Unified query API via graphql-gateway |
-| WebSocket | Real-time â€” live chat, in-app notifications |
-| Avro | Kafka event schema format â€” 20 event schemas |
-| OpenAPI 3.1 | API specification â€” api-gateway, admin-api, developer-platform-api |
+| WebSocket | Real-time — live chat, in-app notifications |
+| Avro | Kafka event schema format — 20 event schemas |
+| OpenAPI 3.1 | API specification — api-gateway, admin-api, developer-platform-api |
 | Spectral | OpenAPI linting with custom ruleset |
 | Hurl | HTTP integration testing (health, auth, catalog, checkout flows) |
 
@@ -122,13 +172,13 @@ An enterprise-grade, cloud-native commerce platform â€” 263 services, 22 do
 |---|---|---|
 | Docker | latest | Container runtime, multi-stage builds |
 | Kubernetes | 1.31 | Container orchestration |
-| Helm | 3.x | 263 per-service charts + tool charts (all vendored, no internet at deploy time) |
+| Helm | 3.x | 303 per-service charts + tool charts (all vendored, no internet at deploy time) |
 | KEDA | 2.15 | Kafka/Redis-driven autoscaling (alongside HPA) |
 | Velero | 7.x | Kubernetes backup and restore |
 | Skaffold | latest | Local dev hot-reload |
 | Tilt | latest | Local dev hot-reload (alternative) |
 | Kaniko | latest | Rootless container builds inside Kubernetes pods |
-| Bazel | 7.x | Google's hermetic monorepo build system â€” 1000+ targets |
+| Bazel | 7.x | Google's hermetic monorepo build system — 1000+ targets |
 | Nx | 20.x | Monorepo orchestration for TypeScript/JavaScript frontend services |
 | Turborepo | 2.x | Fast JS monorepo builds with remote cache |
 | Packer | 1.11 | Automated VM image builder for cloud AMIs and GCE images |
@@ -139,39 +189,43 @@ An enterprise-grade, cloud-native commerce platform â€” 263 services, 22 do
 |---|---|---|
 | Terraform | 1.9 | EKS, GKE, AKS cluster provisioning |
 | OpenTofu | 1.8 | Open source Terraform alternative (same targets) |
-| Crossplane | 1.17 | Kubernetes-native IaC â€” database and cloud resource claims |
+| Crossplane | 1.17 | Kubernetes-native IaC — database and cloud resource claims |
 | Ansible | 2.17 | Kubernetes node bootstrapping |
-| Terrascan | latest | IaC security scanning â€” Terraform + Helm |
-| Docker Compose | v2 | Full local stack (263 services + infra) |
+| Terrascan | latest | IaC security scanning — Terraform + Helm |
+| Docker Compose | v2 | Full local stack (303 services + infra) |
+| Karpenter | 1.0 | Node autoscaler — provisions right-sized EC2 on demand |
+| VPA + Goldilocks | 4/9 | Vertical resource recommendations + UI |
+| Longhorn | 1.7 | Distributed RWO block storage on local disks |
+| Rook-Ceph | v1.15 | Block, file, and S3 storage operator |
 
 ### CI/CD
 
 | Tool | Pipelines | Role |
 |---|---|---|
-| Jenkins | 15 | Primary CI server â€” build, test, security, quality, tooling pipelines |
-| Drone CI | 15 | Mirror of Jenkins â€” same stages, Drone syntax |
-| Woodpecker CI | 15 | Drone-compatible fork â€” drop-in replacement |
-| Dagger | 15 | Portable Go SDK pipelines â€” run anywhere |
+| Jenkins | 15 | Primary CI server — build, test, security, quality, tooling pipelines |
+| Drone CI | 15 | Mirror of Jenkins — same stages, Drone syntax |
+| Woodpecker CI | 15 | Drone-compatible fork — drop-in replacement |
+| Dagger | 15 | Portable Go SDK pipelines — run anywhere |
 | Tekton | 15 | Kubernetes-native CRD-based pipelines |
 | Concourse CI | 15 | DAG resource/job pipelines |
 | GitLab CI | 15 | `.gitlab-ci.yml` pipelines for GitLab SCM |
-| GitHub Actions | 15 | `ci/github-actions/` â€” auto-trigger disabled |
+| GitHub Actions | 15 | `ci/github-actions/` — auto-trigger disabled |
 | CircleCI | 15 | `version: 2.1` orb-based pipelines |
 | GoCD | 15 | Stage/job pipelines with manual approval gates |
 | Travis CI | 15 | Stage-based pipelines with branch filters |
 | Harness CI | 15 | Enterprise CI/CD with built-in CD stages |
-| Azure DevOps | 15 | `azure-pipelines.yml` â€” native Azure integration |
+| Azure DevOps | 15 | `azure-pipelines.yml` — native Azure integration |
 | AWS CodePipeline | 15 | `buildspec.yml` + CodePipeline JSON definitions |
-| GCP Cloud Build | 15 | `cloudbuild.yaml` â€” native GCP integration |
-| Argo Workflows | â€” | Kubernetes-native CI + ML training DAGs |
-| Argo Events | â€” | GitHub webhook â†’ pipeline triggers |
+| GCP Cloud Build | 15 | `cloudbuild.yaml` — native GCP integration |
+| Argo Workflows | — | Kubernetes-native CI + ML training DAGs |
+| Argo Events | — | GitHub webhook → pipeline triggers |
 
 
 ### GitOps
 
 | Tool | Version | Role |
 |---|---|---|
-| ArgoCD | 2.12 | GitOps continuous delivery â€” App-of-Apps pattern |
+| ArgoCD | 2.12 | GitOps continuous delivery — App-of-Apps pattern |
 | Flux CD | 2.x | Alternative GitOps controller |
 | Argo Rollouts | latest | Canary and blue/green deployments |
 | Flagger | latest | Progressive delivery with metrics-based promotion |
@@ -180,8 +234,9 @@ An enterprise-grade, cloud-native commerce platform â€” 263 services, 22 do
 
 | Tool | Version | Role |
 |---|---|---|
-| OpenTelemetry | latest | Instrumentation SDK + Collector |
-| Prometheus | 2.54 | Metrics scraping and alerting |
+| OpenTelemetry | 0.108 | Instrumentation SDK + Collector (agent DaemonSet + gateway Deployment with tail-sampling) |
+| Fluent Bit | 3.x | Log collection DaemonSet → Loki + VictoriaLogs split routing |
+| Prometheus | 2.54 | Metrics scraping and alerting (per-domain rules: identity, catalog, financial, supply-chain, cx, comms, marketplace+b2b, infra) |
 | Alertmanager | 0.27 | Alert routing and deduplication |
 | Grafana | 11.x | Dashboards |
 | Grafana Loki | 3.x | Log aggregation |
@@ -210,45 +265,50 @@ An enterprise-grade, cloud-native commerce platform â€” 263 services, 22 do
 | OpenReplay | latest | Self-hosted session replay |
 | Grafana Mimir | 2.14 | Horizontally scalable long-term Prometheus storage |
 | VictoriaLogs | 1.4 | Fast, cheap log storage at high volume |
-| Pixie | latest | eBPF auto-instrumentation â€” zero-code traces per pod |
-| SigNoz | 0.53 | Full-stack observability â€” traces + metrics + logs, OTel-native |
+| Pixie | latest | eBPF auto-instrumentation — zero-code traces per pod |
+| SigNoz | 0.53 | Full-stack observability — traces + metrics + logs, OTel-native |
 | Netdata | 1.47 | Real-time per-second metrics per container |
-| Kiali | 2.0 | Istio service mesh observability UI â€” topology + traffic |
+| Kiali | 2.0 | Istio service mesh observability UI — topology + traffic |
 | Perses | 0.49 | GitOps-native dashboard-as-code |
 | Goldilocks | 9.x | VPA-based resource right-sizing recommendations |
 | kube-state-metrics | latest | Kubernetes object metrics |
 | node-exporter | latest | Node-level hardware metrics |
+| Quickwit | 0.7 | S3-backed log search engine (cold logs alternative to Loki/ES) |
+| Parca | 0.22 | Continuous profiling (eBPF, complement to Pyroscope) |
+| Komodor | 4.4 | K8s troubleshooting timelines per resource |
+| Healthchecks | 0.7 | Self-hosted cron monitoring with miss alerts |
+| Kubecost | 2.4 | Multi-cluster cost allocation + idle resource recommendations |
 
 ### Security
 
 | Tool | Role |
 |---|---|
-| HashiCorp Vault | Secrets management, PKI, dynamic credentials |
+| HashiCorp Vault | HA Raft + KMS unseal, K8s/OIDC/JWT/AppRole auth, KV-per-domain, dynamic Postgres roles, AWS IAM, PKI int+root, Transit, TOTP, SSH-CA |
 | Keycloak | Identity and Access Management, SSO, OIDC |
 | Dex | OIDC federation |
 | Authentik | Identity provider (alternative to Keycloak) |
-| SPIFFE/SPIRE | Workload identity â€” X.509 SVIDs for mTLS |
+| SPIFFE/SPIRE | Workload identity — X.509 SVIDs for mTLS |
 | OpenFGA | Relationship-based authorisation (Google Zanzibar model) |
-| OPA / Gatekeeper | Policy as code â€” Rego admission policies |
+| OPA / Gatekeeper | Policy as code — Rego admission policies |
 | Kyverno | Kubernetes admission controller policies |
 | Kubewarden | Wasm-based policy engine |
 | Falco | Runtime threat detection |
 | Tetragon | eBPF security enforcement |
 | Tracee | eBPF event collection and analysis |
-| Istio | Service mesh â€” mTLS, traffic management |
+| Istio | Service mesh — mTLS, traffic management |
 | Linkerd | Lightweight service mesh (alternative) |
-| Cilium | eBPF CNI â€” network policies, L7 visibility |
+| Cilium | eBPF CNI — network policies, L7 visibility |
 | Calico | CNI alternative with network policy |
 | cert-manager | Automatic TLS certificate provisioning |
 | Coraza WAF | OWASP WAF (ModSecurity rules) |
 | Trivy | Container and IaC vulnerability scanning |
 | Grype | CVE scanner for container images |
-| Semgrep | SAST â€” custom security rules |
+| Semgrep | SAST — custom security rules |
 | SonarQube | Static code analysis and quality gates |
 | Checkov | IaC security scanning (Terraform/Helm/K8s) |
-| KICS | IaC scanning â€” extended rule set |
+| KICS | IaC scanning — extended rule set |
 | Terrascan | IaC security scanning with SARIF output |
-| OWASP ZAP | DAST â€” dynamic application security testing |
+| OWASP ZAP | DAST — dynamic application security testing |
 | Nuclei | CVE template-based scanning |
 | kube-bench | CIS Kubernetes benchmark |
 | kube-hunter | Kubernetes penetration testing |
@@ -260,27 +320,39 @@ An enterprise-grade, cloud-native commerce platform â€” 263 services, 22 do
 | Dependency-Track | SBOM analysis and CVE tracking |
 | DefectDojo | Vulnerability management and finding aggregation |
 | Teleport | Zero-trust SSH and Kubernetes access |
-| Wazuh | SIEM + HIDS â€” log correlation, compliance, intrusion detection |
-| Suricata | Network IDS/IPS â€” deep packet inspection on cluster traffic |
-| Zeek | Network traffic analysis â€” behavioral detection, TLS fingerprinting |
+| Wazuh | SIEM + HIDS — log correlation, compliance, intrusion detection |
+| Suricata | Network IDS/IPS — deep packet inspection on cluster traffic |
+| Zeek | Network traffic analysis — behavioral detection, TLS fingerprinting |
 | OpenVAS | External attack surface vulnerability scanning |
-| Pomerium | Identity-aware access proxy â€” zero-trust for internal tools |
+| Pomerium | Identity-aware access proxy — zero-trust for internal tools |
 | External Secrets Operator | Sync secrets from Vault/AWS SSM into Kubernetes |
 | Sealed Secrets | Encrypt secrets for safe GitOps storage |
 | OpenSSF Scorecard | Automated security best-practice scoring |
+| Sigstore Policy Controller | Admission-time Cosign verification of all images |
+| Trivy Operator | Continuous in-cluster vulnerability + misconfig + secret scanning |
+| Kubescape | NSA / CISA / MITRE ATT&CK posture scoring |
+| Cedar | AWS Cedar policies for resource-scoped authz (sellers, orgs) |
+| GitGuardian (ggshield) | Secrets scanning across 200+ providers |
 
 ### Networking & Service Mesh
 
 | Tool | Version | Role |
 |---|---|---|
-| Traefik | 3.1 | Edge router â€” ingress, automatic TLS, service discovery |
-| Istio | 1.23 | Service mesh â€” mTLS, traffic management, canary |
+| Traefik | 3.1 | Edge router — ingress, automatic TLS, service discovery |
+| Istio | 1.23 | Service mesh — STRICT mTLS, AuthZ deny-all + named allows, DestinationRules, VirtualServices |
 | Linkerd | 2.x | Lightweight service mesh (alternative) |
-| Cilium | 1.16 | eBPF CNI â€” NetworkPolicy + Hubble observability |
+| Cilium | 1.16 | eBPF CNI + L7 NetworkPolicies (HTTP-aware payment + auth filters) |
 | Calico | 3.28 | CNI and NetworkPolicy alternative |
 | Consul | 1.19 | Service discovery, health checking, K/V config |
 | Kong | 3.x | API gateway (alternative to Traefik) |
 | NGINX | 1.27 | Reverse proxy and static file serving |
+| Caddy | 2.x | Auto-TLS ingress for non-prod / preview environments |
+| Varnish | 7.x | HTTP cache in front of storefront / admin portals |
+| Anubis | 1.10 | Proof-of-work anti-bot / anti-AI-scraper for storefront |
+| ngrok-operator | 0.16 | Public ingress for PR-preview environments |
+| MetalLB | 0.14 | Bare-metal LoadBalancer for on-prem clusters |
+| Kube-VIP | latest | HA control-plane VIP for bare-metal clusters |
+| Spin / SpinKube | 0.4 | Wasm serverless edge functions for storefront personalization |
 
 ### Artifact & Container Registry
 
@@ -296,24 +368,30 @@ An enterprise-grade, cloud-native commerce platform â€” 263 services, 22 do
 
 | Tool | Version | Role |
 |---|---|---|
-| Temporal | 1.24 | Durable workflow engine â€” checkout sagas, billing cycles, KYC |
+| Temporal | 1.24 | Durable workflow engine — checkout sagas, billing cycles, KYC |
 | Argo Workflows | 3.x | DAG-based workflow execution on Kubernetes |
 
 ### Analytics Data Stack
 
 | Tool | Role |
 |---|---|
-| Apache Airflow | DAG-based workflow orchestration â€” daily ETL, fraud retrain |
-| Apache Spark | Batch processing â€” order aggregation, user RFM segmentation |
-| dbt | SQL transformations â€” staging, commerce, catalog models |
+| Apache Airflow | DAG-based workflow orchestration — daily ETL, fraud retrain |
+| Apache Spark | Batch processing — order aggregation, user RFM segmentation |
+| dbt | SQL transformations — staging, commerce, catalog models |
 | Apache Superset | Data exploration and BI dashboards |
+| Metabase | Self-serve BI alternative to Superset |
+| Cube | Semantic layer + BI API on top of ClickHouse/Postgres |
+| Airbyte | ELT from 300+ sources (Stripe, Salesforce, Postgres) into ClickHouse |
+| LakeFS | Git-like data versioning over MinIO |
 | Apache Atlas | Data catalog and governance |
 | Marquez | OpenLineage data lineage tracking |
 | Great Expectations | Data quality assertion suites |
-| MLflow | 2.16 â€” Experiment tracking, model registry |
-| Apache Flink | 1.20 â€” Real-time feature computation and stream ML |
-| Weaviate | 1.26 â€” Vector store for RAG and semantic search |
-| Neo4j | 5.23 â€” Graph-based recommendation engine |
+| MLflow | 2.16 — Experiment tracking, model registry |
+| Apache Flink | 1.20 — Real-time feature computation and stream ML |
+| Weaviate | 1.26 — Vector store for RAG and semantic search |
+| Dgraph | Distributed graph DB — complement to Neo4j for recommendations at scale |
+| Neo4j | 5.23 — Graph-based recommendation engine |
+| YugabyteDB | Distributed Postgres-compatible SQL DB — geo-distributed alternative to CockroachDB |
 
 ### Database Management
 
@@ -328,7 +406,8 @@ An enterprise-grade, cloud-native commerce platform â€” 263 services, 22 do
 
 | Tool | Role |
 |---|---|
-| Pact | Consumer-driven contract testing â€” orderâ†”cart, checkoutâ†”payment |
+| Pact | Consumer-driven contract testing — 9 contracts (cart←”catalog, checkout←”promotions, order←”inventory, notif←”template, web-bff←”search, payout←”wallet, affiliate←”commission, order←”cart, checkout←”payment) |
+| Buf breaking-change CI | Jenkins + GitHub Actions blocking merge on proto regressions |
 | Testcontainers | Ephemeral database/broker containers for integration tests |
 | Toxiproxy | Network fault injection for resilience testing |
 
@@ -336,8 +415,8 @@ An enterprise-grade, cloud-native commerce platform â€” 263 services, 22 do
 
 | Tool | Role |
 |---|---|
-| Earthly | Reproducible polyglot builds â€” all 13 languages |
-| Ko | Direct Go â†’ OCI image builder for 100+ Go services |
+| Earthly | Reproducible polyglot builds — all 13 languages |
+| Ko | Direct Go → OCI image builder for 100+ Go services |
 | Kaniko | Rootless Docker builds inside Kubernetes pods |
 | Score | Cloud-agnostic workload specification |
 | DevPod | Cloud development environments (alternative to Codespaces) |
@@ -346,8 +425,8 @@ An enterprise-grade, cloud-native commerce platform â€” 263 services, 22 do
 
 | Tool | Role |
 |---|---|
-| Unleash | Open source feature flag platform â€” SDK, UI, audit trail |
-| OpenFeature | Open standard SDK for feature flags â€” wraps any backend |
+| Unleash | Open source feature flag platform — SDK, UI, audit trail |
+| OpenFeature | Open standard SDK for feature flags — wraps any backend |
 
 ### Incident Management
 
@@ -368,7 +447,7 @@ An enterprise-grade, cloud-native commerce platform â€” 263 services, 22 do
 
 | Tool | Role |
 |---|---|
-| Atlantis | Terraform GitOps â€” plan on PR, apply on merge |
+| Atlantis | Terraform GitOps — plan on PR, apply on merge |
 | Infracost | Cloud cost estimation on every Terraform PR |
 | Driftctl | Detect drift between Terraform state and cloud resources |
 | Packer | Automated VM image builder (AMI, GCE) |
@@ -380,17 +459,21 @@ An enterprise-grade, cloud-native commerce platform â€” 263 services, 22 do
 
 | Tool | Role |
 |---|---|
-| Devcontainer | VS Code / GitHub Codespaces â€” all 19 languages pre-installed |
+| Devcontainer | VS Code / GitHub Codespaces — all 19 languages pre-installed |
 | Skaffold | Local Kubernetes dev hot-reload |
 | Tilt | Local Kubernetes dev with live_update (alternative) |
-| Backstage | Internal developer portal â€” service catalog, API docs |
-| Buf CLI | Protobuf workflow â€” lint, format, codegen, breaking detection |
+| Backstage | Internal developer portal — service catalog (348 entries), API docs, scaffolder |
+| Backstage Software Templates | One-click Go-service scaffolding via [`dev/scaffolder/`](dev/scaffolder/) |
+| Coder | Self-hosted cloud development environments (Terraform-defined templates) |
+| n8n | Low-code workflow automation for ops |
+| Windmill | Internal scripts/APIs as a service (Retool/Lambda alternative) |
+| Buf CLI | Protobuf workflow — lint, format, codegen, breaking detection |
 | Teleport | Zero-trust SSH + Kubernetes access for developers and ops |
-| Telepresence | Run one local service against live cluster â€” instant debugging |
-| Garden | Full environment automation â€” spin up entire stack per PR |
-| Signadot | Kubernetes sandbox per PR â€” route traffic to feature branch |
-| Devspace | Kubernetes dev tool â€” live sync, port-forward, log aggregation |
-| Botkube | Kubernetes alerts to Slack â€” pod failures, deployments |
+| Telepresence | Run one local service against live cluster — instant debugging |
+| Garden | Full environment automation — spin up entire stack per PR |
+| Signadot | Kubernetes sandbox per PR — route traffic to feature branch |
+| Devspace | Kubernetes dev tool — live sync, port-forward, log aggregation |
+| Botkube | Kubernetes alerts to Slack — pod failures, deployments |
 | k8sGPT | AI-powered Kubernetes diagnostics operator |
 | k9s | Terminal-based Kubernetes UI |
 | grpcurl | gRPC API testing |
@@ -399,9 +482,9 @@ An enterprise-grade, cloud-native commerce platform â€” 263 services, 22 do
 
 | Tool | Role |
 |---|---|
-| Prefect | Python-native workflow orchestration â€” complement to Airflow |
-| Dagster | Data asset orchestration â€” lineage-first pipeline management |
-| Apache Camel | Enterprise integration patterns â€” 300+ connectors |
+| Prefect | Python-native workflow orchestration — complement to Airflow |
+| Dagster | Data asset orchestration — lineage-first pipeline management |
+| Apache Camel | Enterprise integration patterns — 300+ connectors |
 
 ### Chaos & Load Testing
 
@@ -413,7 +496,7 @@ An enterprise-grade, cloud-native commerce platform â€” 263 services, 22 do
 | Locust | Python-based distributed load testing |
 | Gatling | Scala-based load and performance testing |
 | Artillery | Node.js load testing for realistic browser scenarios |
-| Vegeta | Go HTTP load testing â€” deterministic rate, ideal for soak tests |
+| Vegeta | Go HTTP load testing — deterministic rate, ideal for soak tests |
 | k6 Operator | Run k6 load tests natively as Kubernetes Jobs |
 
 ### Testing Extensions
@@ -421,18 +504,18 @@ An enterprise-grade, cloud-native commerce platform â€” 263 services, 22 do
 | Tool | Role |
 |---|---|
 | Playwright | E2E browser testing for all 7 frontend services |
-| WireMock | API mock server â€” stub third-party APIs in integration tests |
+| WireMock | API mock server — stub third-party APIs in integration tests |
 | Karate | Java BDD-style API + UI testing framework |
 
 ---
 
 ## Services
 
-### 1. Platform (34 services)
+### 1. Platform (40 services)
 
 | Service | Language | Responsibility |
 |---|---|---|
-| api-gateway | Go | Single entry point â€” routing, rate limiting, JWT validation |
+| api-gateway | Go | Single entry point — routing, rate limiting, JWT validation |
 | web-bff | Go | Backend-for-frontend for web clients |
 | mobile-bff | Node.js | Backend-for-frontend for mobile clients |
 | partner-bff | Go | Backend-for-frontend for external partner APIs |
@@ -466,10 +549,16 @@ An enterprise-grade, cloud-native commerce platform â€” 263 services, 22 do
 | event-transform-service | Clojure | Kafka event transformation with immutable data pipelines |
 | ios-push-gateway-service | Swift | Apple APNs push notification gateway |
 | rate-limiter-core | Zig | Ultra-low-latency rate limiting core in systems-level Zig |
+| reports-portal-service | Go | Internal reporting portal aggregating per-domain reports |
+| secrets-rotation-service | Go | Rotates Vault dynamic credentials, JWT signing keys, DB passwords on schedule |
+| service-registry-service | Go | Consul wrapper for service discovery and health-check aggregation |
+| distributed-lock-service | Go | Redis-backed distributed lock primitive for cross-pod critical sections |
+| chaos-control-service | Go | Programmatic API to trigger Chaos Mesh / Litmus experiments |
+| graphql-federation-service | Go | Apollo Federation gateway composing per-domain GraphQL subgraphs |
 
 ---
 
-### 2. Identity (11 services)
+### 2. Identity (14 services)
 
 | Service | Language | Responsibility |
 |---|---|---|
@@ -478,20 +567,23 @@ An enterprise-grade, cloud-native commerce platform â€” 263 services, 22 do
 | session-service | Go | JWT session lifecycle backed by Redis |
 | permission-service | Go | RBAC/ABAC policy evaluation |
 | mfa-service | Go | TOTP/WebAuthn multi-factor authentication |
-| gdpr-service | Go | Data subject requests â€” access, erasure, portability |
+| gdpr-service | Go | Data subject requests — access, erasure, portability |
 | api-key-service | Go | API key issuance, rotation, and scoping |
 | device-fingerprint-service | Go | Device recognition and trust scoring |
 | sso-service | Go | Single sign-on federation and session bridging |
 | password-policy-service | Go | Password complexity rules and breach detection |
 | bot-detection-service | Go | Bot and credential-stuffing attack detection |
+| passkey-service | Go | WebAuthn / FIDO2 passkey registration and authentication |
+| risk-scoring-service | Go | Login risk score from device fingerprint, geo, velocity, behaviour |
+| account-linking-service | Go | Merge duplicate user accounts (email, social, passkey) into canonical identity |
 
 ---
 
-### 3. Catalog (16 services)
+### 3. Catalog (19 services)
 
 | Service | Language | Responsibility |
 |---|---|---|
-| product-catalog-service | Go | Core product data â€” listing, detail, variants |
+| product-catalog-service | Go | Core product data — listing, detail, variants |
 | category-service | Go | Product taxonomy and category hierarchy |
 | brand-service | Go | Brand profiles and brand-level filtering |
 | pricing-service | Java | Dynamic pricing rules, tiers, and overrides |
@@ -507,10 +599,13 @@ An enterprise-grade, cloud-native commerce platform â€” 263 services, 22 do
 | variant-service | Go | Product variant matrix management |
 | stock-reservation-service | Go | Atomic stock reservations via Redis |
 | search-suggestion-service | Go | Autocomplete and typeahead suggestions via Redis |
+| product-feed-service | Go | Google Shopping / Meta / TikTok product feed generation |
+| catalog-translation-service | Go | Auto-translates product titles and descriptions across locales |
+| merchandising-service | Go | Hero banners, featured collections, sort overrides per category |
 
 ---
 
-### 4. Commerce (28 services)
+### 4. Commerce (32 services)
 
 | Service | Language | Responsibility |
 |---|---|---|
@@ -542,40 +637,46 @@ An enterprise-grade, cloud-native commerce platform â€” 263 services, 22 do
 | dynamic-pricing-service | Go | Real-time demand-based price adjustment |
 | coupon-service | Go | Coupon lifecycle management and validation |
 | order-amendment-service | Go | Post-placement order modification and repricing |
+| tip-service | Go | Gratuity at checkout (delivery, in-store) with per-staff distribution |
+| reorder-service | Go | One-click reorder of past orders with substitution suggestions |
+| cart-recovery-service | Go | Abandoned-cart recovery: targeted email/SMS, discount escalation |
+| tax-jurisdiction-service | Go | Resolves tax jurisdiction for any address worldwide |
 
 ---
 
-### 5. Supply Chain (18 services)
+### 5. Supply Chain (20 services)
 
 | Service | Language | Responsibility |
 |---|---|---|
 | vendor-service | Java | Supplier profiles, contracts, and onboarding |
 | purchase-order-service | Kotlin | PO creation, approval, and tracking |
-| warehouse-service | Go | Warehouse management â€” bins, zones, movements |
+| warehouse-service | Go | Warehouse management — bins, zones, movements |
 | fulfillment-service | Go | Multi-warehouse order routing and pick/pack/ship |
 | tracking-service | Node.js | Real-time shipment tracking from carriers |
 | label-service | Python | Shipping label generation (PDF/ZPL) |
 | carrier-integration-service | Go | Adapter layer for UPS, FedEx, DHL, etc. |
 | demand-forecast-service | Python | ML-based inventory demand forecasting |
-| customs-duties-service | Go | International trade â€” HS codes, duties calculation |
+| customs-duties-service | Go | International trade — HS codes, duties calculation |
 | returns-logistics-service | Go | Reverse logistics and returned goods routing |
 | supplier-portal-service | Java | Self-service portal for vendor onboarding and PO management |
 | cold-chain-service | Go | Cold-chain temperature monitoring and compliance tracking |
 | supplier-rating-service | Go | Supplier performance scoring and rating aggregation |
 | route-optimization-service | Go | Delivery route optimisation across carriers |
 | packaging-service | Go | Packaging material selection and cost optimisation |
-| cross-dock-service | Go | Cross-docking flow management â€” inbound to outbound |
+| cross-dock-service | Go | Cross-docking flow management — inbound to outbound |
 | duty-drawback-service | Go | Import duty drawback claim management |
 | zone-pricing-service | Go | Geo-zone based shipping price matrices |
+| returns-grading-service | Go | Grades returned items A/B/C/scrap and routes to disposition |
+| dropship-service | Go | Vendor-direct fulfillment with split-shipment handling |
 
 ---
 
-### 6. Financial (18 services)
+### 6. Financial (20 services)
 
 | Service | Language | Responsibility |
 |---|---|---|
 | invoice-service | Java | PDF invoice generation and delivery |
-| accounting-service | Kotlin | General ledger â€” journal entries and chart of accounts |
+| accounting-service | Kotlin | General ledger — journal entries and chart of accounts |
 | payout-service | Java | Vendor and seller payout scheduling |
 | reconciliation-service | Kotlin | Payment-to-order reconciliation |
 | tax-reporting-service | Go | VAT/GST report generation |
@@ -585,17 +686,19 @@ An enterprise-grade, cloud-native commerce platform â€” 263 services, 22 do
 | budget-service | Go | Departmental budget tracking and alerts |
 | chargeback-service | Java | Payment chargeback intake and dispute resolution |
 | revenue-recognition-service | Kotlin | ASC 606/IFRS 15 compliant revenue recognition |
-| escrow-service | Go | Marketplace escrow â€” fund holding and release |
+| escrow-service | Go | Marketplace escrow — fund holding and release |
 | forex-service | Go | Foreign exchange rate management and hedging |
 | audit-trail-service | Java | Immutable financial audit trail |
 | dunning-service | Go | Failed payment retry and dunning communication |
 | financial-rules-engine | Haskell | Type-safe pure functional financial calculation engine |
 | tax-exemption-service | Go | B2B tax-exempt purchase handling and certificate management |
 | multi-currency-account-service | Go | Multi-currency ledger and account management per customer |
+| cash-flow-forecast-service | Go | Rolling 13-week cash-flow forecast with scenario analysis |
+| revenue-share-service | Go | Splits inbound revenue across partners with idempotent ledger writes |
 
 ---
 
-### 7. Customer Experience (18 services)
+### 7. Customer Experience (20 services)
 
 | Service | Language | Responsibility |
 |---|---|---|
@@ -617,10 +720,12 @@ An enterprise-grade, cloud-native commerce platform â€” 263 services, 22 do
 | accessibility-service | Node.js | WCAG accessibility audit and remediation guidance |
 | return-portal-service | Go | Self-service customer return initiation |
 | review-summary-service | Go | Aggregated review analytics and summary per product |
+| in-store-pickup-service | Go | BOPIS flow — store selection, pickup window, ready alerts |
+| notification-frequency-service | Go | Caps notification frequency per user / channel to prevent fatigue |
 
 ---
 
-### 8. Communications (12 services)
+### 8. Communications (14 services)
 
 | Service | Language | Responsibility |
 |---|---|---|
@@ -636,17 +741,19 @@ An enterprise-grade, cloud-native commerce platform â€” 263 services, 22 do
 | telegram-service | Node.js | Telegram Bot API messaging |
 | voice-service | Go | Voice call notifications via Twilio-compatible API |
 | webhook-delivery-service | Go | Reliable outbound webhook delivery with retries |
+| line-service | Go | LINE Messaging API integration (Japan/Asia channel) |
+| rcs-service | Go | Rich Communication Services outbound (Android-rich SMS replacement) |
 
 ---
 
-### 9. Content (11 services)
+### 9. Content (13 services)
 
 | Service | Language | Responsibility |
 |---|---|---|
 | media-asset-service | Go | Image/video upload, storage (MinIO), CDN URLs |
 | image-processing-service | Python | Resizing, compression, and format conversion |
-| document-service | Java | PDF generation â€” invoices, packing slips, reports |
-| cms-service | Node.js | Headless CMS â€” pages, blog posts, banners |
+| document-service | Java | PDF generation — invoices, packing slips, reports |
+| cms-service | Node.js | Headless CMS — pages, blog posts, banners |
 | video-service | Go | Video upload and HLS streaming |
 | sitemap-service | Go | XML sitemap generation for SEO |
 | i18n-l10n-service | Go | Translation strings and locale management |
@@ -654,6 +761,8 @@ An enterprise-grade, cloud-native commerce platform â€” 263 services, 22 do
 | ab-content-service | Go | A/B content variant management and assignment |
 | storefront-cms-adapter | Ruby | Magento/Spree-compatible CMS adapter service |
 | content-webhook-service | Crystal | High-throughput inbound content webhook processor |
+| moderation-service | Go | UGC moderation: rules + ML classifier + human-review queue |
+| dam-service | Go | Digital Asset Management — taxonomy, tagging, search, rights |
 
 ---
 
@@ -668,7 +777,7 @@ An enterprise-grade, cloud-native commerce platform â€” 263 services, 22 do
 | price-optimization-service | Python | ML-driven dynamic pricing suggestions |
 | ml-feature-store | Python | Centralised ML feature engineering and serving |
 | personalization-service | Python | Personalised content and product ranking |
-| data-pipeline-service | Python | ETL/ELT pipelines â€” raw events â†’ data warehouse |
+| data-pipeline-service | Python | ETL/ELT pipelines — raw events → data warehouse |
 | ad-service | Java | Context-aware advertisement serving |
 | event-tracking-service | Python | Behavioural event capture and stream processing |
 | attribution-service | Python | Multi-touch marketing attribution modelling |
@@ -677,7 +786,7 @@ An enterprise-grade, cloud-native commerce platform â€” 263 services, 22 do
 
 ---
 
-### 11. B2B (10 services)
+### 11. B2B (11 services)
 
 | Service | Language | Responsibility |
 |---|---|---|
@@ -691,10 +800,11 @@ An enterprise-grade, cloud-native commerce platform â€” 263 services, 22 do
 | rfp-service | Go | Request for proposal (RFP) management |
 | vendor-onboarding-service | Java | Structured vendor onboarding workflow |
 | purchase-requisition-service | Kotlin | Internal purchase requisition and approval |
+| punchout-service | Go | OCI / cXML PunchOut — B2B procurement system integration |
 
 ---
 
-### 12. Integrations (16 services)
+### 12. Integrations (18 services)
 
 | Service | Language | Responsibility |
 |---|---|---|
@@ -714,10 +824,12 @@ An enterprise-grade, cloud-native commerce platform â€” 263 services, 22 do
 | ipaas-connector-service | Go | iPaaS integration connector (Zapier/Make-compatible) |
 | magento-sync-service | PHP | Bi-directional sync with Magento 2 catalog and orders |
 | woocommerce-adapter-service | PHP | WooCommerce product, order, and customer sync adapter |
+| zapier-connector-service | Go | Public Zapier app exposing ShopOS triggers and actions |
+| make-connector-service | Go | Make.com (Integromat) connector |
 
 ---
 
-### 13. Affiliate (6 services)
+### 13. Affiliate (7 services)
 
 | Service | Language | Responsibility |
 |---|---|---|
@@ -726,11 +838,12 @@ An enterprise-grade, cloud-native commerce platform â€” 263 services, 22 do
 | influencer-service | Go | Influencer campaign management and UTM attribution |
 | commission-payout-service | Go | Commission aggregation, tax rules, and payout batching |
 | click-tracking-service | Go | High-throughput affiliate click recording via Redis |
-| fraud-prevention-affiliate-service | Go | Affiliate fraud detection â€” click stuffing, cookie dropping |
+| fraud-prevention-affiliate-service | Go | Affiliate fraud detection — click stuffing, cookie dropping |
+| brand-partner-service | Go | Brand-tier partnerships — co-marketing, exclusive products |
 
 ---
 
-### 14. Marketplace (8 services)
+### 14. Marketplace (10 services)
 
 | Service | Language | Responsibility |
 |---|---|---|
@@ -742,10 +855,12 @@ An enterprise-grade, cloud-native commerce platform â€” 263 services, 22 do
 | product-syndication-service | Go | Seller product syndication to multiple channels |
 | storefront-service | Node.js | Per-seller branded storefront rendering |
 | seller-payout-service | Go | Marketplace seller payout calculation and disbursement |
+| seller-onboarding-service | Go | Walks new sellers through KYC, store setup, payout configuration |
+| seller-tier-service | Go | Bronze/silver/gold tiers based on volume, ratings, disputes |
 
 ---
 
-### 15. Gamification (6 services)
+### 15. Gamification (7 services)
 
 | Service | Language | Responsibility |
 |---|---|---|
@@ -755,23 +870,26 @@ An enterprise-grade, cloud-native commerce platform â€” 263 services, 22 do
 | challenge-service | Go | Timed challenges and progress tracking |
 | reward-redemption-service | Go | Reward catalogue and redemption workflow |
 | streak-service | Go | Daily/weekly streak tracking and incentives |
+| quest-service | Go | Multi-step quests with state-machine progress tracking |
 
 ---
 
-### 16. Developer Platform (6 services)
+### 16. Developer Platform (8 services)
 
 | Service | Language | Responsibility |
 |---|---|---|
-| api-management-service | Go | API product management â€” plans, versions, quotas |
+| api-management-service | Go | API product management — plans, versions, quotas |
 | sandbox-service | Go | Isolated sandbox environments for API testing |
-| developer-portal-backend | Node.js | Developer portal API â€” apps, credentials, docs |
+| developer-portal-backend | Node.js | Developer portal API — apps, credentials, docs |
 | oauth-client-service | Go | OAuth2 client registration and credential management |
 | api-analytics-service | Go | Per-developer API usage analytics |
 | webhook-management-service | Go | Developer webhook subscription management |
+| sdk-generator-service | Go | Generates TS/Python/Go/Java SDKs from OpenAPI + buf descriptors |
+| api-changelog-service | Go | Tracks API breaking/additive changes; publishes changelog |
 
 ---
 
-### 17. Compliance (5 services)
+### 17. Compliance (7 services)
 
 | Service | Language | Responsibility |
 |---|---|---|
@@ -780,10 +898,12 @@ An enterprise-grade, cloud-native commerce platform â€” 263 services, 22 do
 | privacy-request-service | Go | GDPR/CCPA data subject request orchestration |
 | compliance-reporting-service | Java | Regulatory report generation (GDPR, PCI, SOC2) |
 | data-lineage-service | Go | Data flow tracking across services |
+| pci-scope-service | Go | Tracks PCI-DSS scope — which services touch cardholder data |
+| soc2-evidence-service | Go | Continuously collects SOC2 evidence into audit packs |
 
 ---
 
-### 18. Sustainability (5 services)
+### 18. Sustainability (6 services)
 
 | Service | Language | Responsibility |
 |---|---|---|
@@ -792,6 +912,7 @@ An enterprise-grade, cloud-native commerce platform â€” 263 services, 22 do
 | green-shipping-service | Go | Low-carbon carrier selection and routing |
 | sustainability-reporting-service | Go | ESG metrics aggregation and reporting |
 | offset-service | Go | Carbon offset purchase and certification tracking |
+| circular-economy-service | Go | Repair/resale/refurbish/recycle tracking; diversion-from-landfill metric |
 
 ---
 
@@ -799,17 +920,17 @@ An enterprise-grade, cloud-native commerce platform â€” 263 services, 22 do
 
 | Service | Framework | Responsibility |
 |---|---|---|
-| storefront-service | Next.js 14 (React/TS) | Customer-facing shopping experience â€” SSR for SEO |
+| storefront-service | Next.js 14 (React/TS) | Customer-facing shopping experience — SSR for SEO |
 | admin-dashboard-service | React + Vite (TS) | Admin and merchant management portal |
-| seller-portal-service | Vue.js 3 (TS) | Marketplace seller portal â€” listings, analytics, payouts |
-| partner-portal-service | Angular 18 (TS) | B2B partner portal â€” contracts, orders, invoices |
+| seller-portal-service | Vue.js 3 (TS) | Marketplace seller portal — listings, analytics, payouts |
+| partner-portal-service | Angular 18 (TS) | B2B partner portal — contracts, orders, invoices |
 | mobile-app-service | React Native / Expo (TS) | iOS + Android customer app |
-| developer-portal-service | React + Vite (TS) | Developer portal â€” API docs, sandbox, OAuth apps |
+| developer-portal-service | React + Vite (TS) | Developer portal — API docs, sandbox, OAuth apps |
 | mobile-flutter-service | Dart / Flutter | iOS + Android customer app (Flutter native alternative) |
 
 ---
 
-### 20. Events & Ticketing (6 services)
+### 20. Events & Ticketing (7 services)
 
 | Service | Language | Responsibility |
 |---|---|---|
@@ -819,10 +940,11 @@ An enterprise-grade, cloud-native commerce platform â€” 263 services, 22 do
 | venue-service | Go | Venue profiles, capacity, and facility management |
 | booking-service | Go | Event booking orchestration and confirmation |
 | check-in-service | Go | QR-code check-in and attendance tracking via Redis |
+| waitlist-event-service | Go | Sold-out event waitlist with auto-purchase on release |
 
 ---
 
-### 21. Auction (4 services)
+### 21. Auction (5 services)
 
 | Service | Language | Responsibility |
 |---|---|---|
@@ -830,10 +952,11 @@ An enterprise-grade, cloud-native commerce platform â€” 263 services, 22 do
 | bidding-service | Go | Bid submission, validation, and real-time leaderboard |
 | reserve-price-service | Go | Reserve price management and auto-extension rules |
 | auction-settlement-service | Java | Auction close, winner selection, and payment initiation |
+| proxy-bid-service | Go | Manages proxy bids — auto-counter on behalf of holder |
 
 ---
 
-### 22. Rental (4 services)
+### 22. Rental (5 services)
 
 | Service | Language | Responsibility |
 |---|---|---|
@@ -841,33 +964,50 @@ An enterprise-grade, cloud-native commerce platform â€” 263 services, 22 do
 | lease-service | Kotlin | Long-term lease management and renewal scheduling |
 | damage-deposit-service | Go | Security deposit collection, hold, and release |
 | availability-calendar-service | Go | Real-time rental item availability calendar |
+| insurance-rider-service | Go | Optional insurance rider (quote → bind → claim) for rentals |
 
 ---
 
 ## Docs
 
-- [Getting Started](GETTING_STARTED.md) â€” complete from-scratch setup guide
-- [Architecture](docs/architecture/) â€” system overview, domain map, communication patterns, database strategy, security model
-- [ADRs](docs/adr/) â€” architecture decision records (001â€“006)
-- [CI/CD](ci/README.md) â€” all 15 CI platform pipelines
-- [Helm Charts](helm/README.md) â€” per-service Kubernetes deployment
-- [Infrastructure](infra/README.md) â€” Terraform, OpenTofu, Crossplane, Ansible
-- [GitOps](gitops/README.md) â€” ArgoCD, Flux, Argo Rollouts
-- [Observability](observability/README.md) â€” metrics, logs, traces, SLOs
-- [Security](security/README.md) â€” 50+ security tools and policies
-- [Kubernetes](kubernetes/README.md) â€” namespaces, RBAC, network policies, KEDA, Velero
-- [Messaging](messaging/README.md) â€” Kafka, RabbitMQ, NATS, Debezium, Flink
-- [Networking](networking/README.md) â€” Istio, Cilium, Traefik, Consul
-- [Databases](databases/README.md) â€” ClickHouse, Weaviate, Neo4j, TimescaleDB, Memcached, OpenSearch
-- [Streaming](streaming/README.md) â€” Debezium CDC + Apache Flink
-- [Registry](registry/README.md) â€” Harbor, Nexus, MinIO, ChartMuseum
-- [ML Platform](ml/README.md) â€” MLflow
-- [Chaos Engineering](chaos/README.md) â€” Chaos Mesh, LitmusChaos
-- [Load Testing](load-testing/README.md) â€” k6, Locust, Gatling
-- [Proto / gRPC](proto/README.md) â€” 58 protobuf files, Buf CLI
-- [Kafka Events](events/README.md) â€” 20 Avro event schemas
-- [Backstage](backstage/README.md) â€” developer portal
-- [Workflow / Temporal](workflow/README.md) â€” durable workflow engine
+| Topic | Path |
+|---|---|
+| Getting started | [GETTING_STARTED.md](GETTING_STARTED.md) |
+| Authoritative project guide (read this if you're an AI agent) | [CLAUDE.md](CLAUDE.md) |
+| Architecture | [docs/architecture/](docs/architecture/) |
+| ADRs | [docs/adr/](docs/adr/) |
+| Runbooks (deployment, incident, rollback, postgres-failover, kafka-consumer-lag) | [docs/runbooks/](docs/runbooks/) |
+| CI/CD (15 platforms) | [ci/README.md](ci/README.md) |
+| Helm Charts (303 per-service) | [helm/README.md](helm/README.md) |
+| Infrastructure (Terraform/OpenTofu/Crossplane/Ansible/Patroni/Atlantis/Nomad) | [infra/README.md](infra/README.md) |
+| GitOps (ArgoCD ApplicationSet + Flux HelmReleases, 303 each) | [gitops/README.md](gitops/README.md) |
+| Observability (Prom + Grafana + Loki + Tempo + OTel + ...) | [observability/README.md](observability/README.md) |
+| Security (Vault + Istio mTLS + OPA + Kyverno + Falco + ...) | [security/README.md](security/README.md) |
+| Kubernetes (RBAC, NetworkPolicies, PDBs, Velero, KEDA, Karpenter, VPA, scaling/, manifests/) | [kubernetes/README.md](kubernetes/README.md) |
+| Messaging (Kafka + Strimzi topics, RabbitMQ, NATS, Redpanda, Zilla) | [messaging/README.md](messaging/README.md) |
+| Networking (Istio + Cilium + Traefik + Caddy + Anubis + Varnish + edge/spin) | [networking/README.md](networking/README.md) |
+| Databases (Flyway 11 schemas, ClickHouse/Weaviate/Neo4j/TimescaleDB/LakeFS/Dgraph/Yugabyte) | [databases/README.md](databases/README.md) |
+| Storage (Longhorn, Rook-Ceph PV providers) | [storage/README.md](storage/README.md) |
+| Data (Airflow/dbt/Spark/Airbyte/Cube/Metabase/OpenLineage/GreatExpectations) | [data/README.md](data/README.md) |
+| Streaming (Debezium CDC + Apache Flink) | [streaming/README.md](streaming/README.md) |
+| Registry (Harbor, Nexus, Gitea, Zot, ChartMuseum) | [registry/README.md](registry/README.md) |
+| ML Platform (MLflow + Feast) | [ml/README.md](ml/README.md) |
+| Chaos Engineering (Chaos Mesh + LitmusChaos) | [chaos/README.md](chaos/README.md) |
+| Load Testing (k6 + Locust + Gatling) | [load-testing/README.md](load-testing/README.md) |
+| Proto / gRPC (58 protobuf files, Buf, breaking-change CI) | [proto/README.md](proto/README.md) |
+| Kafka Events (20 Avro schemas + Strimzi KafkaTopic CRDs) | [events/README.md](events/README.md) |
+| Backstage developer portal (348 entries) | [backstage/README.md](backstage/README.md) |
+| Workflow / Temporal | [workflow/README.md](workflow/README.md) |
+| Dev Experience (Coder/DevSpace/n8n/Windmill/Score/Backstage Templates) | [dev/README.md](dev/README.md) |
+| Feature flags (Unleash + OpenFeature) | [feature-flags/README.md](feature-flags/README.md) |
+| FinOps (Kubecost + OpenCost) | [finops/README.md](finops/README.md) |
+| Incident management (Cachet, Grafana Incident, Grafana OnCall) | [incident/README.md](incident/README.md) |
+| API management (APISIX, Tyk, Hasura) | [api-management/README.md](api-management/README.md) |
+| API testing (Hurl + Spectral) | [api-testing/hurl/README.md](api-testing/hurl/README.md) |
+| Testing (Pact 9 contracts, Playwright, Karate, Testcontainers, Artillery) | [testing/](testing/) |
+| Build tooling (Earthly, Ko, Kaniko) | [build/](build/) |
+| OpenAPI specs | [openapi/README.md](openapi/README.md) |
+| Generators | [scripts/](scripts/) |
 
 ## License
 

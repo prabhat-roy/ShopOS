@@ -45,10 +45,10 @@ steps:
       - source /drone/src/.cloud.env
       - |
         case "$CLOUD" in
-          aws)   TF_DIR="infra/terraform/aws/eks" ;;
-          gcp)   TF_DIR="infra/terraform/gcp/gke" ;;
-          azure) TF_DIR="infra/terraform/azure/aks" ;;
-          *)     TF_DIR="infra/terraform/aws/eks" ;;
+          aws)   TF_DIR="infra/terraform/aws/app-k8s" ;;
+          gcp)   TF_DIR="infra/terraform/gcp/app-k8s" ;;
+          azure) TF_DIR="infra/terraform/azure/app-k8s" ;;
+          *)     TF_DIR="infra/terraform/aws/app-k8s" ;;
         esac
         echo "TF_DIR=$TF_DIR" >> /drone/src/.cloud.env
         terraform -chdir="$TF_DIR" init -input=false

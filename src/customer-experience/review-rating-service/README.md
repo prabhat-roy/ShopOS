@@ -1,4 +1,4 @@
-﻿# review-rating-service
+# review-rating-service
 
 > Product reviews, star ratings, moderation queue, and verified purchase badges for the ShopOS catalog.
 
@@ -30,8 +30,8 @@ graph LR
 
 ## Responsibilities
 
-- Accept and persist review submissions (text, rating 1â€“5, media attachments)
-- Enforce moderation queue â€” reviews are `PENDING` until approved or rejected
+- Accept and persist review submissions (text, rating 1–5, media attachments)
+- Enforce moderation queue — reviews are `PENDING` until approved or rejected
 - Mark reviews with a verified-purchase badge by cross-checking order history
 - Compute and store per-product aggregate rating (average, count, histogram)
 - Support upvoting/downvoting of reviews for helpfulness ranking
@@ -62,12 +62,12 @@ gRPC service: `ReviewRatingService` (port 50120)
 ## Dependencies
 
 Upstream (callers)
-- `api-gateway` â€” routes review submission and listing requests
-- `admin-portal` â€” uses moderation endpoints
+- `api-gateway` — routes review submission and listing requests
+- `admin-portal` — uses moderation endpoints
 
 Downstream (calls)
-- `order-service` â€” verifies purchase before issuing badge
-- `media-asset-service` â€” stores review images/videos
+- `order-service` — verifies purchase before issuing badge
+- `media-asset-service` — stores review images/videos
 
 ## Environment Variables
 
@@ -90,4 +90,4 @@ docker-compose up review-rating-service
 
 ## Health Check
 
-`GET /healthz` â†’ `{"status":"ok"}`
+`GET /healthz` → `{"status":"ok"}`

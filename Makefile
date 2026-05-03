@@ -1,7 +1,8 @@
 .PHONY: build test lint docker-build docker-push proto-gen \
         up down logs ps \
         deploy-local undeploy-local deploy-svc \
-        migrate clean help
+        migrate clean help \
+        validate-helm validate-argo bootstrap-cluster
 
 REGISTRY ?= shopos
 TAG      ?= latest
@@ -232,6 +233,36 @@ clean-images:
 	  name=$$(basename $$svc); \
 	  docker rmi $(REGISTRY)/$$name:$(TAG) 2>/dev/null || true; \
 	done
+
+# ── Validation ────────────────────────────────────────────────────────────────
+
+## validate-helm: helm lint every chart under helm/services/ (sample of 5)
+validate-helm:
+	@for svc in api-gateway order-service cart-service payment-service auth-service; do \
+	  echo "==> helm lint helm/services/$$svc"; \
+	  helm lint helm/services/$$svc || exit 1; \
+	done
+
+## validate-argo: argocd app diff a sample to confirm Applications resolve
+validate-argo:
+	@which kubectl >/dev/null 2>&1 || { echo "kubectl required"; exit 1; }
+	@kubectl --dry-run=client apply -f gitops/argocd/applicationsets/all-services.yaml >/dev/null
+	@kubectl --dry-run=client apply -f gitops/argocd/applicationsets/infra-tools.yaml >/dev/null
+	@kubectl --dry-run=client apply -f gitops/argocd/applicationsets/loose-tools.yaml >/dev/null
+	@echo "ApplicationSet manifests are syntactically valid."
+
+## validate: Run helm + argo validators
+validate: validate-helm validate-argo
+
+# ── Cluster bootstrap (single command — assumes ArgoCD is installed) ─────────
+
+## bootstrap-cluster: Apply the root app-of-apps; ArgoCD provisions everything else
+bootstrap-cluster:
+	kubectl apply -f kubernetes/namespaces/namespaces.yaml
+	kubectl apply -f gitops/argocd/projects/
+	kubectl apply -f gitops/argocd/app-of-apps.yaml -n argocd
+	@echo "ArgoCD will now reconcile 303 services + 103 infra tools + 58 loose tools."
+	@echo "Watch: argocd app list -o wide  |  kubectl get applications -n argocd -w"
 
 # ── Help ───────────────────────────────────────────────────────────────────────
 

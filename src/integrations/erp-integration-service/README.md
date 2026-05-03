@@ -1,4 +1,4 @@
-﻿# erp-integration-service
+# erp-integration-service
 
 > Provides bidirectional synchronization between ShopOS and external ERP systems (SAP, Oracle), covering orders, inventory, and financial data.
 
@@ -14,7 +14,7 @@ sequenceDiagram
     participant ERP as erp-integration-service
     participant SA as SAP / Oracle ERP
 
-    Note over OS,SA: Outbound: ShopOS â†’ ERP
+    Note over OS,SA: Outbound: ShopOS → ERP
     OS->>ERP: commerce.order.placed (Kafka)
     ERP->>ERP: Map to ERP order document
     ERP->>SA: Create Sales Order (BAPI / REST)
@@ -27,7 +27,7 @@ sequenceDiagram
     SA-->>ERP: Invoice number
     ERP->>OS: b2b.erp.invoice.synced (Kafka)
 
-    Note over OS,SA: Inbound: ERP â†’ ShopOS
+    Note over OS,SA: Inbound: ERP → ShopOS
     SA->>ERP: Inventory delta (scheduled poll / webhook)
     ERP->>ERP: Map to internal inventory event
     ERP->>OS: supplychain.inventory.restocked (Kafka)
@@ -84,7 +84,7 @@ sequenceDiagram
 ## Dependencies
 
 Upstream (calls this service)
-- `admin-portal` â€” manual sync triggers and error review
+- `admin-portal` — manual sync triggers and error review
 
 Downstream (this service calls)
 - External SAP / Oracle ERP APIs
@@ -96,14 +96,14 @@ Downstream (this service calls)
 | `SERVER_PORT` | `50170` | gRPC server port |
 | `KAFKA_BOOTSTRAP_SERVERS` | `localhost:9092` | Kafka broker addresses |
 | `ERP_TYPE` | `SAP` | ERP adapter to use (`SAP` or `ORACLE`) |
-| `SAP_HOST` | â€” | SAP application server host |
-| `SAP_SYSTEM_NUMBER` | â€” | SAP system number |
-| `SAP_CLIENT` | â€” | SAP client number |
-| `SAP_USER` | â€” | SAP RFC user (required) |
-| `SAP_PASSWORD` | â€” | SAP RFC password (required) |
-| `ORACLE_BASE_URL` | â€” | Oracle ERP REST base URL |
-| `ORACLE_CLIENT_ID` | â€” | Oracle OAuth2 client ID |
-| `ORACLE_CLIENT_SECRET` | â€” | Oracle OAuth2 client secret |
+| `SAP_HOST` | — | SAP application server host |
+| `SAP_SYSTEM_NUMBER` | — | SAP system number |
+| `SAP_CLIENT` | — | SAP client number |
+| `SAP_USER` | — | SAP RFC user (required) |
+| `SAP_PASSWORD` | — | SAP RFC password (required) |
+| `ORACLE_BASE_URL` | — | Oracle ERP REST base URL |
+| `ORACLE_CLIENT_ID` | — | Oracle OAuth2 client ID |
+| `ORACLE_CLIENT_SECRET` | — | Oracle OAuth2 client secret |
 | `SYNC_RETRY_MAX` | `5` | Maximum retry attempts per failed sync |
 | `INVENTORY_POLL_CRON` | `0 */15 * * * *` | Cron for inventory poll from ERP |
 | `LOG_LEVEL` | `INFO` | Logging level |
@@ -116,6 +116,6 @@ docker-compose up erp-integration-service
 
 ## Health Check
 
-`GET /healthz` â†’ `{"status":"ok"}`
+`GET /healthz` → `{"status":"ok"}`
 
-gRPC health: `grpc.health.v1.Health/Check` â†’ `SERVING`
+gRPC health: `grpc.health.v1.Health/Check` → `SERVING`

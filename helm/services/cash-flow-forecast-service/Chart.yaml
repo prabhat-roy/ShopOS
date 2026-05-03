@@ -1,0 +1,6 @@
+apiVersion: v2
+name: cash-flow-forecast-service
+description: ShopOS cash-flow-forecast-service (financial)
+type: application
+version: 0.1.0
+appVersion: "1.0.0"

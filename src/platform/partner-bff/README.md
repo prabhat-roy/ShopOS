@@ -1,4 +1,4 @@
-﻿# Partner BFF
+# Partner BFF
 
 > Backend-for-Frontend for external partner and B2B API consumers.
 
@@ -25,7 +25,7 @@ graph LR
 | Component | Technology |
 |---|---|
 | Language | Go |
-| Database | â€” |
+| Database | — |
 | Protocol | REST |
 | Port | 8083 |
 
@@ -52,21 +52,21 @@ graph LR
 
 ## Kafka Topics
 
-N/A â€” the Partner BFF is a synchronous aggregation layer and does not interact with Kafka directly.
+N/A — the Partner BFF is a synchronous aggregation layer and does not interact with Kafka directly.
 
 ## Dependencies
 
 Upstream (services this calls):
-- `api-key-service` (identity) â€” partner API key validation
-- `product-catalog-service` (catalog) â€” product data
-- `inventory-service` (catalog) â€” stock levels
-- `order-service` (commerce) â€” order management
-- `vendor-service` (supply-chain) â€” vendor/partner records
-- `organization-service` (b2b) â€” B2B organisation context
-- `contract-service` (b2b) â€” partner contract terms
+- `api-key-service` (identity) — partner API key validation
+- `product-catalog-service` (catalog) — product data
+- `inventory-service` (catalog) — stock levels
+- `order-service` (commerce) — order management
+- `vendor-service` (supply-chain) — vendor/partner records
+- `organization-service` (b2b) — B2B organisation context
+- `contract-service` (b2b) — partner contract terms
 
 Downstream (services that call this):
-- `api-gateway` (platform) â€” routes partner traffic here
+- `api-gateway` (platform) — routes partner traffic here
 
 ## Environment Variables
 
@@ -94,4 +94,4 @@ skaffold dev --module=partner-bff
 
 ## Health Check
 
-`GET /healthz` â†’ `{"status":"ok"}`
+`GET /healthz` → `{"status":"ok"}`

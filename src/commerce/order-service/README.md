@@ -1,10 +1,10 @@
-﻿# order-service
+# order-service
 
 > Manages the full order lifecycle from creation through fulfilment, serving as the system of record for all customer orders.
 
 ## Overview
 
-The order-service owns the canonical order entity and drives it through its state machine: `created â†’ confirmed â†’ processing â†’ shipped â†’ delivered` (with `cancelled` and `return_requested` as terminal side states). It is a Kotlin/Spring Boot service backed by PostgreSQL with full audit history via event sourcing patterns. It publishes domain events to Kafka that trigger downstream workflows in communications, supply-chain, and financial domains.
+The order-service owns the canonical order entity and drives it through its state machine: `created → confirmed → processing → shipped → delivered` (with `cancelled` and `return_requested` as terminal side states). It is a Kotlin/Spring Boot service backed by PostgreSQL with full audit history via event sourcing patterns. It publishes domain events to Kafka that trigger downstream workflows in communications, supply-chain, and financial domains.
 
 ## Architecture
 
@@ -71,18 +71,18 @@ Proto file: `proto/commerce/order.proto`
 ## Dependencies
 
 Upstream (callers)
-- `checkout-service` â€” creates orders post-payment
-- `return-refund-service` â€” updates status to `return_requested`
-- `fulfillment-service` â€” updates status to `shipped` / `delivered`
-- `web-bff` / `mobile-bff` â€” customer-facing reads and cancel requests
+- `checkout-service` — creates orders post-payment
+- `return-refund-service` — updates status to `return_requested`
+- `fulfillment-service` — updates status to `shipped` / `delivered`
+- `web-bff` / `mobile-bff` — customer-facing reads and cancel requests
 
 Downstream (Kafka consumers of order events)
-- `notification-orchestrator` â€” triggers order confirmation emails/SMS
-- `fulfillment-service` â€” begins pick-pack-ship workflow
-- `invoice-service` â€” generates invoice on order placement
-- `inventory-service` â€” releases soft-reservation on cancellation
-- `loyalty-service` â€” awards points on order fulfilment
-- `analytics-service` â€” records order event for reporting
+- `notification-orchestrator` — triggers order confirmation emails/SMS
+- `fulfillment-service` — begins pick-pack-ship workflow
+- `invoice-service` — generates invoice on order placement
+- `inventory-service` — releases soft-reservation on cancellation
+- `loyalty-service` — awards points on order fulfilment
+- `analytics-service` — records order event for reporting
 
 ## Environment Variables
 
@@ -107,6 +107,6 @@ docker-compose up order-service
 
 ## Health Check
 
-`GET /healthz` â†’ `{"status":"ok"}`
+`GET /healthz` → `{"status":"ok"}`
 
-gRPC health: `grpc.health.v1.Health/Check` â†’ `SERVING`
+gRPC health: `grpc.health.v1.Health/Check` → `SERVING`

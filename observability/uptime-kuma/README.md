@@ -1,14 +1,14 @@
-﻿# Uptime Kuma â€” Service Uptime Monitoring
+# Uptime Kuma — Service Uptime Monitoring
 
 Uptime Kuma is a self-hosted uptime monitoring tool that provides real-time availability tracking, status pages, and alerting for all 130 ShopOS services and underlying infrastructure components.
 
 ## Role in ShopOS
 
-- Real-time uptime monitoring â€” polls every service's health endpoint at configurable intervals (30â€“60s), tracking availability percentage and response time over time
-- Multi-protocol support â€” monitors HTTP/HTTPS endpoints (`/healthz`), TCP/UDP ports, gRPC health checks, Redis `PING`, DNS resolution, and database port reachability â€” covering all ShopOS service types (REST, gRPC, Kafka, databases)
-- Public status pages â€” generates branded status pages (e.g., `status.shopos.io`) that can be shared with customers and partners, showing real-time and historical uptime per service group
-- Alerting â€” integrates with Slack, PagerDuty, email, Microsoft Teams, Discord, and 90+ notification providers; sends alerts on state transitions (upâ†’down, downâ†’up) with configurable retry thresholds
-- Incident timeline â€” maintains a full history of downtime incidents with duration and timestamps, used for SLA reporting and post-mortems
+- Real-time uptime monitoring — polls every service's health endpoint at configurable intervals (30–60s), tracking availability percentage and response time over time
+- Multi-protocol support — monitors HTTP/HTTPS endpoints (`/healthz`), TCP/UDP ports, gRPC health checks, Redis `PING`, DNS resolution, and database port reachability — covering all ShopOS service types (REST, gRPC, Kafka, databases)
+- Public status pages — generates branded status pages (e.g., `status.shopos.io`) that can be shared with customers and partners, showing real-time and historical uptime per service group
+- Alerting — integrates with Slack, PagerDuty, email, Microsoft Teams, Discord, and 90+ notification providers; sends alerts on state transitions (up→down, down→up) with configurable retry thresholds
+- Incident timeline — maintains a full history of downtime incidents with duration and timestamps, used for SLA reporting and post-mortems
 
 ## Monitoring Architecture
 
@@ -59,8 +59,8 @@ Monitors in `monitors.json` are organized by domain concern:
 | Group | Monitors | Check Interval |
 |---|---|---|
 | Edge / API | API Gateway | 30s |
-| Core Services | Auth, Order, Payment | 30â€“60s |
-| Databases | PostgreSQL, Redis, Elasticsearch | 30â€“60s |
+| Core Services | Auth, Order, Payment | 30–60s |
+| Databases | PostgreSQL, Redis, Elasticsearch | 30–60s |
 | Messaging | Kafka, RabbitMQ | 60s |
 | Workflow | Temporal | 60s |
 
@@ -69,16 +69,16 @@ Monitors in `monitors.json` are organized by domain concern:
 Configure notification channels via the Uptime Kuma web UI (`http://uptime-kuma:3001`) or via the REST API. Recommended channels for ShopOS:
 
 ```
-Slack  â†’ #platform-alerts  (all services)
-Slack  â†’ #payments-alerts   (payment-service, fraud-detection-service)
-PagerDuty                   (payment-service, auth-service â€” P1 incidents)
+Slack  → #platform-alerts  (all services)
+Slack  → #payments-alerts   (payment-service, fraud-detection-service)
+PagerDuty                   (payment-service, auth-service — P1 incidents)
 Email                       (weekly SLA digest)
 ```
 
 ## Status Page Setup
 
 1. Open Uptime Kuma at `http://localhost:3001`
-2. Navigate to Status Pages â†’ New Status Page
+2. Navigate to Status Pages → New Status Page
 3. Group monitors by domain (Platform, Commerce, Infrastructure)
 4. Set custom domain `status.shopos.io` via CNAME to the Uptime Kuma instance
 5. Enable Show Tags to display domain labels on the public page

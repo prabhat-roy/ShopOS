@@ -1,4 +1,4 @@
-﻿# EXAMPLES
+# EXAMPLES
 
 ## Install as a DaemonSet
 
@@ -412,7 +412,7 @@ extraObjects:
 
 ## Install on Azure
 
-A [static IP on a resource group](https://learn.microsoft.com/en-us/azure/aks/static-ip) can be used:
+A [static IP on a resource group](https://learn.microsoft.com/en-us/azure/app-k8s/static-ip) can be used:
 
 ```yaml
 service:

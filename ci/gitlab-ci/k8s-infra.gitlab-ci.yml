@@ -50,7 +50,7 @@ stages:
 validate-aws:
   <<: *tf-validate-template
   variables:
-    TF_ROOT_DIR: infra/terraform/aws/eks
+    TF_ROOT_DIR: infra/terraform/aws/app-k8s
     TF_STATE_NAME: "${ENVIRONMENT}-aws"
   environment:
     name: $ENVIRONMENT/aws
@@ -60,7 +60,7 @@ validate-aws:
 validate-gcp:
   <<: *tf-validate-template
   variables:
-    TF_ROOT_DIR: infra/terraform/gcp/gke
+    TF_ROOT_DIR: infra/terraform/gcp/app-k8s
     TF_STATE_NAME: "${ENVIRONMENT}-gcp"
   environment:
     name: $ENVIRONMENT/gcp
@@ -70,7 +70,7 @@ validate-gcp:
 validate-azure:
   <<: *tf-validate-template
   variables:
-    TF_ROOT_DIR: infra/terraform/azure/aks
+    TF_ROOT_DIR: infra/terraform/azure/app-k8s
     TF_STATE_NAME: "${ENVIRONMENT}-azure"
   environment:
     name: $ENVIRONMENT/azure
@@ -100,7 +100,7 @@ plan-aws:
   <<: *tf-plan-template
   needs: [validate-aws]
   variables:
-    TF_ROOT_DIR: infra/terraform/aws/eks
+    TF_ROOT_DIR: infra/terraform/aws/app-k8s
     TF_STATE_NAME: "${ENVIRONMENT}-aws"
   environment:
     name: $ENVIRONMENT/aws
@@ -111,7 +111,7 @@ plan-gcp:
   <<: *tf-plan-template
   needs: [validate-gcp]
   variables:
-    TF_ROOT_DIR: infra/terraform/gcp/gke
+    TF_ROOT_DIR: infra/terraform/gcp/app-k8s
     TF_STATE_NAME: "${ENVIRONMENT}-gcp"
   environment:
     name: $ENVIRONMENT/gcp
@@ -122,7 +122,7 @@ plan-azure:
   <<: *tf-plan-template
   needs: [validate-azure]
   variables:
-    TF_ROOT_DIR: infra/terraform/azure/aks
+    TF_ROOT_DIR: infra/terraform/azure/app-k8s
     TF_STATE_NAME: "${ENVIRONMENT}-azure"
   environment:
     name: $ENVIRONMENT/azure
@@ -146,7 +146,7 @@ apply-aws:
   <<: *tf-apply-template
   needs: [plan-aws]
   variables:
-    TF_ROOT_DIR: infra/terraform/aws/eks
+    TF_ROOT_DIR: infra/terraform/aws/app-k8s
     TF_STATE_NAME: "${ENVIRONMENT}-aws"
   environment:
     name: $ENVIRONMENT/aws
@@ -159,7 +159,7 @@ apply-gcp:
   <<: *tf-apply-template
   needs: [plan-gcp]
   variables:
-    TF_ROOT_DIR: infra/terraform/gcp/gke
+    TF_ROOT_DIR: infra/terraform/gcp/app-k8s
     TF_STATE_NAME: "${ENVIRONMENT}-gcp"
   environment:
     name: $ENVIRONMENT/gcp
@@ -172,7 +172,7 @@ apply-azure:
   <<: *tf-apply-template
   needs: [plan-azure]
   variables:
-    TF_ROOT_DIR: infra/terraform/azure/aks
+    TF_ROOT_DIR: infra/terraform/azure/app-k8s
     TF_STATE_NAME: "${ENVIRONMENT}-azure"
   environment:
     name: $ENVIRONMENT/azure
@@ -189,9 +189,9 @@ destroy:
   script:
     - |
       case "$CLOUD" in
-        aws)   TF_ROOT_DIR=infra/terraform/aws/eks ;;
-        gcp)   TF_ROOT_DIR=infra/terraform/gcp/gke ;;
-        azure) TF_ROOT_DIR=infra/terraform/azure/aks ;;
+        aws)   TF_ROOT_DIR=infra/terraform/aws/app-k8s ;;
+        gcp)   TF_ROOT_DIR=infra/terraform/gcp/app-k8s ;;
+        azure) TF_ROOT_DIR=infra/terraform/azure/app-k8s ;;
       esac
     - cd "$TF_ROOT_DIR"
     - terraform destroy -var="environment=$ENVIRONMENT" -auto-approve

@@ -1,6 +1,6 @@
-variable "region" {
+variable "name" {
   type    = string
-  default = "us-east-1"
+  default = "jenkins"
 }
 
 variable "environment" {
@@ -8,9 +8,9 @@ variable "environment" {
   default = "dev"
 }
 
-variable "name" {
+variable "region" {
   type    = string
-  default = "jenkins"
+  default = "us-east-1"
 }
 
 variable "vpc_cidr" {
@@ -18,33 +18,27 @@ variable "vpc_cidr" {
   default = "10.0.0.0/16"
 }
 
-variable "public_subnet_cidr" {
+variable "subnet_cidr" {
   type    = string
   default = "10.0.1.0/24"
 }
 
-variable "instance_type" {
+variable "vm_size" {
   type    = string
   default = "t3.xlarge"
 }
 
-variable "volume_size" {
+variable "disk_size_gb" {
   type    = number
   default = 200
 }
 
 variable "key_name" {
+  type        = string
+  description = "Existing AWS EC2 key-pair name registered in this region"
+}
+
+variable "ui_source_cidr" {
   type    = string
-  default = "us-east-1"
-}
-
-variable "allowed_cidr" {
-  type        = string
-  default     = "0.0.0.0/0"
-  description = "CIDR allowed to reach SSH and Jenkins UI — restrict to your IP in production"
-}
-
-variable "private_key_path" {
-  type        = string
-  description = "Absolute path to the .pem private key file used for SSH access to the Jenkins instance"
+  default = "0.0.0.0/0"
 }

@@ -1,0 +1,34 @@
+# Kyverno: any Deployment without an explicit PDB gets a maxUnavailable=25% PDB auto-created.
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: auto-generate-pdb
+  annotations:
+    policies.kyverno.io/title: Auto-generate PodDisruptionBudget
+    policies.kyverno.io/description: |
+      Ensures every Deployment with replicas >= 2 has at least a permissive PDB so that
+      cluster autoscaler / node drains can never take more than 25% of pods down at once.
+spec:
+  background: true
+  rules:
+    - name: gen-default-pdb
+      match:
+        any:
+          - resources: { kinds: [Deployment] }
+      preconditions:
+        all:
+          - key: "{{ request.object.spec.replicas }}"
+            operator: GreaterThanOrEquals
+            value: 2
+      generate:
+        apiVersion: policy/v1
+        kind: PodDisruptionBudget
+        name: "{{ request.object.metadata.name }}-default-pdb"
+        namespace: "{{ request.object.metadata.namespace }}"
+        synchronize: true
+        data:
+          spec:
+            maxUnavailable: 25%
+            selector:
+              matchLabels:
+                app: "{{ request.object.metadata.name }}"

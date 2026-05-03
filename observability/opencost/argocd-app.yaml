@@ -1,0 +1,47 @@
+# Source: observability/opencost/opencost.yaml
+# This Application installs the same Helm chart on any K8s cluster (not just k3s).
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: opencost
+  namespace: argocd
+  finalizers: [resources-finalizer.argocd.argoproj.io]
+spec:
+  project: shopos-infra
+  source:
+    repoURL: https://opencost.github.io/opencost-helm-chart
+    chart: opencost
+    targetRevision: '1.43.0'
+    helm:
+      releaseName: opencost
+      values: |
+        opencost:
+          exporter:
+            defaultClusterId: shopos-prod
+            cloudProviderApiKey: ""
+          prometheus:
+            internal:
+              enabled: false
+            external:
+              enabled: true
+              url: http://prometheus-server.monitoring:9090
+          ui:
+            enabled: true
+            service:
+              type: ClusterIP
+              port: 9090
+          metrics:
+            serviceMonitor:
+              enabled: true
+              namespace: monitoring
+        serviceAccount:
+          annotations:
+            eks.amazonaws.com/role-arn: "arn:aws:iam::${AWS_ACCOUNT_ID}:role/shopos-opencost"
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: monitoring
+  syncPolicy:
+    automated: { prune: false, selfHeal: true }
+    syncOptions: [CreateNamespace=true, ServerSideApply=true]
+    retry: { limit: 5, backoff: { duration: 30s, maxDuration: 5m, factor: 2 } }

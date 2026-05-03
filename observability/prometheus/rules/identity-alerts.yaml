@@ -1,0 +1,29 @@
+groups:
+  - name: identity.alerts
+    interval: 30s
+    rules:
+      - alert: AuthServiceHighErrorRate
+        expr: sum(rate(http_requests_total{namespace="identity",app="auth-service",code=~"5.."}[5m])) / sum(rate(http_requests_total{namespace="identity",app="auth-service"}[5m])) > 0.02
+        for: 5m
+        labels: { severity: critical, team: identity, page: pagerduty }
+        annotations:
+          summary: "auth-service 5xx rate >2% for 5m"
+          runbook_url: "https://runbooks.shopos.example.com/identity/auth-5xx"
+
+      - alert: SessionServiceLatencyHigh
+        expr: histogram_quantile(0.99, sum by (le) (rate(grpc_server_handling_seconds_bucket{namespace="identity",app="session-service"}[5m]))) > 0.300
+        for: 10m
+        labels: { severity: warning, team: identity }
+        annotations: { summary: "session-service p99 > 300ms for 10m" }
+
+      - alert: MFAFailureSpike
+        expr: increase(mfa_attempts_failed_total[5m]) > 100
+        for: 0m
+        labels: { severity: warning, team: identity }
+        annotations: { summary: "MFA failures > 100 in 5m — possible credential stuffing" }
+
+      - alert: KeycloakUnreachable
+        expr: up{job="keycloak"} == 0
+        for: 2m
+        labels: { severity: critical, team: identity, page: pagerduty }
+        annotations: { summary: "Keycloak instance down" }
