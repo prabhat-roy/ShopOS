@@ -42,6 +42,15 @@ pipeline {
             }
         }
 
+        stage('Install Git') {
+            steps {
+                script {
+                    def installGit = load 'scripts/groovy/install-git.groovy'
+                    installGit()
+                }
+            }
+        }
+
         stage('Install Docker') {
             steps {
                 script {
