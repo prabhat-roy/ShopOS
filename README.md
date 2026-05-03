@@ -10,7 +10,6 @@ An enterprise-grade, cloud-native commerce platform — 303 services, 22 domains
 - [Architecture overview](docs/architecture/system-overview.md)
 - [Service catalog (Backstage)](backstage/catalog-info.yaml) — 348 entries
 - [Runbooks](docs/runbooks/) — deployment, incident, rollback, postgres-failover, kafka-consumer-lag
-- [CLAUDE.md](CLAUDE.md) — authoritative source-of-truth (read this if you're an AI agent)
 
 ## Repository layout
 
@@ -973,7 +972,6 @@ scripts/             # Service scaffolder (bash) + Jenkins helpers (groovy)
 | Topic | Path |
 |---|---|
 | Getting started | [GETTING_STARTED.md](GETTING_STARTED.md) |
-| Authoritative project guide (read this if you're an AI agent) | [CLAUDE.md](CLAUDE.md) |
 | Architecture | [docs/architecture/](docs/architecture/) |
 | ADRs | [docs/adr/](docs/adr/) |
 | Runbooks (deployment, incident, rollback, postgres-failover, kafka-consumer-lag) | [docs/runbooks/](docs/runbooks/) |

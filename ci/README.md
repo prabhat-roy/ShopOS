@@ -4,9 +4,8 @@ ShopOS ships 18+ pipelines implemented across 15 CI/CD platforms. Jenkins is the
 CI server; the other 14 platforms mirror the same pipeline set for portability and demo purposes.
 
 > **Note**: This is "15 platforms × ~15 pipelines" templated, not 225 unique pipelines.
-> Logic is identical across platforms; only syntax differs. The Tool Responsibility Matrix
-> in [CLAUDE.md](../CLAUDE.md#cicd-platforms--each-platform-has-a-unique-responsibility)
-> describes which platform has which non-overlapping primary responsibility.
+> Logic is identical across platforms; only syntax differs. Each platform has a distinct,
+> non-overlapping primary responsibility (see the per-platform notes in the table below).
 
 ---
 

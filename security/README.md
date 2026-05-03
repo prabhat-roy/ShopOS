@@ -4,7 +4,7 @@ Defence-in-depth — every layer (secrets, identity, network, runtime, policy, s
 SAST/DAST, posture) has at least one open-source control. All tooling is configuration-as-code.
 
 > Production-ready as of 2026-05-02. See [`../docs/runbooks/incident-response.md`](../docs/runbooks/incident-response.md)
-> for triage; CLAUDE.md for the full Tool Responsibility Matrix.
+> for triage; the per-tool scope is documented in the table below.
 
 ---
 
@@ -132,5 +132,4 @@ bash security/wiz-cli/scan.sh .   # Trivy + Grype + Syft + Checkov + Gitleaks
 
 ## References
 
-- [Tool Responsibility Matrix in CLAUDE.md](../CLAUDE.md#security--each-tool-has-a-distinct-security-domain)
 - [Incident response runbook](../docs/runbooks/incident-response.md)
