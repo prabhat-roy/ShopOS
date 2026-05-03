@@ -27,8 +27,9 @@ variable "disk_size_gb" {
   type = number
 }
 
-variable "key_name" {
-  type = string
+variable "ssh_pub_key" {
+  type        = string
+  description = "Public key material — registered as an aws_key_pair and attached to the instance."
 }
 
 variable "user_data" {

@@ -100,11 +100,15 @@ No `null_resource` provisioner. No `remote-exec`. No SSH from the apply host req
 
 ## SSH
 
-| Cloud | Connect with | Key handling |
+All three clouds use the **same local SSH key** — `ssh ubuntu@<ip>` works with no `-i`
+flag. Key auto-detect order (identical across clouds): `~/.ssh/id_ed25519.pub` →
+`~/.ssh/id_rsa.pub`. Override via `var.ssh_pub_key_path`.
+
+| Cloud | Connect with | Key registration |
 |---|---|---|
-| AWS | `ssh -i ~/.ssh/<key>.pem ubuntu@<ip>` | Pre-existing AWS EC2 key pair (`var.key_name`) |
-| GCP | `ssh ubuntu@<ip>` (no `-i` flag) | Auto-detects `~/.ssh/id_ed25519.pub` → `id_rsa.pub`; injected into VM metadata |
-| Azure | `ssh ubuntu@<ip>` (no `-i` flag) | Same auto-detect as GCP |
+| AWS | `ssh ubuntu@<ip>` | Auto-imports local pubkey as `aws_key_pair` on `apply`; deleted on `destroy` |
+| GCP | `ssh ubuntu@<ip>` | Auto-injects local pubkey into VM metadata `ssh-keys` |
+| Azure | `ssh ubuntu@<ip>` | Auto-injects local pubkey via `admin_ssh_key` on the VM |
 
 ## OS
 
@@ -131,9 +135,9 @@ Examples:
 ```bash
 # Jenkins on AWS
 cd infra/terraform/aws/jenkins
-# Edit terraform.tfvars: set key_name to an existing AWS key pair name
+# Local SSH key auto-detected from ~/.ssh/id_ed25519.pub (or id_rsa.pub)
 terraform init && terraform apply
-ssh -i ~/.ssh/us-east-1.pem ubuntu@$(terraform output -raw jenkins_public_ip)
+ssh ubuntu@$(terraform output -raw jenkins_public_ip)
 
 # Jenkins on GCP
 cd infra/terraform/gcp/jenkins

@@ -8,6 +8,6 @@ module "vm" {
   instance_profile_name = module.iam.instance_profile_name
   vm_size               = var.vm_size
   disk_size_gb          = var.disk_size_gb
-  key_name              = var.key_name
+  ssh_pub_key           = local.ssh_pub_key
   user_data             = file("${path.module}/../../../../scripts/bash/jenkins-install.sh")
 }

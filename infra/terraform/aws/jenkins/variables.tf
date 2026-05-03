@@ -33,9 +33,10 @@ variable "disk_size_gb" {
   default = 200
 }
 
-variable "key_name" {
+variable "ssh_pub_key_path" {
   type        = string
-  description = "Existing AWS EC2 key-pair name registered in this region"
+  default     = null
+  description = "Override path to the SSH public key. Defaults to ~/.ssh/id_ed25519.pub then ~/.ssh/id_rsa.pub."
 }
 
 variable "ui_source_cidr" {

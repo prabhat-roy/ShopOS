@@ -5,5 +5,6 @@ vpc_cidr       = "10.0.0.0/16"
 subnet_cidr    = "10.0.1.0/24"
 vm_size        = "t3.xlarge"
 disk_size_gb   = 200
-key_name       = "us-east-1"     # name of an existing AWS EC2 key pair in this region
-ui_source_cidr = "0.0.0.0/0"     # restrict to your IP for prod, e.g. "203.0.113.7/32"
+ui_source_cidr = "0.0.0.0/0"   # restrict to your IP for prod, e.g. "203.0.113.7/32"
+
+# ssh_pub_key_path = "/path/to/your-key.pub"   # only if your key isn't at ~/.ssh/id_ed25519.pub

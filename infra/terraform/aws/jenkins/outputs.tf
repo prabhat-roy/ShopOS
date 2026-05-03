@@ -8,6 +8,6 @@ output "jenkins_public_ip" {
 }
 
 output "ssh_command" {
-  value       = "ssh -i ~/.ssh/${var.key_name}.pem ubuntu@${module.vm.public_ip}"
-  description = "Adjust the .pem path to wherever your AWS keypair lives"
+  value       = "ssh ubuntu@${module.vm.public_ip}"
+  description = "Direct SSH from any cmd / shell — uses your default ~/.ssh/id_ed25519 (or id_rsa); no -i flag needed"
 }
